@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertAppointmentSchema } from "@shared/schema";
+import { insertAppointmentSchema, insertClientSettingsSchema } from "@shared/schema";
 import OpenAI from "openai";
 
 const openai = new OpenAI({
@@ -9,7 +9,13 @@ const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
 });
 
-const SYSTEM_PROMPT = `You are 'HopeLine Assistant', the supportive chatbot for The Faith House, a structured sober-living home. Your tone: warm, simple, calm, non-judgmental.
+async function getSystemPrompt() {
+  const settings = await storage.getSettings();
+  if (!settings) {
+    return getDefaultSystemPrompt();
+  }
+
+  return `You are 'HopeLine Assistant', the supportive chatbot for ${settings.businessName}, a structured sober-living home. Your tone: warm, simple, calm, non-judgmental.
 
 Your goals:
 • Explain sober-living expectations: sobriety, meetings, curfews, chores, job search.
@@ -27,7 +33,7 @@ Crisis Protocol:
 Rules:
 • No medical or clinical advice.
 • No diagnosis.
-• If info is unknown (prices, exact policy), say: "Pricing varies; staff can confirm exact details."
+• If info is unknown, refer them to staff.
 
 Style:
 • Short paragraphs.
@@ -36,46 +42,49 @@ Style:
 • Always supportive, never judgmental.
 
 Knowledge Base:
-The Faith House is a structured sober-living environment designed to support individuals in their recovery journey. The program provides:
-- Safe, structured housing with accountability
-- Mandatory attendance at recovery meetings
-- Established curfews and house rules
-- Chore responsibilities and community living
-- Job search support and employment expectations
-- Respectful, supportive community environment
+About: ${settings.knowledgeBase.about}
 
-Requirements for residents:
-- Maintain complete sobriety (no alcohol or drugs)
-- Attend required recovery meetings regularly
-- Respect curfew times
-- Respect all staff and fellow residents
-- Maintain cleanliness in personal and common areas
-- Work or actively seek employment
-- Follow all house rules and guidelines
+Requirements: ${settings.knowledgeBase.requirements}
 
-Pricing: Covers housing, utilities, and support services. Exact pricing varies and should be confirmed with staff during the application process.
+Pricing: ${settings.knowledgeBase.pricing}
 
-Application Process: Typically involves providing personal information, background details, emergency contact, and agreement to follow all house rules and expectations.`;
+Application Process: ${settings.knowledgeBase.application}`;
+}
+
+function getDefaultSystemPrompt() {
+  return `You are 'HopeLine Assistant', the supportive chatbot for The Faith House, a structured sober-living home. Your tone: warm, simple, calm, non-judgmental.`;
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/chat", async (req, res) => {
     try {
-      const { messages } = req.body;
+      const { messages, sessionId } = req.body;
       
       if (!messages || !Array.isArray(messages)) {
         return res.status(400).json({ error: "Messages array is required" });
       }
 
+      const systemPrompt = await getSystemPrompt();
+      
       const completion = await openai.chat.completions.create({
         model: "gpt-4.1-mini",
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: systemPrompt },
           ...messages
         ],
         max_completion_tokens: 500,
       });
 
       const reply = completion.choices[0]?.message?.content || "I'm here to help. How can I assist you today?";
+      
+      if (sessionId) {
+        await storage.logConversation({
+          sessionId,
+          messageType: "assistant",
+          content: reply,
+          category: null
+        });
+      }
       
       res.json({ reply });
     } catch (error) {
@@ -108,6 +117,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/appointments/:id/status", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      await storage.updateAppointmentStatus(id, status);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Update appointment status error:", error);
+      res.status(500).json({ error: "Failed to update status" });
+    }
+  });
+
   app.delete("/api/appointments/:id", async (req, res) => {
     try {
       const { id } = req.params;
@@ -116,6 +137,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Delete appointment error:", error);
       res.status(500).json({ error: "Failed to delete appointment" });
+    }
+  });
+
+  app.get("/api/settings", async (req, res) => {
+    try {
+      const settings = await storage.getSettings();
+      res.json(settings);
+    } catch (error) {
+      console.error("Get settings error:", error);
+      res.status(500).json({ error: "Failed to fetch settings" });
+    }
+  });
+
+  app.patch("/api/settings", async (req, res) => {
+    try {
+      const validatedData = insertClientSettingsSchema.partial().parse(req.body);
+      const settings = await storage.updateSettings(validatedData);
+      res.json(settings);
+    } catch (error) {
+      console.error("Update settings error:", error);
+      res.status(400).json({ error: "Failed to update settings" });
+    }
+  });
+
+  app.get("/api/analytics", async (req, res) => {
+    try {
+      const analytics = await storage.getAnalytics();
+      res.json(analytics);
+    } catch (error) {
+      console.error("Get analytics error:", error);
+      res.status(500).json({ error: "Failed to fetch analytics" });
     }
   });
 
