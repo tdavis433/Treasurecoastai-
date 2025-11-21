@@ -11,7 +11,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { Settings, Palette, Clock, Bell, BookOpen, LogOut, Send, AlertCircle } from "lucide-react";
+import { Settings, Palette, Clock, Bell, BookOpen, LogOut, Send, AlertCircle, Shield, Trash2 } from "lucide-react";
 
 interface ClientSettings {
   id: string;
@@ -160,7 +160,7 @@ export default function SuperAdmin() {
         </div>
 
         <Tabs defaultValue="general" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="general" data-testid="tab-general">
               <Settings className="h-4 w-4 mr-2" />
               General
@@ -180,6 +180,10 @@ export default function SuperAdmin() {
             <TabsTrigger value="branding" data-testid="tab-branding">
               <Palette className="h-4 w-4 mr-2" />
               Branding
+            </TabsTrigger>
+            <TabsTrigger value="privacy" data-testid="tab-privacy">
+              <Shield className="h-4 w-4 mr-2" />
+              Privacy
             </TabsTrigger>
           </TabsList>
 
@@ -496,6 +500,76 @@ export default function SuperAdmin() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="privacy">
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Data Sanitization</CardTitle>
+                  <CardDescription>
+                    Protect visitor privacy by removing personally identifiable information from analytics logs
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Alert>
+                    <Shield className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>PII Protection:</strong> The system automatically redacts phone numbers, emails, and addresses 
+                      from all NEW analytics data. Use this button to sanitize historical conversation logs.
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      data-testid="button-sanitize-analytics"
+                      variant="outline"
+                      className="w-full"
+                      disabled
+                    >
+                      <Shield className="h-4 w-4 mr-2" />
+                      Sanitize Historical Analytics
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      This feature scans all existing analytics records and applies PII redaction patterns. Coming soon.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Data Retention</CardTitle>
+                  <CardDescription>
+                    Manage analytics data retention and compliance
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>Warning:</strong> Purging analytics will permanently delete all conversation logs. 
+                      This action cannot be undone. Appointment data will not be affected.
+                    </AlertDescription>
+                  </Alert>
+
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      data-testid="button-purge-analytics"
+                      variant="destructive"
+                      className="w-full"
+                      disabled
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Purge All Analytics
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      Automated retention policies coming soon. For now, contact support for data deletion requests.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
 

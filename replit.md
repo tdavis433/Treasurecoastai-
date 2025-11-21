@@ -69,18 +69,53 @@ The following integrations were considered but not set up. If you want to enable
 - AI: OpenAI via Replit AI Integrations
 - State: TanStack Query
 
+## Privacy & Data Protection
+### PII Sanitization (Implemented)
+✅ **Automatic Redaction** - All NEW analytics data is automatically sanitized before storage:
+- Phone numbers (US/international formats, with/without parentheses, dots, dashes, spaces)
+- Email addresses
+- Social Security Numbers
+- Street addresses (including apartment/unit numbers)
+- Self-declared names in context ("my name is...", "call me...", etc.)
+
+✅ **Double-Layer Protection**:
+1. PII redaction applied when assistant responses are logged to analytics (server/routes.ts line 356)
+2. Additional sanitization when generating conversation summaries (line 232)
+3. AI instructed to avoid including PII in summaries
+
+✅ **Privacy UI Warnings**:
+- Analytics dashboard explains only assistant responses are logged (user messages never stored)
+- Admin dashboard warns appointments contain sensitive contact information
+- Privacy tab in super-admin panel documents PII protection measures
+
+### Current Limitations
+⚠️ **Regex-Based Detection**: PII sanitization uses pattern matching which may miss edge cases with unusual phrasing or formatting
+⚠️ **Historical Data**: Existing analytics records from before this implementation may contain unsanitized PII
+⚠️ **No Retention Policy**: Analytics data persists indefinitely; no automated purge mechanism
+
+### Future Enhancements (Roadmap)
+📋 **Historical Data Migration**: Endpoint to sanitize all existing analytics records (super-admin Privacy tab, currently disabled)
+📋 **Automated Retention**: Configurable TTL settings (30/60/90 days) with scheduled purge jobs
+📋 **Manual Purge**: Admin-triggered "Delete All Analytics" button with confirmation
+📋 **Advanced PII Detection**: Consider ML-based libraries (Microsoft Presidio) for improved accuracy
+📋 **Per-Appointment Purge**: Allow deletion of individual appointment conversation logs
+
 ## Recent Changes (November 21, 2025)
+- **Implemented comprehensive PII sanitization** with multi-layer protection for analytics and summaries
 - **Added secure authentication system** with password-protected super-admin access
-- Added comprehensive super-admin control panel
+- Added comprehensive super-admin control panel with Privacy tab
 - Implemented appointment status tracking system
-- Built analytics dashboard with conversion metrics
+- Built analytics dashboard with conversion metrics and privacy notices
 - Added CSV export functionality
 - Implemented Spanish language support
 - Added operating hours awareness with after-hours messaging
 - Dynamic AI prompts based on database settings
 - Protected all super-admin API routes with authentication middleware
+- Email notifications with Resend integration (graceful degradation)
+- AI-powered conversation summaries for appointments
 
 ## User Preferences
 - White-label SaaS model: User controls all customizations
 - Clients cannot access super-admin settings
 - Focus on recurring revenue through control of updates
+- Privacy-first approach with PII protection

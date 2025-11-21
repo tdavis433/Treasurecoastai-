@@ -207,11 +207,8 @@ function sanitizePII(text: string): string {
   sanitized = sanitized.replace(/(?:apartment|apt|unit|suite|ste|#)\s*[\w\d-]+/gi, "[UNIT REDACTED]");
   sanitized = sanitized.replace(/\b\d{1,5}\s+[\w\s]{1,40}(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|boulevard|blvd|court|ct|circle|cir|way|place|pl|parkway|pkwy|highway|hwy|terrace|ter)\b/gi, "[ADDRESS REDACTED]");
   
-  sanitized = sanitized.replace(/\b(?:my name(?:'s| is)|i'm|i am|this is|call me)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/gi, (match) => {
-    return match.replace(/([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/g, "[NAME REDACTED]");
-  });
-  sanitized = sanitized.replace(/\b(?:my name(?:'s| is)|i'm|i am|this is|call me)\s+([a-z]+(?:\s+[a-z]+)*)\b/gi, (match) => {
-    return match.replace(/([a-z]+(?:\s+[a-z]+)*)/g, "[NAME REDACTED]");
+  sanitized = sanitized.replace(/\b(?:my name(?:[''\u2019]s| is)|I[''\u2019]m|I am|this is|call me)\s+([\p{L}''\u2019\-]+(?:\s+[\p{L}''\u2019\-]+)*)\b/giu, (match, name) => {
+    return match.replace(name, "[NAME REDACTED]");
   });
   
   return sanitized;
