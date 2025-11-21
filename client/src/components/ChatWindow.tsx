@@ -21,6 +21,21 @@ interface ChatWindowProps {
   onLanguageToggle: () => void;
 }
 
+const quickActions = {
+  en: [
+    { id: "qualify", label: "See if I qualify" },
+    { id: "pricing", label: "Learn pricing & rules" },
+    { id: "tour", label: "Schedule a tour or call" },
+    { id: "question", label: "Ask a general question" },
+  ],
+  es: [
+    { id: "qualify", label: "Ver si califico" },
+    { id: "pricing", label: "Conocer precios y reglas" },
+    { id: "tour", label: "Programar tour o llamada" },
+    { id: "question", label: "Hacer una pregunta general" },
+  ],
+};
+
 const menuOptions = {
   en: [
     { id: "about", label: "About" },
@@ -58,6 +73,8 @@ export default function ChatWindow({
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
+  const isInitialState = messages.length === 1;
+  const currentQuickActions = quickActions[language as keyof typeof quickActions] || quickActions.en;
   const currentMenu = menuOptions[language as keyof typeof menuOptions] || menuOptions.en;
 
   const scrollToBottom = () => {
@@ -164,7 +181,29 @@ export default function ChatWindow({
         <div ref={messagesEndRef} />
       </div>
 
-      {showMenu && (
+      {showMenu && isInitialState && (
+        <div className="px-4 pb-3">
+          <p className="text-xs text-muted-foreground mb-3 text-center">
+            {language === "es" ? "Acciones Rápidas" : "Quick Actions"}
+          </p>
+          <div className="space-y-2">
+            {currentQuickActions.map((action) => (
+              <Button
+                key={action.id}
+                data-testid={`button-quick-${action.id}`}
+                variant="default"
+                size="default"
+                onClick={() => onMenuClick(action.id)}
+                className="w-full justify-center text-center font-medium"
+              >
+                {action.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {showMenu && !isInitialState && (
         <div className="px-4 pb-3">
           <div className="grid grid-cols-2 gap-2">
             {currentMenu.map((option) => (

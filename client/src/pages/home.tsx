@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ChatBubble from "@/components/ChatBubble";
 import ChatWindow from "@/components/ChatWindow";
 import AppointmentFlow from "@/components/AppointmentFlow";
+import PreIntakeFlow, { PreIntakeData } from "@/components/PreIntakeFlow";
 import CrisisSupport from "@/components/CrisisSupport";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -17,9 +18,17 @@ interface AppointmentData {
   contact: string;
   preferredTime: string;
   notes: string;
+  appointmentType?: string;
+  lookingFor?: string;
+  sobrietyStatus?: string;
+  hasSupport?: string;
+  timeline?: string;
 }
 
-const WELCOME_MESSAGE = "Hi, I'm HopeLine Assistant. I'm here to support your journey to recovery at The Faith House. How can I help you today?";
+const WELCOME_MESSAGES = {
+  en: "Hi, I'm HopeLine Assistant, your virtual guide for The Faith House.\n\nI'm here to help you learn about our structured sober-living program, answer your questions, and help you take your next step toward recovery.\n\nI'm NOT a therapist or counselor, but I can help you understand if The Faith House might be right for you or a loved one.\n\nHow can I support you today?",
+  es: "Hola, soy HopeLine Assistant, tu guía virtual para The Faith House.\n\nEstoy aquí para ayudarte a aprender sobre nuestro programa de vida sobria estructurado, responder tus preguntas y ayudarte a dar tu siguiente paso hacia la recuperación.\n\nNO soy terapeuta ni consejero, pero puedo ayudarte a entender si The Faith House podría ser adecuado para ti o un ser querido.\n\n¿Cómo puedo apoyarte hoy?"
+};
 
 const MENU_RESPONSES: Record<string, string> = {
   about: "The Faith House is a structured sober-living environment designed to support individuals in their recovery journey. We provide:\n\n• Safe, structured housing with accountability\n• Mandatory attendance at recovery meetings\n• Supportive community environment\n• Job search assistance\n• Clear expectations and house rules\n\nWould you like to know more about our requirements or pricing?",
@@ -37,14 +46,23 @@ const MENU_RESPONSES: Record<string, string> = {
 
 export default function Home() {
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [language, setLanguage] = useState("en");
+  const [sessionId] = useState(() => `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: WELCOME_MESSAGE }
+    { role: "assistant", content: WELCOME_MESSAGES.en }
   ]);
   const [showMenu, setShowMenu] = useState(true);
   const [showAppointmentFlow, setShowAppointmentFlow] = useState(false);
+  const [showPreIntakeFlow, setShowPreIntakeFlow] = useState(false);
   const [showCrisis, setShowCrisis] = useState(false);
-  const [language, setLanguage] = useState("en");
+  const [preIntakeData, setPreIntakeData] = useState<PreIntakeData | null>(null);
   const { toast } = useToast();
+  
+  useEffect(() => {
+    if (messages.length === 1 && messages[0].role === "assistant") {
+      setMessages([{ role: "assistant", content: WELCOME_MESSAGES[language as keyof typeof WELCOME_MESSAGES] }]);
+    }
+  }, [language]);
 
   const chatMutation = useMutation({
     mutationFn: async (userMessage: string) => {
@@ -53,6 +71,7 @@ export default function Home() {
           ...messages.filter(m => !showCrisis && !showAppointmentFlow),
           { role: "user", content: userMessage }
         ],
+        sessionId,
         language
       });
       return response.json();
@@ -72,7 +91,10 @@ export default function Home() {
 
   const appointmentMutation = useMutation({
     mutationFn: async (appointmentData: AppointmentData) => {
-      const response = await apiRequest("POST", "/api/appointment", appointmentData);
+      const response = await apiRequest("POST", "/api/appointment", {
+        ...appointmentData,
+        sessionId
+      });
       return response.json();
     },
     onSuccess: () => {
@@ -100,7 +122,7 @@ export default function Home() {
   });
 
   const handleSendMessage = (message: string) => {
-    if (showAppointmentFlow || showCrisis) return;
+    if (showAppointmentFlow || showCrisis || showPreIntakeFlow) return;
     
     setMessages(prev => [...prev, { role: "user", content: message }]);
     setShowMenu(false);
@@ -111,6 +133,7 @@ export default function Home() {
     setShowMenu(false);
     setShowCrisis(false);
     setShowAppointmentFlow(false);
+    setShowPreIntakeFlow(false);
 
     if (option === "crisis") {
       setShowCrisis(true);
@@ -120,10 +143,35 @@ export default function Home() {
     if (option === "tour") {
       setMessages(prev => [
         ...prev,
-        { role: "user", content: "I'd like to request a tour or call" },
-        { role: "assistant", content: "Great! I'll help you schedule a tour or call. Let me gather some information." }
+        { role: "user", content: language === "es" ? "Me gustaría solicitar un tour o llamada" : "I'd like to request a tour or call" },
+        { role: "assistant", content: language === "es" 
+          ? "¡Genial! Te ayudaré a programar un tour o llamada. Déjame recopilar información." 
+          : "Great! I'll help you schedule a tour or call. Let me gather some information." }
       ]);
       setShowAppointmentFlow(true);
+      return;
+    }
+
+    if (option === "qualify") {
+      setMessages(prev => [
+        ...prev,
+        { role: "user", content: language === "es" ? "Me gustaría ver si podría calificar" : "I'd like to see if I might qualify" },
+        { role: "assistant", content: language === "es"
+          ? "¡Perfecto! Déjame hacerte algunas preguntas breves para entender mejor tu situación. Esto nos ayudará a determinar si The Faith House podría ser adecuado para ti."
+          : "Perfect! Let me ask you a few quick questions to better understand your situation. This will help us determine if The Faith House might be a good fit for you." }
+      ]);
+      setShowPreIntakeFlow(true);
+      return;
+    }
+
+    if (option === "question") {
+      setMessages(prev => [
+        ...prev,
+        { role: "assistant", content: language === "es"
+          ? "Por supuesto, estoy aquí para responder tus preguntas. ¿Qué te gustaría saber sobre The Faith House?"
+          : "Of course, I'm here to answer your questions. What would you like to know about The Faith House?" }
+      ]);
+      setShowMenu(true);
       return;
     }
 
@@ -150,8 +198,35 @@ export default function Home() {
     return mapping[option] || option;
   };
 
+  const handlePreIntakeComplete = (data: PreIntakeData) => {
+    setPreIntakeData(data);
+    setShowPreIntakeFlow(false);
+    setMessages(prev => [
+      ...prev,
+      { role: "assistant", content: language === "es"
+        ? "Gracias por compartir esta información. Basándome en lo que me has contado, The Faith House podría ser una buena opción. ¿Te gustaría programar un tour o llamada para hablar con nuestro personal y obtener más detalles?"
+        : "Thank you for sharing this information. Based on what you've told me, The Faith House could be a good fit. Would you like to schedule a tour or call to speak with our staff and get more details?" }
+    ]);
+    setShowMenu(true);
+  };
+
+  const handlePreIntakeCancel = () => {
+    setShowPreIntakeFlow(false);
+    setMessages(prev => [
+      ...prev,
+      { role: "assistant", content: language === "es"
+        ? "No hay problema. Si tienes alguna otra pregunta, estoy aquí para ayudarte."
+        : "No problem. If you have any other questions, I'm here to help." }
+    ]);
+    setShowMenu(true);
+  };
+
   const handleAppointmentComplete = (data: AppointmentData) => {
-    appointmentMutation.mutate(data);
+    const fullData = {
+      ...data,
+      ...(preIntakeData || {})
+    };
+    appointmentMutation.mutate(fullData);
   };
 
   const handleAppointmentCancel = () => {
@@ -169,6 +244,13 @@ export default function Home() {
     displayMessages.push({
       role: "assistant",
       content: "CRISIS_SUPPORT_COMPONENT"
+    });
+  }
+
+  if (showPreIntakeFlow) {
+    displayMessages.push({
+      role: "assistant",
+      content: "PRE_INTAKE_FLOW_COMPONENT"
     });
   }
 
@@ -231,6 +313,8 @@ export default function Home() {
         messages={displayMessages.map(msg => 
           msg.content === "CRISIS_SUPPORT_COMPONENT" 
             ? { ...msg, content: "" }
+            : msg.content === "PRE_INTAKE_FLOW_COMPONENT"
+            ? { ...msg, content: "" }
             : msg.content === "APPOINTMENT_FLOW_COMPONENT"
             ? { ...msg, content: "" }
             : msg
@@ -238,7 +322,7 @@ export default function Home() {
         onSendMessage={handleSendMessage}
         onMenuClick={handleMenuClick}
         isLoading={chatMutation.isPending || appointmentMutation.isPending}
-        showMenu={showMenu && !showAppointmentFlow && !showCrisis}
+        showMenu={showMenu && !showAppointmentFlow && !showCrisis && !showPreIntakeFlow}
         language={language}
         onLanguageToggle={() => setLanguage(lang => lang === "en" ? "es" : "en")}
       />
@@ -246,6 +330,16 @@ export default function Home() {
       {isChatOpen && showCrisis && (
         <div className="fixed bottom-[120px] right-5 z-50 w-[360px] sm:w-[94vw] sm:right-[3vw]">
           <CrisisSupport />
+        </div>
+      )}
+
+      {isChatOpen && showPreIntakeFlow && (
+        <div className="fixed bottom-[120px] right-5 z-50 w-[360px] sm:w-[94vw] sm:right-[3vw]">
+          <PreIntakeFlow
+            onComplete={handlePreIntakeComplete}
+            onCancel={handlePreIntakeCancel}
+            language={language}
+          />
         </div>
       )}
 
