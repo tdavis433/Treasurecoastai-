@@ -9,10 +9,74 @@ const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
 });
 
-async function getSystemPrompt() {
+function isWithinOperatingHours(settings: any): boolean {
+  if (!settings?.operatingHours?.enabled) {
+    return true;
+  }
+
+  const now = new Date();
+  const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  const currentDay = days[now.getDay()];
+  const schedule = settings.operatingHours.schedule[currentDay];
+
+  if (!schedule || !schedule.enabled) {
+    return false;
+  }
+
+  const currentTime = now.getHours() * 60 + now.getMinutes();
+  const [openHour, openMin] = schedule.open.split(":").map(Number);
+  const [closeHour, closeMin] = schedule.close.split(":").map(Number);
+  const openTime = openHour * 60 + openMin;
+  const closeTime = closeHour * 60 + closeMin;
+
+  return currentTime >= openTime && currentTime <= closeTime;
+}
+
+async function getSystemPrompt(language: string = "en") {
   const settings = await storage.getSettings();
   if (!settings) {
-    return getDefaultSystemPrompt();
+    return getDefaultSystemPrompt(language);
+  }
+
+  const withinHours = isWithinOperatingHours(settings);
+  
+  if (language === "es") {
+    return `Eres 'HopeLine Assistant', el chatbot de apoyo para ${settings.businessName}, un hogar sobrio estructurado. Tu tono: cálido, simple, tranquilo, sin juzgar.
+
+Tus objetivos:
+• Explicar las expectativas de vida sobria: sobriedad, reuniones, toques de queda, tareas, búsqueda de empleo.
+• Proporcionar orientación clara sobre cómo aplicar y qué esperar.
+• Ayudar a programar tours/llamadas.
+• Animar, pero nunca presionar.
+
+Protocolo de Crisis:
+• Si el usuario sugiere autolesión o peligro:
+  – Reconoce sus sentimientos.
+  – Dirígelos al 988 (Línea de Crisis y Suicidio), 1-800-662-HELP, 911, o ayuda de emergencia local.
+  – Anímalos a contactar a una persona de confianza fuera de línea.
+  – NO minimices la crisis ni continúes la conversación normal a menos que el usuario la reinicie.
+
+Reglas:
+• Sin consejos médicos o clínicos.
+• Sin diagnósticos.
+• Si la información es desconocida, remítelos al personal.
+
+Estilo:
+• Párrafos cortos.
+• Viñetas cuando sea útil.
+• Sin grandes bloques de texto.
+• Siempre de apoyo, nunca juzgando.
+
+${!withinHours ? `IMPORTANTE: Estamos actualmente FUERA DE HORARIO. ${settings.operatingHours.afterHoursMessage}\n\n` : ""}
+
+Base de Conocimientos:
+Acerca de: ${settings.knowledgeBase.about}
+
+Requisitos: ${settings.knowledgeBase.requirements}
+
+Precios: ${settings.knowledgeBase.pricing}
+
+Proceso de Aplicación: ${settings.knowledgeBase.application}`;
   }
 
   return `You are 'HopeLine Assistant', the supportive chatbot for ${settings.businessName}, a structured sober-living home. Your tone: warm, simple, calm, non-judgmental.
@@ -41,6 +105,8 @@ Style:
 • No big walls of text.
 • Always supportive, never judgmental.
 
+${!withinHours ? `IMPORTANT: We are currently OUTSIDE BUSINESS HOURS. ${settings.operatingHours.afterHoursMessage}\n\n` : ""}
+
 Knowledge Base:
 About: ${settings.knowledgeBase.about}
 
@@ -51,20 +117,23 @@ Pricing: ${settings.knowledgeBase.pricing}
 Application Process: ${settings.knowledgeBase.application}`;
 }
 
-function getDefaultSystemPrompt() {
+function getDefaultSystemPrompt(language: string = "en") {
+  if (language === "es") {
+    return `Eres 'HopeLine Assistant', el chatbot de apoyo para The Faith House, un hogar sobrio estructurado. Tu tono: cálido, simple, tranquilo, sin juzgar.`;
+  }
   return `You are 'HopeLine Assistant', the supportive chatbot for The Faith House, a structured sober-living home. Your tone: warm, simple, calm, non-judgmental.`;
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/chat", async (req, res) => {
     try {
-      const { messages, sessionId } = req.body;
+      const { messages, sessionId, language = "en" } = req.body;
       
       if (!messages || !Array.isArray(messages)) {
         return res.status(400).json({ error: "Messages array is required" });
       }
 
-      const systemPrompt = await getSystemPrompt();
+      const systemPrompt = await getSystemPrompt(language);
       
       const completion = await openai.chat.completions.create({
         model: "gpt-4.1-mini",
@@ -75,7 +144,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         max_completion_tokens: 500,
       });
 
-      const reply = completion.choices[0]?.message?.content || "I'm here to help. How can I assist you today?";
+      const defaultReply = language === "es" 
+        ? "Estoy aquí para ayudar. ¿Cómo puedo asistirte hoy?"
+        : "I'm here to help. How can I assist you today?";
+      const reply = completion.choices[0]?.message?.content || defaultReply;
       
       if (sessionId) {
         await storage.logConversation({

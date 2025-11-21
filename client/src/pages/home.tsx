@@ -43,6 +43,7 @@ export default function Home() {
   const [showMenu, setShowMenu] = useState(true);
   const [showAppointmentFlow, setShowAppointmentFlow] = useState(false);
   const [showCrisis, setShowCrisis] = useState(false);
+  const [language, setLanguage] = useState("en");
   const { toast } = useToast();
 
   const chatMutation = useMutation({
@@ -51,7 +52,8 @@ export default function Home() {
         messages: [
           ...messages.filter(m => !showCrisis && !showAppointmentFlow),
           { role: "user", content: userMessage }
-        ]
+        ],
+        language
       });
       return response.json();
     },
@@ -237,6 +239,8 @@ export default function Home() {
         onMenuClick={handleMenuClick}
         isLoading={chatMutation.isPending || appointmentMutation.isPending}
         showMenu={showMenu && !showAppointmentFlow && !showCrisis}
+        language={language}
+        onLanguageToggle={() => setLanguage(lang => lang === "en" ? "es" : "en")}
       />
 
       {isChatOpen && showCrisis && (

@@ -1,4 +1,4 @@
-import { X, Send } from "lucide-react";
+import { X, Send, Languages } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect, useRef } from "react";
@@ -17,18 +17,32 @@ interface ChatWindowProps {
   onMenuClick: (option: string) => void;
   isLoading: boolean;
   showMenu: boolean;
+  language: string;
+  onLanguageToggle: () => void;
 }
 
-const menuOptions = [
-  { id: "about", label: "About" },
-  { id: "requirements", label: "Requirements" },
-  { id: "availability", label: "Availability" },
-  { id: "pricing", label: "Pricing" },
-  { id: "apply", label: "Apply Now" },
-  { id: "tour", label: "Request Tour/Call" },
-  { id: "crisis", label: "Crisis Support" },
-  { id: "contact", label: "Contact Info" },
-];
+const menuOptions = {
+  en: [
+    { id: "about", label: "About" },
+    { id: "requirements", label: "Requirements" },
+    { id: "availability", label: "Availability" },
+    { id: "pricing", label: "Pricing" },
+    { id: "apply", label: "Apply Now" },
+    { id: "tour", label: "Request Tour/Call" },
+    { id: "crisis", label: "Crisis Support" },
+    { id: "contact", label: "Contact Info" },
+  ],
+  es: [
+    { id: "about", label: "Acerca de" },
+    { id: "requirements", label: "Requisitos" },
+    { id: "availability", label: "Disponibilidad" },
+    { id: "pricing", label: "Precios" },
+    { id: "apply", label: "Aplicar Ahora" },
+    { id: "tour", label: "Solicitar Tour/Llamada" },
+    { id: "crisis", label: "Apoyo de Crisis" },
+    { id: "contact", label: "Información de Contacto" },
+  ],
+};
 
 export default function ChatWindow({
   isOpen,
@@ -38,9 +52,13 @@ export default function ChatWindow({
   onMenuClick,
   isLoading,
   showMenu,
+  language,
+  onLanguageToggle,
 }: ChatWindowProps) {
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const currentMenu = menuOptions[language as keyof typeof menuOptions] || menuOptions.en;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -82,18 +100,30 @@ export default function ChatWindow({
             HopeLine Assistant
           </h2>
           <p className="text-sm text-muted-foreground">
-            Here to support your next step
+            {language === "es" ? "Aquí para apoyar tu próximo paso" : "Here to support your next step"}
           </p>
         </div>
-        <Button
-          data-testid="button-close-chat"
-          variant="ghost"
-          size="icon"
-          onClick={onClose}
-          className="h-8 w-8"
-        >
-          <X className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            data-testid="button-toggle-language"
+            variant="ghost"
+            size="icon"
+            onClick={onLanguageToggle}
+            className="h-8 w-8"
+            title={language === "es" ? "Switch to English" : "Cambiar a Español"}
+          >
+            <Languages className="h-4 w-4" />
+          </Button>
+          <Button
+            data-testid="button-close-chat"
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="h-8 w-8"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -137,7 +167,7 @@ export default function ChatWindow({
       {showMenu && (
         <div className="px-4 pb-3">
           <div className="grid grid-cols-2 gap-2">
-            {menuOptions.map((option) => (
+            {currentMenu.map((option) => (
               <Button
                 key={option.id}
                 data-testid={`button-menu-${option.id}`}
@@ -160,7 +190,7 @@ export default function ChatWindow({
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Type your message..."
+            placeholder={language === "es" ? "Escribe tu mensaje..." : "Type your message..."}
             className="flex-1 rounded-lg"
             disabled={isLoading}
           />
