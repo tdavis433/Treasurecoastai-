@@ -342,7 +342,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (sessionId) {
         await storage.logConversation({
           sessionId,
-          messageType: "assistant",
+          role: "assistant",
           content: sanitizePII(reply),
           category: null
         });

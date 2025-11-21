@@ -23,16 +23,24 @@ interface ChatWindowProps {
 
 const quickActions = {
   en: [
+    { id: "about", label: "About The Faith House" },
+    { id: "requirements", label: "Requirements" },
+    { id: "availability", label: "Availability" },
+    { id: "pricing", label: "Pricing" },
     { id: "qualify", label: "See if I qualify" },
-    { id: "pricing", label: "Learn pricing & rules" },
-    { id: "tour", label: "Schedule a tour or call" },
-    { id: "question", label: "Ask a general question" },
+    { id: "tour", label: "Request a call or tour" },
+    { id: "crisis", label: "Crisis support" },
+    { id: "contact", label: "Contact info" },
   ],
   es: [
+    { id: "about", label: "Sobre The Faith House" },
+    { id: "requirements", label: "Requisitos" },
+    { id: "availability", label: "Disponibilidad" },
+    { id: "pricing", label: "Precios" },
     { id: "qualify", label: "Ver si califico" },
-    { id: "pricing", label: "Conocer precios y reglas" },
-    { id: "tour", label: "Programar tour o llamada" },
-    { id: "question", label: "Hacer una pregunta general" },
+    { id: "tour", label: "Pedir llamada o tour" },
+    { id: "crisis", label: "Apoyo en crisis" },
+    { id: "contact", label: "Información de contacto" },
   ],
 };
 

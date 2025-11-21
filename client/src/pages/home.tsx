@@ -26,8 +26,8 @@ interface AppointmentData {
 }
 
 const WELCOME_MESSAGES = {
-  en: "Hi, I'm HopeLine Assistant, your virtual guide for The Faith House.\n\nI'm here to help you learn about our structured sober-living program, answer your questions, and help you take your next step toward recovery.\n\nI'm NOT a therapist or counselor, but I can help you understand if The Faith House might be right for you or a loved one.\n\nHow can I support you today?",
-  es: "Hola, soy HopeLine Assistant, tu guía virtual para The Faith House.\n\nEstoy aquí para ayudarte a aprender sobre nuestro programa de vida sobria estructurado, responder tus preguntas y ayudarte a dar tu siguiente paso hacia la recuperación.\n\nNO soy terapeuta ni consejero, pero puedo ayudarte a entender si The Faith House podría ser adecuado para ti o un ser querido.\n\n¿Cómo puedo apoyarte hoy?"
+  en: "Hi, I'm HopeLine Assistant for The Faith House. I can help you with:\n- Basic questions about the program\n- Requirements, pricing, and availability\n- Seeing if you might qualify\n- Requesting a phone call or tour\n\nHow can I help you today?",
+  es: "Hola, soy HopeLine Assistant de The Faith House. Puedo ayudarte con:\n- Preguntas básicas sobre el programa\n- Requisitos, precios y disponibilidad\n- Ver si podrías calificar\n- Pedir una llamada o un tour\n\n¿En qué puedo ayudarte hoy?"
 };
 
 const MENU_RESPONSES: Record<string, string> = {
@@ -348,6 +348,7 @@ export default function Home() {
           <AppointmentFlow
             onComplete={handleAppointmentComplete}
             onCancel={handleAppointmentCancel}
+            language={language}
           />
         </div>
       )}

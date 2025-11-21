@@ -7,6 +7,8 @@ export const appointments = pgTable("appointments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   contact: text("contact").notNull(),
+  email: text("email"),
+  contactPreference: text("contact_preference").notNull().default("phone"),
   preferredTime: text("preferred_time").notNull(),
   notes: text("notes"),
   status: text("status").notNull().default("new"),
@@ -77,7 +79,7 @@ export type ClientSettings = typeof clientSettings.$inferSelect;
 export const conversationAnalytics = pgTable("conversation_analytics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   sessionId: varchar("session_id").notNull(),
-  messageType: text("message_type").notNull(),
+  role: text("role").notNull(),
   content: text("content").notNull(),
   category: text("category"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -105,3 +107,21 @@ export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({
 
 export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;
 export type AdminUser = typeof adminUsers.$inferSelect;
+
+export const clients = pgTable("clients", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  domain: text("domain"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertClientSchema = createInsertSchema(clients).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertClient = z.infer<typeof insertClientSchema>;
+export type Client = typeof clients.$inferSelect;
