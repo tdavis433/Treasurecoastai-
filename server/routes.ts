@@ -446,6 +446,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/test-notification", requireAuth, async (req, res) => {
+    try {
+      const settings = await storage.getSettings();
+      
+      if (!settings) {
+        return res.status(400).json({ error: "Settings not found" });
+      }
+
+      const testAppointment = {
+        name: "Test User",
+        contact: "test@example.com",
+        preferredTime: new Date().toLocaleDateString(),
+        appointmentType: "tour",
+        notes: "This is a test notification",
+        lookingFor: "self",
+        sobrietyStatus: "30+ days sober",
+        hasSupport: "Yes, family support",
+        timeline: "Immediately"
+      };
+
+      const testSummary = "This is a test notification to verify your email configuration is working correctly.";
+
+      if (settings.enableEmailNotifications && settings.notificationEmail) {
+        const emailResult = await sendEmailNotification(
+          settings.notificationEmail,
+          testAppointment,
+          testSummary,
+          settings
+        );
+        
+        if (emailResult.success) {
+          return res.json({ 
+            success: true, 
+            message: `Test email sent successfully to ${settings.notificationEmail}` 
+          });
+        } else {
+          return res.status(400).json({ 
+            error: `Email failed: ${emailResult.error}` 
+          });
+        }
+      } else {
+        return res.status(400).json({ 
+          error: "Email notifications are not enabled or no recipient email configured" 
+        });
+      }
+    } catch (error) {
+      console.error("Test notification error:", error);
+      res.status(500).json({ error: "Failed to send test notification" });
+    }
+  });
+
   app.post("/api/auth/login", async (req, res) => {
     try {
       const validatedData = loginSchema.parse(req.body);

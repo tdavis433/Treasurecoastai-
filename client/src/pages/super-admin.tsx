@@ -6,11 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { Settings, Palette, Clock, Bell, BookOpen, LogOut } from "lucide-react";
+import { Settings, Palette, Clock, Bell, BookOpen, LogOut, Send, AlertCircle } from "lucide-react";
 
 interface ClientSettings {
   id: string;
@@ -91,8 +92,38 @@ export default function SuperAdmin() {
     },
   });
 
+  const testNotificationMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/test-notification", {});
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to send test notification");
+      }
+      
+      return data;
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Test Notification Sent",
+        description: data.message || "Check your email inbox!",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Test Failed",
+        description: error.message || "Failed to send test notification. Check your settings.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = () => {
     updateMutation.mutate(formData);
+  };
+
+  const handleTestNotification = () => {
+    testNotificationMutation.mutate();
   };
 
   if (isLoading || !settings) {
@@ -341,8 +372,16 @@ export default function SuperAdmin() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    To enable email notifications, you need to configure the RESEND_API_KEY environment variable.
+                    Contact support for assistance setting up your Resend account.
+                  </AlertDescription>
+                </Alert>
+
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <div>
                       <Label>Email Notifications</Label>
                       <p className="text-sm text-muted-foreground">
@@ -369,10 +408,32 @@ export default function SuperAdmin() {
                       placeholder="staff@faithhouse.org"
                     />
                   </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={handleTestNotification}
+                      disabled={
+                        testNotificationMutation.isPending || 
+                        !(formData.enableEmailNotifications ?? settings.enableEmailNotifications) || 
+                        !(formData.notificationEmail || settings.notificationEmail)
+                      }
+                      data-testid="button-test-notification"
+                    >
+                      <Send className="mr-2 h-4 w-4" />
+                      {testNotificationMutation.isPending ? "Sending..." : "Send Test Email"}
+                    </Button>
+                    {!(formData.enableEmailNotifications ?? settings.enableEmailNotifications) || 
+                     !(formData.notificationEmail || settings.notificationEmail) ? (
+                      <p className="text-xs text-muted-foreground self-center">
+                        Enable email notifications and enter an email to test
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
 
                 <div className="space-y-4 pt-4 border-t">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <div>
                       <Label>SMS Notifications</Label>
                       <p className="text-sm text-muted-foreground">
@@ -398,6 +459,9 @@ export default function SuperAdmin() {
                       onChange={(e) => setFormData({ ...formData, notificationPhone: e.target.value })}
                       placeholder="+1 (555) 123-4567"
                     />
+                    <p className="text-xs text-muted-foreground">
+                      SMS notifications require Twilio integration (not yet configured)
+                    </p>
                   </div>
                 </div>
               </CardContent>
