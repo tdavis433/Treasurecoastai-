@@ -126,7 +126,8 @@ export class DbStorage implements IStorage {
   }
 
   async getAnalytics(startDate?: Date, endDate?: Date): Promise<ConversationAnalytics[]> {
-    return await db.select().from(conversationAnalytics);
+    const results = await db.select().from(conversationAnalytics);
+    return results;
   }
 }
 

@@ -11,6 +11,7 @@ interface Appointment {
 
 interface Analytics {
   id: string;
+  sessionId: string;
   messageType: string;
   category: string | null;
   createdAt: string;
@@ -25,7 +26,7 @@ export default function Analytics() {
     queryKey: ["/api/analytics"],
   });
 
-  const totalChats = new Set(analyticsData.map((a) => a.id)).size;
+  const totalChats = new Set(analyticsData.map((a) => a.sessionId)).size;
   const totalMessages = analyticsData.length;
   const totalAppointments = appointments.length;
   
