@@ -16,7 +16,7 @@ interface Appointment {
 interface Analytics {
   id: string;
   sessionId: string;
-  messageType: string;
+  role: string;
   category: string | null;
   content: string;
   createdAt: string;
@@ -84,7 +84,7 @@ export default function Analytics() {
     : "N/A";
 
   const questionThemes: { theme: string; count: number }[] = [];
-  const assistantMessages = analyticsData.filter((a) => a.messageType === "assistant" && a.content);
+  const assistantMessages = analyticsData.filter((a) => a.role === "assistant" && a.content);
 
   const themeKeywords = {
     pricing: ["cost", "price", "fee", "payment", "afford", "expensive", "cheap"],
