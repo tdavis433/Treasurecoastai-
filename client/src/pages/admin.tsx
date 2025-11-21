@@ -2,10 +2,17 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Phone, Mail, Calendar, Clock, MessageSquare, Trash2 } from "lucide-react";
+import { Phone, Mail, Calendar, Clock, MessageSquare, Trash2, Download } from "lucide-react";
 import { format } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +31,7 @@ interface Appointment {
   contact: string;
   preferredTime: string;
   notes: string | null;
+  status: string;
   createdAt: string;
 }
 
@@ -54,6 +62,61 @@ export default function Admin() {
     },
   });
 
+  const statusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const response = await apiRequest("PATCH", `/api/appointments/${id}/status`, { status });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
+      toast({
+        title: "Status Updated",
+        description: "Appointment status has been changed.",
+      });
+    },
+  });
+
+  const handleExportCSV = () => {
+    if (!appointments || appointments.length === 0) {
+      toast({
+        title: "No Data",
+        description: "There are no appointments to export.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const headers = ["Name", "Contact", "Preferred Time", "Status", "Notes", "Submitted"];
+    const rows = appointments.map((apt) => [
+      apt.name,
+      apt.contact,
+      apt.preferredTime,
+      apt.status,
+      apt.notes || "",
+      format(new Date(apt.createdAt), "MMM d, yyyy h:mm a"),
+    ]);
+
+    const csvContent =
+      headers.join(",") +
+      "\n" +
+      rows.map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(",")).join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `appointments_${format(new Date(), "yyyy-MM-dd")}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "Exported",
+      description: "Appointments downloaded as CSV file.",
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background p-8">
@@ -76,10 +139,19 @@ export default function Admin() {
           </p>
         </div>
 
-        <div className="mb-6 flex items-center gap-4">
+        <div className="mb-6 flex items-center justify-between gap-4">
           <Badge variant="secondary" data-testid="badge-total-count">
             {appointments?.length || 0} Total Requests
           </Badge>
+          <Button
+            data-testid="button-export-csv"
+            onClick={handleExportCSV}
+            variant="outline"
+            className="gap-2"
+          >
+            <Download className="h-4 w-4" />
+            Export CSV
+          </Button>
         </div>
 
         {!appointments || appointments.length === 0 ? (
@@ -106,7 +178,25 @@ export default function Admin() {
                         </CardDescription>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge data-testid={`badge-status-${appointment.id}`}>New</Badge>
+                        <Select
+                          value={appointment.status}
+                          onValueChange={(status) =>
+                            statusMutation.mutate({ id: appointment.id, status })
+                          }
+                        >
+                          <SelectTrigger
+                            data-testid={`select-status-${appointment.id}`}
+                            className="w-36"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="new" data-testid="option-new">New</SelectItem>
+                            <SelectItem value="contacted" data-testid="option-contacted">Contacted</SelectItem>
+                            <SelectItem value="scheduled" data-testid="option-scheduled">Scheduled</SelectItem>
+                            <SelectItem value="completed" data-testid="option-completed">Completed</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button
