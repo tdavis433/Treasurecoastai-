@@ -9,18 +9,23 @@ This is a white-label AI chatbot assistant for sober-living facilities. Built as
 - **Recurring revenue**: Clients must stay subscribed to you for updates and customization changes
 
 ## Key Features
-✅ AI-powered chat with OpenAI integration
-✅ 8 menu options (About, Requirements, Pricing, Apply, Tour Request, Crisis Support, Contact)
-✅ Appointment booking system with status tracking (New → Contacted → Scheduled → Completed)
+✅ AI-powered chat with OpenAI integration and TOP-TIER safety protocols
+✅ 8 menu options (About, Requirements, Availability, Pricing, See if I qualify, Request call/tour, Crisis support, Contact info)
+✅ **Enhanced appointment booking** - Multi-type appointments (Tour/Phone call/Family info call)
+✅ **Contact preference tracking** - Phone/Text/Email options for optimal client follow-up
+✅ **Dual notification system** - Email (Resend) + SMS (Twilio) for staff alerts & client confirmations
+✅ **Pre-qualification intake flow** - Captures sobriety status, support system, timeline before booking
+✅ Appointment status tracking (New → Contacted → Scheduled → Completed)
 ✅ Client admin dashboard at `/admin` for managing appointments
 ✅ Super-admin control panel at `/super-admin` for YOU to customize settings
 ✅ **Secure authentication** - Password-protected super-admin panel with session management
-✅ Analytics dashboard at `/analytics` showing performance metrics
+✅ **Enhanced analytics** - Category-based message classification with performance metrics
 ✅ CSV export for appointments
-✅ Spanish language support with toggle button
+✅ Spanish language support with toggle button (full UI + AI responses)
 ✅ Operating hours awareness (auto-responds differently after hours)
 ✅ PostgreSQL database for persistent data
 ✅ Crisis support resources (988, 1-800-662-HELP)
+✅ **Test notification button** - Verify email/SMS configuration from super-admin panel
 
 ## Admin Routes
 - `/` - Public chatbot landing page
@@ -57,10 +62,11 @@ The following integrations were considered but not set up. If you want to enable
 - To enable: Set up Twilio and use `ask_secrets` tool to store `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`
 
 ## Database Schema
-- `appointments` - Tour/call requests with status tracking
+- `appointments` - Tour/call/family requests with status tracking, contact preferences, email field
 - `client_settings` - Customizable business settings
-- `conversation_analytics` - Chat metrics and usage data
+- `conversation_analytics` - Chat metrics with category classification (8 categories) and role field
 - `admin_users` - Super-admin authentication credentials
+- `clients` - Multi-tenant table for future white-label scaling (prepared, not yet used)
 
 ## Tech Stack
 - Frontend: React + TypeScript + Tailwind CSS + shadcn/ui
@@ -101,6 +107,29 @@ The following integrations were considered but not set up. If you want to enable
 📋 **Per-Appointment Purge**: Allow deletion of individual appointment conversation logs
 
 ## Recent Changes (November 21, 2025)
+
+### TOP-TIER Production Upgrade
+- **Enhanced AI System Prompts** - Comprehensive safety protocols with structured behavior guidelines (English + Spanish)
+- **6-Step Appointment Flow** - Separate phone/email fields, contact preference selector, appointment type selection
+- **SMS Notification System** - Twilio integration with staff alerts + client confirmations based on contact preference
+- **Intelligent Category Logging** - Auto-classification of conversations into 8 categories:
+  - `faq_general` - General information about facility
+  - `pricing` - Cost and payment questions
+  - `availability` - Bed/space availability
+  - `requirements` - Entry requirements and rules
+  - `application_process` - How to apply
+  - `pre_intake` - Pre-qualification questions
+  - `crisis_redirect` - Emergency/crisis support
+  - `contact_info` - Contact details
+- **Enhanced Analytics Dashboard** - New "Message Categories" card showing topic breakdown
+- **Multi-tenant Database Structure** - Clients table prepared for future white-label scaling
+- **Database Schema Updates**:
+  - Added `email`, `contactPreference`, `appointmentType` to appointments table
+  - Renamed `messageType` to `role` in conversation_analytics
+  - Added `category` field for intelligent classification
+- **Email Notification Enhancements** - Include all new appointment fields in staff notifications
+
+### Previous Updates
 - **Implemented comprehensive PII sanitization** with multi-layer protection for analytics and summaries
 - **Added secure authentication system** with password-protected super-admin access
 - Added comprehensive super-admin control panel with Privacy tab
