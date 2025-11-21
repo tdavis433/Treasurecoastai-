@@ -98,6 +98,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/appointments", async (req, res) => {
+    try {
+      const appointments = await storage.getAllAppointments();
+      res.json(appointments);
+    } catch (error) {
+      console.error("Get appointments error:", error);
+      res.status(500).json({ error: "Failed to fetch appointments" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
