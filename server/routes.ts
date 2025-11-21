@@ -190,6 +190,33 @@ function getDefaultSystemPrompt(language: string = "en") {
   return `You are 'HopeLine Assistant', the supportive chatbot for The Faith House, a structured sober-living home. Your tone: warm, simple, calm, non-judgmental.`;
 }
 
+function sanitizePII(text: string): string {
+  let sanitized = text;
+  
+  sanitized = sanitized.replace(/\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g, "[PHONE REDACTED]");
+  sanitized = sanitized.replace(/\+?\d{1,4}[-.\s]?\(?\d{1,4}\)?[-.\s]?\d{1,4}[-.\s]?\d{1,9}/g, "[PHONE REDACTED]");
+  sanitized = sanitized.replace(/\b\d{5,}\b/g, (match) => {
+    if (match.length >= 7) return "[PHONE REDACTED]";
+    return match;
+  });
+  
+  sanitized = sanitized.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, "[EMAIL REDACTED]");
+  
+  sanitized = sanitized.replace(/\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b/g, "[SSN REDACTED]");
+  
+  sanitized = sanitized.replace(/(?:apartment|apt|unit|suite|ste|#)\s*[\w\d-]+/gi, "[UNIT REDACTED]");
+  sanitized = sanitized.replace(/\b\d{1,5}\s+[\w\s]{1,40}(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|boulevard|blvd|court|ct|circle|cir|way|place|pl|parkway|pkwy|highway|hwy|terrace|ter)\b/gi, "[ADDRESS REDACTED]");
+  
+  sanitized = sanitized.replace(/\b(?:my name(?:'s| is)|i'm|i am|this is|call me)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/gi, (match) => {
+    return match.replace(/([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/g, "[NAME REDACTED]");
+  });
+  sanitized = sanitized.replace(/\b(?:my name(?:'s| is)|i'm|i am|this is|call me)\s+([a-z]+(?:\s+[a-z]+)*)\b/gi, (match) => {
+    return match.replace(/([a-z]+(?:\s+[a-z]+)*)/g, "[NAME REDACTED]");
+  });
+  
+  return sanitized;
+}
+
 async function generateConversationSummary(sessionId: string): Promise<string> {
   try {
     const analytics = await storage.getAnalytics();
@@ -203,7 +230,7 @@ async function generateConversationSummary(sessionId: string): Promise<string> {
     }
 
     const conversationText = sessionMessages
-      .map(msg => `${msg.messageType}: ${msg.content}`)
+      .map(msg => `${msg.messageType}: ${sanitizePII(msg.content)}`)
       .join("\n");
 
     const completion = await openai.chat.completions.create({
@@ -211,7 +238,7 @@ async function generateConversationSummary(sessionId: string): Promise<string> {
       messages: [
         {
           role: "system",
-          content: "You are a helpful assistant that summarizes conversations between users and the HopeLine Assistant chatbot for a sober-living facility. Create a brief, professional summary (3-4 sentences) focusing on: who they are, what they're looking for, their urgency level, and any important context staff should know."
+          content: "You are a helpful assistant that summarizes conversations between users and the HopeLine Assistant chatbot for a sober-living facility. Create a brief, professional summary (3-4 sentences) focusing on: their general situation, what they're seeking, their urgency level, and relevant context. DO NOT include specific personal details like names, phone numbers, or addresses in the summary."
         },
         {
           role: "user",
@@ -327,7 +354,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.logConversation({
           sessionId,
           messageType: "assistant",
-          content: reply,
+          content: sanitizePII(reply),
           category: null
         });
       }

@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BarChart, MessageSquare, Phone, Calendar, TrendingUp, AlertCircle, Clock, Tag } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { BarChart, MessageSquare, Phone, Calendar, TrendingUp, AlertCircle, Clock, Tag, Shield } from "lucide-react";
 
 interface Appointment {
   id: string;
@@ -83,7 +84,7 @@ export default function Analytics() {
     : "N/A";
 
   const questionThemes: { theme: string; count: number }[] = [];
-  const userMessages = analyticsData.filter((a) => a.messageType === "user" && a.content);
+  const assistantMessages = analyticsData.filter((a) => a.messageType === "assistant" && a.content);
 
   const themeKeywords = {
     pricing: ["cost", "price", "fee", "payment", "afford", "expensive", "cheap"],
@@ -94,7 +95,7 @@ export default function Analytics() {
   };
 
   Object.entries(themeKeywords).forEach(([theme, keywords]) => {
-    const count = userMessages.filter((msg) =>
+    const count = assistantMessages.filter((msg) =>
       keywords.some((keyword) => msg.content.toLowerCase().includes(keyword))
     ).length;
     if (count > 0) {
@@ -125,6 +126,15 @@ export default function Analytics() {
             Track chatbot performance and visitor engagement
           </p>
         </div>
+
+        <Alert className="mb-6">
+          <Shield className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Privacy Notice:</strong> Analytics data includes conversation metadata and AI assistant responses only. 
+            User messages are not logged. Phone numbers, emails, and addresses are automatically redacted from conversation summaries. 
+            Appointment data is stored separately with appropriate access controls and contains full contact information for follow-up.
+          </AlertDescription>
+        </Alert>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
           <Card>

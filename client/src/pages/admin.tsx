@@ -2,7 +2,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Phone, Mail, Calendar, Clock, MessageSquare, Trash2, Download } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Phone, Mail, Calendar, Clock, MessageSquare, Trash2, Download, ShieldAlert } from "lucide-react";
 import { format } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -138,6 +139,14 @@ export default function Admin() {
             Tour and call requests from the HopeLine Assistant chatbot
           </p>
         </div>
+
+        <Alert className="mb-6">
+          <ShieldAlert className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Sensitive Data:</strong> This page contains personally identifiable information (PII) including names, contact details, and conversation summaries. 
+            Handle all data with appropriate confidentiality and comply with privacy regulations.
+          </AlertDescription>
+        </Alert>
 
         <div className="mb-6 flex items-center justify-between gap-4">
           <Badge variant="secondary" data-testid="badge-total-count">
