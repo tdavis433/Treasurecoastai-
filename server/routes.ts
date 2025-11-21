@@ -266,13 +266,28 @@ async function sendEmailNotification(
 - Timeline: ${appointment.timeline || 'Not provided'}`
       : '';
 
+    const appointmentTypeText = appointment.appointmentType === 'tour' 
+      ? 'Tour' 
+      : appointment.appointmentType === 'call' 
+      ? 'Phone Call' 
+      : 'Family Info Call';
+    
+    const contactPreferenceText = appointment.contactPreference === 'phone'
+      ? 'Phone call'
+      : appointment.contactPreference === 'text'
+      ? 'Text message'
+      : 'Email';
+
     const emailBody = `
-<h2>New ${appointment.appointmentType === 'tour' ? 'Tour' : appointment.appointmentType === 'phone' ? 'Phone Call' : 'Family Call'} Request</h2>
+<h2>New ${appointmentTypeText} Request</h2>
 
 <h3>Contact Information:</h3>
 <ul>
   <li><strong>Name:</strong> ${appointment.name}</li>
-  <li><strong>Contact:</strong> ${appointment.contact}</li>
+  <li><strong>Phone:</strong> ${appointment.contact}</li>
+  ${appointment.email ? `<li><strong>Email:</strong> ${appointment.email}</li>` : ''}
+  <li><strong>Contact Preference:</strong> ${contactPreferenceText}</li>
+  <li><strong>Appointment Type:</strong> ${appointmentTypeText}</li>
   <li><strong>Preferred Time:</strong> ${appointment.preferredTime}</li>
   ${appointment.notes ? `<li><strong>Notes:</strong> ${appointment.notes}</li>` : ''}
 </ul>
