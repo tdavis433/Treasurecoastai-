@@ -1,33 +1,33 @@
-import { type Appointment, type InsertAppointment } from "@shared/schema";
-import { randomUUID } from "crypto";
+import { type Appointment, type InsertAppointment, appointments } from "@shared/schema";
+import { drizzle } from "drizzle-orm/neon-serverless";
+import { neonConfig, Pool } from "@neondatabase/serverless";
+import ws from "ws";
+
+neonConfig.webSocketConstructor = ws;
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const db = drizzle(pool);
 
 export interface IStorage {
   createAppointment(appointment: InsertAppointment): Promise<Appointment>;
   getAllAppointments(): Promise<Appointment[]>;
 }
 
-export class MemStorage implements IStorage {
-  private appointments: Map<string, Appointment>;
-
-  constructor() {
-    this.appointments = new Map();
-  }
-
+export class DbStorage implements IStorage {
   async createAppointment(insertAppointment: InsertAppointment): Promise<Appointment> {
-    const id = randomUUID();
-    const appointment: Appointment = {
-      ...insertAppointment,
-      notes: insertAppointment.notes ?? null,
-      id,
-      createdAt: new Date(),
-    };
-    this.appointments.set(id, appointment);
+    const [appointment] = await db
+      .insert(appointments)
+      .values({
+        ...insertAppointment,
+        notes: insertAppointment.notes ?? null,
+      })
+      .returning();
     return appointment;
   }
 
   async getAllAppointments(): Promise<Appointment[]> {
-    return Array.from(this.appointments.values());
+    return await db.select().from(appointments);
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DbStorage();
