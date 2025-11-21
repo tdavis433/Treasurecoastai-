@@ -244,6 +244,51 @@ async function generateConversationSummary(sessionId: string): Promise<string> {
   }
 }
 
+async function sendSmsNotification(
+  phoneNumber: string,
+  message: string,
+  isClientConfirmation: boolean = false
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
+    const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
+    const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
+    
+    if (!twilioAccountSid || !twilioAuthToken || !twilioPhoneNumber) {
+      console.log("📱 Twilio credentials not configured - skipping SMS notification");
+      return { success: false, error: "Twilio not configured" };
+    }
+
+    const response = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Basic ${Buffer.from(`${twilioAccountSid}:${twilioAuthToken}`).toString('base64')}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          From: twilioPhoneNumber,
+          To: phoneNumber,
+          Body: message,
+        }).toString(),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Twilio API error:", errorData);
+      return { success: false, error: `Twilio API error: ${response.statusText}` };
+    }
+
+    console.log(`✅ SMS ${isClientConfirmation ? 'confirmation' : 'notification'} sent successfully to ${phoneNumber}`);
+    return { success: true };
+  } catch (error) {
+    console.error("SMS notification error:", error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
 async function sendEmailNotification(
   recipientEmail: string,
   appointment: any,
@@ -402,8 +447,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (settings?.enableSmsNotifications && settings.notificationPhone) {
-        console.log(`📱 SMS notification would be sent to: ${settings.notificationPhone}`);
-        console.log(`New appointment from ${appointment.name}`);
+        const appointmentTypeText = appointment.appointmentType === 'tour' 
+          ? 'tour'
+          : appointment.appointmentType === 'call'
+          ? 'phone call'
+          : 'family info call';
+        
+        const staffMessage = `New ${appointmentTypeText} request from ${appointment.name}. Contact: ${appointment.contact}. Preferred time: ${appointment.preferredTime}. Check admin dashboard for details.`;
+        
+        const smsResult = await sendSmsNotification(
+          settings.notificationPhone,
+          staffMessage,
+          false
+        );
+        
+        if (!smsResult.success && smsResult.error !== "Twilio not configured") {
+          console.warn(`SMS staff notification failed: ${smsResult.error}`);
+        }
+        
+        if (appointment.contactPreference === 'text' && appointment.contact) {
+          const clientMessage = `Thank you for your ${appointmentTypeText} request at ${settings.businessName}. We'll reach out to you soon at your preferred time: ${appointment.preferredTime}. If you need immediate assistance, please call us.`;
+          
+          const clientSmsResult = await sendSmsNotification(
+            appointment.contact,
+            clientMessage,
+            true
+          );
+          
+          if (!clientSmsResult.success && clientSmsResult.error !== "Twilio not configured") {
+            console.warn(`SMS client confirmation failed: ${clientSmsResult.error}`);
+          }
+        }
       }
       
       res.json({ success: true, appointment });
