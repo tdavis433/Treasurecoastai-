@@ -105,6 +105,31 @@ export default function Analytics() {
 
   questionThemes.sort((a, b) => b.count - a.count);
 
+  const categoryCounts = analyticsData
+    .filter((a) => a.category)
+    .reduce(
+      (acc, item) => {
+        const category = item.category || "other";
+        acc[category] = (acc[category] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
+
+  const categoryLabels: Record<string, string> = {
+    faq_general: "General FAQ",
+    pricing: "Pricing",
+    availability: "Availability",
+    requirements: "Requirements",
+    application_process: "Application",
+    pre_intake: "Pre-Intake",
+    crisis_redirect: "Crisis Support",
+    contact_info: "Contact Info",
+    other: "Other"
+  };
+
+  const sortedCategories = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]);
+
   if (loadingAppointments || loadingAnalytics) {
     return (
       <div className="min-h-screen bg-background p-8">
@@ -198,7 +223,7 @@ export default function Analytics() {
           </Card>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-6">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
           <Card>
             <CardHeader>
               <CardTitle>Appointment Status</CardTitle>
@@ -258,6 +283,34 @@ export default function Analytics() {
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground">No conversation data yet</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+              <div>
+                <CardTitle>Message Categories</CardTitle>
+                <CardDescription>Topics discussed</CardDescription>
+              </div>
+              <Tag className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {sortedCategories.length > 0 ? (
+                <div className="space-y-2">
+                  {sortedCategories.slice(0, 5).map(([category, count]) => (
+                    <div key={category} className="flex items-center justify-between gap-2">
+                      <span className="text-sm text-muted-foreground text-xs">
+                        {categoryLabels[category] || category}
+                      </span>
+                      <Badge variant="secondary" data-testid={`badge-category-${category}`}>
+                        {count}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">No categorized data yet</p>
               )}
             </CardContent>
           </Card>

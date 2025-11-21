@@ -206,6 +206,50 @@ function sanitizePII(text: string): string {
   return sanitized;
 }
 
+function categorizeMessage(message: string, role: string): string | null {
+  if (role === "user") {
+    return null;
+  }
+
+  const messageLower = message.toLowerCase();
+
+  const patterns = {
+    crisis_redirect: [
+      /988/, /crisis/, /emergency/, /suicide/, /harm/, 
+      /1-800-662-help/, /national helpline/
+    ],
+    pricing: [
+      /cost/, /price/, /payment/, /afford/, /financial/, /fee/, /rate/
+    ],
+    availability: [
+      /available/, /bed/, /space/, /capacity/, /openings/, /room/
+    ],
+    requirements: [
+      /requirement/, /rule/, /policy/, /must/, /needed/, /necessary/
+    ],
+    application_process: [
+      /apply/, /application/, /process/, /submit/, /intake/
+    ],
+    pre_intake: [
+      /looking for/, /sobriety/, /support/, /timeline/, /ready/
+    ],
+    contact_info: [
+      /contact/, /phone/, /email/, /address/, /reach/, /call/
+    ],
+    faq_general: [
+      /about/, /mission/, /program/, /services/, /amenities/
+    ]
+  };
+
+  for (const [category, regexList] of Object.entries(patterns)) {
+    if (regexList.some(regex => regex.test(messageLower))) {
+      return category;
+    }
+  }
+
+  return "other";
+}
+
 async function generateConversationSummary(sessionId: string): Promise<string> {
   try {
     const analytics = await storage.getAnalytics();
@@ -400,11 +444,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reply = completion.choices[0]?.message?.content || defaultReply;
       
       if (sessionId) {
+        const category = categorizeMessage(reply, "assistant");
         await storage.logConversation({
           sessionId,
           role: "assistant",
           content: sanitizePII(reply),
-          category: null
+          category
         });
       }
       
