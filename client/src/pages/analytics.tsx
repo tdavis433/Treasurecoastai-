@@ -1,12 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BarChart, MessageSquare, Phone, Calendar, TrendingUp, AlertCircle } from "lucide-react";
+import { BarChart, MessageSquare, Phone, Calendar, TrendingUp, AlertCircle, Clock, Tag } from "lucide-react";
 
 interface Appointment {
   id: string;
   status: string;
   createdAt: string;
+  appointmentType?: string;
+  lookingFor?: string;
+  sobrietyStatus?: string;
 }
 
 interface Analytics {
@@ -14,6 +17,7 @@ interface Analytics {
   sessionId: string;
   messageType: string;
   category: string | null;
+  content: string;
   createdAt: string;
 }
 
@@ -43,6 +47,62 @@ export default function Analytics() {
   const crisisCategories = analyticsData.filter(
     (a) => a.category && a.category.toLowerCase().includes("crisis")
   );
+
+  const appointmentTypeCounts = appointments.reduce(
+    (acc, apt) => {
+      const type = apt.appointmentType || 'unknown';
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
+
+  const lookingForCounts = appointments.reduce(
+    (acc, apt) => {
+      if (apt.lookingFor) {
+        acc[apt.lookingFor] = (acc[apt.lookingFor] || 0) + 1;
+      }
+      return acc;
+    },
+    {} as Record<string, number>
+  );
+
+  const hourlyData = analyticsData.reduce((acc, item) => {
+    const hour = new Date(item.createdAt).getHours();
+    acc[hour] = (acc[hour] || 0) + 1;
+    return acc;
+  }, {} as Record<number, number>);
+
+  const peakHour = Object.entries(hourlyData).sort((a, b) => b[1] - a[1])[0];
+  const peakHourLabel = peakHour
+    ? (() => {
+        const startHour = parseInt(peakHour[0]);
+        const endHour = (startHour + 1) % 24;
+        return `${startHour.toString().padStart(2, "0")}:00 - ${endHour.toString().padStart(2, "0")}:00`;
+      })()
+    : "N/A";
+
+  const questionThemes: { theme: string; count: number }[] = [];
+  const userMessages = analyticsData.filter((a) => a.messageType === "user" && a.content);
+
+  const themeKeywords = {
+    pricing: ["cost", "price", "fee", "payment", "afford", "expensive", "cheap"],
+    requirements: ["requirement", "qualify", "eligible", "need", "accept", "rules"],
+    location: ["where", "location", "address", "area", "city"],
+    availability: ["available", "vacancy", "room", "space", "full", "open"],
+    programs: ["program", "service", "counseling", "therapy", "support", "treatment"],
+  };
+
+  Object.entries(themeKeywords).forEach(([theme, keywords]) => {
+    const count = userMessages.filter((msg) =>
+      keywords.some((keyword) => msg.content.toLowerCase().includes(keyword))
+    ).length;
+    if (count > 0) {
+      questionThemes.push({ theme, count });
+    }
+  });
+
+  questionThemes.sort((a, b) => b.count - a.count);
 
   if (loadingAppointments || loadingAnalytics) {
     return (
@@ -128,7 +188,7 @@ export default function Analytics() {
           </Card>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 mb-6">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-6">
           <Card>
             <CardHeader>
               <CardTitle>Appointment Status</CardTitle>
@@ -136,25 +196,25 @@ export default function Analytics() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <span className="text-sm text-muted-foreground">New</span>
                   <Badge variant="secondary" data-testid="badge-new-count">
                     {statusCounts.new || 0}
                   </Badge>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <span className="text-sm text-muted-foreground">Contacted</span>
                   <Badge variant="secondary" data-testid="badge-contacted-count">
                     {statusCounts.contacted || 0}
                   </Badge>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <span className="text-sm text-muted-foreground">Scheduled</span>
                   <Badge variant="secondary" data-testid="badge-scheduled-count">
                     {statusCounts.scheduled || 0}
                   </Badge>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <span className="text-sm text-muted-foreground">Completed</span>
                   <Badge variant="secondary" data-testid="badge-completed-count">
                     {statusCounts.completed || 0}
@@ -165,27 +225,133 @@ export default function Analytics() {
           </Card>
 
           <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+              <div>
+                <CardTitle>Question Themes</CardTitle>
+                <CardDescription>Top topics discussed</CardDescription>
+              </div>
+              <Tag className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {questionThemes.length > 0 ? (
+                <div className="space-y-2">
+                  {questionThemes.slice(0, 5).map((theme) => (
+                    <div key={theme.theme} className="flex items-center justify-between gap-2">
+                      <span className="text-sm text-muted-foreground capitalize">
+                        {theme.theme}
+                      </span>
+                      <Badge variant="secondary" data-testid={`badge-theme-${theme.theme}`}>
+                        {theme.count}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">No conversation data yet</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+              <div>
+                <CardTitle>Engagement Time</CardTitle>
+                <CardDescription>Peak activity hours</CardDescription>
+              </div>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Peak hour</p>
+                    <p className="text-xs text-muted-foreground" data-testid="text-peak-hour">
+                      {peakHourLabel}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Messages this hour</p>
+                    <p className="text-xs text-muted-foreground">
+                      {peakHour ? peakHour[1] : 0} interactions
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2 mb-6">
+          <Card>
             <CardHeader>
-              <CardTitle>Quick Insights</CardTitle>
-              <CardDescription>Key performance metrics</CardDescription>
+              <CardTitle>Appointment Types</CardTitle>
+              <CardDescription>Breakdown by request type</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm text-muted-foreground">Tour Requests</span>
+                  <Badge variant="secondary" data-testid="badge-type-tour">
+                    {appointmentTypeCounts.tour || 0}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm text-muted-foreground">Phone Calls</span>
+                  <Badge variant="secondary" data-testid="badge-type-phone">
+                    {appointmentTypeCounts.phone || 0}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm text-muted-foreground">Family Calls</span>
+                  <Badge variant="secondary" data-testid="badge-type-family">
+                    {appointmentTypeCounts.family || 0}
+                  </Badge>
+                </div>
+                {appointmentTypeCounts.unknown ? (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm text-muted-foreground">Unknown Type</span>
+                    <Badge variant="secondary" data-testid="badge-type-unknown">
+                      {appointmentTypeCounts.unknown}
+                    </Badge>
+                  </div>
+                ) : null}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Pre-Qualification Insights</CardTitle>
+              <CardDescription>Who is seeking help</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <BarChart className="h-4 w-4 text-muted-foreground" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium">Average messages per chat</p>
+                    <p className="text-sm font-medium">Seeking for self</p>
                     <p className="text-xs text-muted-foreground">
-                      {totalChats > 0 ? (totalMessages / totalChats).toFixed(1) : "0"}
+                      {lookingForCounts.self || 0} individuals
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <Phone className="h-4 w-4 text-muted-foreground" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium">Active pipeline</p>
+                    <p className="text-sm font-medium">Seeking for loved one</p>
                     <p className="text-xs text-muted-foreground">
-                      {(statusCounts.new || 0) + (statusCounts.contacted || 0) + (statusCounts.scheduled || 0)} appointments pending
+                      {lookingForCounts.loved_one || 0} family members
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Average messages per chat</p>
+                    <p className="text-xs text-muted-foreground">
+                      {totalChats > 0 ? (totalMessages / totalChats).toFixed(1) : "0"}
                     </p>
                   </div>
                 </div>
