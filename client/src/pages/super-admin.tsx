@@ -8,8 +8,9 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
-import { Settings, Palette, Clock, Bell, BookOpen } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
+import { Settings, Palette, Clock, Bell, BookOpen, LogOut } from "lucide-react";
 
 interface ClientSettings {
   id: string;
@@ -36,8 +37,35 @@ interface ClientSettings {
 
 export default function SuperAdmin() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  
+  const { data: authCheck, isLoading: authLoading } = useQuery<{ authenticated: boolean }>({
+    queryKey: ["/api/auth/check"],
+  });
+
+  useEffect(() => {
+    if (!authLoading && authCheck && !authCheck.authenticated) {
+      setLocation("/login");
+    }
+  }, [authCheck, authLoading, setLocation]);
+
   const { data: settings, isLoading } = useQuery<ClientSettings>({
     queryKey: ["/api/settings"],
+    enabled: authCheck?.authenticated === true,
+  });
+
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/auth/logout", {});
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Logged out",
+        description: "You have been logged out successfully.",
+      });
+      setLocation("/login");
+    },
   });
 
   const [formData, setFormData] = useState<Partial<ClientSettings>>(settings || {});
@@ -80,13 +108,24 @@ export default function SuperAdmin() {
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="container mx-auto max-w-6xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2" data-testid="text-super-admin-title">
-            Super Admin Settings
-          </h1>
-          <p className="text-muted-foreground">
-            Configure chatbot settings for your clients
-          </p>
+        <div className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-2" data-testid="text-super-admin-title">
+              Super Admin Settings
+            </h1>
+            <p className="text-muted-foreground">
+              Configure chatbot settings for your clients
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => logoutMutation.mutate()}
+            disabled={logoutMutation.isPending}
+            data-testid="button-logout"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            {logoutMutation.isPending ? "Logging out..." : "Logout"}
+          </Button>
         </div>
 
         <Tabs defaultValue="general" className="space-y-6">

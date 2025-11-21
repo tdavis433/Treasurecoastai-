@@ -7,6 +7,7 @@ import Home from "@/pages/home";
 import Admin from "@/pages/admin";
 import SuperAdmin from "@/pages/super-admin";
 import Analytics from "@/pages/analytics";
+import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -14,6 +15,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/admin" component={Admin} />
+      <Route path="/login" component={Login} />
       <Route path="/super-admin" component={SuperAdmin} />
       <Route path="/analytics" component={Analytics} />
       <Route component={NotFound} />

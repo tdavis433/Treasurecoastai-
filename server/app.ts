@@ -6,8 +6,14 @@ import express, {
   Response,
   NextFunction,
 } from "express";
+import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
+import { Pool } from "@neondatabase/serverless";
 
 import { registerRoutes } from "./routes";
+
+const pgPool = new Pool({ connectionString: process.env.DATABASE_URL });
+const PgStore = connectPgSimple(session);
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -27,6 +33,33 @@ declare module 'http' {
     rawBody: unknown
   }
 }
+
+declare module 'express-session' {
+  interface SessionData {
+    userId?: string;
+  }
+}
+
+if (!process.env.SESSION_SECRET) {
+  throw new Error("SESSION_SECRET environment variable must be set for security. Please set a strong random secret.");
+}
+
+app.use(session({
+  store: new PgStore({
+    pool: pgPool as any,
+    tableName: 'session',
+    createTableIfMissing: true,
+  }),
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 7 * 24 * 60 * 60 * 1000
+  }
+}));
+
 app.use(express.json({
   verify: (req, _res, buf) => {
     req.rawBody = buf;

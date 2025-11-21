@@ -83,3 +83,18 @@ export const insertConversationAnalyticsSchema = createInsertSchema(conversation
 
 export type InsertConversationAnalytics = z.infer<typeof insertConversationAnalyticsSchema>;
 export type ConversationAnalytics = typeof conversationAnalytics.$inferSelect;
+
+export const adminUsers = pgTable("admin_users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  username: text("username").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;
+export type AdminUser = typeof adminUsers.$inferSelect;

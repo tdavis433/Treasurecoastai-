@@ -5,9 +5,11 @@ import {
   type InsertClientSettings,
   type ConversationAnalytics,
   type InsertConversationAnalytics,
+  type AdminUser,
   appointments,
   clientSettings,
-  conversationAnalytics
+  conversationAnalytics,
+  adminUsers
 } from "@shared/schema";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { neonConfig, Pool } from "@neondatabase/serverless";
@@ -30,6 +32,8 @@ export interface IStorage {
   
   logConversation(analytics: InsertConversationAnalytics): Promise<void>;
   getAnalytics(startDate?: Date, endDate?: Date): Promise<ConversationAnalytics[]>;
+  
+  findAdminByUsername(username: string): Promise<AdminUser | undefined>;
 }
 
 export class DbStorage implements IStorage {
@@ -128,6 +132,15 @@ export class DbStorage implements IStorage {
   async getAnalytics(startDate?: Date, endDate?: Date): Promise<ConversationAnalytics[]> {
     const results = await db.select().from(conversationAnalytics);
     return results;
+  }
+
+  async findAdminByUsername(username: string): Promise<AdminUser | undefined> {
+    const [user] = await db
+      .select()
+      .from(adminUsers)
+      .where(eq(adminUsers.username, username))
+      .limit(1);
+    return user;
   }
 }
 

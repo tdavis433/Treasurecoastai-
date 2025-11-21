@@ -1,8 +1,22 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertAppointmentSchema, insertClientSettingsSchema } from "@shared/schema";
 import OpenAI from "openai";
+import bcrypt from "bcryptjs";
+import { z } from "zod";
+
+const loginSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(1, "Password is required"),
+});
+
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+  next();
+}
 
 const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
@@ -189,7 +203,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/appointments", async (req, res) => {
+  app.get("/api/appointments", requireAuth, async (req, res) => {
     try {
       const appointments = await storage.getAllAppointments();
       res.json(appointments);
@@ -199,7 +213,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/appointments/:id/status", async (req, res) => {
+  app.patch("/api/appointments/:id/status", requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const { status } = req.body;
@@ -211,7 +225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/appointments/:id", async (req, res) => {
+  app.delete("/api/appointments/:id", requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       await storage.deleteAppointment(id);
@@ -222,7 +236,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/settings", async (req, res) => {
+  app.get("/api/settings", requireAuth, async (req, res) => {
     try {
       const settings = await storage.getSettings();
       res.json(settings);
@@ -232,7 +246,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/settings", async (req, res) => {
+  app.patch("/api/settings", requireAuth, async (req, res) => {
     try {
       const validatedData = insertClientSettingsSchema.partial().parse(req.body);
       const settings = await storage.updateSettings(validatedData);
@@ -243,13 +257,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/analytics", async (req, res) => {
+  app.get("/api/analytics", requireAuth, async (req, res) => {
     try {
       const analytics = await storage.getAnalytics();
       res.json(analytics);
     } catch (error) {
       console.error("Get analytics error:", error);
       res.status(500).json({ error: "Failed to fetch analytics" });
+    }
+  });
+
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const validatedData = loginSchema.parse(req.body);
+      const { username, password } = validatedData;
+
+      const user = await storage.findAdminByUsername(username);
+      
+      if (!user) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      const isValid = await bcrypt.compare(password, user.passwordHash);
+      
+      if (!isValid) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      req.session.regenerate((err) => {
+        if (err) {
+          console.error("Session regeneration error:", err);
+          return res.status(500).json({ error: "Session creation failed" });
+        }
+        req.session.userId = user.id;
+        res.json({ success: true, user: { id: user.id, username: user.username } });
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid username or password format" });
+      }
+      console.error("Login error:", error);
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  app.post("/api/auth/logout", (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ error: "Logout failed" });
+      }
+      res.json({ success: true });
+    });
+  });
+
+  app.get("/api/auth/check", (req, res) => {
+    if (req.session.userId) {
+      res.json({ authenticated: true });
+    } else {
+      res.json({ authenticated: false });
     }
   });
 

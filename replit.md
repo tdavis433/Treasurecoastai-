@@ -14,6 +14,7 @@ This is a white-label AI chatbot assistant for sober-living facilities. Built as
 ✅ Appointment booking system with status tracking (New → Contacted → Scheduled → Completed)
 ✅ Client admin dashboard at `/admin` for managing appointments
 ✅ Super-admin control panel at `/super-admin` for YOU to customize settings
+✅ **Secure authentication** - Password-protected super-admin panel with session management
 ✅ Analytics dashboard at `/analytics` showing performance metrics
 ✅ CSV export for appointments
 ✅ Spanish language support with toggle button
@@ -24,8 +25,14 @@ This is a white-label AI chatbot assistant for sober-living facilities. Built as
 ## Admin Routes
 - `/` - Public chatbot landing page
 - `/admin` - Client dashboard (view/manage appointments)
-- `/super-admin` - YOUR control panel (customize everything)
-- `/analytics` - Performance metrics dashboard
+- `/login` - **Login page** for super-admin authentication
+- `/super-admin` - **Protected** YOUR control panel (customize everything)
+- `/analytics` - **Protected** Performance metrics dashboard
+
+### Authentication
+- **Default credentials**: Username: `admin`, Password: `admin123`
+- **Security**: All super-admin routes are protected with session-based authentication
+- **SESSION_SECRET**: Required environment variable (already configured in Replit)
 
 ## Super-Admin Settings
 You can customize for each client:
@@ -53,6 +60,7 @@ The following integrations were considered but not set up. If you want to enable
 - `appointments` - Tour/call requests with status tracking
 - `client_settings` - Customizable business settings
 - `conversation_analytics` - Chat metrics and usage data
+- `admin_users` - Super-admin authentication credentials
 
 ## Tech Stack
 - Frontend: React + TypeScript + Tailwind CSS + shadcn/ui
@@ -62,6 +70,7 @@ The following integrations were considered but not set up. If you want to enable
 - State: TanStack Query
 
 ## Recent Changes (November 21, 2025)
+- **Added secure authentication system** with password-protected super-admin access
 - Added comprehensive super-admin control panel
 - Implemented appointment status tracking system
 - Built analytics dashboard with conversion metrics
@@ -69,6 +78,7 @@ The following integrations were considered but not set up. If you want to enable
 - Implemented Spanish language support
 - Added operating hours awareness with after-hours messaging
 - Dynamic AI prompts based on database settings
+- Protected all super-admin API routes with authentication middleware
 
 ## User Preferences
 - White-label SaaS model: User controls all customizations
