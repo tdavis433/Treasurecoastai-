@@ -170,7 +170,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertAppointmentSchema.parse(req.body);
       const appointment = await storage.createAppointment(validatedData);
       
-      console.log("New appointment request:", appointment);
+      const settings = await storage.getSettings();
+      
+      if (settings?.enableEmailNotifications && settings.notificationEmail) {
+        console.log(`📧 Email notification would be sent to: ${settings.notificationEmail}`);
+        console.log(`New appointment from ${appointment.name}`);
+      }
+      
+      if (settings?.enableSmsNotifications && settings.notificationPhone) {
+        console.log(`📱 SMS notification would be sent to: ${settings.notificationPhone}`);
+        console.log(`New appointment from ${appointment.name}`);
+      }
       
       res.json({ success: true, appointment });
     } catch (error) {
