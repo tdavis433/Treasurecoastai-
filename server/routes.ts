@@ -108,6 +108,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/appointments/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteAppointment(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete appointment error:", error);
+      res.status(500).json({ error: "Failed to delete appointment" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

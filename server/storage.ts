@@ -1,6 +1,7 @@
 import { type Appointment, type InsertAppointment, appointments } from "@shared/schema";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { neonConfig, Pool } from "@neondatabase/serverless";
+import { eq } from "drizzle-orm";
 import ws from "ws";
 
 neonConfig.webSocketConstructor = ws;
@@ -11,6 +12,7 @@ const db = drizzle(pool);
 export interface IStorage {
   createAppointment(appointment: InsertAppointment): Promise<Appointment>;
   getAllAppointments(): Promise<Appointment[]>;
+  deleteAppointment(id: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -27,6 +29,10 @@ export class DbStorage implements IStorage {
 
   async getAllAppointments(): Promise<Appointment[]> {
     return await db.select().from(appointments);
+  }
+
+  async deleteAppointment(id: string): Promise<void> {
+    await db.delete(appointments).where(eq(appointments.id, id));
   }
 }
 
