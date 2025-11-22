@@ -115,9 +115,9 @@ export default function ChatWindow({
     <div
       data-testid="chat-window"
       className={cn(
-        "fixed bottom-5 right-5 z-50 flex flex-col bg-background rounded-2xl shadow-xl border border-border transition-all duration-300",
-        "w-[360px] h-[600px] max-h-[90vh]",
-        "md:w-[360px]",
+        "fixed bottom-5 right-20 z-50 flex flex-col bg-background rounded-2xl shadow-xl border border-border transition-all duration-300",
+        "w-[360px] h-[650px] max-h-[90vh]",
+        "md:w-[360px] md:right-24",
         "sm:w-[94vw] sm:right-[3vw]"
       )}
     >
