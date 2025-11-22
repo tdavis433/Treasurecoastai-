@@ -1,12 +1,13 @@
 # Faith House Chatbot - White Label SaaS
 
 ## Overview
-This project is a white-label AI chatbot assistant designed for sober-living facilities, offered as a SaaS product. It enables resellers to fully customize branding, knowledge base content, and operational settings for their clients, ensuring recurring revenue. The chatbot provides AI-powered chat with robust safety protocols, enhanced appointment booking, pre-qualification intake flows, and dual notification systems. Its primary purpose is to offer a customizable, AI-driven solution for client engagement and lead management in the recovery sector.
+This project is a production-ready AI chatbot assistant for The Faith House sober-living facility. The system operates in **stable single-tenant mode** following the Rollback & Stabilization Guide (November 2025). It provides AI-powered chat with robust safety protocols, enhanced appointment booking, pre-qualification intake flows, and dual notification systems. The database includes future-ready multi-tenant columns (clientId, logoUrl, accentColor) but all operations are locked to a single client ('default-client') for production stability.
 
 ## User Preferences
-- White-label SaaS model: User controls all customizations
-- Clients cannot access super-admin settings
-- Focus on recurring revenue through control of updates
+- **Current Mode:** Single-tenant production system for The Faith House
+- **Future SaaS Foundation:** Database schema includes multi-tenant columns (clientId, logoUrl, accentColor) but all logic locked to 'default-client'
+- **Rollback Applied:** November 2025 - Disabled incomplete multi-tenant routing and theme UI per stabilization guide
+- **Super-Admin Access:** Password-protected settings management for business configuration
 - Privacy-first approach with PII protection
 
 ## System Architecture
@@ -26,11 +27,17 @@ The system employs a React, TypeScript, Tailwind CSS, and shadcn/ui frontend wit
 - **UI/UX Decisions:** Admin panels feature search, filtering, clickable contact info, and responsive design. A prominent, always-visible crisis disclaimer is displayed on the public chatbot.
 
 **Database Schema:**
-- `appointments`: Stores booking requests, status, contact preferences, and PII-sanitized conversation summaries.
-- `client_settings`: Holds customizable business settings per client.
-- `conversation_analytics`: Stores chat metrics with PII-sanitized assistant responses classified into 8 categories.
+- `appointments`: Stores booking requests, status, contact preferences, and PII-sanitized conversation summaries. Includes clientId column (all set to 'default-client').
+- `client_settings`: Holds customizable business settings. Includes future-ready columns: clientId, logoUrl, accentColor (currently unused in UI).
+- `conversation_analytics`: Stores chat metrics with PII-sanitized assistant responses classified into 8 categories. Includes clientId column (all set to 'default-client').
 - `admin_users`: Manages super-admin authentication credentials.
-- `clients`: Multi-tenant table for white-label scalability.
+
+**Single-Tenant Enforcement:**
+All database operations explicitly filter by or set `clientId = 'default-client'`:
+- All inserts (appointments, analytics, settings) set clientId='default-client'
+- All reads filter by clientId='default-client'
+- All updates/deletes filter by clientId='default-client'
+This ensures zero multi-tenant leakage and production stability.
 
 **Privacy & Data Protection:**
 - **PII Sanitization:** Automatic redaction of phone numbers, emails, SSNs, and street addresses from new analytics data and conversation summaries.
