@@ -427,6 +427,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Messages array is required" });
       }
 
+      if (sessionId && messages.length > 0) {
+        const lastUserMessage = messages[messages.length - 1];
+        if (lastUserMessage.role === "user") {
+          await storage.logConversation({
+            sessionId,
+            role: "user",
+            content: sanitizePII(lastUserMessage.content),
+            category: null
+          });
+        }
+      }
+
       const systemPrompt = await getSystemPrompt(language);
       
       const completion = await openai.chat.completions.create({
