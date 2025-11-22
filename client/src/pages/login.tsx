@@ -20,15 +20,15 @@ export default function Login() {
       const response = await apiRequest("POST", "/api/auth/login", credentials);
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/check"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/check"] });
       toast({
         title: "Login successful",
         description: "Welcome back!",
       });
       setTimeout(() => {
-        setLocation("/super-admin");
-      }, 100);
+        window.location.href = "/super-admin";
+      }, 500);
     },
     onError: () => {
       toast({
