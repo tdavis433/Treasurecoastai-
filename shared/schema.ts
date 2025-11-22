@@ -5,6 +5,7 @@ import { z } from "zod";
 
 export const appointments = pgTable("appointments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull().default('default-client'),
   name: text("name").notNull(),
   contact: text("contact").notNull(),
   email: text("email"),
@@ -26,6 +27,7 @@ export const insertAppointmentSchema = createInsertSchema(appointments).omit({
   createdAt: true,
   status: true,
   conversationSummary: true,
+  clientId: true,
 });
 
 export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;

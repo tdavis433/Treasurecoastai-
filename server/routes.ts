@@ -207,15 +207,18 @@ function sanitizePII(text: string): string {
 }
 
 function detectCrisisKeywords(text: string, language: string = "en"): boolean {
-  const messageLower = text.toLowerCase();
+  const normalized = text.toLowerCase().replace(/[^\w\s]/g, ' ');
   
   const crisisKeywords = [
     "suicide", "suicidal", "kill myself", "end my life", "want to die",
-    "hurt myself", "harm myself", "no reason to live", "better off dead",
-    "suicidio", "suicidarme", "matarme", "quiero morir", "hacerme daño"
+    "hurt myself", "harm myself", "self harm", "no reason to live", "better off dead",
+    "end it all", "cant go on", "cant take it", "done living", "tired of living",
+    "want out", "give up on life",
+    "suicidio", "suicidarme", "matarme", "quiero morir", "hacerme daño",
+    "terminar con todo", "ya no puedo", "cansado de vivir"
   ];
   
-  return crisisKeywords.some(keyword => messageLower.includes(keyword));
+  return crisisKeywords.some(keyword => normalized.includes(keyword.toLowerCase()));
 }
 
 function getCrisisResponse(language: string = "en"): string {
