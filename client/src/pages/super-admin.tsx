@@ -45,27 +45,6 @@ export default function SuperAdmin() {
     retry: false,
   });
 
-  useEffect(() => {
-    if (!authLoading && authCheck && !authCheck.authenticated) {
-      console.log("Not authenticated, redirecting to login");
-      setLocation("/login");
-    }
-  }, [authCheck, authLoading, setLocation]);
-  
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-lg text-muted-foreground">Loading...</div>
-        </div>
-      </div>
-    );
-  }
-  
-  if (!authCheck?.authenticated) {
-    return null;
-  }
-
   const { data: settings, isLoading } = useQuery<ClientSettings>({
     queryKey: ["/api/settings"],
     enabled: authCheck?.authenticated === true,
@@ -142,7 +121,13 @@ export default function SuperAdmin() {
     testNotificationMutation.mutate();
   };
 
-  if (isLoading || !settings) {
+  useEffect(() => {
+    if (!authLoading && !authCheck?.authenticated) {
+      setLocation("/login");
+    }
+  }, [authCheck, authLoading, setLocation]);
+
+  if (authLoading || isLoading || !settings) {
     return (
       <div className="min-h-screen bg-background p-8">
         <div className="container mx-auto max-w-6xl">
@@ -150,6 +135,10 @@ export default function SuperAdmin() {
         </div>
       </div>
     );
+  }
+
+  if (!authCheck?.authenticated) {
+    return null;
   }
 
   return (
