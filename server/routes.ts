@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
-import { insertAppointmentSchema, insertClientSettingsSchema } from "@shared/schema";
+import { storage, db } from "./storage";
+import { insertAppointmentSchema, insertClientSettingsSchema, adminUsers } from "@shared/schema";
 import OpenAI from "openai";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -10,6 +10,26 @@ const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
 });
+
+async function ensureAdminUserExists() {
+  try {
+    const existingAdmin = await storage.findAdminByUsername("admin");
+    
+    if (!existingAdmin) {
+      console.log("Creating default admin user...");
+      const passwordHash = await bcrypt.hash("admin123", 10);
+      
+      await db.insert(adminUsers).values({
+        username: "admin",
+        passwordHash: passwordHash,
+      });
+      
+      console.log("Default admin user created successfully");
+    }
+  } catch (error) {
+    console.error("Error ensuring admin user exists:", error);
+  }
+}
 
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.session.userId) {
@@ -454,6 +474,8 @@ ${preIntakeInfo}
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  await ensureAdminUserExists();
+  
   app.post("/api/chat", async (req, res) => {
     try {
       const { messages, sessionId, language = "en" } = req.body;
