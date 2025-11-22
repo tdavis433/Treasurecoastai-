@@ -35,6 +35,7 @@ export type Appointment = typeof appointments.$inferSelect;
 
 export const clientSettings = pgTable("client_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull().default('default-client').unique(),
   businessName: text("business_name").notNull().default("The Faith House"),
   tagline: text("tagline").notNull().default("Here to support your next step"),
   
@@ -73,6 +74,7 @@ export const clientSettings = pgTable("client_settings", {
 export const insertClientSettingsSchema = createInsertSchema(clientSettings).omit({
   id: true,
   updatedAt: true,
+  clientId: true,
 });
 
 export type InsertClientSettings = z.infer<typeof insertClientSettingsSchema>;
@@ -80,6 +82,7 @@ export type ClientSettings = typeof clientSettings.$inferSelect;
 
 export const conversationAnalytics = pgTable("conversation_analytics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull().default('default-client'),
   sessionId: varchar("session_id").notNull(),
   role: text("role").notNull(),
   content: text("content").notNull(),
@@ -90,6 +93,7 @@ export const conversationAnalytics = pgTable("conversation_analytics", {
 export const insertConversationAnalyticsSchema = createInsertSchema(conversationAnalytics).omit({
   id: true,
   createdAt: true,
+  clientId: true,
 });
 
 export type InsertConversationAnalytics = z.infer<typeof insertConversationAnalyticsSchema>;

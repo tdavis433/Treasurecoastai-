@@ -49,7 +49,7 @@ export class DbStorage implements IStorage {
   }
 
   async getAllAppointments(): Promise<Appointment[]> {
-    return await db.select().from(appointments);
+    return await db.select().from(appointments).where(eq(appointments.clientId, 'default-client'));
   }
 
   async updateAppointmentStatus(id: string, status: string): Promise<void> {
@@ -64,7 +64,7 @@ export class DbStorage implements IStorage {
   }
 
   async getSettings(): Promise<ClientSettings | undefined> {
-    const [settings] = await db.select().from(clientSettings).limit(1);
+    const [settings] = await db.select().from(clientSettings).where(eq(clientSettings.clientId, 'default-client')).limit(1);
     
     if (!settings) {
       const defaultSettings: InsertClientSettings = {
@@ -130,7 +130,7 @@ export class DbStorage implements IStorage {
   }
 
   async getAnalytics(startDate?: Date, endDate?: Date): Promise<ConversationAnalytics[]> {
-    const results = await db.select().from(conversationAnalytics);
+    const results = await db.select().from(conversationAnalytics).where(eq(conversationAnalytics.clientId, 'default-client'));
     return results;
   }
 
