@@ -206,7 +206,7 @@ export default function ChatWindow({
           <p className="text-xs text-muted-foreground mb-2 text-center">
             {language === "es" ? "Acciones Rápidas" : "Quick Actions"}
           </p>
-          <div className="space-y-1.5">
+          <div className="grid grid-cols-2 gap-2">
             {currentQuickActions.map((action) => (
               <Button
                 key={action.id}
@@ -214,7 +214,7 @@ export default function ChatWindow({
                 variant="default"
                 size="sm"
                 onClick={() => onMenuClick(action.id)}
-                className="w-full justify-center text-center font-medium min-h-8"
+                className="text-xs font-medium min-h-8"
               >
                 {action.label}
               </Button>
