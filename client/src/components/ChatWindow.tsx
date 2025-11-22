@@ -200,11 +200,11 @@ export default function ChatWindow({
       </div>
 
       {showMenu && isInitialState && (
-        <div className="px-4 pb-3">
-          <p className="text-xs text-muted-foreground mb-2 text-center">
+        <div className="px-4 pb-2">
+          <p className="text-[10px] text-muted-foreground mb-1.5 text-center">
             {language === "es" ? "Acciones Rápidas" : "Quick Actions"}
           </p>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-1.5">
             {currentQuickActions.map((action) => (
               <Button
                 key={action.id}
@@ -212,7 +212,7 @@ export default function ChatWindow({
                 variant="default"
                 size="sm"
                 onClick={() => onMenuClick(action.id)}
-                className="text-xs font-medium min-h-8"
+                className="text-[10px] font-medium h-7 px-2"
               >
                 {action.label}
               </Button>
@@ -222,8 +222,8 @@ export default function ChatWindow({
       )}
 
       {showMenu && !isInitialState && (
-        <div className="px-4 pb-3">
-          <div className="grid grid-cols-2 gap-2">
+        <div className="px-4 pb-2">
+          <div className="grid grid-cols-2 gap-1.5">
             {currentMenu.map((option) => (
               <Button
                 key={option.id}
@@ -231,7 +231,7 @@ export default function ChatWindow({
                 variant="outline"
                 size="sm"
                 onClick={() => onMenuClick(option.id)}
-                className="rounded-full text-xs font-medium hover-elevate"
+                className="rounded-full text-[10px] font-medium h-7 px-2 hover-elevate"
               >
                 {option.label}
               </Button>
