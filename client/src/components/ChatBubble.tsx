@@ -1,5 +1,4 @@
 import { MessageCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 interface ChatBubbleProps {
   onClick: () => void;
@@ -7,13 +6,28 @@ interface ChatBubbleProps {
 
 export default function ChatBubble({ onClick }: ChatBubbleProps) {
   return (
-    <Button
+    <button
       data-testid="button-chat-bubble"
       onClick={onClick}
-      size="icon"
-      className="fixed bottom-10 right-24 h-16 w-16 rounded-full bg-primary text-primary-foreground shadow-2xl hover:scale-110 transition-all duration-300 z-[9999]"
+      style={{
+        position: 'fixed',
+        bottom: '40px',
+        right: '100px',
+        width: '64px',
+        height: '64px',
+        borderRadius: '50%',
+        backgroundColor: '#2563eb',
+        color: 'white',
+        border: 'none',
+        cursor: 'pointer',
+        boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+        zIndex: 9999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}
     >
-      <MessageCircle className="h-8 w-8" />
-    </Button>
+      <MessageCircle size={32} />
+    </button>
   );
 }
