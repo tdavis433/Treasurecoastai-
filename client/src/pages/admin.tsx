@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Phone, Mail, Calendar, Clock, MessageSquare, Trash2, Download, ShieldAlert } from "lucide-react";
+import { Phone, Mail, Calendar, Clock, MessageSquare, Trash2, Download, ShieldAlert, Search, Filter } from "lucide-react";
 import { format } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -30,16 +32,38 @@ interface Appointment {
   id: string;
   name: string;
   contact: string;
+  email: string | null;
+  contactPreference: string;
   preferredTime: string;
   notes: string | null;
   status: string;
+  appointmentType: string;
+  lookingFor: string | null;
+  sobrietyStatus: string | null;
+  hasSupport: string | null;
+  timeline: string | null;
+  conversationSummary: string | null;
   createdAt: string;
 }
 
 export default function Admin() {
   const { toast } = useToast();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  
   const { data: appointments, isLoading } = useQuery<Appointment[]>({
     queryKey: ["/api/appointments"],
+  });
+  
+  const filteredAppointments = appointments?.filter((apt) => {
+    const matchesSearch = searchQuery === "" || 
+      apt.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      apt.contact.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (apt.email && apt.email.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    const matchesStatus = statusFilter === "all" || apt.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
   });
 
   const deleteMutation = useMutation({
@@ -148,30 +172,64 @@ export default function Admin() {
           </AlertDescription>
         </Alert>
 
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <Badge variant="secondary" data-testid="badge-total-count">
-            {appointments?.length || 0} Total Requests
-          </Badge>
-          <Button
-            data-testid="button-export-csv"
-            onClick={handleExportCSV}
-            variant="outline"
-            className="gap-2"
-          >
-            <Download className="h-4 w-4" />
-            Export CSV
-          </Button>
+        <div className="mb-6 space-y-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                data-testid="input-search"
+                placeholder="Search by name, email, or phone..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger data-testid="select-status-filter" className="w-40">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="new">New</SelectItem>
+                  <SelectItem value="contacted">Contacted</SelectItem>
+                  <SelectItem value="scheduled">Scheduled</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-between gap-4">
+            <Badge variant="secondary" data-testid="badge-total-count">
+              {filteredAppointments?.length || 0} of {appointments?.length || 0} Requests
+            </Badge>
+            <Button
+              data-testid="button-export-csv"
+              onClick={handleExportCSV}
+              variant="outline"
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Export CSV
+            </Button>
+          </div>
         </div>
 
-        {!appointments || appointments.length === 0 ? (
+        {!filteredAppointments || filteredAppointments.length === 0 ? (
           <Card>
             <CardContent className="p-12 text-center">
-              <p className="text-muted-foreground">No appointment requests yet</p>
+              <p className="text-muted-foreground">
+                {searchQuery || statusFilter !== "all" 
+                  ? "No appointments match your filters" 
+                  : "No appointment requests yet"}
+              </p>
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-4">
-            {appointments
+            {filteredAppointments
               .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
               .map((appointment) => (
                 <Card key={appointment.id} data-testid={`card-appointment-${appointment.id}`}>
@@ -245,20 +303,34 @@ export default function Admin() {
                   <CardContent className="space-y-4">
                     <div className="grid md:grid-cols-2 gap-4">
                       <div className="flex items-start gap-3">
-                        <div className="mt-1">
-                          {appointment.contact.includes('@') ? (
-                            <Mail className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <Phone className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </div>
+                        <Phone className="h-4 w-4 text-muted-foreground mt-1" />
                         <div>
-                          <p className="text-sm font-medium text-foreground mb-1">Contact</p>
-                          <p className="text-sm text-muted-foreground" data-testid={`text-contact-${appointment.id}`}>
+                          <p className="text-sm font-medium text-foreground mb-1">Phone</p>
+                          <a
+                            href={`tel:${appointment.contact}`}
+                            className="text-sm text-primary hover:underline"
+                            data-testid={`link-phone-${appointment.id}`}
+                          >
                             {appointment.contact}
-                          </p>
+                          </a>
                         </div>
                       </div>
+                      
+                      {appointment.email && (
+                        <div className="flex items-start gap-3">
+                          <Mail className="h-4 w-4 text-muted-foreground mt-1" />
+                          <div>
+                            <p className="text-sm font-medium text-foreground mb-1">Email</p>
+                            <a
+                              href={`mailto:${appointment.email}`}
+                              className="text-sm text-primary hover:underline"
+                              data-testid={`link-email-${appointment.id}`}
+                            >
+                              {appointment.email}
+                            </a>
+                          </div>
+                        </div>
+                      )}
                       
                       <div className="flex items-start gap-3">
                         <Calendar className="h-4 w-4 text-muted-foreground mt-1" />
@@ -269,7 +341,52 @@ export default function Admin() {
                           </p>
                         </div>
                       </div>
+                      
+                      <div className="flex items-start gap-3">
+                        <MessageSquare className="h-4 w-4 text-muted-foreground mt-1" />
+                        <div>
+                          <p className="text-sm font-medium text-foreground mb-1">Type & Preference</p>
+                          <p className="text-sm text-muted-foreground" data-testid={`text-type-${appointment.id}`}>
+                            {appointment.appointmentType === 'tour' ? 'Tour' : appointment.appointmentType === 'call' ? 'Phone Call' : 'Family Info Call'}
+                            {' • '} 
+                            {appointment.contactPreference === 'phone' ? 'Prefer Phone' : appointment.contactPreference === 'text' ? 'Prefer Text' : 'Prefer Email'}
+                          </p>
+                        </div>
+                      </div>
                     </div>
+
+                    {(appointment.lookingFor || appointment.sobrietyStatus || appointment.hasSupport || appointment.timeline) && (
+                      <div className="flex items-start gap-3 pt-2 border-t border-border">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-foreground mb-2">Pre-Qualification Answers</p>
+                          <div className="space-y-1 text-sm text-muted-foreground">
+                            {appointment.lookingFor && (
+                              <p><strong>Looking for:</strong> {appointment.lookingFor === 'self' ? 'Themselves' : 'A loved one'}</p>
+                            )}
+                            {appointment.sobrietyStatus && (
+                              <p><strong>Sobriety status:</strong> {appointment.sobrietyStatus}</p>
+                            )}
+                            {appointment.hasSupport && (
+                              <p><strong>Financial support:</strong> {appointment.hasSupport}</p>
+                            )}
+                            {appointment.timeline && (
+                              <p><strong>Timeline:</strong> {appointment.timeline}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {appointment.conversationSummary && (
+                      <div className="flex items-start gap-3 pt-2 border-t border-border">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-foreground mb-2">Conversation Summary</p>
+                          <p className="text-sm text-muted-foreground" data-testid={`text-summary-${appointment.id}`}>
+                            {appointment.conversationSummary}
+                          </p>
+                        </div>
+                      </div>
+                    )}
 
                     {appointment.notes && (
                       <div className="flex items-start gap-3 pt-2 border-t border-border">

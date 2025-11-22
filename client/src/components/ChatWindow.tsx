@@ -230,6 +230,14 @@ export default function ChatWindow({
         </div>
       )}
 
+      <div className="px-4 py-2 border-t border-border bg-muted/30">
+        <p className="text-[10px] text-muted-foreground text-center leading-tight" data-testid="text-crisis-disclaimer">
+          {language === "es" 
+            ? "No es un servicio de emergencia. Para crisis, llama o envía mensaje de texto al 988, o llama al 911."
+            : "Not an emergency service. For crisis, call or text 988, or call 911."}
+        </p>
+      </div>
+
       <div className="p-4 border-t border-border">
         <div className="flex gap-2">
           <Input
