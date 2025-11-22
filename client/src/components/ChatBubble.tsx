@@ -11,7 +11,7 @@ export default function ChatBubble({ onClick }: ChatBubbleProps) {
       data-testid="button-chat-bubble"
       onClick={onClick}
       size="icon"
-      className="fixed bottom-5 right-20 h-14 w-14 rounded-full bg-gradient-to-br from-primary to-chart-2 text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300 z-50 md:right-24"
+      className="fixed bottom-5 right-8 h-14 w-14 rounded-full bg-gradient-to-br from-primary to-chart-2 text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300 z-50 md:right-10"
     >
       <MessageCircle className="h-6 w-6" />
     </Button>
