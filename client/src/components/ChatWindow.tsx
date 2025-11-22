@@ -1,4 +1,4 @@
-import { X, Send, Languages } from "lucide-react";
+import { X, Send, Languages, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect, useRef } from "react";
@@ -19,6 +19,7 @@ interface ChatWindowProps {
   showMenu: boolean;
   language: string;
   onLanguageToggle: () => void;
+  onResetChat: () => void;
 }
 
 const quickActions = {
@@ -77,6 +78,7 @@ export default function ChatWindow({
   showMenu,
   language,
   onLanguageToggle,
+  onResetChat,
 }: ChatWindowProps) {
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -138,6 +140,16 @@ export default function ChatWindow({
             title={language === "es" ? "Switch to English" : "Cambiar a Español"}
           >
             <Languages className="h-4 w-4" />
+          </Button>
+          <Button
+            data-testid="button-reset-chat"
+            variant="ghost"
+            size="icon"
+            onClick={onResetChat}
+            className="h-8 w-8"
+            title={language === "es" ? "Reiniciar conversación" : "Reset conversation"}
+          >
+            <RotateCcw className="h-4 w-4" />
           </Button>
           <Button
             data-testid="button-close-chat"

@@ -206,6 +206,38 @@ function sanitizePII(text: string): string {
   return sanitized;
 }
 
+function detectCrisisKeywords(text: string, language: string = "en"): boolean {
+  const messageLower = text.toLowerCase();
+  
+  const crisisKeywords = [
+    "suicide", "suicidal", "kill myself", "end my life", "want to die",
+    "hurt myself", "harm myself", "no reason to live", "better off dead",
+    "suicidio", "suicidarme", "matarme", "quiero morir", "hacerme daño"
+  ];
+  
+  return crisisKeywords.some(keyword => messageLower.includes(keyword));
+}
+
+function getCrisisResponse(language: string = "en"): string {
+  if (language === "es") {
+    return `Entiendo que estás pasando por un momento muy difícil. Por favor, contacta a ayuda profesional inmediatamente:
+
+📞 **Línea Nacional de Prevención del Suicidio**: 988 (llamada o texto)
+📞 **Emergencias**: 911
+📞 **Línea Nacional de Ayuda SAMHSA**: 1-800-662-4357 (24/7)
+
+Tu vida importa y hay personas que quieren ayudarte ahora mismo. Estas líneas tienen profesionales capacitados disponibles las 24 horas del día.`;
+  }
+  
+  return `I understand you're going through a very difficult time. Please contact professional help immediately:
+
+📞 **National Suicide Prevention Lifeline**: 988 (call or text)
+📞 **Emergency Services**: 911
+📞 **SAMHSA National Helpline**: 1-800-662-HELP (4357) - 24/7
+
+Your life matters, and there are people who want to help you right now. These lines have trained professionals available 24/7.`;
+}
+
 function categorizeMessage(message: string, role: string): string | null {
   if (role === "user") {
     return null;
@@ -436,6 +468,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             content: sanitizePII(lastUserMessage.content),
             category: null
           });
+          
+          if (detectCrisisKeywords(lastUserMessage.content, language)) {
+            const crisisReply = getCrisisResponse(language);
+            
+            await storage.logConversation({
+              sessionId,
+              role: "assistant",
+              content: sanitizePII(crisisReply),
+              category: "crisis_redirect"
+            });
+            
+            return res.json({ reply: crisisReply });
+          }
         }
       }
 

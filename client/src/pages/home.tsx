@@ -47,7 +47,7 @@ const MENU_RESPONSES: Record<string, string> = {
 export default function Home() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [language, setLanguage] = useState("en");
-  const [sessionId] = useState(() => `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
+  const [sessionId, setSessionId] = useState(() => `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
   const [messages, setMessages] = useState<Message[]>([
     { role: "assistant", content: WELCOME_MESSAGES.en }
   ]);
@@ -57,6 +57,16 @@ export default function Home() {
   const [showCrisis, setShowCrisis] = useState(false);
   const [preIntakeData, setPreIntakeData] = useState<PreIntakeData | null>(null);
   const { toast } = useToast();
+  
+  const handleResetChat = () => {
+    setSessionId(`session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
+    setMessages([{ role: "assistant", content: WELCOME_MESSAGES[language as keyof typeof WELCOME_MESSAGES] }]);
+    setShowMenu(true);
+    setShowAppointmentFlow(false);
+    setShowPreIntakeFlow(false);
+    setShowCrisis(false);
+    setPreIntakeData(null);
+  };
   
   useEffect(() => {
     if (messages.length === 1 && messages[0].role === "assistant") {
@@ -325,6 +335,7 @@ export default function Home() {
         showMenu={showMenu && !showAppointmentFlow && !showCrisis && !showPreIntakeFlow}
         language={language}
         onLanguageToggle={() => setLanguage(lang => lang === "en" ? "es" : "en")}
+        onResetChat={handleResetChat}
       />
 
       {isChatOpen && showCrisis && (
