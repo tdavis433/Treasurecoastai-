@@ -670,7 +670,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(500).json({ error: "Session creation failed" });
         }
         req.session.userId = user.id;
-        res.json({ success: true, user: { id: user.id, username: user.username } });
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.error("Session save error:", saveErr);
+            return res.status(500).json({ error: "Session save failed" });
+          }
+          res.json({ success: true, user: { id: user.id, username: user.username } });
+        });
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
