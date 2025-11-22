@@ -199,7 +199,7 @@ function sanitizePII(text: string): string {
   sanitized = sanitized.replace(/(?:apartment|apt|unit|suite|ste|#)\s*[\w\d-]+/gi, "[UNIT REDACTED]");
   sanitized = sanitized.replace(/\b\d{1,5}\s+[\w\s]{1,40}(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|boulevard|blvd|court|ct|circle|cir|way|place|pl|parkway|pkwy|highway|hwy|terrace|ter)\b/gi, "[ADDRESS REDACTED]");
   
-  sanitized = sanitized.replace(/\b(?:my name(?:[''\u2019]s| is)|I[''\u2019]m|I am|this is|call me)\s+([\p{L}''\u2019\-]+(?:\s+[\p{L}''\u2019\-]+)*)\b/giu, (match, name) => {
+  sanitized = sanitized.replace(/\b(?:my name(?:[''\u2019]s| is)|I[''\u2019]m|I am|this is|call me)\s+([A-Za-z''\u2019\-]+(?:\s+[A-Za-z''\u2019\-]+)*)\b/gi, (match, name) => {
     return match.replace(name, "[NAME REDACTED]");
   });
   
@@ -298,7 +298,7 @@ async function generateConversationSummary(sessionId: string): Promise<string> {
     }
 
     const conversationText = sessionMessages
-      .map(msg => `${msg.messageType}: ${sanitizePII(msg.content)}`)
+      .map(msg => `${msg.role}: ${sanitizePII(msg.content)}`)
       .join("\n");
 
     const completion = await openai.chat.completions.create({
