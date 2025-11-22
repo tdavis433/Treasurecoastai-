@@ -115,12 +115,9 @@ export default function ChatWindow({
     <div
       data-testid="chat-window"
       className={cn(
-        "fixed z-[9999] flex flex-col bg-background rounded-2xl shadow-xl border border-border transition-all duration-300",
-        "w-[360px] h-[650px] max-h-[90vh]",
-        "md:w-[360px]",
-        "sm:w-[94vw] sm:right-[3vw]"
+        "chat-window-position fixed z-[9999] flex flex-col bg-background rounded-2xl shadow-xl border border-border transition-all duration-300",
+        "h-[650px] max-h-[90vh]"
       )}
-      style={{ bottom: '40px', right: '100px' }}
     >
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div>

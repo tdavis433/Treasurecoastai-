@@ -9,10 +9,9 @@ export default function ChatBubble({ onClick }: ChatBubbleProps) {
     <button
       data-testid="button-chat-bubble"
       onClick={onClick}
+      className="chat-bubble-position"
       style={{
         position: 'fixed',
-        bottom: '40px',
-        right: '100px',
         width: '64px',
         height: '64px',
         borderRadius: '50%',

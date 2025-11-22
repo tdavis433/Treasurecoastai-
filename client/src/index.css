@@ -285,4 +285,29 @@
   .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
     inset: -1px;
   }
+
+  /* Responsive chat positioning */
+  .chat-bubble-position {
+    bottom: 24px;
+    right: 24px;
+  }
+
+  .chat-window-position {
+    bottom: 24px;
+    right: 24px;
+    width: min(360px, calc(100vw - 48px));
+  }
+
+  @media (min-width: 640px) {
+    .chat-bubble-position {
+      bottom: 40px;
+      right: 100px;
+    }
+
+    .chat-window-position {
+      bottom: 40px;
+      right: 100px;
+      width: 360px;
+    }
+  }
 }
