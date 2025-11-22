@@ -42,13 +42,29 @@ export default function SuperAdmin() {
   
   const { data: authCheck, isLoading: authLoading } = useQuery<{ authenticated: boolean }>({
     queryKey: ["/api/auth/check"],
+    retry: false,
   });
 
   useEffect(() => {
     if (!authLoading && authCheck && !authCheck.authenticated) {
+      console.log("Not authenticated, redirecting to login");
       setLocation("/login");
     }
   }, [authCheck, authLoading, setLocation]);
+  
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-lg text-muted-foreground">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!authCheck?.authenticated) {
+    return null;
+  }
 
   const { data: settings, isLoading } = useQuery<ClientSettings>({
     queryKey: ["/api/settings"],
