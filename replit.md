@@ -106,9 +106,24 @@ The following integrations were considered but not set up. If you want to enable
 📋 **Advanced PII Detection**: Consider ML-based libraries (Microsoft Presidio) for improved accuracy
 📋 **Per-Appointment Purge**: Allow deletion of individual appointment conversation logs
 
-## Recent Changes (November 21, 2025)
+## Recent Changes
 
-### TOP-TIER Production Upgrade
+### November 22, 2025 - Final Production Polish
+✅ **Admin Panel Enhancements**
+- **Search Functionality** - Real-time case-insensitive search across name, email, and phone fields
+- **Status Filtering** - Dropdown filter to view appointments by status (All/New/Contacted/Scheduled/Completed)
+- **Clickable Contact Information** - Phone numbers use `tel:` links, emails use `mailto:` links for one-click communication
+- **Pre-Intake Display** - Prominently shows all pre-qualification answers (looking for self/loved one, sobriety status, support system, timeline)
+- **Enhanced Details** - Displays appointment type (Tour/Phone/Family), contact preference (Phone/Text/Email), and AI-generated conversation summary
+- **Responsive Design** - Search and filter controls stack on mobile, display inline on desktop
+- **Smart Counter** - Shows "X of Y requests" when filters are active
+
+✅ **Crisis Disclaimer**
+- **Prominent Warning** - Displayed above chat input: "Not an emergency service. For crisis, call or text 988, or call 911."
+- **Bilingual Support** - Full translation in Spanish: "No es un servicio de emergencia. Para crisis, llama o envía mensaje de texto al 988, o llama al 911."
+- **Always Visible** - Placed outside scroll region so it remains persistently visible during entire chat session
+
+### November 21, 2025 - TOP-TIER Production Upgrade
 - **Enhanced AI System Prompts** - Comprehensive safety protocols with structured behavior guidelines (English + Spanish)
 - **6-Step Appointment Flow** - Separate phone/email fields, contact preference selector, appointment type selection
 - **SMS Notification System** - Twilio integration with staff alerts + client confirmations based on contact preference
