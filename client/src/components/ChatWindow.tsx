@@ -270,6 +270,11 @@ export default function ChatWindow({
           </Button>
         </div>
       </div>
+
+      <div className="powered-footer">
+        <span>Powered by </span>
+        <strong>Treasure Coast AI</strong>
+      </div>
     </div>
   );
 }
