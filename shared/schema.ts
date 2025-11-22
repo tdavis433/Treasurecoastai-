@@ -66,7 +66,9 @@ export const clientSettings = pgTable("client_settings", {
   enableEmailNotifications: boolean("enable_email_notifications").notNull().default(false),
   enableSmsNotifications: boolean("enable_sms_notifications").notNull().default(false),
   
+  logoUrl: text("logo_url"),
   primaryColor: text("primary_color").notNull().default("#1FA2A8"),
+  accentColor: text("accent_color").notNull().default("#F59E0B"),
   
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

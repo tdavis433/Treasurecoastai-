@@ -13,7 +13,7 @@ import {
 } from "@shared/schema";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { neonConfig, Pool } from "@neondatabase/serverless";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import ws from "ws";
 
 neonConfig.webSocketConstructor = ws;
@@ -42,6 +42,7 @@ export class DbStorage implements IStorage {
       .insert(appointments)
       .values({
         ...insertAppointment,
+        clientId: 'default-client',
         notes: insertAppointment.notes ?? null,
       })
       .returning();
@@ -49,22 +50,22 @@ export class DbStorage implements IStorage {
   }
 
   async getAllAppointments(): Promise<Appointment[]> {
-    return await db.select().from(appointments);
+    return await db.select().from(appointments).where(eq(appointments.clientId, 'default-client'));
   }
 
   async updateAppointmentStatus(id: string, status: string): Promise<void> {
     await db
       .update(appointments)
       .set({ status })
-      .where(eq(appointments.id, id));
+      .where(and(eq(appointments.id, id), eq(appointments.clientId, 'default-client')));
   }
 
   async deleteAppointment(id: string): Promise<void> {
-    await db.delete(appointments).where(eq(appointments.id, id));
+    await db.delete(appointments).where(and(eq(appointments.id, id), eq(appointments.clientId, 'default-client')));
   }
 
   async getSettings(): Promise<ClientSettings | undefined> {
-    const [settings] = await db.select().from(clientSettings).limit(1);
+    const [settings] = await db.select().from(clientSettings).where(eq(clientSettings.clientId, 'default-client')).limit(1);
     
     if (!settings) {
       const defaultSettings: InsertClientSettings = {
@@ -97,7 +98,7 @@ export class DbStorage implements IStorage {
       
       const [created] = await db
         .insert(clientSettings)
-        .values(defaultSettings)
+        .values({ ...defaultSettings, clientId: 'default-client' })
         .returning();
       return created;
     }
@@ -111,7 +112,7 @@ export class DbStorage implements IStorage {
     if (!existing) {
       const [created] = await db
         .insert(clientSettings)
-        .values(updates as InsertClientSettings)
+        .values({ ...updates, clientId: 'default-client' } as InsertClientSettings)
         .returning();
       return created;
     }
@@ -126,11 +127,11 @@ export class DbStorage implements IStorage {
   }
 
   async logConversation(analytics: InsertConversationAnalytics): Promise<void> {
-    await db.insert(conversationAnalytics).values(analytics);
+    await db.insert(conversationAnalytics).values({ ...analytics, clientId: 'default-client' });
   }
 
   async getAnalytics(startDate?: Date, endDate?: Date): Promise<ConversationAnalytics[]> {
-    const results = await db.select().from(conversationAnalytics);
+    const results = await db.select().from(conversationAnalytics).where(eq(conversationAnalytics.clientId, 'default-client'));
     return results;
   }
 
