@@ -203,18 +203,18 @@ export default function ChatWindow({
 
       {showMenu && isInitialState && (
         <div className="px-4 pb-3">
-          <p className="text-xs text-muted-foreground mb-3 text-center">
+          <p className="text-xs text-muted-foreground mb-2 text-center">
             {language === "es" ? "Acciones Rápidas" : "Quick Actions"}
           </p>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {currentQuickActions.map((action) => (
               <Button
                 key={action.id}
                 data-testid={`button-quick-${action.id}`}
                 variant="default"
-                size="default"
+                size="sm"
                 onClick={() => onMenuClick(action.id)}
-                className="w-full justify-center text-center font-medium"
+                className="w-full justify-center text-center font-medium min-h-8"
               >
                 {action.label}
               </Button>
