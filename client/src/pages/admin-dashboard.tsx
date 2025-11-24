@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
-import { useAdminContext } from "@/contexts/admin-context";
 
 interface AnalyticsSummary {
   totalConversations: number;
@@ -56,17 +55,11 @@ const categoryLabels: Record<string, string> = {
 
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
-  const { dateRange, getDateRangeDates } = useAdminContext();
-  const { startDate } = getDateRangeDates();
 
   const { data: summary, isLoading: summaryLoading} = useQuery<AnalyticsSummary>({
-    queryKey: ["/api/analytics/summary", { dateRange, startDate: startDate?.toISOString() }],
+    queryKey: ["/api/analytics/summary"],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (startDate) {
-        params.append("startDate", startDate.toISOString());
-      }
-      const response = await fetch(`/api/analytics/summary?${params}`, {
+      const response = await fetch(`/api/analytics/summary`, {
         credentials: "include",
       });
       if (!response.ok) throw new Error("Failed to fetch analytics summary");
@@ -116,13 +109,13 @@ export default function AdminDashboard() {
           <StatCard
             title="Total Conversations"
             value={summary?.totalConversations || 0}
-            subtitle={`Last ${dateRange} days`}
+            subtitle="All time"
             icon={MessageSquare}
           />
           <StatCard
             title="Total Appointments"
             value={summary?.totalAppointments || 0}
-            subtitle={`Last ${dateRange} days`}
+            subtitle="All time"
             icon={Calendar}
           />
           <StatCard
@@ -222,7 +215,7 @@ export default function AdminDashboard() {
           <CardHeader>
             <CardTitle>Activity Over Time</CardTitle>
             <CardDescription>
-              Conversations and appointments in the last {dateRange} days
+              Conversations and appointments over time
             </CardDescription>
           </CardHeader>
           <CardContent>
