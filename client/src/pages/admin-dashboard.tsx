@@ -60,9 +60,12 @@ export default function AdminDashboard() {
   const { startDate } = getDateRangeDates();
 
   const { data: summary, isLoading: summaryLoading} = useQuery<AnalyticsSummary>({
-    queryKey: ["/api/analytics/summary", { startDate: startDate.toISOString() }],
+    queryKey: ["/api/analytics/summary", { dateRange, startDate: startDate?.toISOString() }],
     queryFn: async () => {
-      const params = new URLSearchParams({ startDate: startDate.toISOString() });
+      const params = new URLSearchParams();
+      if (startDate) {
+        params.append("startDate", startDate.toISOString());
+      }
       const response = await fetch(`/api/analytics/summary?${params}`, {
         credentials: "include",
       });
