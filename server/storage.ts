@@ -13,7 +13,7 @@ import {
 } from "@shared/schema";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { neonConfig, Pool } from "@neondatabase/serverless";
-import { eq, and } from "drizzle-orm";
+import { eq, and, gte, lte, or, like, sql, desc } from "drizzle-orm";
 import ws from "ws";
 
 neonConfig.webSocketConstructor = ws;
@@ -24,6 +24,16 @@ export const db = drizzle(pool);
 export interface IStorage {
   createAppointment(appointment: InsertAppointment): Promise<Appointment>;
   getAllAppointments(): Promise<Appointment[]>;
+  getFilteredAppointments(filters: { 
+    status?: string; 
+    startDate?: Date; 
+    endDate?: Date; 
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ appointments: Appointment[]; total: number }>;
+  getAppointmentById(id: string): Promise<Appointment | undefined>;
+  updateAppointment(id: string, updates: Partial<Appointment>): Promise<Appointment>;
   updateAppointmentStatus(id: string, status: string): Promise<void>;
   deleteAppointment(id: string): Promise<void>;
   
@@ -32,6 +42,14 @@ export interface IStorage {
   
   logConversation(analytics: InsertConversationAnalytics): Promise<void>;
   getAnalytics(startDate?: Date, endDate?: Date): Promise<ConversationAnalytics[]>;
+  getAnalyticsSummary(startDate?: Date, endDate?: Date): Promise<{
+    totalConversations: number;
+    totalAppointments: number;
+    conversionRate: number;
+    crisisRedirects: number;
+    messagesByCategory: { category: string; count: number }[];
+    dailyActivity: { date: string; conversations: number; appointments: number }[];
+  }>;
   
   findAdminByUsername(username: string): Promise<AdminUser | undefined>;
 }
@@ -50,7 +68,76 @@ export class DbStorage implements IStorage {
   }
 
   async getAllAppointments(): Promise<Appointment[]> {
-    return await db.select().from(appointments).where(eq(appointments.clientId, 'default-client'));
+    return await db.select().from(appointments).where(eq(appointments.clientId, 'default-client')).orderBy(desc(appointments.createdAt));
+  }
+
+  async getFilteredAppointments(filters: { 
+    status?: string; 
+    startDate?: Date; 
+    endDate?: Date; 
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ appointments: Appointment[]; total: number }> {
+    const conditions = [eq(appointments.clientId, 'default-client')];
+    
+    if (filters.status) {
+      conditions.push(eq(appointments.status, filters.status));
+    }
+    
+    if (filters.startDate) {
+      conditions.push(gte(appointments.createdAt, filters.startDate));
+    }
+    
+    if (filters.endDate) {
+      conditions.push(lte(appointments.createdAt, filters.endDate));
+    }
+    
+    if (filters.search) {
+      const searchTerm = `%${filters.search}%`;
+      conditions.push(
+        or(
+          like(appointments.name, searchTerm),
+          like(appointments.contact, searchTerm),
+          like(appointments.email, searchTerm)
+        )!
+      );
+    }
+    
+    const whereClause = and(...conditions);
+    
+    const [total] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(appointments)
+      .where(whereClause);
+    
+    const results = await db
+      .select()
+      .from(appointments)
+      .where(whereClause)
+      .orderBy(desc(appointments.createdAt))
+      .limit(filters.limit || 25)
+      .offset(filters.offset || 0);
+    
+    return { appointments: results, total: total?.count || 0 };
+  }
+
+  async getAppointmentById(id: string): Promise<Appointment | undefined> {
+    const [appointment] = await db
+      .select()
+      .from(appointments)
+      .where(and(eq(appointments.id, id), eq(appointments.clientId, 'default-client')))
+      .limit(1);
+    return appointment;
+  }
+
+  async updateAppointment(id: string, updates: Partial<Appointment>): Promise<Appointment> {
+    const [updated] = await db
+      .update(appointments)
+      .set(updates)
+      .where(and(eq(appointments.id, id), eq(appointments.clientId, 'default-client')))
+      .returning();
+    return updated;
   }
 
   async updateAppointmentStatus(id: string, status: string): Promise<void> {
@@ -133,6 +220,110 @@ export class DbStorage implements IStorage {
   async getAnalytics(startDate?: Date, endDate?: Date): Promise<ConversationAnalytics[]> {
     const results = await db.select().from(conversationAnalytics).where(eq(conversationAnalytics.clientId, 'default-client'));
     return results;
+  }
+
+  async getAnalyticsSummary(startDate?: Date, endDate?: Date): Promise<{
+    totalConversations: number;
+    totalAppointments: number;
+    conversionRate: number;
+    crisisRedirects: number;
+    messagesByCategory: { category: string; count: number }[];
+    dailyActivity: { date: string; conversations: number; appointments: number }[];
+  }> {
+    const conditions = [eq(conversationAnalytics.clientId, 'default-client')];
+    const appointmentConditions = [eq(appointments.clientId, 'default-client')];
+    
+    if (startDate) {
+      conditions.push(gte(conversationAnalytics.createdAt, startDate));
+      appointmentConditions.push(gte(appointments.createdAt, startDate));
+    }
+    
+    if (endDate) {
+      conditions.push(lte(conversationAnalytics.createdAt, endDate));
+      appointmentConditions.push(lte(appointments.createdAt, endDate));
+    }
+    
+    const uniqueSessions = await db
+      .select({ sessionId: conversationAnalytics.sessionId })
+      .from(conversationAnalytics)
+      .where(and(...conditions))
+      .groupBy(conversationAnalytics.sessionId);
+    
+    const totalConversations = uniqueSessions.length;
+    
+    const appointmentResults = await db
+      .select()
+      .from(appointments)
+      .where(and(...appointmentConditions));
+    
+    const totalAppointments = appointmentResults.length;
+    
+    const conversionRate = totalConversations > 0 
+      ? (totalAppointments / totalConversations) * 100 
+      : 0;
+    
+    const crisisMessages = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(conversationAnalytics)
+      .where(and(...conditions, eq(conversationAnalytics.category, 'crisis_redirect')));
+    
+    const crisisRedirects = crisisMessages[0]?.count || 0;
+    
+    const categoryResults = await db
+      .select({
+        category: conversationAnalytics.category,
+        count: sql<number>`count(*)::int`
+      })
+      .from(conversationAnalytics)
+      .where(and(...conditions, sql`category IS NOT NULL`))
+      .groupBy(conversationAnalytics.category);
+    
+    const messagesByCategory = categoryResults.map(r => ({
+      category: r.category || 'other',
+      count: r.count
+    }));
+    
+    const conversationsByDay = await db
+      .select({
+        date: sql<string>`DATE(${conversationAnalytics.createdAt})`,
+        count: sql<number>`count(DISTINCT ${conversationAnalytics.sessionId})::int`
+      })
+      .from(conversationAnalytics)
+      .where(and(...conditions))
+      .groupBy(sql`DATE(${conversationAnalytics.createdAt})`);
+    
+    const appointmentsByDay = await db
+      .select({
+        date: sql<string>`DATE(${appointments.createdAt})`,
+        count: sql<number>`count(*)::int`
+      })
+      .from(appointments)
+      .where(and(...appointmentConditions))
+      .groupBy(sql`DATE(${appointments.createdAt})`);
+    
+    const dailyActivityMap = new Map<string, { conversations: number; appointments: number }>();
+    
+    conversationsByDay.forEach(row => {
+      dailyActivityMap.set(row.date, { conversations: row.count, appointments: 0 });
+    });
+    
+    appointmentsByDay.forEach(row => {
+      const existing = dailyActivityMap.get(row.date) || { conversations: 0, appointments: 0 };
+      dailyActivityMap.set(row.date, { ...existing, appointments: row.count });
+    });
+    
+    const dailyActivity = Array.from(dailyActivityMap.entries())
+      .map(([date, data]) => ({ date, ...data }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    
+    return {
+      totalConversations,
+      totalAppointments,
+      conversionRate: Math.round(conversionRate * 10) / 10,
+      crisisRedirects,
+      messagesByCategory,
+      dailyActivity
+    };
   }
 
   async findAdminByUsername(username: string): Promise<AdminUser | undefined> {

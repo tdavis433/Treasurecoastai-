@@ -51,11 +51,13 @@ export default function Admin() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   
-  const { data: appointments, isLoading } = useQuery<Appointment[]>({
+  const { data: appointmentData, isLoading } = useQuery<{ appointments: Appointment[]; total: number }>({
     queryKey: ["/api/appointments"],
   });
   
-  const filteredAppointments = appointments?.filter((apt) => {
+  const appointments = appointmentData?.appointments || [];
+  
+  const filteredAppointments = appointments.filter((apt) => {
     const matchesSearch = searchQuery === "" || 
       apt.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       apt.contact.toLowerCase().includes(searchQuery.toLowerCase()) ||

@@ -616,11 +616,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/appointments", requireAuth, async (req, res) => {
     try {
-      const appointments = await storage.getAllAppointments();
-      res.json(appointments);
+      const { status, startDate, endDate, search, limit, offset } = req.query;
+      
+      const filters: any = {};
+      if (status) filters.status = status as string;
+      if (startDate) filters.startDate = new Date(startDate as string);
+      if (endDate) filters.endDate = new Date(endDate as string);
+      if (search) filters.search = search as string;
+      if (limit) filters.limit = parseInt(limit as string);
+      if (offset) filters.offset = parseInt(offset as string);
+      
+      const result = await storage.getFilteredAppointments(filters);
+      res.json(result);
     } catch (error) {
       console.error("Get appointments error:", error);
       res.status(500).json({ error: "Failed to fetch appointments" });
+    }
+  });
+
+  app.get("/api/appointments/:id", requireAuth, async (req, res) => {
+    try {
+      const appointment = await storage.getAppointmentById(req.params.id);
+      if (!appointment) {
+        return res.status(404).json({ error: "Appointment not found" });
+      }
+      res.json(appointment);
+    } catch (error) {
+      console.error("Get appointment error:", error);
+      res.status(500).json({ error: "Failed to fetch appointment" });
+    }
+  });
+
+  app.patch("/api/appointments/:id", requireAuth, async (req, res) => {
+    try {
+      const allowedFields = ['status', 'notes', 'appointmentType', 'preferredTime', 'contactPreference'];
+      const updates: any = {};
+      
+      for (const field of allowedFields) {
+        if (req.body[field] !== undefined) {
+          updates[field] = req.body[field];
+        }
+      }
+      
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ error: "No valid fields to update" });
+      }
+      
+      if (updates.status && !['new', 'contacted', 'scheduled', 'completed', 'cancelled'].includes(updates.status)) {
+        return res.status(400).json({ error: "Invalid status value" });
+      }
+      
+      const appointment = await storage.updateAppointment(req.params.id, updates);
+      res.json(appointment);
+    } catch (error) {
+      console.error("Update appointment error:", error);
+      res.status(500).json({ error: "Failed to update appointment" });
     }
   });
 
@@ -675,6 +725,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get analytics error:", error);
       res.status(500).json({ error: "Failed to fetch analytics" });
+    }
+  });
+
+  app.get("/api/analytics/summary", requireAuth, async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      const start = startDate ? new Date(startDate as string) : undefined;
+      const end = endDate ? new Date(endDate as string) : undefined;
+      
+      const summary = await storage.getAnalyticsSummary(start, end);
+      res.json(summary);
+    } catch (error) {
+      console.error("Get analytics summary error:", error);
+      res.status(500).json({ error: "Failed to fetch analytics summary" });
     }
   });
 
