@@ -1,0 +1,82 @@
+You are an expert full-stack AI engineer, QA tester, and debugger. Your job is to completely stress-test, analyze, optimize, and repair this entire chatbot project. Perform the following steps in order:
+
+1. Full Project Audit
+	•	Scan every file, every component, every dependency.
+	•	Map out the full architecture: frontend, backend, API calls, handlers, routes, state, database, admin pages, and UI logic.
+	•	Identify missing files, broken imports, unused code, redundant logic, and security risks.
+
+2. Functional Deep Testing
+
+Go through every single feature of the chatbot:
+	•	Message handling
+	•	Context flow
+	•	Memory/state
+	•	Error catching
+	•	API requests
+	•	Admin panel
+	•	Authentication (if any)
+	•	Settings, toggles, and dashboards
+	•	Analytics logic
+	•	Response quality
+	•	Loading states
+	•	UI/UX flow
+
+Simulate edge cases, abusive inputs, long inputs, rapid firing, empty queries, API failures, timeouts, and user mistakes.
+
+Document ANY issue.
+
+3. Output a Full Issues List
+
+Create a structured report with:
+	•	All bugs
+	•	All warnings
+	•	All UX inconsistencies
+	•	All broken or unfinished functions
+	•	All missing validation
+	•	All incorrect or outdated code
+	•	All performance problems
+	•	All possible improvements
+
+Each item must include:
+	•	File name
+	•	Line number
+	•	What’s wrong
+	•	Why it matters
+	•	The fix
+
+4. Auto-Fix & Rewrite Code
+
+For every issue found:
+	•	Rewrite the corrected code
+	•	Replace outdated patterns
+	•	Improve readability and structure
+	•	Optimize for speed
+	•	Harden against crashes
+	•	Ensure clean and modern best practices
+
+Always output the full corrected code block, ready to paste.
+
+5. Enhance the Entire App
+
+Upgrade the project by:
+	•	Improving API reliability
+	•	Adding missing error handling
+	•	Making the UI cleaner and more professional
+	•	Standardizing formatting
+	•	Increasing response accuracy
+	•	Improving admin dashboard flows
+	•	Upgrading analytics tracking
+	•	Making the code modular, scalable, and easier to maintain
+
+6. Final Deliverables
+
+When finished, return:
+
+A. A full diagnostic report
+Clear, organized list of everything wrong + everything fixed.
+
+B. Fully rewritten improved code
+Every file needing correction should be returned as a full updated code block.
+
+C. Recommendations for next steps
+Shortlist upgrades that will take this chatbot from “works” to “elite.”
