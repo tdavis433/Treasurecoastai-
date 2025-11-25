@@ -18,13 +18,13 @@ The system employs a React, TypeScript, Tailwind CSS, and shadcn/ui frontend wit
 - **Enhanced Appointment Booking:** Supports multi-type appointments (Tour/Phone call/Family info call) with contact preference tracking.
 - **Dual Notification System:** Email (Resend) and SMS (Twilio) for staff alerts and client confirmations.
 - **Pre-qualification Intake:** Captures sobriety status, support, and timeline before booking.
-- **Admin Dashboards:** `/admin` for client appointment management and `/super-admin` for reseller customization.
-- **Secure Authentication:** Session-based, password-protected super-admin panel.
-- **Enhanced Analytics:** Category-based message classification, performance metrics, and CSV export.
+- **Admin Dashboards:** `/admin` for dashboard with KPIs, `/admin/appointments` for appointment management, `/admin/analytics` for detailed analytics, `/admin/settings` for configuration.
+- **Secure Authentication:** Session-based, password-protected admin panel with default credentials (admin/admin123).
+- **Enhanced Analytics:** Category-based message classification, performance metrics, Activity Over Time chart (recharts), and CSV export.
 - **Multilingual Support:** Full UI and AI responses in Spanish.
 - **Operating Hours Awareness:** Dynamic responses based on facility hours.
 - **Crisis Support:** Integration of resources like 988 and 1-800-662-HELP.
-- **UI/UX Decisions:** Admin panels feature search, filtering, clickable contact info, and responsive design. A prominent, always-visible crisis disclaimer is displayed on the public chatbot.
+- **UI/UX Decisions:** Futuristic/Cyber-Clean admin design with gradient accents, backdrop blur, modern stat cards, collapsible sidebar, and responsive layout. Public chatbot features prominent crisis disclaimer.
 
 **Database Schema:**
 - `appointments`: Stores booking requests, status, contact preferences, and PII-sanitized conversation summaries. Includes clientId column (all set to 'default-client').
