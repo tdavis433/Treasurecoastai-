@@ -29,6 +29,11 @@ interface Appointment {
   sobrietyStatus?: string;
 }
 
+interface AppointmentsResponse {
+  appointments: Appointment[];
+  total: number;
+}
+
 interface Analytics {
   id: string;
   sessionId: string;
@@ -43,7 +48,7 @@ export default function AdminAnalytics() {
     queryKey: ["/api/analytics/summary"],
   });
 
-  const { data: appointments = [], isLoading: loadingAppointments } = useQuery<Appointment[]>({
+  const { data: appointmentsResponse, isLoading: loadingAppointments } = useQuery<AppointmentsResponse>({
     queryKey: ["/api/appointments"],
   });
 
@@ -51,6 +56,7 @@ export default function AdminAnalytics() {
     queryKey: ["/api/analytics"],
   });
 
+  const appointments = appointmentsResponse?.appointments || [];
   const totalMessages = analyticsData.length;
 
   const statusCounts = appointments.reduce(
