@@ -17,7 +17,8 @@ import {
   Calendar, 
   Settings, 
   LogOut,
-  Menu
+  Menu,
+  BarChart3
 } from "lucide-react";
 import { useState } from "react";
 import { AdminProvider, useAdminContext } from "@/contexts/admin-context";
@@ -29,6 +30,7 @@ interface AdminLayoutProps {
 const navigationItems = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { name: "Appointments", href: "/admin/appointments", icon: Calendar },
+  { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
