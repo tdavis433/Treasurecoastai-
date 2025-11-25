@@ -470,7 +470,7 @@ ${preIntakeInfo}
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "HopeLine Assistant <noreply@updates.replit.com>",
+        from: "HopeLine Assistant <onboarding@resend.dev>",
         to: recipientEmail,
         subject: `New ${appointment.appointmentType} Request from ${appointment.name}`,
         html: emailBody,
