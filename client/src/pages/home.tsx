@@ -110,7 +110,8 @@ export default function Home() {
     mutationFn: async (appointmentData: AppointmentData) => {
       const response = await apiRequest("POST", "/api/appointment", {
         ...appointmentData,
-        sessionId
+        sessionId,
+        conversationHistory: messages
       });
       return response.json();
     },

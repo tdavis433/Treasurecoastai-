@@ -568,12 +568,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/appointment", async (req, res) => {
     try {
-      const { sessionId, ...appointmentData } = req.body;
+      const { sessionId, conversationHistory, ...appointmentData } = req.body;
       const validatedData = insertAppointmentSchema.parse(appointmentData);
       
       let conversationSummary = "No conversation history available.";
+      
+      // First try to get summary from logged analytics (actual chat messages)
       if (sessionId) {
         conversationSummary = await generateConversationSummary(sessionId);
+      }
+      
+      // If no analytics found, try to generate summary from frontend conversation history
+      if (conversationSummary === "No conversation history available." && 
+          conversationHistory && Array.isArray(conversationHistory) && conversationHistory.length > 0) {
+        try {
+          const conversationText = conversationHistory
+            .map((msg: { role: string; content: string }) => `${msg.role}: ${sanitizePII(msg.content)}`)
+            .join("\n");
+          
+          const completion = await openai.chat.completions.create({
+            model: "gpt-4.1-mini",
+            messages: [
+              {
+                role: "system",
+                content: "You are a helpful assistant that summarizes conversations between users and the HopeLine Assistant chatbot for a sober-living facility. Create a brief, professional summary (3-4 sentences) focusing on: their general situation, what they're seeking, their urgency level, and relevant context. DO NOT include specific personal details like names, phone numbers, or addresses in the summary."
+              },
+              {
+                role: "user",
+                content: `Summarize this conversation:\n\n${conversationText}`
+              }
+            ],
+            max_completion_tokens: 200,
+          });
+          
+          conversationSummary = completion.choices[0]?.message?.content || "Unable to generate summary.";
+        } catch (error) {
+          console.error("Error generating summary from conversation history:", error);
+        }
       }
       
       const appointment = await storage.createAppointment({
