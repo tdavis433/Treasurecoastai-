@@ -11,7 +11,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { Settings, Palette, Clock, Bell, BookOpen, LogOut, Send, AlertCircle, Shield, Trash2 } from "lucide-react";
+import { Settings, Palette, Clock, Bell, BookOpen, LogOut, Send, AlertCircle, Shield, Trash2, Plus, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface ClientSettings {
   id: string;
@@ -65,6 +66,47 @@ export default function SuperAdmin() {
   });
 
   const [formData, setFormData] = useState<Partial<ClientSettings>>(settings || {});
+  const [newEmailInput, setNewEmailInput] = useState("");
+  
+  const getEmailList = (): string[] => {
+    const emails = formData.notificationEmail || settings?.notificationEmail || "";
+    return emails.split(",").map(e => e.trim()).filter(e => e.length > 0);
+  };
+  
+  const addEmail = () => {
+    const email = newEmailInput.trim().toLowerCase();
+    if (!email) return;
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const currentEmails = getEmailList();
+    if (currentEmails.includes(email)) {
+      toast({
+        title: "Duplicate Email",
+        description: "This email is already in the list.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const updatedEmails = [...currentEmails, email].join(", ");
+    setFormData({ ...formData, notificationEmail: updatedEmails });
+    setNewEmailInput("");
+  };
+  
+  const removeEmail = (emailToRemove: string) => {
+    const currentEmails = getEmailList();
+    const updatedEmails = currentEmails.filter(e => e !== emailToRemove).join(", ");
+    setFormData({ ...formData, notificationEmail: updatedEmails || null });
+  };
 
   const updateMutation = useMutation({
     mutationFn: async (data: Partial<ClientSettings>) => {
@@ -120,6 +162,15 @@ export default function SuperAdmin() {
   const handleTestNotification = () => {
     testNotificationMutation.mutate();
   };
+
+  useEffect(() => {
+    if (settings) {
+      setFormData(prev => ({
+        ...prev,
+        notificationEmail: prev.notificationEmail ?? settings.notificationEmail,
+      }));
+    }
+  }, [settings]);
 
   useEffect(() => {
     if (!authLoading && !authCheck?.authenticated) {
@@ -406,16 +457,63 @@ export default function SuperAdmin() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="notificationEmail">Notification Email</Label>
-                    <Input
-                      id="notificationEmail"
-                      data-testid="input-notification-email"
-                      type="email"
-                      value={formData.notificationEmail || settings.notificationEmail || ""}
-                      onChange={(e) => setFormData({ ...formData, notificationEmail: e.target.value })}
-                      placeholder="staff@faithhouse.org"
-                    />
+                  <div className="space-y-3">
+                    <Label>Notification Emails</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Add multiple email addresses to receive appointment notifications
+                    </p>
+                    
+                    <div className="flex flex-wrap gap-2 min-h-[32px]" data-testid="email-list-container">
+                      {getEmailList().map((email, index) => (
+                        <Badge 
+                          key={email} 
+                          variant="secondary" 
+                          className="pl-3 pr-1 py-1 flex items-center gap-1"
+                          data-testid={`badge-email-${index}`}
+                        >
+                          <span data-testid={`text-email-${index}`}>{email}</span>
+                          <button
+                            type="button"
+                            className="ml-1 rounded-full p-0.5 hover:bg-destructive/20 transition-colors"
+                            onClick={() => removeEmail(email)}
+                            data-testid={`button-remove-email-${index}`}
+                            aria-label={`Remove ${email}`}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                      {getEmailList().length === 0 && (
+                        <p className="text-sm text-muted-foreground italic" data-testid="text-no-emails">No emails added yet</p>
+                      )}
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Input
+                        id="notificationEmail"
+                        data-testid="input-notification-email"
+                        type="email"
+                        value={newEmailInput}
+                        onChange={(e) => setNewEmailInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            addEmail();
+                          }
+                        }}
+                        placeholder="Enter email address..."
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={addEmail}
+                        data-testid="button-add-email"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="flex gap-2">
@@ -425,7 +523,7 @@ export default function SuperAdmin() {
                       disabled={
                         testNotificationMutation.isPending || 
                         !(formData.enableEmailNotifications ?? settings.enableEmailNotifications) || 
-                        !(formData.notificationEmail || settings.notificationEmail)
+                        getEmailList().length === 0
                       }
                       data-testid="button-test-notification"
                     >
@@ -433,9 +531,9 @@ export default function SuperAdmin() {
                       {testNotificationMutation.isPending ? "Sending..." : "Send Test Email"}
                     </Button>
                     {!(formData.enableEmailNotifications ?? settings.enableEmailNotifications) || 
-                     !(formData.notificationEmail || settings.notificationEmail) ? (
+                     getEmailList().length === 0 ? (
                       <p className="text-xs text-muted-foreground self-center">
-                        Enable email notifications and enter an email to test
+                        Enable email notifications and add at least one email to test
                       </p>
                     ) : null}
                   </div>

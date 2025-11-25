@@ -407,17 +407,27 @@ async function sendSmsNotification(
 }
 
 async function sendEmailNotification(
-  recipientEmail: string,
+  recipientEmails: string,
   appointment: any,
   conversationSummary: string,
   settings: any
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; sentTo?: string[] }> {
   try {
     const resendApiKey = process.env.RESEND_API_KEY;
     
     if (!resendApiKey) {
       console.log("📧 Resend API key not configured - skipping email notification");
       return { success: false, error: "API key not configured" };
+    }
+
+    // Parse comma-separated emails into array
+    const emailList = recipientEmails
+      .split(",")
+      .map(email => email.trim())
+      .filter(email => email.length > 0);
+    
+    if (emailList.length === 0) {
+      return { success: false, error: "No valid email addresses provided" };
     }
 
     const preIntakeInfo = appointment.lookingFor 
@@ -463,6 +473,7 @@ ${preIntakeInfo}
 <p><small>This request was submitted through ${settings.businessName} HopeLine Assistant on ${new Date().toLocaleString()}</small></p>
     `.trim();
 
+    // Send to all recipients using Resend's array support
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -471,7 +482,7 @@ ${preIntakeInfo}
       },
       body: JSON.stringify({
         from: "HopeLine Assistant <onboarding@resend.dev>",
-        to: recipientEmail,
+        to: emailList,
         subject: `New ${appointment.appointmentType} Request from ${appointment.name}`,
         html: emailBody,
       }),
@@ -483,8 +494,8 @@ ${preIntakeInfo}
       return { success: false, error: `Resend API error: ${response.statusText}` };
     }
 
-    console.log(`✅ Email notification sent successfully to ${recipientEmail}`);
-    return { success: true };
+    console.log(`✅ Email notification sent successfully to ${emailList.length} recipient(s): ${emailList.join(", ")}`);
+    return { success: true, sentTo: emailList };
   } catch (error) {
     console.error("Email notification error:", error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
