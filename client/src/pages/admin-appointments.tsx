@@ -30,9 +30,57 @@ import {
   Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
-  X
+  X,
+  Download
 } from "lucide-react";
 import { format } from "date-fns";
+
+function exportToCSV(appointments: Appointment[]) {
+  const headers = [
+    'Name',
+    'Phone',
+    'Email',
+    'Appointment Type',
+    'Status',
+    'Preferred Time',
+    'Contact Preference',
+    'Looking For',
+    'Sobriety Status',
+    'Financial Support',
+    'Timeline',
+    'Created Date'
+  ];
+  
+  const rows = appointments.map(apt => [
+    apt.name,
+    apt.contact,
+    apt.email || '',
+    apt.appointmentType.replace(/_/g, ' '),
+    apt.status,
+    apt.preferredTime,
+    apt.contactPreference,
+    apt.lookingFor || '',
+    apt.sobrietyStatus || '',
+    apt.hasSupport || '',
+    apt.timeline || '',
+    format(new Date(apt.createdAt), 'yyyy-MM-dd HH:mm:ss')
+  ]);
+  
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+  ].join('\n');
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', `appointments-${format(new Date(), 'yyyy-MM-dd')}.csv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
 
 interface Appointment {
   id: string;
@@ -163,13 +211,24 @@ export default function AdminAppointments() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight" data-testid="text-appointments-title">
-            Appointments
-          </h2>
-          <p className="text-muted-foreground">
-            Manage and track all appointment requests
-          </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight" data-testid="text-appointments-title">
+              Appointments
+            </h2>
+            <p className="text-muted-foreground">
+              Manage and track all appointment requests
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => data?.appointments && exportToCSV(data.appointments)}
+            disabled={!data?.appointments?.length}
+            data-testid="button-export-csv"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
         </div>
 
         {/* Filters */}

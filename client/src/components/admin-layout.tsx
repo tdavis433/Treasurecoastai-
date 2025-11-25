@@ -53,22 +53,29 @@ function AdminLayoutInner({ children }: AdminLayoutProps) {
   });
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-gradient-to-br from-background via-background to-muted/20">
       {/* Sidebar */}
       <aside 
         className={`${
           sidebarOpen ? "w-64" : "w-0"
-        } transition-all duration-300 overflow-hidden bg-card border-r flex flex-col`}
+        } transition-all duration-300 overflow-hidden bg-card/80 backdrop-blur-sm border-r border-primary/10 flex flex-col`}
         data-testid="admin-sidebar"
       >
-        <div className="p-6 border-b">
-          <h1 className="text-xl font-bold text-foreground" data-testid="text-admin-title">
-            HopeLine Admin
-          </h1>
-          <p className="text-sm text-muted-foreground">The Faith House</p>
+        <div className="p-6 border-b border-primary/10">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <span className="text-primary font-bold text-lg">H</span>
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-foreground" data-testid="text-admin-title">
+                HopeLine
+              </h1>
+              <p className="text-xs text-muted-foreground">Admin Dashboard</p>
+            </div>
+          </div>
         </div>
 
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 p-4 space-y-1">
           {navigationItems.map((item) => {
             const Icon = item.icon;
             const isActive = location === item.href || location.startsWith(item.href + "/");
@@ -77,7 +84,11 @@ function AdminLayoutInner({ children }: AdminLayoutProps) {
               <Link key={item.href} href={item.href}>
                 <Button
                   variant={isActive ? "secondary" : "ghost"}
-                  className="w-full justify-start gap-3"
+                  className={`w-full justify-start gap-3 transition-all duration-200 ${
+                    isActive 
+                      ? "bg-primary/10 text-primary border-l-2 border-primary rounded-l-none" 
+                      : "hover:bg-muted/50 hover:translate-x-1"
+                  }`}
                   data-testid={`link-${item.name.toLowerCase()}`}
                 >
                   <Icon className="h-4 w-4" />
@@ -88,10 +99,10 @@ function AdminLayoutInner({ children }: AdminLayoutProps) {
           })}
         </nav>
 
-        <div className="p-4 border-t">
+        <div className="p-4 border-t border-primary/10">
           <Button
             variant="ghost"
-            className="w-full justify-start gap-3 text-destructive hover:text-destructive hover:bg-destructive/10"
+            className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
             onClick={() => logoutMutation.mutate()}
             disabled={logoutMutation.isPending}
             data-testid="button-logout"
@@ -105,11 +116,12 @@ function AdminLayoutInner({ children }: AdminLayoutProps) {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top header */}
-        <header className="h-16 border-b bg-card flex items-center justify-between px-6">
+        <header className="h-16 border-b border-primary/10 bg-card/50 backdrop-blur-sm flex items-center justify-between px-6">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="hover:bg-primary/10 transition-all duration-200"
             data-testid="button-sidebar-toggle"
           >
             <Menu className="h-5 w-5" />
@@ -121,7 +133,7 @@ function AdminLayoutInner({ children }: AdminLayoutProps) {
                 Date Range:
               </Label>
               <Select value={dateRange} onValueChange={setDateRange}>
-                <SelectTrigger id="global-date-range" className="w-40" data-testid="select-global-date-range">
+                <SelectTrigger id="global-date-range" className="w-40 bg-background/50 border-primary/20" data-testid="select-global-date-range">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -136,7 +148,7 @@ function AdminLayoutInner({ children }: AdminLayoutProps) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 overflow-auto p-6 bg-gradient-to-b from-transparent to-muted/5">
           {children}
         </main>
       </div>

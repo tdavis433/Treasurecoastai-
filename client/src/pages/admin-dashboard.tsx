@@ -13,6 +13,16 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
+import { 
+  AreaChart, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  Legend
+} from "recharts";
 
 interface AnalyticsSummary {
   totalConversations: number;
@@ -210,25 +220,87 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        {/* Activity Chart Placeholder */}
+        {/* Activity Chart */}
         <Card data-testid="card-activity-chart">
           <CardHeader>
             <CardTitle>Activity Over Time</CardTitle>
             <CardDescription>
-              Conversations and appointments over time
+              Conversations and appointments over the last 30 days
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-80 flex items-center justify-center bg-muted/20 rounded-lg">
-              <div className="text-center space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  Chart visualization will be added in the next iteration
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {summary?.dailyActivity.length || 0} days of data available
-                </p>
+            {summary?.dailyActivity && summary.dailyActivity.length > 0 ? (
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart
+                    data={summary.dailyActivity.slice(-30)}
+                    margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient id="colorConversations" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorAppointments" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--accent-foreground))" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="hsl(var(--accent-foreground))" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={(value) => {
+                        const date = new Date(value);
+                        return format(date, 'MMM d');
+                      }}
+                      className="text-muted-foreground"
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }}
+                      className="text-muted-foreground"
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))', 
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                      }}
+                      labelFormatter={(value) => format(new Date(value), 'MMMM d, yyyy')}
+                    />
+                    <Legend />
+                    <Area
+                      type="monotone"
+                      dataKey="conversations"
+                      stroke="hsl(var(--primary))"
+                      fillOpacity={1}
+                      fill="url(#colorConversations)"
+                      name="Conversations"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="appointments"
+                      stroke="hsl(var(--accent-foreground))"
+                      fillOpacity={1}
+                      fill="url(#colorAppointments)"
+                      name="Appointments"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
-            </div>
+            ) : (
+              <div className="h-80 flex items-center justify-center bg-muted/20 rounded-lg">
+                <div className="text-center space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    No activity data available yet
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Chart will appear once conversations start
+                  </p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
