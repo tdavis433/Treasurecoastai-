@@ -248,29 +248,6 @@ export default function Home() {
     setShowMenu(true);
   };
 
-  const displayMessages = [...messages];
-  
-  if (showCrisis) {
-    displayMessages.push({
-      role: "assistant",
-      content: "CRISIS_SUPPORT_COMPONENT"
-    });
-  }
-
-  if (showPreIntakeFlow) {
-    displayMessages.push({
-      role: "assistant",
-      content: "PRE_INTAKE_FLOW_COMPONENT"
-    });
-  }
-
-  if (showAppointmentFlow) {
-    displayMessages.push({
-      role: "assistant",
-      content: "APPOINTMENT_FLOW_COMPONENT"
-    });
-  }
-
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-16">
@@ -320,15 +297,7 @@ export default function Home() {
       <ChatWindow
         isOpen={isChatOpen}
         onClose={() => setIsChatOpen(false)}
-        messages={displayMessages.map(msg => 
-          msg.content === "CRISIS_SUPPORT_COMPONENT" 
-            ? { ...msg, content: "" }
-            : msg.content === "PRE_INTAKE_FLOW_COMPONENT"
-            ? { ...msg, content: "" }
-            : msg.content === "APPOINTMENT_FLOW_COMPONENT"
-            ? { ...msg, content: "" }
-            : msg
-        )}
+        messages={messages}
         onSendMessage={handleSendMessage}
         onMenuClick={handleMenuClick}
         isLoading={chatMutation.isPending || appointmentMutation.isPending}
@@ -336,33 +305,24 @@ export default function Home() {
         language={language}
         onLanguageToggle={() => setLanguage(lang => lang === "en" ? "es" : "en")}
         onResetChat={handleResetChat}
+        flowContent={
+          showCrisis ? (
+            <CrisisSupport />
+          ) : showPreIntakeFlow ? (
+            <PreIntakeFlow
+              onComplete={handlePreIntakeComplete}
+              onCancel={handlePreIntakeCancel}
+              language={language}
+            />
+          ) : showAppointmentFlow ? (
+            <AppointmentFlow
+              onComplete={handleAppointmentComplete}
+              onCancel={handleAppointmentCancel}
+              language={language}
+            />
+          ) : null
+        }
       />
-
-      {isChatOpen && showCrisis && (
-        <div className="fixed bottom-[120px] right-5 z-50 w-[360px] sm:w-[94vw] sm:right-[3vw]">
-          <CrisisSupport />
-        </div>
-      )}
-
-      {isChatOpen && showPreIntakeFlow && (
-        <div className="fixed bottom-[120px] right-5 z-50 w-[360px] sm:w-[94vw] sm:right-[3vw]">
-          <PreIntakeFlow
-            onComplete={handlePreIntakeComplete}
-            onCancel={handlePreIntakeCancel}
-            language={language}
-          />
-        </div>
-      )}
-
-      {isChatOpen && showAppointmentFlow && (
-        <div className="fixed bottom-[120px] right-5 z-50 w-[360px] sm:w-[94vw] sm:right-[3vw]">
-          <AppointmentFlow
-            onComplete={handleAppointmentComplete}
-            onCancel={handleAppointmentCancel}
-            language={language}
-          />
-        </div>
-      )}
     </div>
   );
 }

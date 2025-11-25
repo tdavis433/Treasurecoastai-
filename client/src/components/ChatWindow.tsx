@@ -1,7 +1,7 @@
 import { X, Send, Languages, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface Message {
@@ -20,6 +20,7 @@ interface ChatWindowProps {
   language: string;
   onLanguageToggle: () => void;
   onResetChat: () => void;
+  flowContent?: ReactNode;
 }
 
 const quickActions = {
@@ -79,6 +80,7 @@ export default function ChatWindow({
   language,
   onLanguageToggle,
   onResetChat,
+  flowContent,
 }: ChatWindowProps) {
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -192,6 +194,14 @@ export default function ChatWindow({
                 <span className="animate-bounce" style={{ animationDelay: "0.2s" }}>.</span>
                 <span className="animate-bounce" style={{ animationDelay: "0.4s" }}>.</span>
               </span>
+            </div>
+          </div>
+        )}
+
+        {flowContent && (
+          <div className="flex justify-start w-full">
+            <div className="w-full">
+              {flowContent}
             </div>
           </div>
         )}
