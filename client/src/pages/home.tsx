@@ -89,6 +89,13 @@ export default function Home() {
     onSuccess: (data: any) => {
       setMessages(prev => [...prev, { role: "assistant", content: data.reply }]);
       setShowMenu(true);
+      
+      if (data.showAppointmentFlow) {
+        setTimeout(() => {
+          setShowAppointmentFlow(true);
+          setShowMenu(false);
+        }, 500);
+      }
     },
     onError: () => {
       toast({

@@ -241,6 +241,24 @@ function detectCrisisKeywords(text: string, language: string = "en"): boolean {
   return crisisKeywords.some(keyword => normalized.includes(keyword.toLowerCase()));
 }
 
+function detectBookingIntent(text: string, language: string = "en"): boolean {
+  const normalized = text.toLowerCase().replace(/[^\w\s]/g, ' ');
+  
+  const bookingPhrases = [
+    "schedule a tour", "book a tour", "schedule tour", "want a tour",
+    "schedule a call", "book a call", "schedule call", "want a call",
+    "request a tour", "request a call", "set up a tour", "set up a call",
+    "arrange a tour", "arrange a call", "yes i want to schedule", "yes schedule",
+    "lets schedule", "let's schedule", "i would like to schedule", "i'd like to schedule",
+    "ready to schedule", "want to book", "like to book", "sign me up",
+    "i want to come in", "i want to visit", "can i come", "can i visit",
+    "programar un tour", "programar una llamada", "quiero un tour", "quiero una llamada",
+    "agendar un tour", "agendar una llamada", "si quiero programar"
+  ];
+  
+  return bookingPhrases.some(phrase => normalized.includes(phrase.toLowerCase()));
+}
+
 function getCrisisResponse(language: string = "en"): string {
   if (language === "es") {
     return `Entiendo que estás pasando por un momento muy difícil. Por favor, contacta a ayuda profesional inmediatamente:
@@ -535,7 +553,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      res.json({ reply });
+      const lastUserMessage = messages[messages.length - 1];
+      const userWantsToBook = lastUserMessage?.role === "user" && detectBookingIntent(lastUserMessage.content, language);
+      
+      res.json({ 
+        reply,
+        showAppointmentFlow: userWantsToBook
+      });
     } catch (error) {
       console.error("Chat error:", error);
       res.status(500).json({ error: "Failed to process chat message" });
