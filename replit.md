@@ -20,6 +20,11 @@ The system employs a React, TypeScript, Tailwind CSS, and shadcn/ui frontend wit
 - **Pre-qualification Intake:** Captures sobriety status, support, and timeline before booking.
 - **Admin Dashboards:** `/admin` for dashboard with KPIs, `/admin/appointments` for appointment management, `/admin/analytics` for detailed analytics, `/admin/settings` for configuration.
 - **Secure Authentication:** Session-based, password-protected admin panel with default credentials (admin/admin123).
+- **Role-Based Access Control (RBAC):** Two roles implemented:
+  - `super_admin`: Full access including /super-admin configuration page, settings API, and test notifications
+  - `client_admin`: Access to dashboard, appointments, and analytics only
+  - Navigation automatically adapts based on user role
+  - Backend middleware enforces authorization on protected endpoints
 - **Enhanced Analytics:** Category-based message classification, performance metrics, Activity Over Time chart (recharts), and CSV export.
 - **Multilingual Support:** Full UI and AI responses in Spanish.
 - **Operating Hours Awareness:** Dynamic responses based on facility hours.
@@ -39,7 +44,7 @@ The system employs a React, TypeScript, Tailwind CSS, and shadcn/ui frontend wit
 - `appointments`: Stores booking requests, status, contact preferences, and PII-sanitized conversation summaries. Includes clientId column (all set to 'default-client').
 - `client_settings`: Holds customizable business settings. Includes future-ready columns: clientId, logoUrl, accentColor (currently unused in UI).
 - `conversation_analytics`: Stores chat metrics with PII-sanitized assistant responses classified into 8 categories. Includes clientId column (all set to 'default-client').
-- `admin_users`: Manages super-admin authentication credentials.
+- `admin_users`: Manages admin authentication credentials with role field (super_admin or client_admin).
 
 **Single-Tenant Enforcement:**
 All database operations explicitly filter by or set `clientId = 'default-client'`:
