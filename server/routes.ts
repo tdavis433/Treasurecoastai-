@@ -21,6 +21,7 @@ const loginSchema = z.object({
 
 async function ensureAdminUserExists() {
   try {
+    // Create super_admin (owner) account
     const existingAdmin = await storage.findAdminByUsername("admin");
     
     if (!existingAdmin) {
@@ -40,6 +41,22 @@ async function ensureAdminUserExists() {
         .set({ role: "super_admin" })
         .where(eq(adminUsers.username, "admin"));
       console.log("Admin user migrated to super_admin role");
+    }
+
+    // Create client_admin (staff) account
+    const existingStaff = await storage.findAdminByUsername("staff");
+    
+    if (!existingStaff) {
+      console.log("Creating default client admin (staff) user...");
+      const staffPasswordHash = await bcrypt.hash("staff123", 10);
+      
+      await db.insert(adminUsers).values({
+        username: "staff",
+        passwordHash: staffPasswordHash,
+        role: "client_admin",
+      });
+      
+      console.log("Default client admin (staff) user created successfully");
     }
   } catch (error) {
     console.error("Error ensuring admin user exists:", error);
