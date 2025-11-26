@@ -146,49 +146,75 @@ const FAQ_CATEGORIES = [
   'General',
 ];
 
+interface AuthUser {
+  id: string;
+  username: string;
+  role: 'super_admin' | 'client_admin';
+}
+
 export default function SuperAdmin() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [activeClientId, setActiveClientId] = useState<string>('default-client');
   
-  const { data: authCheck, isLoading: authLoading } = useQuery<{ authenticated: boolean }>({
-    queryKey: ["/api/auth/check"],
+  const { data: currentUser, isLoading: authLoading, isError: authError } = useQuery<AuthUser>({
+    queryKey: ["/api/auth/me"],
+    queryFn: async () => {
+      const response = await fetch("/api/auth/me", { credentials: "include" });
+      if (!response.ok) {
+        throw new Error("Not authenticated");
+      }
+      return response.json();
+    },
     retry: false,
   });
 
+  useEffect(() => {
+    if (!authLoading && !currentUser) {
+      setLocation("/login");
+    } else if (currentUser && currentUser.role !== "super_admin") {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to access this page.",
+        variant: "destructive",
+      });
+      setLocation("/admin/dashboard");
+    }
+  }, [currentUser, authLoading, setLocation, toast]);
+
   const { data: clients } = useQuery<Client[]>({
     queryKey: ["/api/super-admin/clients"],
-    enabled: authCheck?.authenticated === true,
+    enabled: currentUser?.role === "super_admin",
   });
 
   const { data: generalSettings, isLoading: generalLoading } = useQuery<GeneralSettings>({
     queryKey: ["/api/super-admin/clients", activeClientId, "general"],
-    enabled: authCheck?.authenticated === true && !!activeClientId,
+    enabled: currentUser?.role === "super_admin" && !!activeClientId,
   });
 
   const { data: knowledgeData, isLoading: knowledgeLoading } = useQuery<KnowledgeData>({
     queryKey: ["/api/super-admin/clients", activeClientId, "knowledge"],
-    enabled: authCheck?.authenticated === true && !!activeClientId,
+    enabled: currentUser?.role === "super_admin" && !!activeClientId,
   });
 
   const { data: appointmentTypes } = useQuery<AppointmentType[]>({
     queryKey: ["/api/super-admin/clients", activeClientId, "appointment-types"],
-    enabled: authCheck?.authenticated === true && !!activeClientId,
+    enabled: currentUser?.role === "super_admin" && !!activeClientId,
   });
 
   const { data: preIntakeConfig } = useQuery<PreIntakeQuestion[]>({
     queryKey: ["/api/super-admin/clients", activeClientId, "pre-intake"],
-    enabled: authCheck?.authenticated === true && !!activeClientId,
+    enabled: currentUser?.role === "super_admin" && !!activeClientId,
   });
 
   const { data: notificationSettings } = useQuery<NotificationSettings>({
     queryKey: ["/api/super-admin/clients", activeClientId, "notifications"],
-    enabled: authCheck?.authenticated === true && !!activeClientId,
+    enabled: currentUser?.role === "super_admin" && !!activeClientId,
   });
 
   const { data: settings, isLoading } = useQuery<ClientSettings>({
     queryKey: ["/api/settings"],
-    enabled: authCheck?.authenticated === true,
+    enabled: currentUser?.role === "super_admin",
   });
 
   const [generalForm, setGeneralForm] = useState<Partial<GeneralSettings>>({});
@@ -473,12 +499,6 @@ export default function SuperAdmin() {
     }
   }, [settings]);
 
-  useEffect(() => {
-    if (!authLoading && !authCheck?.authenticated) {
-      setLocation("/login");
-    }
-  }, [authCheck, authLoading, setLocation]);
-
   if (authLoading || isLoading || generalLoading) {
     return (
       <AdminLayout>
@@ -492,7 +512,7 @@ export default function SuperAdmin() {
     );
   }
 
-  if (!authCheck?.authenticated) {
+  if (!currentUser || currentUser.role !== "super_admin") {
     return null;
   }
 

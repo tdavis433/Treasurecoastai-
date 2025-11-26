@@ -1,6 +1,6 @@
 import { useLocation } from "wouter";
 import { Link } from "wouter";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -18,9 +18,10 @@ import {
   Menu,
   BarChart3,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Shield
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AdminProvider, useAdminContext } from "@/contexts/admin-context";
 import { cn } from "@/lib/utils";
 
@@ -28,11 +29,17 @@ interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
-const navigationItems = [
-  { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
-  { name: "Appointments", href: "/admin/appointments", icon: Calendar },
-  { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
-  { name: "Settings", href: "/admin/settings", icon: Settings },
+interface AuthUser {
+  id: string;
+  username: string;
+  role: 'super_admin' | 'client_admin';
+}
+
+const baseNavigationItems = [
+  { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard, requireSuperAdmin: false },
+  { name: "Appointments", href: "/admin/appointments", icon: Calendar, requireSuperAdmin: false },
+  { name: "Analytics", href: "/admin/analytics", icon: BarChart3, requireSuperAdmin: false },
+  { name: "Super Admin", href: "/super-admin", icon: Shield, requireSuperAdmin: true },
 ];
 
 function AdminLayoutInner({ children }: AdminLayoutProps) {
@@ -40,6 +47,27 @@ function AdminLayoutInner({ children }: AdminLayoutProps) {
   const { toast } = useToast();
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const { dateRange, setDateRange } = useAdminContext();
+
+  const { data: currentUser } = useQuery<AuthUser>({
+    queryKey: ["/api/auth/me"],
+    queryFn: async () => {
+      const response = await fetch("/api/auth/me", { credentials: "include" });
+      if (!response.ok) {
+        if (response.status === 401) {
+          setLocation("/login");
+          throw new Error("Not authenticated");
+        }
+        throw new Error("Failed to fetch user");
+      }
+      return response.json();
+    },
+    retry: false,
+  });
+
+  const isSuperAdmin = currentUser?.role === "super_admin";
+  const navigationItems = baseNavigationItems.filter(
+    item => !item.requireSuperAdmin || isSuperAdmin
+  );
 
   const logoutMutation = useMutation({
     mutationFn: async () => {

@@ -18,7 +18,6 @@ function Router() {
       <Route path="/admin/dashboard" component={AdminDashboard} />
       <Route path="/admin/appointments" component={AdminAppointments} />
       <Route path="/admin/analytics" component={AdminAnalytics} />
-      <Route path="/admin/settings" component={SuperAdmin} />
       <Route path="/admin">
         <Redirect to="/admin/dashboard" />
       </Route>
