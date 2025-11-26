@@ -1,10 +1,18 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage, db } from "./storage";
-import { insertAppointmentSchema, insertClientSettingsSchema, adminUsers } from "@shared/schema";
+import { insertAppointmentSchema, insertClientSettingsSchema, adminUsers, type AdminRole } from "@shared/schema";
 import OpenAI from "openai";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { eq } from "drizzle-orm";
+
+declare module 'express-session' {
+  interface SessionData {
+    userId: string;
+    userRole: AdminRole;
+  }
+}
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -16,15 +24,22 @@ async function ensureAdminUserExists() {
     const existingAdmin = await storage.findAdminByUsername("admin");
     
     if (!existingAdmin) {
-      console.log("Creating default admin user...");
+      console.log("Creating default super admin user...");
       const passwordHash = await bcrypt.hash("admin123", 10);
       
       await db.insert(adminUsers).values({
         username: "admin",
         passwordHash: passwordHash,
+        role: "super_admin",
       });
       
-      console.log("Default admin user created successfully");
+      console.log("Default super admin user created successfully");
+    } else if (existingAdmin.role !== "super_admin") {
+      console.log("Migrating existing admin to super_admin role...");
+      await db.update(adminUsers)
+        .set({ role: "super_admin" })
+        .where(eq(adminUsers.username, "admin"));
+      console.log("Admin user migrated to super_admin role");
     }
   } catch (error) {
     console.error("Error ensuring admin user exists:", error);
@@ -34,6 +49,16 @@ async function ensureAdminUserExists() {
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.session.userId) {
     return res.status(401).json({ error: "Authentication required" });
+  }
+  next();
+}
+
+function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+  if (req.session.userRole !== "super_admin") {
+    return res.status(403).json({ error: "Super admin access required" });
   }
   next();
 }
@@ -883,12 +908,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(500).json({ error: "Session creation failed" });
         }
         req.session.userId = user.id;
+        req.session.userRole = (user.role as AdminRole) || "client_admin";
         req.session.save((saveErr) => {
           if (saveErr) {
             console.error("Session save error:", saveErr);
             return res.status(500).json({ error: "Session save failed" });
           }
-          res.json({ success: true, user: { id: user.id, username: user.username } });
+          res.json({ success: true, user: { id: user.id, username: user.username, role: user.role } });
         });
       });
     } catch (error) {
@@ -917,12 +943,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/auth/me", requireAuth, async (req, res) => {
+    try {
+      const user = await db.select({
+        id: adminUsers.id,
+        username: adminUsers.username,
+        role: adminUsers.role,
+      }).from(adminUsers).where(eq(adminUsers.id, req.session.userId!)).limit(1);
+      
+      if (!user[0]) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      res.json(user[0]);
+    } catch (error) {
+      console.error("Get user error:", error);
+      res.status(500).json({ error: "Failed to fetch user" });
+    }
+  });
+
   // =============================================
   // SUPER ADMIN API ENDPOINTS
   // =============================================
 
   // Get list of clients (currently single-tenant with default-client only)
-  app.get("/api/super-admin/clients", requireAuth, async (req, res) => {
+  app.get("/api/super-admin/clients", requireSuperAdmin, async (req, res) => {
     try {
       const settings = await storage.getSettings();
       const clients = settings ? [{
@@ -938,7 +983,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get client general settings
-  app.get("/api/super-admin/clients/:clientId/general", requireAuth, async (req, res) => {
+  app.get("/api/super-admin/clients/:clientId/general", requireSuperAdmin, async (req, res) => {
     try {
       if (req.params.clientId !== 'default-client') {
         return res.status(404).json({ error: "Client not found" });
@@ -965,7 +1010,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update client general settings
-  app.put("/api/super-admin/clients/:clientId/general", requireAuth, async (req, res) => {
+  app.put("/api/super-admin/clients/:clientId/general", requireSuperAdmin, async (req, res) => {
     try {
       if (req.params.clientId !== 'default-client') {
         return res.status(404).json({ error: "Client not found" });
@@ -995,7 +1040,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get client knowledge (FAQ entries + long-form sections)
-  app.get("/api/super-admin/clients/:clientId/knowledge", requireAuth, async (req, res) => {
+  app.get("/api/super-admin/clients/:clientId/knowledge", requireSuperAdmin, async (req, res) => {
     try {
       if (req.params.clientId !== 'default-client') {
         return res.status(404).json({ error: "Client not found" });
@@ -1017,7 +1062,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Add FAQ entry
-  app.post("/api/super-admin/clients/:clientId/knowledge", requireAuth, async (req, res) => {
+  app.post("/api/super-admin/clients/:clientId/knowledge", requireSuperAdmin, async (req, res) => {
     try {
       if (req.params.clientId !== 'default-client') {
         return res.status(404).json({ error: "Client not found" });
@@ -1050,7 +1095,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update FAQ entry
-  app.put("/api/super-admin/clients/:clientId/knowledge/:faqId", requireAuth, async (req, res) => {
+  app.put("/api/super-admin/clients/:clientId/knowledge/:faqId", requireSuperAdmin, async (req, res) => {
     try {
       if (req.params.clientId !== 'default-client') {
         return res.status(404).json({ error: "Client not found" });
@@ -1076,7 +1121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete FAQ entry
-  app.delete("/api/super-admin/clients/:clientId/knowledge/:faqId", requireAuth, async (req, res) => {
+  app.delete("/api/super-admin/clients/:clientId/knowledge/:faqId", requireSuperAdmin, async (req, res) => {
     try {
       if (req.params.clientId !== 'default-client') {
         return res.status(404).json({ error: "Client not found" });
@@ -1096,7 +1141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update long-form knowledge
-  app.put("/api/super-admin/clients/:clientId/knowledge/long-form", requireAuth, async (req, res) => {
+  app.put("/api/super-admin/clients/:clientId/knowledge/long-form", requireSuperAdmin, async (req, res) => {
     try {
       if (req.params.clientId !== 'default-client') {
         return res.status(404).json({ error: "Client not found" });
@@ -1121,7 +1166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get appointment types config
-  app.get("/api/super-admin/clients/:clientId/appointment-types", requireAuth, async (req, res) => {
+  app.get("/api/super-admin/clients/:clientId/appointment-types", requireSuperAdmin, async (req, res) => {
     try {
       if (req.params.clientId !== 'default-client') {
         return res.status(404).json({ error: "Client not found" });
@@ -1135,7 +1180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update appointment types config (batch)
-  app.put("/api/super-admin/clients/:clientId/appointment-types", requireAuth, async (req, res) => {
+  app.put("/api/super-admin/clients/:clientId/appointment-types", requireSuperAdmin, async (req, res) => {
     try {
       if (req.params.clientId !== 'default-client') {
         return res.status(404).json({ error: "Client not found" });
@@ -1156,7 +1201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get pre-intake config
-  app.get("/api/super-admin/clients/:clientId/pre-intake", requireAuth, async (req, res) => {
+  app.get("/api/super-admin/clients/:clientId/pre-intake", requireSuperAdmin, async (req, res) => {
     try {
       if (req.params.clientId !== 'default-client') {
         return res.status(404).json({ error: "Client not found" });
@@ -1170,7 +1215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update pre-intake config
-  app.put("/api/super-admin/clients/:clientId/pre-intake", requireAuth, async (req, res) => {
+  app.put("/api/super-admin/clients/:clientId/pre-intake", requireSuperAdmin, async (req, res) => {
     try {
       if (req.params.clientId !== 'default-client') {
         return res.status(404).json({ error: "Client not found" });
@@ -1191,7 +1236,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get notification settings
-  app.get("/api/super-admin/clients/:clientId/notifications", requireAuth, async (req, res) => {
+  app.get("/api/super-admin/clients/:clientId/notifications", requireSuperAdmin, async (req, res) => {
     try {
       if (req.params.clientId !== 'default-client') {
         return res.status(404).json({ error: "Client not found" });
@@ -1219,7 +1264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update notification settings
-  app.put("/api/super-admin/clients/:clientId/notifications", requireAuth, async (req, res) => {
+  app.put("/api/super-admin/clients/:clientId/notifications", requireSuperAdmin, async (req, res) => {
     try {
       if (req.params.clientId !== 'default-client') {
         return res.status(404).json({ error: "Client not found" });
