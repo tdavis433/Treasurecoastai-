@@ -917,6 +917,323 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // =============================================
+  // SUPER ADMIN API ENDPOINTS
+  // =============================================
+
+  // Get list of clients (currently single-tenant with default-client only)
+  app.get("/api/super-admin/clients", requireAuth, async (req, res) => {
+    try {
+      const settings = await storage.getSettings();
+      const clients = settings ? [{
+        id: 'default-client',
+        name: settings.businessName,
+        status: settings.status || 'active'
+      }] : [];
+      res.json(clients);
+    } catch (error) {
+      console.error("Get clients error:", error);
+      res.status(500).json({ error: "Failed to fetch clients" });
+    }
+  });
+
+  // Get client general settings
+  app.get("/api/super-admin/clients/:clientId/general", requireAuth, async (req, res) => {
+    try {
+      if (req.params.clientId !== 'default-client') {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      const settings = await storage.getSettings();
+      res.json({
+        businessName: settings?.businessName || '',
+        tagline: settings?.tagline || '',
+        businessType: settings?.businessType || 'Sober Living',
+        primaryPhone: settings?.primaryPhone || '',
+        primaryEmail: settings?.primaryEmail || '',
+        websiteUrl: settings?.websiteUrl || '',
+        city: settings?.city || '',
+        state: settings?.state || '',
+        timezone: settings?.timezone || 'America/New_York',
+        defaultContactMethod: settings?.defaultContactMethod || 'phone',
+        internalNotes: settings?.internalNotes || '',
+        status: settings?.status || 'active'
+      });
+    } catch (error) {
+      console.error("Get general settings error:", error);
+      res.status(500).json({ error: "Failed to fetch general settings" });
+    }
+  });
+
+  // Update client general settings
+  app.put("/api/super-admin/clients/:clientId/general", requireAuth, async (req, res) => {
+    try {
+      if (req.params.clientId !== 'default-client') {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      const { businessName, tagline, businessType, primaryPhone, primaryEmail, 
+              websiteUrl, city, state, timezone, defaultContactMethod, internalNotes, status } = req.body;
+      
+      const settings = await storage.updateSettings({
+        businessName,
+        tagline,
+        businessType,
+        primaryPhone,
+        primaryEmail,
+        websiteUrl,
+        city,
+        state,
+        timezone,
+        defaultContactMethod,
+        internalNotes,
+        status
+      });
+      res.json(settings);
+    } catch (error) {
+      console.error("Update general settings error:", error);
+      res.status(400).json({ error: "Failed to update general settings" });
+    }
+  });
+
+  // Get client knowledge (FAQ entries + long-form sections)
+  app.get("/api/super-admin/clients/:clientId/knowledge", requireAuth, async (req, res) => {
+    try {
+      if (req.params.clientId !== 'default-client') {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      const settings = await storage.getSettings();
+      res.json({
+        faqEntries: settings?.faqEntries || [],
+        longFormKnowledge: settings?.longFormKnowledge || {
+          aboutProgram: '',
+          houseRules: '',
+          whoItsFor: '',
+          paymentInfo: ''
+        }
+      });
+    } catch (error) {
+      console.error("Get knowledge error:", error);
+      res.status(500).json({ error: "Failed to fetch knowledge" });
+    }
+  });
+
+  // Add FAQ entry
+  app.post("/api/super-admin/clients/:clientId/knowledge", requireAuth, async (req, res) => {
+    try {
+      if (req.params.clientId !== 'default-client') {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      const { category, question, answer, active = true } = req.body;
+      
+      if (!category || !question || !answer) {
+        return res.status(400).json({ error: "Category, question, and answer are required" });
+      }
+      
+      const settings = await storage.getSettings();
+      const faqEntries = settings?.faqEntries || [];
+      
+      const newEntry = {
+        id: `faq-${Date.now()}`,
+        category,
+        question,
+        answer,
+        active
+      };
+      
+      const updatedEntries = [...faqEntries, newEntry];
+      await storage.updateSettings({ faqEntries: updatedEntries });
+      
+      res.json(newEntry);
+    } catch (error) {
+      console.error("Add FAQ error:", error);
+      res.status(400).json({ error: "Failed to add FAQ" });
+    }
+  });
+
+  // Update FAQ entry
+  app.put("/api/super-admin/clients/:clientId/knowledge/:faqId", requireAuth, async (req, res) => {
+    try {
+      if (req.params.clientId !== 'default-client') {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      const settings = await storage.getSettings();
+      const faqEntries = settings?.faqEntries || [];
+      
+      const faqIndex = faqEntries.findIndex((f: any) => f.id === req.params.faqId);
+      if (faqIndex === -1) {
+        return res.status(404).json({ error: "FAQ not found" });
+      }
+      
+      const updatedEntry = { ...faqEntries[faqIndex], ...req.body, id: req.params.faqId };
+      faqEntries[faqIndex] = updatedEntry;
+      
+      await storage.updateSettings({ faqEntries });
+      res.json(updatedEntry);
+    } catch (error) {
+      console.error("Update FAQ error:", error);
+      res.status(400).json({ error: "Failed to update FAQ" });
+    }
+  });
+
+  // Delete FAQ entry
+  app.delete("/api/super-admin/clients/:clientId/knowledge/:faqId", requireAuth, async (req, res) => {
+    try {
+      if (req.params.clientId !== 'default-client') {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      const settings = await storage.getSettings();
+      const faqEntries = settings?.faqEntries || [];
+      
+      const updatedEntries = faqEntries.filter((f: any) => f.id !== req.params.faqId);
+      await storage.updateSettings({ faqEntries: updatedEntries });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete FAQ error:", error);
+      res.status(400).json({ error: "Failed to delete FAQ" });
+    }
+  });
+
+  // Update long-form knowledge
+  app.put("/api/super-admin/clients/:clientId/knowledge/long-form", requireAuth, async (req, res) => {
+    try {
+      if (req.params.clientId !== 'default-client') {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      const { aboutProgram, houseRules, whoItsFor, paymentInfo } = req.body;
+      const settings = await storage.getSettings();
+      
+      const longFormKnowledge = {
+        aboutProgram: aboutProgram ?? settings?.longFormKnowledge?.aboutProgram ?? '',
+        houseRules: houseRules ?? settings?.longFormKnowledge?.houseRules ?? '',
+        whoItsFor: whoItsFor ?? settings?.longFormKnowledge?.whoItsFor ?? '',
+        paymentInfo: paymentInfo ?? settings?.longFormKnowledge?.paymentInfo ?? ''
+      };
+      
+      await storage.updateSettings({ longFormKnowledge });
+      res.json(longFormKnowledge);
+    } catch (error) {
+      console.error("Update long-form knowledge error:", error);
+      res.status(400).json({ error: "Failed to update long-form knowledge" });
+    }
+  });
+
+  // Get appointment types config
+  app.get("/api/super-admin/clients/:clientId/appointment-types", requireAuth, async (req, res) => {
+    try {
+      if (req.params.clientId !== 'default-client') {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      const settings = await storage.getSettings();
+      res.json(settings?.appointmentTypesConfig || []);
+    } catch (error) {
+      console.error("Get appointment types error:", error);
+      res.status(500).json({ error: "Failed to fetch appointment types" });
+    }
+  });
+
+  // Update appointment types config (batch)
+  app.put("/api/super-admin/clients/:clientId/appointment-types", requireAuth, async (req, res) => {
+    try {
+      if (req.params.clientId !== 'default-client') {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      const appointmentTypesConfig = req.body;
+      
+      if (!Array.isArray(appointmentTypesConfig)) {
+        return res.status(400).json({ error: "Appointment types must be an array" });
+      }
+      
+      await storage.updateSettings({ appointmentTypesConfig });
+      res.json(appointmentTypesConfig);
+    } catch (error) {
+      console.error("Update appointment types error:", error);
+      res.status(400).json({ error: "Failed to update appointment types" });
+    }
+  });
+
+  // Get pre-intake config
+  app.get("/api/super-admin/clients/:clientId/pre-intake", requireAuth, async (req, res) => {
+    try {
+      if (req.params.clientId !== 'default-client') {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      const settings = await storage.getSettings();
+      res.json(settings?.preIntakeConfig || []);
+    } catch (error) {
+      console.error("Get pre-intake config error:", error);
+      res.status(500).json({ error: "Failed to fetch pre-intake config" });
+    }
+  });
+
+  // Update pre-intake config
+  app.put("/api/super-admin/clients/:clientId/pre-intake", requireAuth, async (req, res) => {
+    try {
+      if (req.params.clientId !== 'default-client') {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      const preIntakeConfig = req.body;
+      
+      if (!Array.isArray(preIntakeConfig)) {
+        return res.status(400).json({ error: "Pre-intake config must be an array" });
+      }
+      
+      await storage.updateSettings({ preIntakeConfig });
+      res.json(preIntakeConfig);
+    } catch (error) {
+      console.error("Update pre-intake config error:", error);
+      res.status(400).json({ error: "Failed to update pre-intake config" });
+    }
+  });
+
+  // Get notification settings
+  app.get("/api/super-admin/clients/:clientId/notifications", requireAuth, async (req, res) => {
+    try {
+      if (req.params.clientId !== 'default-client') {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      const settings = await storage.getSettings();
+      res.json(settings?.notificationSettings || {
+        staffEmails: [],
+        staffPhones: [],
+        staffChannelPreference: 'email_only',
+        eventToggles: {
+          newAppointmentEmail: true,
+          newAppointmentSms: false,
+          newPreIntakeEmail: false,
+          sameDayReminder: false,
+        },
+        templates: {
+          staffEmailSubject: 'New Appointment Request from {{leadName}}',
+          staffEmailBody: 'A new {{appointmentType}} appointment has been requested by {{leadName}} for {{preferredTime}}.',
+        },
+      });
+    } catch (error) {
+      console.error("Get notification settings error:", error);
+      res.status(500).json({ error: "Failed to fetch notification settings" });
+    }
+  });
+
+  // Update notification settings
+  app.put("/api/super-admin/clients/:clientId/notifications", requireAuth, async (req, res) => {
+    try {
+      if (req.params.clientId !== 'default-client') {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      const notificationSettings = req.body;
+      await storage.updateSettings({ notificationSettings });
+      res.json(notificationSettings);
+    } catch (error) {
+      console.error("Update notification settings error:", error);
+      res.status(400).json({ error: "Failed to update notification settings" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

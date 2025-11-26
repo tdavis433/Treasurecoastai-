@@ -39,12 +39,67 @@ export const clientSettings = pgTable("client_settings", {
   businessName: text("business_name").notNull().default("The Faith House"),
   tagline: text("tagline").notNull().default("Here to support your next step"),
   
+  businessType: text("business_type").default("Sober Living"),
+  primaryPhone: text("primary_phone"),
+  primaryEmail: text("primary_email"),
+  websiteUrl: text("website_url"),
+  city: text("city"),
+  state: text("state"),
+  timezone: text("timezone").default("America/New_York"),
+  defaultContactMethod: text("default_contact_method").default("phone"),
+  internalNotes: text("internal_notes"),
+  status: text("status").notNull().default("active"),
+  
   knowledgeBase: json("knowledge_base").$type<{
     about: string;
     requirements: string;
     pricing: string;
     application: string;
   }>().notNull(),
+  
+  faqEntries: json("faq_entries").$type<Array<{
+    id: string;
+    category: string;
+    question: string;
+    answer: string;
+    active: boolean;
+  }>>().default([]),
+  
+  longFormKnowledge: json("long_form_knowledge").$type<{
+    aboutProgram: string;
+    houseRules: string;
+    whoItsFor: string;
+    paymentInfo: string;
+  }>().default({ aboutProgram: '', houseRules: '', whoItsFor: '', paymentInfo: '' }),
+  
+  appointmentTypesConfig: json("appointment_types_config").$type<Array<{
+    id: string;
+    label: string;
+    description: string;
+    durationMinutes: number;
+    category: string;
+    active: boolean;
+  }>>().default([
+    { id: 'tour', label: 'Schedule a Tour', description: 'Visit our facility in person', durationMinutes: 30, category: 'lead', active: true },
+    { id: 'phone', label: 'Phone Call', description: 'Speak with our team', durationMinutes: 15, category: 'lead', active: true },
+    { id: 'family', label: 'Family Info Call', description: 'Information for family members', durationMinutes: 20, category: 'lead', active: true },
+  ]),
+  
+  preIntakeConfig: json("pre_intake_config").$type<Array<{
+    id: string;
+    label: string;
+    internalKey: string;
+    type: 'single_choice' | 'multi_choice' | 'text';
+    options: Array<{ value: string; label: string }>;
+    required: boolean;
+    order: number;
+    active: boolean;
+  }>>().default([
+    { id: 'forWho', label: 'Who is this for?', internalKey: 'lookingFor', type: 'single_choice', options: [{ value: 'self', label: 'Myself' }, { value: 'loved_one', label: 'A loved one' }], required: true, order: 1, active: true },
+    { id: 'sobriety', label: 'What is your current sobriety status?', internalKey: 'sobrietyStatus', type: 'single_choice', options: [{ value: 'sober', label: 'Currently sober' }, { value: 'in_treatment', label: 'In treatment' }, { value: 'seeking', label: 'Seeking help' }], required: true, order: 2, active: true },
+    { id: 'support', label: 'Do you have financial support?', internalKey: 'hasSupport', type: 'single_choice', options: [{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'partial', label: 'Partial' }], required: true, order: 3, active: true },
+    { id: 'timeline', label: 'When are you looking to move in?', internalKey: 'timeline', type: 'single_choice', options: [{ value: 'immediately', label: 'Immediately' }, { value: 'this_week', label: 'This week' }, { value: 'this_month', label: 'This month' }, { value: 'exploring', label: 'Just exploring' }], required: true, order: 4, active: true },
+  ]),
   
   operatingHours: json("operating_hours").$type<{
     enabled: boolean;
@@ -65,6 +120,36 @@ export const clientSettings = pgTable("client_settings", {
   notificationPhone: text("notification_phone"),
   enableEmailNotifications: boolean("enable_email_notifications").notNull().default(false),
   enableSmsNotifications: boolean("enable_sms_notifications").notNull().default(false),
+  
+  notificationSettings: json("notification_settings").$type<{
+    staffEmails: string[];
+    staffPhones: string[];
+    staffChannelPreference: 'email_only' | 'sms_only' | 'email_and_sms';
+    eventToggles: {
+      newAppointmentEmail: boolean;
+      newAppointmentSms: boolean;
+      newPreIntakeEmail: boolean;
+      sameDayReminder: boolean;
+    };
+    templates: {
+      staffEmailSubject: string;
+      staffEmailBody: string;
+    };
+  }>().default({
+    staffEmails: [],
+    staffPhones: [],
+    staffChannelPreference: 'email_only',
+    eventToggles: {
+      newAppointmentEmail: true,
+      newAppointmentSms: false,
+      newPreIntakeEmail: false,
+      sameDayReminder: false,
+    },
+    templates: {
+      staffEmailSubject: 'New Appointment Request from {{leadName}}',
+      staffEmailBody: 'A new {{appointmentType}} appointment has been requested by {{leadName}} for {{preferredTime}}.',
+    },
+  }),
   
   logoUrl: text("logo_url"),
   primaryColor: text("primary_color").notNull().default("#1FA2A8"),

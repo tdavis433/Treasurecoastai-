@@ -155,37 +155,69 @@ export class DbStorage implements IStorage {
     const [settings] = await db.select().from(clientSettings).where(eq(clientSettings.clientId, 'default-client')).limit(1);
     
     if (!settings) {
-      const defaultSettings: InsertClientSettings = {
-        businessName: "The Faith House",
-        tagline: "Here to support your next step",
-        knowledgeBase: {
-          about: "The Faith House is a structured sober-living environment designed to support individuals in their recovery journey. We provide safe, structured housing with accountability, mandatory attendance at recovery meetings, established curfews and house rules, chore responsibilities and community living, job search support and employment expectations, and a respectful, supportive community environment.",
-          requirements: "Requirements for residents: Maintain complete sobriety (no alcohol or drugs), attend required recovery meetings regularly, respect curfew times, respect all staff and fellow residents, maintain cleanliness in personal and common areas, work or actively seek employment, and follow all house rules and guidelines.",
-          pricing: "Pricing covers housing, utilities, and support services. Exact pricing varies and should be confirmed with staff during the application process.",
-          application: "Application process typically involves providing personal information, background details, emergency contact, and agreement to follow all house rules and expectations."
-        },
-        operatingHours: {
-          enabled: false,
-          timezone: "America/New_York",
-          schedule: {
-            monday: { open: "09:00", close: "17:00", enabled: true },
-            tuesday: { open: "09:00", close: "17:00", enabled: true },
-            wednesday: { open: "09:00", close: "17:00", enabled: true },
-            thursday: { open: "09:00", close: "17:00", enabled: true },
-            friday: { open: "09:00", close: "17:00", enabled: true },
-            saturday: { open: "10:00", close: "14:00", enabled: false },
-            sunday: { open: "10:00", close: "14:00", enabled: false }
-          },
-          afterHoursMessage: "Thank you for reaching out! Our staff will respond first thing during our next business hours."
-        },
-        primaryColor: "#1FA2A8",
-        enableEmailNotifications: false,
-        enableSmsNotifications: false
-      };
-      
       const [created] = await db
         .insert(clientSettings)
-        .values({ ...defaultSettings, clientId: 'default-client' })
+        .values({
+          clientId: 'default-client',
+          businessName: "The Faith House",
+          tagline: "Here to support your next step",
+          businessType: "Sober Living",
+          timezone: "America/New_York",
+          defaultContactMethod: "phone",
+          status: "active",
+          knowledgeBase: {
+            about: "The Faith House is a structured sober-living environment designed to support individuals in their recovery journey. We provide safe, structured housing with accountability, mandatory attendance at recovery meetings, established curfews and house rules, chore responsibilities and community living, job search support and employment expectations, and a respectful, supportive community environment.",
+            requirements: "Requirements for residents: Maintain complete sobriety (no alcohol or drugs), attend required recovery meetings regularly, respect curfew times, respect all staff and fellow residents, maintain cleanliness in personal and common areas, work or actively seek employment, and follow all house rules and guidelines.",
+            pricing: "Pricing covers housing, utilities, and support services. Exact pricing varies and should be confirmed with staff during the application process.",
+            application: "Application process typically involves providing personal information, background details, emergency contact, and agreement to follow all house rules and expectations."
+          },
+          faqEntries: [],
+          longFormKnowledge: { aboutProgram: '', houseRules: '', whoItsFor: '', paymentInfo: '' },
+          appointmentTypesConfig: [
+            { id: 'tour', label: 'Schedule a Tour', description: 'Visit our facility in person', durationMinutes: 30, category: 'lead', active: true },
+            { id: 'phone', label: 'Phone Call', description: 'Speak with our team', durationMinutes: 15, category: 'lead', active: true },
+            { id: 'family', label: 'Family Info Call', description: 'Information for family members', durationMinutes: 20, category: 'lead', active: true },
+          ],
+          preIntakeConfig: [
+            { id: 'forWho', label: 'Who is this for?', internalKey: 'lookingFor', type: 'single_choice' as const, options: [{ value: 'self', label: 'Myself' }, { value: 'loved_one', label: 'A loved one' }], required: true, order: 1, active: true },
+            { id: 'sobriety', label: 'What is your current sobriety status?', internalKey: 'sobrietyStatus', type: 'single_choice' as const, options: [{ value: 'sober', label: 'Currently sober' }, { value: 'in_treatment', label: 'In treatment' }, { value: 'seeking', label: 'Seeking help' }], required: true, order: 2, active: true },
+            { id: 'support', label: 'Do you have financial support?', internalKey: 'hasSupport', type: 'single_choice' as const, options: [{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'partial', label: 'Partial' }], required: true, order: 3, active: true },
+            { id: 'timeline', label: 'When are you looking to move in?', internalKey: 'timeline', type: 'single_choice' as const, options: [{ value: 'immediately', label: 'Immediately' }, { value: 'this_week', label: 'This week' }, { value: 'this_month', label: 'This month' }, { value: 'exploring', label: 'Just exploring' }], required: true, order: 4, active: true },
+          ],
+          operatingHours: {
+            enabled: false,
+            timezone: "America/New_York",
+            schedule: {
+              monday: { open: "09:00", close: "17:00", enabled: true },
+              tuesday: { open: "09:00", close: "17:00", enabled: true },
+              wednesday: { open: "09:00", close: "17:00", enabled: true },
+              thursday: { open: "09:00", close: "17:00", enabled: true },
+              friday: { open: "09:00", close: "17:00", enabled: true },
+              saturday: { open: "10:00", close: "14:00", enabled: false },
+              sunday: { open: "10:00", close: "14:00", enabled: false }
+            },
+            afterHoursMessage: "Thank you for reaching out! Our staff will respond first thing during our next business hours."
+          },
+          notificationSettings: {
+            staffEmails: [],
+            staffPhones: [],
+            staffChannelPreference: 'email_only' as const,
+            eventToggles: {
+              newAppointmentEmail: true,
+              newAppointmentSms: false,
+              newPreIntakeEmail: false,
+              sameDayReminder: false,
+            },
+            templates: {
+              staffEmailSubject: 'New Appointment Request from {{leadName}}',
+              staffEmailBody: 'A new {{appointmentType}} appointment has been requested by {{leadName}} for {{preferredTime}}.',
+            },
+          },
+          primaryColor: "#1FA2A8",
+          accentColor: "#F59E0B",
+          enableEmailNotifications: false,
+          enableSmsNotifications: false
+        })
         .returning();
       return created;
     }
@@ -197,16 +229,13 @@ export class DbStorage implements IStorage {
     const existing = await this.getSettings();
     
     if (!existing) {
-      const [created] = await db
-        .insert(clientSettings)
-        .values({ ...updates, clientId: 'default-client' } as InsertClientSettings)
-        .returning();
-      return created;
+      const defaultValues = await this.getSettings();
+      return defaultValues!;
     }
     
     const [updated] = await db
       .update(clientSettings)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...updates, updatedAt: new Date() } as any)
       .where(eq(clientSettings.id, existing.id))
       .returning();
     

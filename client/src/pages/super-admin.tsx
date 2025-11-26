@@ -3,12 +3,95 @@ import { GlassCard, GlassCardHeader, GlassCardTitle, GlassCardDescription, Glass
 import { NeonBadge } from "@/components/ui/neon-badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { Settings, Palette, Clock, Bell, BookOpen, LogOut, Send, AlertCircle, Shield, Trash2, Plus, X, Sparkles } from "lucide-react";
+import { 
+  Settings, Palette, Clock, Bell, BookOpen, LogOut, Send, AlertCircle, Shield, 
+  Trash2, Plus, X, Sparkles, Building2, Calendar, ClipboardList, Edit2, 
+  GripVertical, ChevronDown, ChevronUp, Save, Phone, Mail, Globe, MapPin
+} from "lucide-react";
 import { AdminLayout } from "@/components/admin-layout";
+import { Button } from "@/components/ui/button";
+
+interface Client {
+  id: string;
+  name: string;
+  status: string;
+}
+
+interface GeneralSettings {
+  businessName: string;
+  tagline: string;
+  businessType: string;
+  primaryPhone: string;
+  primaryEmail: string;
+  websiteUrl: string;
+  city: string;
+  state: string;
+  timezone: string;
+  defaultContactMethod: string;
+  internalNotes: string;
+  status: string;
+}
+
+interface FaqEntry {
+  id: string;
+  category: string;
+  question: string;
+  answer: string;
+  active: boolean;
+}
+
+interface LongFormKnowledge {
+  aboutProgram: string;
+  houseRules: string;
+  whoItsFor: string;
+  paymentInfo: string;
+}
+
+interface KnowledgeData {
+  faqEntries: FaqEntry[];
+  longFormKnowledge: LongFormKnowledge;
+}
+
+interface AppointmentType {
+  id: string;
+  label: string;
+  description: string;
+  durationMinutes: number;
+  category: string;
+  active: boolean;
+}
+
+interface PreIntakeQuestion {
+  id: string;
+  label: string;
+  internalKey: string;
+  type: 'single_choice' | 'multi_choice' | 'text';
+  options: Array<{ value: string; label: string }>;
+  required: boolean;
+  order: number;
+  active: boolean;
+}
+
+interface NotificationSettings {
+  staffEmails: string[];
+  staffPhones: string[];
+  staffChannelPreference: 'email_only' | 'sms_only' | 'email_and_sms';
+  eventToggles: {
+    newAppointmentEmail: boolean;
+    newAppointmentSms: boolean;
+    newPreIntakeEmail: boolean;
+    sameDayReminder: boolean;
+  };
+  templates: {
+    staffEmailSubject: string;
+    staffEmailBody: string;
+  };
+}
 
 interface ClientSettings {
   id: string;
@@ -33,18 +116,234 @@ interface ClientSettings {
   primaryColor: string;
 }
 
+const TIMEZONES = [
+  { value: 'America/New_York', label: 'Eastern Time (ET)' },
+  { value: 'America/Chicago', label: 'Central Time (CT)' },
+  { value: 'America/Denver', label: 'Mountain Time (MT)' },
+  { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
+  { value: 'America/Anchorage', label: 'Alaska Time (AKT)' },
+  { value: 'Pacific/Honolulu', label: 'Hawaii Time (HT)' },
+];
+
+const BUSINESS_TYPES = [
+  'Sober Living',
+  'Rehabilitation Center',
+  'Detox Center',
+  'Outpatient Treatment',
+  'Counseling Center',
+  'Barbershop',
+  'Gym',
+  'Healthcare',
+  'Other',
+];
+
+const FAQ_CATEGORIES = [
+  'Pricing',
+  'Requirements',
+  'Program',
+  'Contact Info',
+  'Application',
+  'General',
+];
+
 export default function SuperAdmin() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const [activeClientId, setActiveClientId] = useState<string>('default-client');
   
   const { data: authCheck, isLoading: authLoading } = useQuery<{ authenticated: boolean }>({
     queryKey: ["/api/auth/check"],
     retry: false,
   });
 
+  const { data: clients } = useQuery<Client[]>({
+    queryKey: ["/api/super-admin/clients"],
+    enabled: authCheck?.authenticated === true,
+  });
+
+  const { data: generalSettings, isLoading: generalLoading } = useQuery<GeneralSettings>({
+    queryKey: ["/api/super-admin/clients", activeClientId, "general"],
+    enabled: authCheck?.authenticated === true && !!activeClientId,
+  });
+
+  const { data: knowledgeData, isLoading: knowledgeLoading } = useQuery<KnowledgeData>({
+    queryKey: ["/api/super-admin/clients", activeClientId, "knowledge"],
+    enabled: authCheck?.authenticated === true && !!activeClientId,
+  });
+
+  const { data: appointmentTypes } = useQuery<AppointmentType[]>({
+    queryKey: ["/api/super-admin/clients", activeClientId, "appointment-types"],
+    enabled: authCheck?.authenticated === true && !!activeClientId,
+  });
+
+  const { data: preIntakeConfig } = useQuery<PreIntakeQuestion[]>({
+    queryKey: ["/api/super-admin/clients", activeClientId, "pre-intake"],
+    enabled: authCheck?.authenticated === true && !!activeClientId,
+  });
+
+  const { data: notificationSettings } = useQuery<NotificationSettings>({
+    queryKey: ["/api/super-admin/clients", activeClientId, "notifications"],
+    enabled: authCheck?.authenticated === true && !!activeClientId,
+  });
+
   const { data: settings, isLoading } = useQuery<ClientSettings>({
     queryKey: ["/api/settings"],
     enabled: authCheck?.authenticated === true,
+  });
+
+  const [generalForm, setGeneralForm] = useState<Partial<GeneralSettings>>({});
+  const [knowledgeForm, setKnowledgeForm] = useState<Partial<KnowledgeData>>({});
+  const [appointmentTypesForm, setAppointmentTypesForm] = useState<AppointmentType[]>([]);
+  const [preIntakeForm, setPreIntakeForm] = useState<PreIntakeQuestion[]>([]);
+  const [notificationsForm, setNotificationsForm] = useState<Partial<NotificationSettings>>({});
+  const [newEmailInput, setNewEmailInput] = useState("");
+  const [newPhoneInput, setNewPhoneInput] = useState("");
+  const [newFaq, setNewFaq] = useState({ category: '', question: '', answer: '' });
+  const [editingFaqId, setEditingFaqId] = useState<string | null>(null);
+  const [formData, setFormData] = useState<Partial<ClientSettings>>(settings || {});
+
+  useEffect(() => {
+    if (generalSettings) {
+      setGeneralForm(generalSettings);
+    }
+  }, [generalSettings]);
+
+  useEffect(() => {
+    if (knowledgeData) {
+      setKnowledgeForm(knowledgeData);
+    }
+  }, [knowledgeData]);
+
+  useEffect(() => {
+    if (appointmentTypes) {
+      setAppointmentTypesForm(appointmentTypes);
+    }
+  }, [appointmentTypes]);
+
+  useEffect(() => {
+    if (preIntakeConfig) {
+      setPreIntakeForm(preIntakeConfig);
+    }
+  }, [preIntakeConfig]);
+
+  useEffect(() => {
+    if (notificationSettings) {
+      setNotificationsForm(notificationSettings);
+    }
+  }, [notificationSettings]);
+
+  const updateGeneralMutation = useMutation({
+    mutationFn: async (data: Partial<GeneralSettings>) => {
+      const response = await apiRequest("PUT", `/api/super-admin/clients/${activeClientId}/general`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/clients", activeClientId, "general"] });
+      toast({ title: "Settings Saved", description: "General settings have been updated." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update settings.", variant: "destructive" });
+    },
+  });
+
+  const updateKnowledgeMutation = useMutation({
+    mutationFn: async (data: { longFormKnowledge: LongFormKnowledge }) => {
+      const response = await apiRequest("PUT", `/api/super-admin/clients/${activeClientId}/knowledge/long-form`, data.longFormKnowledge);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/clients", activeClientId, "knowledge"] });
+      toast({ title: "Knowledge Updated", description: "Long-form knowledge sections have been saved." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update knowledge.", variant: "destructive" });
+    },
+  });
+
+  const addFaqMutation = useMutation({
+    mutationFn: async (faq: { category: string; question: string; answer: string }) => {
+      const response = await apiRequest("POST", `/api/super-admin/clients/${activeClientId}/knowledge`, faq);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/clients", activeClientId, "knowledge"] });
+      setNewFaq({ category: '', question: '', answer: '' });
+      toast({ title: "FAQ Added", description: "New FAQ entry has been created." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to add FAQ.", variant: "destructive" });
+    },
+  });
+
+  const updateFaqMutation = useMutation({
+    mutationFn: async ({ faqId, data }: { faqId: string; data: Partial<FaqEntry> }) => {
+      const response = await apiRequest("PUT", `/api/super-admin/clients/${activeClientId}/knowledge/${faqId}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/clients", activeClientId, "knowledge"] });
+      setEditingFaqId(null);
+      toast({ title: "FAQ Updated", description: "FAQ entry has been updated." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update FAQ.", variant: "destructive" });
+    },
+  });
+
+  const deleteFaqMutation = useMutation({
+    mutationFn: async (faqId: string) => {
+      const response = await apiRequest("DELETE", `/api/super-admin/clients/${activeClientId}/knowledge/${faqId}`, {});
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/clients", activeClientId, "knowledge"] });
+      toast({ title: "FAQ Deleted", description: "FAQ entry has been removed." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete FAQ.", variant: "destructive" });
+    },
+  });
+
+  const updateAppointmentTypesMutation = useMutation({
+    mutationFn: async (types: AppointmentType[]) => {
+      const response = await apiRequest("PUT", `/api/super-admin/clients/${activeClientId}/appointment-types`, types);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/clients", activeClientId, "appointment-types"] });
+      toast({ title: "Appointment Types Saved", description: "Configuration has been updated." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update appointment types.", variant: "destructive" });
+    },
+  });
+
+  const updatePreIntakeMutation = useMutation({
+    mutationFn: async (config: PreIntakeQuestion[]) => {
+      const response = await apiRequest("PUT", `/api/super-admin/clients/${activeClientId}/pre-intake`, config);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/clients", activeClientId, "pre-intake"] });
+      toast({ title: "Pre-Intake Config Saved", description: "Configuration has been updated." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update pre-intake config.", variant: "destructive" });
+    },
+  });
+
+  const updateNotificationsMutation = useMutation({
+    mutationFn: async (data: NotificationSettings) => {
+      const response = await apiRequest("PUT", `/api/super-admin/clients/${activeClientId}/notifications`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/clients", activeClientId, "notifications"] });
+      toast({ title: "Notifications Saved", description: "Notification settings have been updated." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update notifications.", variant: "destructive" });
+    },
   });
 
   const logoutMutation = useMutation({
@@ -53,56 +352,25 @@ export default function SuperAdmin() {
       return response.json();
     },
     onSuccess: () => {
-      toast({
-        title: "Logged out",
-        description: "You have been logged out successfully.",
-      });
+      toast({ title: "Logged out", description: "You have been logged out successfully." });
       setLocation("/login");
     },
   });
 
-  const [formData, setFormData] = useState<Partial<ClientSettings>>(settings || {});
-  const [newEmailInput, setNewEmailInput] = useState("");
-  
-  const getEmailList = (): string[] => {
-    const emails = formData.notificationEmail || settings?.notificationEmail || "";
-    return emails.split(",").map(e => e.trim()).filter(e => e.length > 0);
-  };
-  
-  const addEmail = () => {
-    const email = newEmailInput.trim().toLowerCase();
-    if (!email) return;
-    
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      toast({
-        title: "Invalid Email",
-        description: "Please enter a valid email address.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    const currentEmails = getEmailList();
-    if (currentEmails.includes(email)) {
-      toast({
-        title: "Duplicate Email",
-        description: "This email is already in the list.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    const updatedEmails = [...currentEmails, email].join(", ");
-    setFormData({ ...formData, notificationEmail: updatedEmails });
-    setNewEmailInput("");
-  };
-  
-  const removeEmail = (emailToRemove: string) => {
-    const currentEmails = getEmailList();
-    const updatedEmails = currentEmails.filter(e => e !== emailToRemove).join(", ");
-    setFormData({ ...formData, notificationEmail: updatedEmails || null });
-  };
+  const testNotificationMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/test-notification", {});
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to send test notification");
+      return data;
+    },
+    onSuccess: (data) => {
+      toast({ title: "Test Notification Sent", description: data.message || "Check your email inbox!" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Test Failed", description: error.message || "Failed to send test notification.", variant: "destructive" });
+    },
+  });
 
   const updateMutation = useMutation({
     mutationFn: async (data: Partial<ClientSettings>) => {
@@ -111,43 +379,10 @@ export default function SuperAdmin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
-      toast({
-        title: "Settings Updated",
-        description: "Your changes have been saved successfully.",
-      });
+      toast({ title: "Settings Updated", description: "Your changes have been saved successfully." });
     },
     onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to update settings. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const testNotificationMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/test-notification", {});
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to send test notification");
-      }
-      
-      return data;
-    },
-    onSuccess: (data) => {
-      toast({
-        title: "Test Notification Sent",
-        description: data.message || "Check your email inbox!",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Test Failed",
-        description: error.message || "Failed to send test notification. Check your settings.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Failed to update settings. Please try again.", variant: "destructive" });
     },
   });
 
@@ -157,6 +392,76 @@ export default function SuperAdmin() {
 
   const handleTestNotification = () => {
     testNotificationMutation.mutate();
+  };
+
+  const addStaffEmail = () => {
+    const email = newEmailInput.trim().toLowerCase();
+    if (!email) return;
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
+      return;
+    }
+    
+    const currentEmails = notificationsForm.staffEmails || [];
+    if (currentEmails.includes(email)) {
+      toast({ title: "Duplicate Email", description: "This email is already in the list.", variant: "destructive" });
+      return;
+    }
+    
+    setNotificationsForm({ ...notificationsForm, staffEmails: [...currentEmails, email] });
+    setNewEmailInput("");
+  };
+
+  const removeStaffEmail = (emailToRemove: string) => {
+    const currentEmails = notificationsForm.staffEmails || [];
+    setNotificationsForm({ ...notificationsForm, staffEmails: currentEmails.filter(e => e !== emailToRemove) });
+  };
+
+  const addStaffPhone = () => {
+    const phone = newPhoneInput.trim();
+    if (!phone) return;
+    
+    const currentPhones = notificationsForm.staffPhones || [];
+    if (currentPhones.includes(phone)) {
+      toast({ title: "Duplicate Phone", description: "This phone is already in the list.", variant: "destructive" });
+      return;
+    }
+    
+    setNotificationsForm({ ...notificationsForm, staffPhones: [...currentPhones, phone] });
+    setNewPhoneInput("");
+  };
+
+  const removeStaffPhone = (phoneToRemove: string) => {
+    const currentPhones = notificationsForm.staffPhones || [];
+    setNotificationsForm({ ...notificationsForm, staffPhones: currentPhones.filter(p => p !== phoneToRemove) });
+  };
+
+  const handleAddAppointmentType = () => {
+    const newType: AppointmentType = {
+      id: `apt-${Date.now()}`,
+      label: 'New Appointment Type',
+      description: '',
+      durationMinutes: 30,
+      category: 'lead',
+      active: true,
+    };
+    setAppointmentTypesForm([...appointmentTypesForm, newType]);
+  };
+
+  const handleAddPreIntakeQuestion = () => {
+    const newQuestion: PreIntakeQuestion = {
+      id: `q-${Date.now()}`,
+      label: 'New Question',
+      internalKey: `custom_${Date.now()}`,
+      type: 'single_choice',
+      options: [{ value: 'option1', label: 'Option 1' }],
+      required: true,
+      order: preIntakeForm.length + 1,
+      active: true,
+    };
+    setPreIntakeForm([...preIntakeForm, newQuestion]);
   };
 
   useEffect(() => {
@@ -174,7 +479,7 @@ export default function SuperAdmin() {
     }
   }, [authCheck, authLoading, setLocation]);
 
-  if (authLoading || isLoading || !settings) {
+  if (authLoading || isLoading || generalLoading) {
     return (
       <AdminLayout>
         <div className="flex items-center justify-center h-64">
@@ -191,21 +496,51 @@ export default function SuperAdmin() {
     return null;
   }
 
+  const activeClient = clients?.find(c => c.id === activeClientId);
+
   return (
     <AdminLayout>
       <div className="space-y-8">
-        {/* Page Header */}
-        <div>
-          <h2 className="text-3xl font-bold text-white" data-testid="text-super-admin-title">
-            Settings
-          </h2>
-          <p className="text-white/55 mt-1">
-            Configure chatbot settings for your clients
-          </p>
+        {/* Page Header with Client Selector */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-bold text-white" data-testid="text-super-admin-title">
+              Super Admin
+            </h2>
+            <p className="text-white/55 mt-1">
+              Configure client chatbot settings and behavior
+            </p>
+          </div>
+          
+          {/* Client Selector */}
+          <div className="flex items-center gap-3">
+            <Building2 className="h-5 w-5 text-cyan-400" />
+            <Select value={activeClientId} onValueChange={setActiveClientId}>
+              <SelectTrigger className="w-[200px] bg-white/5 border-white/10 text-white" data-testid="select-client">
+                <SelectValue placeholder="Select client" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#0B0E13] border-white/10">
+                {clients?.map(client => (
+                  <SelectItem 
+                    key={client.id} 
+                    value={client.id}
+                    className="text-white hover:bg-white/10"
+                  >
+                    <span className="flex items-center gap-2">
+                      {client.name}
+                      <NeonBadge variant={client.status === 'active' ? 'success' : 'default'} className="text-xs">
+                        {client.status}
+                      </NeonBadge>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <Tabs defaultValue="general" className="space-y-6">
-          {/* Tabs Navigation - using shadcn Tabs for full accessibility */}
+          {/* Tabs Navigation */}
           <TabsList className="flex flex-wrap gap-2 h-auto p-1 bg-white/5 rounded-xl border border-white/10">
             <TabsTrigger 
               value="general" 
@@ -222,6 +557,14 @@ export default function SuperAdmin() {
             >
               <BookOpen className="h-4 w-4" />
               Knowledge
+            </TabsTrigger>
+            <TabsTrigger 
+              value="flows" 
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500/20 data-[state=active]:to-blue-500/20 data-[state=active]:text-cyan-400 data-[state=active]:border data-[state=active]:border-cyan-400/30 data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white data-[state=inactive]:hover:bg-white/5 transition-all"
+              data-testid="tab-flows"
+            >
+              <ClipboardList className="h-4 w-4" />
+              Flows
             </TabsTrigger>
             <TabsTrigger 
               value="hours" 
@@ -257,124 +600,639 @@ export default function SuperAdmin() {
             </TabsTrigger>
           </TabsList>
 
-          {/* General Tab */}
+          {/* General Tab - Expanded */}
           <TabsContent value="general" className="space-y-6">
             <GlassCard>
               <GlassCardHeader>
-                <GlassCardTitle>General Settings</GlassCardTitle>
-                <GlassCardDescription>Configure basic business information</GlassCardDescription>
+                <GlassCardTitle>Business Profile</GlassCardTitle>
+                <GlassCardDescription>Configure the client's business information</GlassCardDescription>
               </GlassCardHeader>
               <GlassCardContent className="space-y-6">
-                <div className="space-y-3">
-                  <label className="text-sm font-medium text-white/55">Business Name</label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-2.5 rounded-xl glass-input"
-                    data-testid="input-business-name"
-                    value={formData.businessName || settings.businessName}
-                    onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
-                    placeholder="The Faith House"
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium text-white/55">Business Name</label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-2.5 rounded-xl glass-input"
+                      data-testid="input-business-name"
+                      value={generalForm.businessName || ''}
+                      onChange={(e) => setGeneralForm({ ...generalForm, businessName: e.target.value })}
+                      placeholder="The Faith House"
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium text-white/55">Tagline</label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-2.5 rounded-xl glass-input"
+                      data-testid="input-tagline"
+                      value={generalForm.tagline || ''}
+                      onChange={(e) => setGeneralForm({ ...generalForm, tagline: e.target.value })}
+                      placeholder="Here to support your next step"
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium text-white/55">Business Type</label>
+                    <Select 
+                      value={generalForm.businessType || 'Sober Living'} 
+                      onValueChange={(value) => setGeneralForm({ ...generalForm, businessType: value })}
+                    >
+                      <SelectTrigger className="w-full bg-white/5 border-white/10 text-white" data-testid="select-business-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#0B0E13] border-white/10">
+                        {BUSINESS_TYPES.map(type => (
+                          <SelectItem key={type} value={type} className="text-white hover:bg-white/10">{type}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium text-white/55">Status</label>
+                    <Select 
+                      value={generalForm.status || 'active'} 
+                      onValueChange={(value) => setGeneralForm({ ...generalForm, status: value })}
+                    >
+                      <SelectTrigger className="w-full bg-white/5 border-white/10 text-white" data-testid="select-status">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#0B0E13] border-white/10">
+                        <SelectItem value="active" className="text-white hover:bg-white/10">Active</SelectItem>
+                        <SelectItem value="paused" className="text-white hover:bg-white/10">Paused</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="space-y-3">
-                  <label className="text-sm font-medium text-white/55">Tagline</label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-2.5 rounded-xl glass-input"
-                    data-testid="input-tagline"
-                    value={formData.tagline || settings.tagline}
-                    onChange={(e) => setFormData({ ...formData, tagline: e.target.value })}
-                    placeholder="Here to support your next step"
-                  />
+
+                <div className="border-t border-white/10 pt-6">
+                  <h4 className="text-sm font-medium text-white/85 mb-4 flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-cyan-400" />
+                    Contact Information
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium text-white/55">Primary Phone</label>
+                      <input
+                        type="tel"
+                        className="w-full px-4 py-2.5 rounded-xl glass-input"
+                        data-testid="input-primary-phone"
+                        value={generalForm.primaryPhone || ''}
+                        onChange={(e) => setGeneralForm({ ...generalForm, primaryPhone: e.target.value })}
+                        placeholder="(555) 123-4567"
+                      />
+                    </div>
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium text-white/55">Primary Email</label>
+                      <input
+                        type="email"
+                        className="w-full px-4 py-2.5 rounded-xl glass-input"
+                        data-testid="input-primary-email"
+                        value={generalForm.primaryEmail || ''}
+                        onChange={(e) => setGeneralForm({ ...generalForm, primaryEmail: e.target.value })}
+                        placeholder="info@example.com"
+                      />
+                    </div>
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium text-white/55">Website URL</label>
+                      <input
+                        type="url"
+                        className="w-full px-4 py-2.5 rounded-xl glass-input"
+                        data-testid="input-website-url"
+                        value={generalForm.websiteUrl || ''}
+                        onChange={(e) => setGeneralForm({ ...generalForm, websiteUrl: e.target.value })}
+                        placeholder="https://example.com"
+                      />
+                    </div>
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium text-white/55">Default Contact Method</label>
+                      <Select 
+                        value={generalForm.defaultContactMethod || 'phone'} 
+                        onValueChange={(value) => setGeneralForm({ ...generalForm, defaultContactMethod: value })}
+                      >
+                        <SelectTrigger className="w-full bg-white/5 border-white/10 text-white" data-testid="select-contact-method">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#0B0E13] border-white/10">
+                          <SelectItem value="phone" className="text-white hover:bg-white/10">Phone</SelectItem>
+                          <SelectItem value="text" className="text-white hover:bg-white/10">Text</SelectItem>
+                          <SelectItem value="email" className="text-white hover:bg-white/10">Email</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-white/10 pt-6">
+                  <h4 className="text-sm font-medium text-white/85 mb-4 flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-cyan-400" />
+                    Location
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium text-white/55">City</label>
+                      <input
+                        type="text"
+                        className="w-full px-4 py-2.5 rounded-xl glass-input"
+                        data-testid="input-city"
+                        value={generalForm.city || ''}
+                        onChange={(e) => setGeneralForm({ ...generalForm, city: e.target.value })}
+                        placeholder="City"
+                      />
+                    </div>
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium text-white/55">State</label>
+                      <input
+                        type="text"
+                        className="w-full px-4 py-2.5 rounded-xl glass-input"
+                        data-testid="input-state"
+                        value={generalForm.state || ''}
+                        onChange={(e) => setGeneralForm({ ...generalForm, state: e.target.value })}
+                        placeholder="State"
+                      />
+                    </div>
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium text-white/55">Timezone</label>
+                      <Select 
+                        value={generalForm.timezone || 'America/New_York'} 
+                        onValueChange={(value) => setGeneralForm({ ...generalForm, timezone: value })}
+                      >
+                        <SelectTrigger className="w-full bg-white/5 border-white/10 text-white" data-testid="select-timezone">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#0B0E13] border-white/10">
+                          {TIMEZONES.map(tz => (
+                            <SelectItem key={tz.value} value={tz.value} className="text-white hover:bg-white/10">{tz.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-white/10 pt-6">
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium text-white/55">Internal Notes (Super Admin Only)</label>
+                    <textarea
+                      className="w-full px-4 py-3 rounded-xl glass-input min-h-24 resize-none"
+                      data-testid="input-internal-notes"
+                      value={generalForm.internalNotes || ''}
+                      onChange={(e) => setGeneralForm({ ...generalForm, internalNotes: e.target.value })}
+                      placeholder="Private notes about this client (not visible to client admin)..."
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-4">
+                  <Button
+                    onClick={() => updateGeneralMutation.mutate(generalForm)}
+                    disabled={updateGeneralMutation.isPending}
+                    className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white"
+                    data-testid="button-save-general"
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    {updateGeneralMutation.isPending ? 'Saving...' : 'Save All Changes'}
+                  </Button>
                 </div>
               </GlassCardContent>
             </GlassCard>
           </TabsContent>
 
-          {/* Knowledge Tab */}
+          {/* Knowledge Tab - Expanded with FAQ Management */}
           <TabsContent value="knowledge" className="space-y-6">
+            {/* FAQ Entries */}
             <GlassCard>
               <GlassCardHeader>
-                <GlassCardTitle>Knowledge Base</GlassCardTitle>
-                <GlassCardDescription>
-                  Customize what the chatbot tells visitors about your facility
-                </GlassCardDescription>
+                <GlassCardTitle>FAQ Entries</GlassCardTitle>
+                <GlassCardDescription>Manage frequently asked questions and answers</GlassCardDescription>
+              </GlassCardHeader>
+              <GlassCardContent className="space-y-6">
+                {/* Add New FAQ */}
+                <div className="p-4 bg-white/5 rounded-xl border border-white/10 space-y-4">
+                  <h4 className="text-sm font-medium text-white/85">Add New FAQ</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <Select 
+                      value={newFaq.category} 
+                      onValueChange={(value) => setNewFaq({ ...newFaq, category: value })}
+                    >
+                      <SelectTrigger className="bg-white/5 border-white/10 text-white" data-testid="select-faq-category">
+                        <SelectValue placeholder="Category" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#0B0E13] border-white/10">
+                        {FAQ_CATEGORIES.map(cat => (
+                          <SelectItem key={cat} value={cat} className="text-white hover:bg-white/10">{cat}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <input
+                      type="text"
+                      className="md:col-span-3 px-4 py-2.5 rounded-xl glass-input"
+                      data-testid="input-faq-question"
+                      value={newFaq.question}
+                      onChange={(e) => setNewFaq({ ...newFaq, question: e.target.value })}
+                      placeholder="Question"
+                    />
+                  </div>
+                  <textarea
+                    className="w-full px-4 py-3 rounded-xl glass-input min-h-20 resize-none"
+                    data-testid="input-faq-answer"
+                    value={newFaq.answer}
+                    onChange={(e) => setNewFaq({ ...newFaq, answer: e.target.value })}
+                    placeholder="Answer"
+                  />
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={() => addFaqMutation.mutate(newFaq)}
+                      disabled={addFaqMutation.isPending || !newFaq.category || !newFaq.question || !newFaq.answer}
+                      className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white"
+                      data-testid="button-add-faq"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add FAQ
+                    </Button>
+                  </div>
+                </div>
+
+                {/* FAQ List */}
+                <div className="space-y-3">
+                  {knowledgeForm.faqEntries?.map((faq, index) => (
+                    <div 
+                      key={faq.id} 
+                      className="p-4 bg-white/5 rounded-xl border border-white/10 space-y-3"
+                      data-testid={`faq-entry-${index}`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <NeonBadge variant="new" className="text-xs">{faq.category}</NeonBadge>
+                            <NeonBadge variant={faq.active ? 'success' : 'default'} className="text-xs">
+                              {faq.active ? 'Active' : 'Inactive'}
+                            </NeonBadge>
+                          </div>
+                          <p className="text-sm font-medium text-white/85">{faq.question}</p>
+                          <p className="text-sm text-white/55 mt-1">{faq.answer}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => updateFaqMutation.mutate({ faqId: faq.id, data: { active: !faq.active } })}
+                            className="h-8 w-8 text-white/55 hover:text-white"
+                            data-testid={`button-toggle-faq-${index}`}
+                          >
+                            {faq.active ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => deleteFaqMutation.mutate(faq.id)}
+                            className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-400/10"
+                            data-testid={`button-delete-faq-${index}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {(!knowledgeForm.faqEntries || knowledgeForm.faqEntries.length === 0) && (
+                    <p className="text-center text-white/40 py-8">No FAQ entries yet. Add your first FAQ above.</p>
+                  )}
+                </div>
+              </GlassCardContent>
+            </GlassCard>
+
+            {/* Long-form Knowledge Sections */}
+            <GlassCard>
+              <GlassCardHeader>
+                <GlassCardTitle>Long-form Knowledge Sections</GlassCardTitle>
+                <GlassCardDescription>Detailed content sections for the chatbot knowledge base</GlassCardDescription>
               </GlassCardHeader>
               <GlassCardContent className="space-y-6">
                 <div className="space-y-3">
-                  <label className="text-sm font-medium text-white/55">About Section</label>
+                  <label className="text-sm font-medium text-white/55">About the Program</label>
                   <textarea
                     className="w-full px-4 py-3 rounded-xl glass-input min-h-32 resize-none"
-                    data-testid="input-about"
-                    value={formData.knowledgeBase?.about || settings.knowledgeBase.about}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        knowledgeBase: {
-                          ...(formData.knowledgeBase || settings.knowledgeBase),
-                          about: e.target.value,
-                        },
-                      })
-                    }
-                    placeholder="Describe your facility and program..."
+                    data-testid="input-about-program"
+                    value={knowledgeForm.longFormKnowledge?.aboutProgram || ''}
+                    onChange={(e) => setKnowledgeForm({
+                      ...knowledgeForm,
+                      longFormKnowledge: { ...knowledgeForm.longFormKnowledge!, aboutProgram: e.target.value }
+                    })}
+                    placeholder="Describe the program in detail..."
                   />
                 </div>
-
                 <div className="space-y-3">
-                  <label className="text-sm font-medium text-white/55">Requirements</label>
+                  <label className="text-sm font-medium text-white/55">House Rules & Expectations</label>
                   <textarea
                     className="w-full px-4 py-3 rounded-xl glass-input min-h-32 resize-none"
-                    data-testid="input-requirements"
-                    value={formData.knowledgeBase?.requirements || settings.knowledgeBase.requirements}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        knowledgeBase: {
-                          ...(formData.knowledgeBase || settings.knowledgeBase),
-                          requirements: e.target.value,
-                        },
-                      })
-                    }
-                    placeholder="List requirements for residents..."
+                    data-testid="input-house-rules"
+                    value={knowledgeForm.longFormKnowledge?.houseRules || ''}
+                    onChange={(e) => setKnowledgeForm({
+                      ...knowledgeForm,
+                      longFormKnowledge: { ...knowledgeForm.longFormKnowledge!, houseRules: e.target.value }
+                    })}
+                    placeholder="List house rules and expectations..."
                   />
                 </div>
-
                 <div className="space-y-3">
-                  <label className="text-sm font-medium text-white/55">Pricing Information</label>
+                  <label className="text-sm font-medium text-white/55">Who This Is For / Not For</label>
                   <textarea
-                    className="w-full px-4 py-3 rounded-xl glass-input min-h-24 resize-none"
-                    data-testid="input-pricing"
-                    value={formData.knowledgeBase?.pricing || settings.knowledgeBase.pricing}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        knowledgeBase: {
-                          ...(formData.knowledgeBase || settings.knowledgeBase),
-                          pricing: e.target.value,
-                        },
-                      })
-                    }
-                    placeholder="Pricing details..."
+                    className="w-full px-4 py-3 rounded-xl glass-input min-h-32 resize-none"
+                    data-testid="input-who-its-for"
+                    value={knowledgeForm.longFormKnowledge?.whoItsFor || ''}
+                    onChange={(e) => setKnowledgeForm({
+                      ...knowledgeForm,
+                      longFormKnowledge: { ...knowledgeForm.longFormKnowledge!, whoItsFor: e.target.value }
+                    })}
+                    placeholder="Describe the ideal candidate and who may not be a fit..."
                   />
                 </div>
-
                 <div className="space-y-3">
-                  <label className="text-sm font-medium text-white/55">Application Process</label>
+                  <label className="text-sm font-medium text-white/55">Payment & Insurance Info</label>
                   <textarea
                     className="w-full px-4 py-3 rounded-xl glass-input min-h-24 resize-none"
-                    data-testid="input-application"
-                    value={formData.knowledgeBase?.application || settings.knowledgeBase.application}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        knowledgeBase: {
-                          ...(formData.knowledgeBase || settings.knowledgeBase),
-                          application: e.target.value,
-                        },
-                      })
-                    }
-                    placeholder="Describe the application process..."
+                    data-testid="input-payment-info"
+                    value={knowledgeForm.longFormKnowledge?.paymentInfo || ''}
+                    onChange={(e) => setKnowledgeForm({
+                      ...knowledgeForm,
+                      longFormKnowledge: { ...knowledgeForm.longFormKnowledge!, paymentInfo: e.target.value }
+                    })}
+                    placeholder="Payment options, insurance acceptance, financial assistance..."
                   />
+                </div>
+                <div className="flex justify-end pt-4">
+                  <Button
+                    onClick={() => updateKnowledgeMutation.mutate({ longFormKnowledge: knowledgeForm.longFormKnowledge! })}
+                    disabled={updateKnowledgeMutation.isPending}
+                    className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white"
+                    data-testid="button-save-knowledge"
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    {updateKnowledgeMutation.isPending ? 'Saving...' : 'Save Knowledge'}
+                  </Button>
+                </div>
+              </GlassCardContent>
+            </GlassCard>
+          </TabsContent>
+
+          {/* Flows Tab - Appointment Types & Pre-Intake */}
+          <TabsContent value="flows" className="space-y-6">
+            {/* Appointment Types */}
+            <GlassCard>
+              <GlassCardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <GlassCardTitle>Appointment Types</GlassCardTitle>
+                    <GlassCardDescription>Configure the types of appointments the chatbot can offer</GlassCardDescription>
+                  </div>
+                  <Button
+                    onClick={handleAddAppointmentType}
+                    className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white"
+                    data-testid="button-add-appointment-type"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Type
+                  </Button>
+                </div>
+              </GlassCardHeader>
+              <GlassCardContent className="space-y-4">
+                {appointmentTypesForm.map((type, index) => (
+                  <div 
+                    key={type.id} 
+                    className="p-4 bg-white/5 rounded-xl border border-white/10"
+                    data-testid={`appointment-type-${index}`}
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-xs text-white/55">Label</label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 rounded-lg glass-input text-sm"
+                          value={type.label}
+                          onChange={(e) => {
+                            const updated = [...appointmentTypesForm];
+                            updated[index] = { ...type, label: e.target.value };
+                            setAppointmentTypesForm(updated);
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs text-white/55">Duration (minutes)</label>
+                        <input
+                          type="number"
+                          className="w-full px-3 py-2 rounded-lg glass-input text-sm"
+                          value={type.durationMinutes}
+                          onChange={(e) => {
+                            const updated = [...appointmentTypesForm];
+                            updated[index] = { ...type, durationMinutes: parseInt(e.target.value) || 30 };
+                            setAppointmentTypesForm(updated);
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs text-white/55">Category</label>
+                        <Select 
+                          value={type.category} 
+                          onValueChange={(value) => {
+                            const updated = [...appointmentTypesForm];
+                            updated[index] = { ...type, category: value };
+                            setAppointmentTypesForm(updated);
+                          }}
+                        >
+                          <SelectTrigger className="bg-white/5 border-white/10 text-white text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#0B0E13] border-white/10">
+                            <SelectItem value="lead" className="text-white hover:bg-white/10">Lead</SelectItem>
+                            <SelectItem value="existing_client" className="text-white hover:bg-white/10">Existing Client</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-end gap-2">
+                        <Switch
+                          checked={type.active}
+                          onCheckedChange={(checked) => {
+                            const updated = [...appointmentTypesForm];
+                            updated[index] = { ...type, active: checked };
+                            setAppointmentTypesForm(updated);
+                          }}
+                          className="neon-switch"
+                        />
+                        <span className="text-xs text-white/55">{type.active ? 'Active' : 'Inactive'}</span>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => setAppointmentTypesForm(appointmentTypesForm.filter((_, i) => i !== index))}
+                          className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-400/10 ml-auto"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="mt-3">
+                      <label className="text-xs text-white/55">Description</label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 rounded-lg glass-input text-sm mt-1"
+                        value={type.description}
+                        onChange={(e) => {
+                          const updated = [...appointmentTypesForm];
+                          updated[index] = { ...type, description: e.target.value };
+                          setAppointmentTypesForm(updated);
+                        }}
+                        placeholder="Brief description of this appointment type"
+                      />
+                    </div>
+                  </div>
+                ))}
+                <div className="flex justify-end pt-4">
+                  <Button
+                    onClick={() => updateAppointmentTypesMutation.mutate(appointmentTypesForm)}
+                    disabled={updateAppointmentTypesMutation.isPending}
+                    className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white"
+                    data-testid="button-save-appointment-types"
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    {updateAppointmentTypesMutation.isPending ? 'Saving...' : 'Save Appointment Types'}
+                  </Button>
+                </div>
+              </GlassCardContent>
+            </GlassCard>
+
+            {/* Pre-Intake Questions */}
+            <GlassCard>
+              <GlassCardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <GlassCardTitle>Pre-Intake Questions</GlassCardTitle>
+                    <GlassCardDescription>Configure the qualification questions asked before booking</GlassCardDescription>
+                  </div>
+                  <Button
+                    onClick={handleAddPreIntakeQuestion}
+                    className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white"
+                    data-testid="button-add-pre-intake"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Question
+                  </Button>
+                </div>
+              </GlassCardHeader>
+              <GlassCardContent className="space-y-4">
+                {preIntakeForm.sort((a, b) => a.order - b.order).map((question, index) => (
+                  <div 
+                    key={question.id} 
+                    className="p-4 bg-white/5 rounded-xl border border-white/10"
+                    data-testid={`pre-intake-question-${index}`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex flex-col items-center gap-1 pt-2">
+                        <GripVertical className="h-4 w-4 text-white/30" />
+                        <span className="text-xs text-white/40">#{question.order}</span>
+                      </div>
+                      <div className="flex-1 space-y-3">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="md:col-span-2 space-y-2">
+                            <label className="text-xs text-white/55">Question Label</label>
+                            <input
+                              type="text"
+                              className="w-full px-3 py-2 rounded-lg glass-input text-sm"
+                              value={question.label}
+                              onChange={(e) => {
+                                const updated = [...preIntakeForm];
+                                updated[index] = { ...question, label: e.target.value };
+                                setPreIntakeForm(updated);
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs text-white/55">Type</label>
+                            <Select 
+                              value={question.type} 
+                              onValueChange={(value: any) => {
+                                const updated = [...preIntakeForm];
+                                updated[index] = { ...question, type: value };
+                                setPreIntakeForm(updated);
+                              }}
+                            >
+                              <SelectTrigger className="bg-white/5 border-white/10 text-white text-sm">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="bg-[#0B0E13] border-white/10">
+                                <SelectItem value="single_choice" className="text-white hover:bg-white/10">Single Choice</SelectItem>
+                                <SelectItem value="multi_choice" className="text-white hover:bg-white/10">Multiple Choice</SelectItem>
+                                <SelectItem value="text" className="text-white hover:bg-white/10">Text Input</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        {(question.type === 'single_choice' || question.type === 'multi_choice') && (
+                          <div className="space-y-2">
+                            <label className="text-xs text-white/55">Options (one per line, format: value|label)</label>
+                            <textarea
+                              className="w-full px-3 py-2 rounded-lg glass-input text-sm min-h-16 resize-none"
+                              value={question.options.map(o => `${o.value}|${o.label}`).join('\n')}
+                              onChange={(e) => {
+                                const lines = e.target.value.split('\n');
+                                const options = lines.map(line => {
+                                  const [value, label] = line.split('|');
+                                  return { value: value || '', label: label || value || '' };
+                                }).filter(o => o.value);
+                                const updated = [...preIntakeForm];
+                                updated[index] = { ...question, options };
+                                setPreIntakeForm(updated);
+                              }}
+                              placeholder="yes|Yes&#10;no|No"
+                            />
+                          </div>
+                        )}
+                        <div className="flex items-center gap-4">
+                          <label className="flex items-center gap-2 text-sm text-white/55">
+                            <Switch
+                              checked={question.required}
+                              onCheckedChange={(checked) => {
+                                const updated = [...preIntakeForm];
+                                updated[index] = { ...question, required: checked };
+                                setPreIntakeForm(updated);
+                              }}
+                              className="neon-switch"
+                            />
+                            Required
+                          </label>
+                          <label className="flex items-center gap-2 text-sm text-white/55">
+                            <Switch
+                              checked={question.active}
+                              onCheckedChange={(checked) => {
+                                const updated = [...preIntakeForm];
+                                updated[index] = { ...question, active: checked };
+                                setPreIntakeForm(updated);
+                              }}
+                              className="neon-switch"
+                            />
+                            Active
+                          </label>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => setPreIntakeForm(preIntakeForm.filter((_, i) => i !== index))}
+                            className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-400/10 ml-auto"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div className="flex justify-end pt-4">
+                  <Button
+                    onClick={() => updatePreIntakeMutation.mutate(preIntakeForm)}
+                    disabled={updatePreIntakeMutation.isPending}
+                    className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white"
+                    data-testid="button-save-pre-intake"
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    {updatePreIntakeMutation.isPending ? 'Saving...' : 'Save Pre-Intake Config'}
+                  </Button>
                 </div>
               </GlassCardContent>
             </GlassCard>
@@ -400,14 +1258,14 @@ export default function SuperAdmin() {
                   <Switch
                     data-testid="switch-enable-hours"
                     className="neon-switch"
-                    checked={formData.operatingHours?.enabled ?? settings.operatingHours.enabled}
+                    checked={formData.operatingHours?.enabled ?? settings?.operatingHours?.enabled ?? false}
                     onCheckedChange={(checked) =>
                       setFormData({
                         ...formData,
                         operatingHours: {
-                          ...(formData.operatingHours || settings.operatingHours),
+                          ...(formData.operatingHours || settings?.operatingHours || {}),
                           enabled: checked,
-                        },
+                        } as any,
                       })
                     }
                   />
@@ -420,92 +1278,96 @@ export default function SuperAdmin() {
                     data-testid="input-after-hours"
                     value={
                       formData.operatingHours?.afterHoursMessage ||
-                      settings.operatingHours.afterHoursMessage
+                      settings?.operatingHours?.afterHoursMessage || ''
                     }
                     onChange={(e) =>
                       setFormData({
                         ...formData,
                         operatingHours: {
-                          ...(formData.operatingHours || settings.operatingHours),
+                          ...(formData.operatingHours || settings?.operatingHours || {}),
                           afterHoursMessage: e.target.value,
-                        },
+                        } as any,
                       })
                     }
                     placeholder="Message shown when outside business hours..."
                   />
                 </div>
+                <div className="flex justify-end pt-4">
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={updateMutation.isPending}
+                    className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white"
+                    data-testid="button-save-hours"
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    {updateMutation.isPending ? 'Saving...' : 'Save Hours'}
+                  </Button>
+                </div>
               </GlassCardContent>
             </GlassCard>
           </TabsContent>
 
-          {/* Notifications Tab */}
+          {/* Notifications Tab - Enhanced */}
           <TabsContent value="notifications" className="space-y-6">
             <GlassCard>
               <GlassCardHeader>
-                <GlassCardTitle>Notification Settings</GlassCardTitle>
-                <GlassCardDescription>
-                  Get instant alerts when appointments are submitted
-                </GlassCardDescription>
+                <GlassCardTitle>Staff Notification Settings</GlassCardTitle>
+                <GlassCardDescription>Configure how staff receives alerts for new appointments</GlassCardDescription>
               </GlassCardHeader>
               <GlassCardContent className="space-y-6">
                 {/* Info Alert */}
                 <div className="flex items-start gap-3 p-4 rounded-xl bg-cyan-500/10 border border-cyan-400/20">
                   <AlertCircle className="h-5 w-5 text-cyan-400 flex-shrink-0 mt-0.5" />
                   <p className="text-sm text-white/85">
-                    To enable email notifications, you need to configure the RESEND_API_KEY environment variable.
-                    Contact support for assistance setting up your Resend account.
+                    Configure staff notification endpoints. Email requires RESEND_API_KEY and SMS requires Twilio credentials.
                   </p>
                 </div>
 
-                {/* Email Notifications Toggle */}
-                <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
-                  <div>
-                    <p className="text-sm font-medium text-white/85">Email Notifications</p>
-                    <p className="text-xs text-white/55 mt-1">
-                      Receive email alerts for new appointments
-                    </p>
-                  </div>
-                  <Switch
-                    data-testid="switch-email-notifications"
-                    className="neon-switch"
-                    checked={formData.enableEmailNotifications ?? settings.enableEmailNotifications}
-                    onCheckedChange={(checked) =>
-                      setFormData({ ...formData, enableEmailNotifications: checked })
-                    }
-                  />
+                {/* Staff Channel Preference */}
+                <div className="space-y-3">
+                  <label className="text-sm font-medium text-white/55">Preferred Staff Channel</label>
+                  <Select 
+                    value={notificationsForm.staffChannelPreference || 'email_only'} 
+                    onValueChange={(value: any) => setNotificationsForm({ ...notificationsForm, staffChannelPreference: value })}
+                  >
+                    <SelectTrigger className="w-full bg-white/5 border-white/10 text-white" data-testid="select-staff-channel">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#0B0E13] border-white/10">
+                      <SelectItem value="email_only" className="text-white hover:bg-white/10">Email Only</SelectItem>
+                      <SelectItem value="sms_only" className="text-white hover:bg-white/10">SMS Only</SelectItem>
+                      <SelectItem value="email_and_sms" className="text-white hover:bg-white/10">Email & SMS</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
-                {/* Email List */}
+                {/* Staff Emails */}
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-white/55">Notification Emails</label>
-                    <p className="text-xs text-white/40 mt-1">
-                      Add multiple email addresses to receive appointment notifications
-                    </p>
+                    <label className="text-sm font-medium text-white/55">Staff Emails</label>
+                    <p className="text-xs text-white/40 mt-1">Add email addresses for staff notifications</p>
                   </div>
                   
-                  <div className="flex flex-wrap gap-2 min-h-[40px] p-3 bg-white/5 rounded-xl border border-white/10" data-testid="email-list-container">
-                    {getEmailList().map((email, index) => (
+                  <div className="flex flex-wrap gap-2 min-h-[40px] p-3 bg-white/5 rounded-xl border border-white/10" data-testid="staff-email-list">
+                    {(notificationsForm.staffEmails || []).map((email, index) => (
                       <NeonBadge 
                         key={email}
                         variant="new"
                         className="pl-3 pr-1 py-1.5 flex items-center gap-2"
-                        data-testid={`badge-email-${index}`}
                       >
-                        <span data-testid={`text-email-${index}`}>{email}</span>
+                        <Mail className="h-3 w-3" />
+                        <span>{email}</span>
                         <button
                           type="button"
                           className="p-0.5 rounded-full hover:bg-white/20 transition-colors"
-                          onClick={() => removeEmail(email)}
-                          data-testid={`button-remove-email-${index}`}
-                          aria-label={`Remove ${email}`}
+                          onClick={() => removeStaffEmail(email)}
                         >
                           <X className="h-3 w-3" />
                         </button>
                       </NeonBadge>
                     ))}
-                    {getEmailList().length === 0 && (
-                      <p className="text-sm text-white/40 italic" data-testid="text-no-emails">No emails added yet</p>
+                    {(!notificationsForm.staffEmails || notificationsForm.staffEmails.length === 0) && (
+                      <p className="text-sm text-white/40 italic">No emails added yet</p>
                     )}
                   </div>
                   
@@ -513,189 +1375,223 @@ export default function SuperAdmin() {
                     <input
                       type="email"
                       className="flex-1 px-4 py-2.5 rounded-xl glass-input"
-                      data-testid="input-notification-email"
+                      data-testid="input-staff-email"
                       value={newEmailInput}
                       onChange={(e) => setNewEmailInput(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
-                          addEmail();
+                          addStaffEmail();
                         }
                       }}
-                      placeholder="Enter email address..."
+                      placeholder="Enter staff email..."
                     />
-                    <button
-                      type="button"
-                      onClick={addEmail}
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-                      data-testid="button-add-email"
-                    >
-                      <Plus className="h-4 w-4" />
+                    <Button onClick={addStaffEmail} variant="outline" className="border-white/10" data-testid="button-add-staff-email">
+                      <Plus className="h-4 w-4 mr-2" />
                       Add
-                    </button>
+                    </Button>
                   </div>
-
-                  <button
-                    onClick={handleTestNotification}
-                    disabled={
-                      testNotificationMutation.isPending || 
-                      !(formData.enableEmailNotifications ?? settings.enableEmailNotifications) || 
-                      getEmailList().length === 0
-                    }
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-400/30 text-cyan-400 hover:from-cyan-500/30 hover:to-blue-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    data-testid="button-test-notification"
-                  >
-                    <Send className="h-4 w-4" />
-                    {testNotificationMutation.isPending ? "Sending..." : "Send Test Email"}
-                  </button>
                 </div>
 
-                {/* SMS Section */}
-                <div className="pt-6 border-t border-white/10 space-y-4">
+                {/* Staff Phones */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium text-white/55">Staff SMS Numbers</label>
+                    <p className="text-xs text-white/40 mt-1">Add phone numbers for SMS notifications (future use)</p>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2 min-h-[40px] p-3 bg-white/5 rounded-xl border border-white/10" data-testid="staff-phone-list">
+                    {(notificationsForm.staffPhones || []).map((phone, index) => (
+                      <NeonBadge 
+                        key={phone}
+                        variant="info"
+                        className="pl-3 pr-1 py-1.5 flex items-center gap-2"
+                      >
+                        <Phone className="h-3 w-3" />
+                        <span>{phone}</span>
+                        <button
+                          type="button"
+                          className="p-0.5 rounded-full hover:bg-white/20 transition-colors"
+                          onClick={() => removeStaffPhone(phone)}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </NeonBadge>
+                    ))}
+                    {(!notificationsForm.staffPhones || notificationsForm.staffPhones.length === 0) && (
+                      <p className="text-sm text-white/40 italic">No phone numbers added yet</p>
+                    )}
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <input
+                      type="tel"
+                      className="flex-1 px-4 py-2.5 rounded-xl glass-input"
+                      data-testid="input-staff-phone"
+                      value={newPhoneInput}
+                      onChange={(e) => setNewPhoneInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addStaffPhone();
+                        }
+                      }}
+                      placeholder="Enter phone number..."
+                    />
+                    <Button onClick={addStaffPhone} variant="outline" className="border-white/10" data-testid="button-add-staff-phone">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Event Toggles */}
+                <div className="border-t border-white/10 pt-6 space-y-4">
+                  <h4 className="text-sm font-medium text-white/85">Notification Triggers</h4>
+                  
                   <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
                     <div>
-                      <p className="text-sm font-medium text-white/85">SMS Notifications</p>
-                      <p className="text-xs text-white/55 mt-1">
-                        Receive text alerts for new appointments
-                      </p>
+                      <p className="text-sm font-medium text-white/85">New Appointment Email</p>
+                      <p className="text-xs text-white/55 mt-1">Send email when a new appointment is booked</p>
                     </div>
                     <Switch
-                      data-testid="switch-sms-notifications"
+                      checked={notificationsForm.eventToggles?.newAppointmentEmail ?? true}
+                      onCheckedChange={(checked) => setNotificationsForm({
+                        ...notificationsForm,
+                        eventToggles: { ...notificationsForm.eventToggles!, newAppointmentEmail: checked }
+                      })}
                       className="neon-switch"
-                      checked={formData.enableSmsNotifications ?? settings.enableSmsNotifications}
-                      onCheckedChange={(checked) =>
-                        setFormData({ ...formData, enableSmsNotifications: checked })
-                      }
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
+                    <div>
+                      <p className="text-sm font-medium text-white/85">New Appointment SMS</p>
+                      <p className="text-xs text-white/55 mt-1">Send SMS when a new appointment is booked</p>
+                    </div>
+                    <Switch
+                      checked={notificationsForm.eventToggles?.newAppointmentSms ?? false}
+                      onCheckedChange={(checked) => setNotificationsForm({
+                        ...notificationsForm,
+                        eventToggles: { ...notificationsForm.eventToggles!, newAppointmentSms: checked }
+                      })}
+                      className="neon-switch"
                     />
                   </div>
 
-                  <div className="space-y-3">
-                    <label className="text-sm font-medium text-white/55">Notification Phone</label>
-                    <input
-                      type="tel"
-                      className="w-full px-4 py-2.5 rounded-xl glass-input"
-                      data-testid="input-notification-phone"
-                      value={formData.notificationPhone || settings.notificationPhone || ""}
-                      onChange={(e) => setFormData({ ...formData, notificationPhone: e.target.value })}
-                      placeholder="+1 (555) 123-4567"
+                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 opacity-60">
+                    <div>
+                      <p className="text-sm font-medium text-white/85">Pre-Intake Without Booking</p>
+                      <p className="text-xs text-white/55 mt-1">Alert when someone completes intake but doesn't book (coming soon)</p>
+                    </div>
+                    <Switch
+                      checked={notificationsForm.eventToggles?.newPreIntakeEmail ?? false}
+                      disabled
+                      className="neon-switch"
                     />
-                    <p className="text-xs text-white/40">
-                      SMS notifications require Twilio integration (not yet configured)
-                    </p>
                   </div>
+
+                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 opacity-60">
+                    <div>
+                      <p className="text-sm font-medium text-white/85">Same-Day Reminder</p>
+                      <p className="text-xs text-white/55 mt-1">Send reminder on day of appointment (coming soon)</p>
+                    </div>
+                    <Switch
+                      checked={notificationsForm.eventToggles?.sameDayReminder ?? false}
+                      disabled
+                      className="neon-switch"
+                    />
+                  </div>
+                </div>
+
+                {/* Email Templates */}
+                <div className="border-t border-white/10 pt-6 space-y-4">
+                  <h4 className="text-sm font-medium text-white/85">Email Templates</h4>
+                  <p className="text-xs text-white/40">Use tokens: {"{{clientName}}"}, {"{{leadName}}"}, {"{{appointmentType}}"}, {"{{preferredTime}}"}</p>
+                  
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium text-white/55">Staff Email Subject</label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-2.5 rounded-xl glass-input"
+                      data-testid="input-email-subject"
+                      value={notificationsForm.templates?.staffEmailSubject || ''}
+                      onChange={(e) => setNotificationsForm({
+                        ...notificationsForm,
+                        templates: { ...notificationsForm.templates!, staffEmailSubject: e.target.value }
+                      })}
+                      placeholder="New Appointment Request from {{leadName}}"
+                    />
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium text-white/55">Staff Email Body</label>
+                    <textarea
+                      className="w-full px-4 py-3 rounded-xl glass-input min-h-24 resize-none"
+                      data-testid="input-email-body"
+                      value={notificationsForm.templates?.staffEmailBody || ''}
+                      onChange={(e) => setNotificationsForm({
+                        ...notificationsForm,
+                        templates: { ...notificationsForm.templates!, staffEmailBody: e.target.value }
+                      })}
+                      placeholder="A new {{appointmentType}} appointment has been requested by {{leadName}} for {{preferredTime}}."
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-4">
+                  <Button
+                    onClick={() => updateNotificationsMutation.mutate(notificationsForm as NotificationSettings)}
+                    disabled={updateNotificationsMutation.isPending}
+                    className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white"
+                    data-testid="button-save-notifications"
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    {updateNotificationsMutation.isPending ? 'Saving...' : 'Save Notifications'}
+                  </Button>
                 </div>
               </GlassCardContent>
             </GlassCard>
           </TabsContent>
 
-          {/* Branding Tab */}
+          {/* Branding Tab - Placeholder */}
           <TabsContent value="branding" className="space-y-6">
             <GlassCard>
               <GlassCardHeader>
-                <GlassCardTitle>Branding</GlassCardTitle>
-                <GlassCardDescription>Customize the look and feel of the chatbot</GlassCardDescription>
+                <GlassCardTitle>Branding Settings</GlassCardTitle>
+                <GlassCardDescription>Customize the visual appearance (coming in Phase 2)</GlassCardDescription>
               </GlassCardHeader>
-              <GlassCardContent className="space-y-6">
-                <div className="space-y-3">
-                  <label className="text-sm font-medium text-white/55">Primary Color</label>
-                  <div className="flex gap-3">
-                    <input
-                      type="color"
-                      className="w-16 h-12 rounded-xl border border-white/10 cursor-pointer bg-transparent"
-                      data-testid="input-primary-color"
-                      value={formData.primaryColor || settings.primaryColor}
-                      onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
-                    />
-                    <input
-                      type="text"
-                      className="flex-1 px-4 py-2.5 rounded-xl glass-input"
-                      value={formData.primaryColor || settings.primaryColor}
-                      onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
-                      placeholder="#1FA2A8"
-                    />
+              <GlassCardContent>
+                <div className="flex items-center justify-center py-12 text-white/40">
+                  <div className="text-center">
+                    <Palette className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Branding customization coming soon</p>
+                    <p className="text-sm mt-2">Logo upload, colors, and theme settings</p>
                   </div>
                 </div>
               </GlassCardContent>
             </GlassCard>
           </TabsContent>
 
-          {/* Privacy Tab */}
+          {/* Privacy Tab - Placeholder */}
           <TabsContent value="privacy" className="space-y-6">
-            <div className="space-y-6">
-              <GlassCard>
-                <GlassCardHeader>
-                  <GlassCardTitle>Data Sanitization</GlassCardTitle>
-                  <GlassCardDescription>
-                    Protect visitor privacy by removing personally identifiable information from analytics logs
-                  </GlassCardDescription>
-                </GlassCardHeader>
-                <GlassCardContent className="space-y-4">
-                  <div className="flex items-start gap-3 p-4 rounded-xl bg-cyan-500/10 border border-cyan-400/20">
-                    <Shield className="h-5 w-5 text-cyan-400 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-white/85">
-                      <strong className="text-cyan-400">PII Protection:</strong> The system automatically redacts phone numbers, emails, and addresses 
-                      from all NEW analytics data. Use this button to sanitize historical conversation logs.
-                    </p>
+            <GlassCard>
+              <GlassCardHeader>
+                <GlassCardTitle>Privacy Settings</GlassCardTitle>
+                <GlassCardDescription>Configure data handling and privacy options</GlassCardDescription>
+              </GlassCardHeader>
+              <GlassCardContent>
+                <div className="flex items-center justify-center py-12 text-white/40">
+                  <div className="text-center">
+                    <Shield className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Privacy configuration coming soon</p>
+                    <p className="text-sm mt-2">Data retention, PII handling, and compliance settings</p>
                   </div>
-                  
-                  <button
-                    disabled
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-white/5 border border-white/10 text-white/40 cursor-not-allowed"
-                    data-testid="button-sanitize-analytics"
-                  >
-                    <Shield className="h-4 w-4" />
-                    Sanitize Historical Analytics
-                  </button>
-                  <p className="text-xs text-white/40">
-                    This feature scans all existing analytics records and applies PII redaction patterns. Coming soon.
-                  </p>
-                </GlassCardContent>
-              </GlassCard>
-
-              <GlassCard>
-                <GlassCardHeader>
-                  <GlassCardTitle>Data Retention</GlassCardTitle>
-                  <GlassCardDescription>
-                    Manage analytics data retention and compliance
-                  </GlassCardDescription>
-                </GlassCardHeader>
-                <GlassCardContent className="space-y-4">
-                  <div className="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-400/20">
-                    <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-white/85">
-                      <strong className="text-red-400">Warning:</strong> Purging analytics will permanently delete all conversation logs. 
-                      This action cannot be undone. Appointment data will not be affected.
-                    </p>
-                  </div>
-
-                  <button
-                    disabled
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-red-500/10 border border-red-400/20 text-red-400/40 cursor-not-allowed"
-                    data-testid="button-purge-analytics"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Purge All Analytics
-                  </button>
-                  <p className="text-xs text-white/40">
-                    Automated retention policies coming soon. For now, contact support for data deletion requests.
-                  </p>
-                </GlassCardContent>
-              </GlassCard>
-            </div>
+                </div>
+              </GlassCardContent>
+            </GlassCard>
           </TabsContent>
         </Tabs>
-
-        {/* Save Button */}
-        <div className="flex justify-end">
-          <button
-            onClick={handleSubmit}
-            disabled={updateMutation.isPending}
-            className="px-8 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-50 shadow-[0_0_20px_rgba(79,195,247,0.3)]"
-            data-testid="button-save-settings"
-          >
-            {updateMutation.isPending ? "Saving..." : "Save All Changes"}
-          </button>
-        </div>
       </div>
     </AdminLayout>
   );
