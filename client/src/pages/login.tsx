@@ -20,14 +20,20 @@ export default function Login() {
       const response = await apiRequest("POST", "/api/auth/login", credentials);
       return response.json();
     },
-    onSuccess: async () => {
+    onSuccess: async (data) => {
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/check"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       toast({
         title: "Login successful",
         description: "Welcome back!",
       });
       setTimeout(() => {
-        window.location.href = "/super-admin";
+        // Redirect based on user role
+        if (data.user?.role === "super_admin") {
+          window.location.href = "/super-admin";
+        } else {
+          window.location.href = "/admin/dashboard";
+        }
       }, 500);
     },
     onError: () => {
@@ -53,9 +59,9 @@ export default function Login() {
               <Lock className="h-6 w-6 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl text-center">Super Admin Login</CardTitle>
+          <CardTitle className="text-2xl text-center">Admin Login</CardTitle>
           <CardDescription className="text-center">
-            Access the white-label control panel
+            Access the admin dashboard
           </CardDescription>
         </CardHeader>
         <CardContent>
