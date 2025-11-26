@@ -1,6 +1,5 @@
 import { useLocation } from "wouter";
 import { Link } from "wouter";
-import { Button } from "@/components/ui/button";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -11,17 +10,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 import { 
   LayoutDashboard, 
   Calendar, 
   Settings, 
   LogOut,
   Menu,
-  BarChart3
+  BarChart3,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { useState } from "react";
 import { AdminProvider, useAdminContext } from "@/contexts/admin-context";
+import { cn } from "@/lib/utils";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -37,7 +38,7 @@ const navigationItems = [
 function AdminLayoutInner({ children }: AdminLayoutProps) {
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const { dateRange, setDateRange } = useAdminContext();
 
   const logoutMutation = useMutation({
@@ -55,94 +56,112 @@ function AdminLayoutInner({ children }: AdminLayoutProps) {
   });
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      {/* Sidebar */}
+    <div className="admin-futuristic flex h-screen">
+      {/* Sidebar - 72px minimalistic (expandable) */}
       <aside 
-        className={`${
-          sidebarOpen ? "w-64" : "w-0"
-        } transition-all duration-300 overflow-hidden bg-card/80 backdrop-blur-sm border-r border-primary/10 flex flex-col`}
+        className={cn(
+          "admin-sidebar flex flex-col transition-all duration-300",
+          sidebarExpanded && "expanded"
+        )}
         data-testid="admin-sidebar"
       >
-        <div className="p-6 border-b border-primary/10">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <span className="text-primary font-bold text-lg">H</span>
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-foreground" data-testid="text-admin-title">
-                HopeLine
-              </h1>
-              <p className="text-xs text-muted-foreground">Admin Dashboard</p>
-            </div>
+        {/* Logo */}
+        <div className="h-16 flex items-center justify-center border-b border-white/10">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-400/30 flex items-center justify-center">
+            <span className="text-cyan-400 font-bold text-lg">H</span>
           </div>
+          {sidebarExpanded && (
+            <span className="ml-3 text-white font-semibold">HopeLine</span>
+          )}
         </div>
 
-        <nav className="flex-1 p-4 space-y-1">
+        {/* Navigation */}
+        <nav className="flex-1 py-6 px-3 space-y-2">
           {navigationItems.map((item) => {
             const Icon = item.icon;
             const isActive = location === item.href || location.startsWith(item.href + "/");
             
             return (
               <Link key={item.href} href={item.href}>
-                <Button
-                  variant={isActive ? "secondary" : "ghost"}
-                  className={`w-full justify-start gap-3 transition-all duration-200 ${
-                    isActive 
-                      ? "bg-primary/10 text-primary border-l-2 border-primary rounded-l-none" 
-                      : "hover:bg-muted/50 hover:translate-x-1"
-                  }`}
+                <div
+                  className={cn(
+                    "sidebar-item flex items-center gap-3 cursor-pointer",
+                    isActive && "active"
+                  )}
                   data-testid={`link-${item.name.toLowerCase()}`}
+                  title={!sidebarExpanded ? item.name : undefined}
                 >
-                  <Icon className="h-4 w-4" />
-                  <span>{item.name}</span>
-                </Button>
+                  <Icon className="h-5 w-5 flex-shrink-0" />
+                  {sidebarExpanded && (
+                    <span className="text-sm font-medium">{item.name}</span>
+                  )}
+                </div>
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-4 border-t border-primary/10">
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
+        {/* Expand/Collapse & Logout */}
+        <div className="p-3 space-y-2 border-t border-white/10">
+          <button
+            onClick={() => setSidebarExpanded(!sidebarExpanded)}
+            className="sidebar-item flex items-center gap-3 w-full cursor-pointer"
+            data-testid="button-sidebar-toggle"
+          >
+            {sidebarExpanded ? (
+              <>
+                <ChevronLeft className="h-5 w-5" />
+                <span className="text-sm">Collapse</span>
+              </>
+            ) : (
+              <ChevronRight className="h-5 w-5" />
+            )}
+          </button>
+          
+          <button
             onClick={() => logoutMutation.mutate()}
             disabled={logoutMutation.isPending}
+            className="sidebar-item flex items-center gap-3 w-full cursor-pointer text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
             data-testid="button-logout"
+            title={!sidebarExpanded ? "Logout" : undefined}
           >
-            <LogOut className="h-4 w-4" />
-            <span>{logoutMutation.isPending ? "Logging out..." : "Logout"}</span>
-          </Button>
+            <LogOut className="h-5 w-5" />
+            {sidebarExpanded && (
+              <span className="text-sm">
+                {logoutMutation.isPending ? "Logging out..." : "Logout"}
+              </span>
+            )}
+          </button>
         </div>
       </aside>
 
-      {/* Main content */}
+      {/* Main content area */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top header */}
-        <header className="h-16 border-b border-primary/10 bg-card/50 backdrop-blur-sm flex items-center justify-between px-6">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="hover:bg-primary/10 transition-all duration-200"
-            data-testid="button-sidebar-toggle"
+        {/* Top bar - transparent with blur */}
+        <header className="admin-topbar flex items-center justify-between px-6">
+          <button
+            onClick={() => setSidebarExpanded(!sidebarExpanded)}
+            className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors md:hidden"
+            data-testid="button-mobile-menu"
           >
             <Menu className="h-5 w-5" />
-          </Button>
+          </button>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="global-date-range" className="text-sm text-muted-foreground">
-                Date Range:
-              </Label>
+          <div className="flex items-center gap-4 ml-auto">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-white/55">Date Range:</span>
               <Select value={dateRange} onValueChange={setDateRange}>
-                <SelectTrigger id="global-date-range" className="w-40 bg-background/50 border-primary/20" data-testid="select-global-date-range">
+                <SelectTrigger 
+                  className="w-36 bg-white/5 border-white/10 text-white/85 hover:bg-white/10 focus:ring-cyan-500/30"
+                  data-testid="select-global-date-range"
+                >
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">Today</SelectItem>
-                  <SelectItem value="7">Last 7 days</SelectItem>
-                  <SelectItem value="30">Last 30 days</SelectItem>
-                  <SelectItem value="90">Last 90 days</SelectItem>
+                <SelectContent className="bg-[#1a1d24] border-white/10">
+                  <SelectItem value="1" className="text-white/85 focus:bg-white/10 focus:text-white">Today</SelectItem>
+                  <SelectItem value="7" className="text-white/85 focus:bg-white/10 focus:text-white">Last 7 days</SelectItem>
+                  <SelectItem value="30" className="text-white/85 focus:bg-white/10 focus:text-white">Last 30 days</SelectItem>
+                  <SelectItem value="90" className="text-white/85 focus:bg-white/10 focus:text-white">Last 90 days</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -150,7 +169,7 @@ function AdminLayoutInner({ children }: AdminLayoutProps) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-auto p-6 bg-gradient-to-b from-transparent to-muted/5">
+        <main className="flex-1 overflow-auto p-6">
           {children}
         </main>
       </div>

@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard, GlassCardHeader, GlassCardTitle, GlassCardContent } from "@/components/ui/glass-card";
+import { StatusBadge } from "@/components/ui/neon-badge";
+import { DrawerPanel, DrawerSection, DrawerField } from "@/components/ui/drawer-panel";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { 
   Select,
   SelectContent,
@@ -12,26 +12,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Search, 
   Phone, 
   Mail, 
-  Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
-  X,
-  Download
+  Download,
+  Sparkles,
+  Eye
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -99,14 +90,6 @@ interface Appointment {
   timeline: string | null;
   createdAt: string;
 }
-
-const statusColors = {
-  new: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20",
-  contacted: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
-  scheduled: "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20",
-  completed: "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20",
-  cancelled: "bg-gray-500/10 text-gray-700 dark:text-gray-400 border-gray-500/20",
-};
 
 export default function AdminAppointments() {
   const { toast} = useToast();
@@ -210,54 +193,57 @@ export default function AdminAppointments() {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div className="space-y-8">
+        {/* Page Header */}
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight" data-testid="text-appointments-title">
+            <h2 className="text-3xl font-bold text-white" data-testid="text-appointments-title">
               Appointments
             </h2>
-            <p className="text-muted-foreground">
+            <p className="text-white/55 mt-1">
               Manage and track all appointment requests
             </p>
           </div>
-          <Button
-            variant="outline"
+          <button
             onClick={() => data?.appointments && exportToCSV(data.appointments)}
             disabled={!data?.appointments?.length}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white/85 hover:bg-white/10 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             data-testid="button-export-csv"
           >
-            <Download className="h-4 w-4 mr-2" />
+            <Download className="h-4 w-4" />
             Export CSV
-          </Button>
+          </button>
         </div>
 
-        {/* Filters */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Filters</CardTitle>
-          </CardHeader>
-          <CardContent>
+        {/* Filters Panel */}
+        <GlassCard>
+          <GlassCardHeader>
+            <GlassCardTitle>Filters</GlassCardTitle>
+          </GlassCardHeader>
+          <GlassCardContent>
             <div className="flex flex-wrap gap-4">
+              {/* Search Input */}
               <div className="flex-1 min-w-[200px]">
-                <Label htmlFor="search">Search</Label>
+                <label className="text-sm text-white/55 mb-2 block">Search</label>
                 <div className="relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="search"
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+                  <input
+                    type="text"
                     placeholder="Search by name, phone, or email..."
                     value={searchQuery}
                     onChange={(e) => {
                       setSearchQuery(e.target.value);
                       setCurrentPage(0);
                     }}
-                    className="pl-10"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl glass-input"
                     data-testid="input-search"
                   />
                 </div>
               </div>
 
+              {/* Status Filter */}
               <div className="w-48">
-                <Label htmlFor="status">Status</Label>
+                <label className="text-sm text-white/55 mb-2 block">Status</label>
                 <Select 
                   value={statusFilter} 
                   onValueChange={(value) => {
@@ -265,22 +251,26 @@ export default function AdminAppointments() {
                     setCurrentPage(0);
                   }}
                 >
-                  <SelectTrigger id="status" data-testid="select-status-filter">
+                  <SelectTrigger 
+                    className="bg-white/5 border-white/10 text-white/85 hover:bg-white/10"
+                    data-testid="select-status-filter"
+                  >
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="new">New</SelectItem>
-                    <SelectItem value="contacted">Contacted</SelectItem>
-                    <SelectItem value="scheduled">Scheduled</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectContent className="bg-[#1a1d24] border-white/10">
+                    <SelectItem value="all" className="text-white/85 focus:bg-white/10 focus:text-white">All Statuses</SelectItem>
+                    <SelectItem value="new" className="text-white/85 focus:bg-white/10 focus:text-white">New</SelectItem>
+                    <SelectItem value="contacted" className="text-white/85 focus:bg-white/10 focus:text-white">Contacted</SelectItem>
+                    <SelectItem value="scheduled" className="text-white/85 focus:bg-white/10 focus:text-white">Scheduled</SelectItem>
+                    <SelectItem value="completed" className="text-white/85 focus:bg-white/10 focus:text-white">Completed</SelectItem>
+                    <SelectItem value="cancelled" className="text-white/85 focus:bg-white/10 focus:text-white">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
+              {/* Date Range Filter */}
               <div className="w-48">
-                <Label htmlFor="date-range">Date Range</Label>
+                <label className="text-sm text-white/55 mb-2 block">Date Range</label>
                 <Select 
                   value={dateRange} 
                   onValueChange={(value) => {
@@ -288,48 +278,54 @@ export default function AdminAppointments() {
                     setCurrentPage(0);
                   }}
                 >
-                  <SelectTrigger id="date-range" data-testid="select-date-range">
+                  <SelectTrigger 
+                    className="bg-white/5 border-white/10 text-white/85 hover:bg-white/10"
+                    data-testid="select-date-range"
+                  >
                     <SelectValue placeholder="Filter by date" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Time</SelectItem>
-                    <SelectItem value="today">Today</SelectItem>
-                    <SelectItem value="week">Last 7 Days</SelectItem>
-                    <SelectItem value="month">Last 30 Days</SelectItem>
+                  <SelectContent className="bg-[#1a1d24] border-white/10">
+                    <SelectItem value="all" className="text-white/85 focus:bg-white/10 focus:text-white">All Time</SelectItem>
+                    <SelectItem value="today" className="text-white/85 focus:bg-white/10 focus:text-white">Today</SelectItem>
+                    <SelectItem value="week" className="text-white/85 focus:bg-white/10 focus:text-white">Last 7 Days</SelectItem>
+                    <SelectItem value="month" className="text-white/85 focus:bg-white/10 focus:text-white">Last 30 Days</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </GlassCardContent>
+        </GlassCard>
 
         {/* Appointments Table */}
-        <Card>
-          <CardContent className="p-0">
+        <GlassCard>
+          <GlassCardContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="border-b bg-muted/50">
+                <thead className="border-b border-white/10">
                   <tr>
-                    <th className="text-left p-4 font-medium">Name</th>
-                    <th className="text-left p-4 font-medium">Type</th>
-                    <th className="text-left p-4 font-medium">Contact</th>
-                    <th className="text-left p-4 font-medium">Preferred Time</th>
-                    <th className="text-left p-4 font-medium">Status</th>
-                    <th className="text-left p-4 font-medium">Created</th>
-                    <th className="text-left p-4 font-medium">Actions</th>
+                    <th className="text-left p-4 font-medium text-white/55 text-sm">Name</th>
+                    <th className="text-left p-4 font-medium text-white/55 text-sm">Type</th>
+                    <th className="text-left p-4 font-medium text-white/55 text-sm">Contact</th>
+                    <th className="text-left p-4 font-medium text-white/55 text-sm">Preferred Time</th>
+                    <th className="text-left p-4 font-medium text-white/55 text-sm">Status</th>
+                    <th className="text-left p-4 font-medium text-white/55 text-sm">Created</th>
+                    <th className="text-left p-4 font-medium text-white/55 text-sm">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {isLoading && (
                     <tr>
-                      <td colSpan={7} className="text-center p-8 text-muted-foreground">
-                        Loading appointments...
+                      <td colSpan={7} className="text-center p-8">
+                        <div className="flex items-center justify-center gap-3 text-white/55">
+                          <Sparkles className="h-5 w-5 animate-pulse text-cyan-400" />
+                          <span>Loading appointments...</span>
+                        </div>
                       </td>
                     </tr>
                   )}
                   {!isLoading && data?.appointments.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="text-center p-8 text-muted-foreground">
+                      <td colSpan={7} className="text-center p-8 text-white/40">
                         No appointments found
                       </td>
                     </tr>
@@ -337,15 +333,15 @@ export default function AdminAppointments() {
                   {data?.appointments.map((appointment) => (
                     <tr
                       key={appointment.id}
-                      className="border-b last:border-0 hover-elevate cursor-pointer"
+                      className="border-b border-white/5 last:border-0 hover:bg-white/5 cursor-pointer transition-colors"
                       onClick={() => handleOpenDetail(appointment)}
                       data-testid={`row-appointment-${appointment.id}`}
                     >
                       <td className="p-4">
-                        <div className="font-medium">{appointment.name}</div>
+                        <span className="font-medium text-white/85">{appointment.name}</span>
                       </td>
                       <td className="p-4">
-                        <span className="capitalize text-sm">
+                        <span className="capitalize text-sm text-white/70">
                           {appointment.appointmentType.replace(/_/g, " ")}
                         </span>
                       </td>
@@ -354,7 +350,7 @@ export default function AdminAppointments() {
                           {appointment.contact && (
                             <a
                               href={`tel:${appointment.contact}`}
-                              className="flex items-center gap-1 text-sm text-primary hover:underline"
+                              className="flex items-center gap-1 text-sm text-cyan-400 hover:text-cyan-300 transition-colors"
                               onClick={(e) => e.stopPropagation()}
                               data-testid={`link-phone-${appointment.id}`}
                             >
@@ -365,7 +361,7 @@ export default function AdminAppointments() {
                           {appointment.email && (
                             <a
                               href={`mailto:${appointment.email}`}
-                              className="flex items-center gap-1 text-sm text-primary hover:underline"
+                              className="flex items-center gap-1 text-sm text-cyan-400 hover:text-cyan-300 transition-colors"
                               onClick={(e) => e.stopPropagation()}
                               data-testid={`link-email-${appointment.id}`}
                             >
@@ -375,30 +371,28 @@ export default function AdminAppointments() {
                           )}
                         </div>
                       </td>
-                      <td className="p-4 text-sm">{appointment.preferredTime}</td>
+                      <td className="p-4 text-sm text-white/70">{appointment.preferredTime}</td>
                       <td className="p-4">
-                        <Badge
-                          className={statusColors[appointment.status as keyof typeof statusColors] || statusColors.new}
+                        <StatusBadge 
+                          status={appointment.status}
                           data-testid={`badge-status-${appointment.status}`}
-                        >
-                          {appointment.status}
-                        </Badge>
+                        />
                       </td>
-                      <td className="p-4 text-sm text-muted-foreground">
+                      <td className="p-4 text-sm text-white/55">
                         {format(new Date(appointment.createdAt), "MMM d, yyyy")}
                       </td>
                       <td className="p-4">
-                        <Button
-                          variant="ghost"
-                          size="sm"
+                        <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleOpenDetail(appointment);
                           }}
+                          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-white/70 hover:text-white hover:bg-white/10 transition-colors"
                           data-testid={`button-view-${appointment.id}`}
                         >
+                          <Eye className="h-4 w-4" />
                           View
-                        </Button>
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -408,210 +402,197 @@ export default function AdminAppointments() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between p-4 border-t">
-                <div className="text-sm text-muted-foreground">
+              <div className="flex items-center justify-between p-4 border-t border-white/10">
+                <div className="text-sm text-white/55">
                   Showing {currentPage * pageSize + 1} to{" "}
                   {Math.min((currentPage + 1) * pageSize, data?.total || 0)} of {data?.total} appointments
                 </div>
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  <button
                     onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
                     disabled={currentPage === 0}
+                    className="p-2 rounded-lg bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     data-testid="button-prev-page"
                   >
                     <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <div className="flex items-center px-3 text-sm">
+                  </button>
+                  <div className="flex items-center px-3 text-sm text-white/70">
                     Page {currentPage + 1} of {totalPages}
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  <button
                     onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
                     disabled={currentPage >= totalPages - 1}
+                    className="p-2 rounded-lg bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     data-testid="button-next-page"
                   >
                     <ChevronRight className="h-4 w-4" />
-                  </Button>
+                  </button>
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </GlassCardContent>
+        </GlassCard>
       </div>
 
-      {/* Appointment Detail Sheet */}
-      <Sheet open={!!selectedAppointment} onOpenChange={() => setSelectedAppointment(null)}>
-        <SheetContent className="sm:max-w-[600px] overflow-y-auto" data-testid="sheet-appointment-detail">
-          {selectedAppointment && (
-            <>
-              <SheetHeader>
-                <SheetTitle className="flex items-center justify-between">
-                  <span>Appointment Details</span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setSelectedAppointment(null)}
-                    data-testid="button-close-detail"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </SheetTitle>
-                <SheetDescription>
-                  View and update appointment information
-                </SheetDescription>
-              </SheetHeader>
+      {/* Appointment Detail Drawer */}
+      <DrawerPanel
+        isOpen={!!selectedAppointment}
+        onClose={() => setSelectedAppointment(null)}
+        title="Appointment Details"
+        subtitle="View and update appointment information"
+        data-testid="drawer-appointment-detail"
+      >
+        {selectedAppointment && (
+          <div className="space-y-6">
+            {/* Overview Section */}
+            <DrawerSection title="Overview">
+              <DrawerField label="Name" value={selectedAppointment.name} />
+              <DrawerField 
+                label="Type" 
+                value={
+                  <span className="capitalize">
+                    {selectedAppointment.appointmentType.replace(/_/g, " ")}
+                  </span>
+                } 
+              />
+              <DrawerField 
+                label="Status" 
+                value={<StatusBadge status={selectedAppointment.status} />} 
+              />
+              <DrawerField 
+                label="Created" 
+                value={format(new Date(selectedAppointment.createdAt), "MMM d, yyyy 'at' h:mm a")} 
+              />
+            </DrawerSection>
 
-              <div className="space-y-6 mt-6">
-                {/* Basic Info */}
-                <div className="space-y-4">
-                  <h3 className="font-semibold">Contact Information</h3>
-                  <div className="space-y-2">
-                    <div>
-                      <Label className="text-muted-foreground">Name</Label>
-                      <p className="font-medium">{selectedAppointment.name}</p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">Phone</Label>
-                      <a
-                        href={`tel:${selectedAppointment.contact}`}
-                        className="flex items-center gap-2 text-primary hover:underline"
-                        data-testid="link-phone-detail"
-                      >
-                        <Phone className="h-4 w-4" />
-                        {selectedAppointment.contact}
-                      </a>
-                    </div>
-                    {selectedAppointment.email && (
-                      <div>
-                        <Label className="text-muted-foreground">Email</Label>
-                        <a
-                          href={`mailto:${selectedAppointment.email}`}
-                          className="flex items-center gap-2 text-primary hover:underline"
-                          data-testid="link-email-detail"
-                        >
-                          <Mail className="h-4 w-4" />
-                          {selectedAppointment.email}
-                        </a>
-                      </div>
-                    )}
-                    <div>
-                      <Label className="text-muted-foreground">Appointment Type</Label>
-                      <p className="capitalize">{selectedAppointment.appointmentType.replace(/_/g, " ")}</p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">Preferred Time</Label>
-                      <p>{selectedAppointment.preferredTime}</p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">Contact Preference</Label>
-                      <p className="capitalize">{selectedAppointment.contactPreference}</p>
-                    </div>
-                  </div>
-                </div>
+            {/* Contact Section */}
+            <DrawerSection title="Contact Information">
+              <DrawerField 
+                label="Phone" 
+                value={
+                  selectedAppointment.contact && (
+                    <a 
+                      href={`tel:${selectedAppointment.contact}`}
+                      className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 transition-colors"
+                      data-testid="link-phone-detail"
+                    >
+                      <Phone className="h-4 w-4" />
+                      {selectedAppointment.contact}
+                    </a>
+                  )
+                } 
+              />
+              {selectedAppointment.email && (
+                <DrawerField 
+                  label="Email" 
+                  value={
+                    <a 
+                      href={`mailto:${selectedAppointment.email}`}
+                      className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 transition-colors"
+                      data-testid="link-email-detail"
+                    >
+                      <Mail className="h-4 w-4" />
+                      {selectedAppointment.email}
+                    </a>
+                  } 
+                />
+              )}
+              <DrawerField label="Preferred Time" value={selectedAppointment.preferredTime} />
+              <DrawerField 
+                label="Contact Preference" 
+                value={<span className="capitalize">{selectedAppointment.contactPreference}</span>} 
+              />
+            </DrawerSection>
 
-                {/* AI Summary */}
-                {selectedAppointment.conversationSummary && (
-                  <div className="space-y-2">
-                    <h3 className="font-semibold">Conversation Summary</h3>
-                    <Card>
-                      <CardContent className="p-4">
-                        <p className="text-sm whitespace-pre-wrap">{selectedAppointment.conversationSummary}</p>
-                      </CardContent>
-                    </Card>
-                  </div>
-                )}
-
-                {/* Pre-Intake Data */}
-                {(selectedAppointment.lookingFor || selectedAppointment.sobrietyStatus || 
-                  selectedAppointment.hasSupport || selectedAppointment.timeline) && (
-                  <div className="space-y-2">
-                    <h3 className="font-semibold">Pre-Intake Information</h3>
-                    <Card>
-                      <CardContent className="p-4 space-y-2">
-                        {selectedAppointment.lookingFor && (
-                          <div>
-                            <Label className="text-muted-foreground">Looking for</Label>
-                            <p className="text-sm capitalize">{selectedAppointment.lookingFor}</p>
-                          </div>
-                        )}
-                        {selectedAppointment.sobrietyStatus && (
-                          <div>
-                            <Label className="text-muted-foreground">Sobriety Status</Label>
-                            <p className="text-sm">{selectedAppointment.sobrietyStatus}</p>
-                          </div>
-                        )}
-                        {selectedAppointment.hasSupport && (
-                          <div>
-                            <Label className="text-muted-foreground">Financial Support</Label>
-                            <p className="text-sm">{selectedAppointment.hasSupport}</p>
-                          </div>
-                        )}
-                        {selectedAppointment.timeline && (
-                          <div>
-                            <Label className="text-muted-foreground">Timeline</Label>
-                            <p className="text-sm">{selectedAppointment.timeline}</p>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </div>
-                )}
-
-                {/* Status */}
-                <div className="space-y-2">
-                  <Label htmlFor="status-edit">Status</Label>
-                  <Select value={editedStatus} onValueChange={setEditedStatus}>
-                    <SelectTrigger id="status-edit" data-testid="select-status-edit">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="new">New</SelectItem>
-                      <SelectItem value="contacted">Contacted</SelectItem>
-                      <SelectItem value="scheduled">Scheduled</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Notes */}
-                <div className="space-y-2">
-                  <Label htmlFor="notes-edit">Internal Notes</Label>
-                  <Textarea
-                    id="notes-edit"
-                    placeholder="Add notes about this appointment..."
-                    value={editedNotes}
-                    onChange={(e) => setEditedNotes(e.target.value)}
-                    rows={4}
-                    data-testid="textarea-notes"
+            {/* Pre-Intake Section */}
+            {(selectedAppointment.lookingFor || selectedAppointment.sobrietyStatus || 
+              selectedAppointment.hasSupport || selectedAppointment.timeline) && (
+              <DrawerSection title="Pre-Intake Information">
+                {selectedAppointment.lookingFor && (
+                  <DrawerField 
+                    label="Looking for" 
+                    value={<span className="capitalize">{selectedAppointment.lookingFor}</span>} 
                   />
-                </div>
+                )}
+                {selectedAppointment.sobrietyStatus && (
+                  <DrawerField label="Sobriety Status" value={selectedAppointment.sobrietyStatus} />
+                )}
+                {selectedAppointment.hasSupport && (
+                  <DrawerField label="Financial Support" value={selectedAppointment.hasSupport} />
+                )}
+                {selectedAppointment.timeline && (
+                  <DrawerField label="Timeline" value={selectedAppointment.timeline} />
+                )}
+              </DrawerSection>
+            )}
 
-                {/* Actions */}
-                <div className="flex gap-2 pt-4 border-t">
-                  <Button
-                    onClick={handleSaveChanges}
-                    disabled={updateMutation.isPending}
-                    data-testid="button-save-changes"
-                  >
-                    {updateMutation.isPending ? "Saving..." : "Save Changes"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setSelectedAppointment(null)}
-                    data-testid="button-cancel"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
-        </SheetContent>
-      </Sheet>
+            {/* AI Summary Section */}
+            {selectedAppointment.conversationSummary && (
+              <DrawerSection title="Conversation Summary">
+                <p className="text-sm text-white/85 whitespace-pre-wrap leading-relaxed">
+                  {selectedAppointment.conversationSummary}
+                </p>
+              </DrawerSection>
+            )}
+
+            {/* Status Update */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-white/55 uppercase tracking-wider">
+                Update Status
+              </label>
+              <Select value={editedStatus} onValueChange={setEditedStatus}>
+                <SelectTrigger 
+                  className="bg-white/5 border-white/10 text-white/85 hover:bg-white/10"
+                  data-testid="select-status-edit"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1a1d24] border-white/10">
+                  <SelectItem value="new" className="text-white/85 focus:bg-white/10 focus:text-white">New</SelectItem>
+                  <SelectItem value="contacted" className="text-white/85 focus:bg-white/10 focus:text-white">Contacted</SelectItem>
+                  <SelectItem value="scheduled" className="text-white/85 focus:bg-white/10 focus:text-white">Scheduled</SelectItem>
+                  <SelectItem value="completed" className="text-white/85 focus:bg-white/10 focus:text-white">Completed</SelectItem>
+                  <SelectItem value="cancelled" className="text-white/85 focus:bg-white/10 focus:text-white">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-white/55 uppercase tracking-wider">
+                Internal Notes
+              </label>
+              <textarea
+                placeholder="Add notes about this appointment..."
+                value={editedNotes}
+                onChange={(e) => setEditedNotes(e.target.value)}
+                rows={4}
+                className="w-full px-4 py-3 rounded-xl glass-input resize-none"
+                data-testid="textarea-notes"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-4 border-t border-white/10">
+              <button
+                onClick={handleSaveChanges}
+                disabled={updateMutation.isPending}
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                data-testid="button-save-changes"
+              >
+                {updateMutation.isPending ? "Saving..." : "Save Changes"}
+              </button>
+              <button
+                onClick={() => setSelectedAppointment(null)}
+                className="px-6 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                data-testid="button-cancel"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </DrawerPanel>
     </AdminLayout>
   );
 }

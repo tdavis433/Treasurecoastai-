@@ -328,3 +328,168 @@
     color: hsl(var(--foreground));
   }
 }
+
+/* ==========================================
+   FUTURISTIC ADMIN THEME
+   Hybrid of Concept A & C - Glassmorphism
+   ========================================== */
+
+.admin-futuristic {
+  --admin-bg: #0B0E13;
+  --admin-glass: rgba(255, 255, 255, 0.04);
+  --admin-glass-hover: rgba(255, 255, 255, 0.08);
+  --admin-border: rgba(255, 255, 255, 0.10);
+  --admin-border-hover: rgba(255, 255, 255, 0.20);
+  --admin-neon-blue: #4FC3F7;
+  --admin-neon-cyan: #2FE2FF;
+  --admin-text: #FFFFFF;
+  --admin-text-muted: rgba(255, 255, 255, 0.55);
+  --admin-text-soft: rgba(255, 255, 255, 0.85);
+  --admin-shadow: 0px 4px 20px rgba(0, 0, 0, 0.45);
+
+  background: var(--admin-bg);
+  color: var(--admin-text);
+  min-height: 100vh;
+}
+
+/* Admin Sidebar - 72px minimalistic */
+.admin-futuristic .admin-sidebar {
+  width: 72px;
+  background: rgba(255, 255, 255, 0.02);
+  border-right: 1px solid var(--admin-border);
+  backdrop-filter: blur(12px);
+}
+
+.admin-futuristic .admin-sidebar.expanded {
+  width: 240px;
+}
+
+/* Sidebar nav items */
+.admin-futuristic .sidebar-item {
+  color: rgba(255, 255, 255, 0.70);
+  transition: all 0.2s ease;
+  position: relative;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.admin-futuristic .sidebar-item:hover {
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.admin-futuristic .sidebar-item.active {
+  color: var(--admin-neon-cyan);
+  background: rgba(47, 226, 255, 0.08);
+}
+
+.admin-futuristic .sidebar-item.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 24px;
+  background: linear-gradient(180deg, var(--admin-neon-blue), var(--admin-neon-cyan));
+  border-radius: 0 4px 4px 0;
+  box-shadow: 0 0 12px var(--admin-neon-cyan);
+}
+
+/* Top bar - transparent with blur */
+.admin-futuristic .admin-topbar {
+  background: rgba(11, 14, 19, 0.8);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--admin-border);
+  height: 64px;
+}
+
+/* Glass card styling */
+.admin-futuristic .glass-panel {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  box-shadow: var(--admin-shadow);
+}
+
+.admin-futuristic .glass-panel:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* Neon glow effects */
+.admin-futuristic .neon-glow {
+  box-shadow: 0 0 20px rgba(79, 195, 247, 0.15);
+}
+
+.admin-futuristic .neon-text {
+  color: var(--admin-neon-cyan);
+  text-shadow: 0 0 10px rgba(47, 226, 255, 0.5);
+}
+
+/* Form inputs - dark glass style */
+.admin-futuristic .glass-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: #FFFFFF;
+  transition: all 0.2s ease;
+}
+
+.admin-futuristic .glass-input:focus {
+  border-color: var(--admin-neon-cyan);
+  box-shadow: 0 0 0 2px rgba(47, 226, 255, 0.15);
+  outline: none;
+}
+
+.admin-futuristic .glass-input::placeholder {
+  color: rgba(255, 255, 255, 0.40);
+}
+
+/* Neon toggle switch */
+.admin-futuristic .neon-switch[data-state="checked"] {
+  background: linear-gradient(135deg, var(--admin-neon-blue), var(--admin-neon-cyan));
+  box-shadow: 0 0 12px rgba(47, 226, 255, 0.4);
+}
+
+/* Chart styling */
+.admin-futuristic .chart-container {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 16px;
+  backdrop-filter: blur(8px);
+}
+
+/* Scrollbar styling for admin */
+.admin-futuristic ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.admin-futuristic ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.admin-futuristic ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+.admin-futuristic ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .admin-futuristic .admin-sidebar {
+    width: 0;
+    position: fixed;
+    z-index: 50;
+    height: 100vh;
+  }
+  
+  .admin-futuristic .admin-sidebar.expanded {
+    width: 280px;
+  }
+}

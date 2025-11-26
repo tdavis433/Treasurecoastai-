@@ -24,7 +24,16 @@ The system employs a React, TypeScript, Tailwind CSS, and shadcn/ui frontend wit
 - **Multilingual Support:** Full UI and AI responses in Spanish.
 - **Operating Hours Awareness:** Dynamic responses based on facility hours.
 - **Crisis Support:** Integration of resources like 988 and 1-800-662-HELP.
-- **UI/UX Decisions:** Futuristic/Cyber-Clean admin design with gradient accents, backdrop blur, modern stat cards, collapsible sidebar, and responsive layout. Public chatbot features prominent crisis disclaimer.
+- **UI/UX Decisions:** Futuristic glassmorphism admin design with:
+  - Dark theme background (#0B0E13) with semi-transparent glass panels
+  - Neon cyan/blue accent colors (#4FC3F7, #2FE2FF)
+  - Custom glass-effect components: GlassCard, NeonBadge, StatusBadge, FuturisticStatCard, DrawerPanel
+  - 72px icon sidebar with gradient nav items
+  - Transparent blurred top navigation bar
+  - All pages (Dashboard, Appointments, Analytics, Settings) use consistent glassmorphism styling
+  - Radix Sheet-based DrawerPanel for proper accessibility
+  - shadcn Tabs with custom styling for keyboard navigation
+  - Public chatbot features prominent crisis disclaimer
 
 **Database Schema:**
 - `appointments`: Stores booking requests, status, contact preferences, and PII-sanitized conversation summaries. Includes clientId column (all set to 'default-client').

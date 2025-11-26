@@ -1,0 +1,122 @@
+I am uploading a PDF called Hybrid_Futuristic_Admin_Design_Spec.pdf.
+Use that PDF as the full UI/UX design blueprint for upgrading the entire /admin interface.
+
+Here are the rules you MUST follow exactly:**
+
+🔒 NON-NEGOTIABLE RULES (Do NOT break these)
+
+Do NOT change any backend logic, API endpoints, database schema, routes, or functionality.
+
+Do NOT rename or remove existing pages (/admin/dashboard, /admin/appointments, /admin/analytics, /admin/settings).
+
+Do NOT change appointment logic, pre-intake logic, crisis handling, notifications, summaries, analytics calculations, or settings logic.
+
+This is a pure visual redesign — styling, layout, and components only.
+
+🎨 YOUR TASK
+
+Transform the Admin Dashboard UI to match the hybrid design shown in the PDF:
+
+Dark futuristic theme
+
+Glassmorphism cards
+
+Neon blue/cyan accent highlights
+
+Minimalistic sidebar
+
+Transparent blurred top bar
+
+Redesigned stat cards
+
+Clean grid sections
+
+Premium modern layout
+
+📌 WHAT TO CHANGE (Pure UI Only)
+
+You must update the following pages using the PDF specs:
+
+1. /admin/dashboard
+
+Replace KPI cards with the glassmorphism stat cards described.
+
+Add neon accent icons.
+
+Update Top Topics & Recent Leads to match the design.
+
+Apply the new spacing system (24–48px).
+
+Add the transparent, blurred top navigation bar.
+
+2. /admin/appointments
+
+New glassmorphism table card
+
+New search & filter bar
+
+Export button styled to match the theme
+
+Neon status badges
+
+Hover effects
+
+3. Appointment Detail Drawer
+
+Convert to futuristic drawer panel
+
+Frosted side panel
+
+New section styling (Pre-Intake, Summary, Notes)
+
+4. /admin/analytics
+
+Neon-themed chart
+
+Updated KPI mini-cards
+
+Glass panels for categories
+
+5. /admin/settings
+
+Convert settings form into grouped glass cards
+
+Neon toggles
+
+Dark-mode input fields
+
+🛠 COMPONENT REQUIREMENTS
+
+Create reusable components from the PDF spec:
+
+<GlassCard>
+
+<StatCard>
+
+<SidebarItem>
+
+<TopBar>
+
+<NeonBadge>
+
+<DrawerPanel>
+
+Use Tailwind classes and structure EXACTLY as described in the PDF.
+
+📱 RESPONSIVENESS
+
+All components must remain fully responsive and collapse cleanly on mobile.
+
+✔️ DONE WHEN
+
+You are finished only when:
+
+The admin UI visually matches the hybrid design in the PDF
+
+All components convert to the new futuristic/glass style
+
+No functionality has changed or broken
+
+Every page still works exactly the same
+
+If you need more clarification, ask me BEFORE changing any functionality
