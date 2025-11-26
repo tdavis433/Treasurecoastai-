@@ -788,7 +788,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/settings", requireAuth, async (req, res) => {
+  app.get("/api/settings", requireSuperAdmin, async (req, res) => {
     try {
       const settings = await storage.getSettings();
       res.json(settings);
@@ -798,7 +798,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/settings", requireAuth, async (req, res) => {
+  app.patch("/api/settings", requireSuperAdmin, async (req, res) => {
     try {
       const validatedData = insertClientSettingsSchema.partial().parse(req.body);
       const settings = await storage.updateSettings(validatedData);
@@ -834,7 +834,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/test-notification", requireAuth, async (req, res) => {
+  app.post("/api/test-notification", requireSuperAdmin, async (req, res) => {
     try {
       const settings = await storage.getSettings();
       
