@@ -23,6 +23,11 @@ interface BotInfo {
   businessType: string;
   businessName: string;
   isDemo: boolean;
+  clientId?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  location?: string;
 }
 
 interface Client {
@@ -195,6 +200,11 @@ export default function SuperAdmin() {
 
   const { data: clients } = useQuery<Client[]>({
     queryKey: ["/api/super-admin/clients"],
+    enabled: currentUser?.role === "super_admin",
+  });
+
+  const { data: allBots } = useQuery<BotInfo[]>({
+    queryKey: ["/api/super-admin/bots"],
     enabled: currentUser?.role === "super_admin",
   });
 
@@ -573,19 +583,19 @@ export default function SuperAdmin() {
           </div>
         </div>
 
-        {/* Client Bots Overview */}
-        {activeClient?.bots && activeClient.bots.length > 0 && (
+        {/* All Chatbots - Individual Listing */}
+        {allBots && allBots.length > 0 && (
           <GlassCard>
             <GlassCardHeader>
-              <GlassCardTitle>Chatbots for {activeClient.name}</GlassCardTitle>
-              <GlassCardDescription>All bots associated with this client</GlassCardDescription>
+              <GlassCardTitle>All Chatbots</GlassCardTitle>
+              <GlassCardDescription>Select a bot to edit or view its dashboard</GlassCardDescription>
             </GlassCardHeader>
             <GlassCardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {activeClient.bots.map(bot => (
+                {allBots.map(bot => (
                   <div 
                     key={bot.botId}
-                    className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-2"
+                    className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3 hover:border-cyan-400/30 transition-colors"
                     data-testid={`bot-card-${bot.botId}`}
                   >
                     <div className="flex items-center justify-between">
@@ -594,11 +604,33 @@ export default function SuperAdmin() {
                         {bot.isDemo ? 'Demo' : 'Live'}
                       </NeonBadge>
                     </div>
-                    <p className="text-sm text-white/55">{bot.description}</p>
+                    <p className="text-sm text-white/55 line-clamp-2">{bot.description}</p>
                     <div className="flex items-center gap-2 text-xs text-white/40">
                       <span className="capitalize">{bot.businessType.replace('_', ' ')}</span>
                       <span>|</span>
                       <span>ID: {bot.botId}</span>
+                    </div>
+                    <div className="flex items-center gap-2 pt-2 border-t border-white/10">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setLocation(`/admin/bot/${bot.botId}`)}
+                        className="flex-1 text-cyan-400 border-cyan-400/30 hover:bg-cyan-400/10"
+                        data-testid={`button-dashboard-${bot.botId}`}
+                      >
+                        <Settings className="h-3 w-3 mr-1" />
+                        Dashboard
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setLocation(`/demo/${bot.botId}`)}
+                        className="flex-1"
+                        data-testid={`button-preview-${bot.botId}`}
+                      >
+                        <Sparkles className="h-3 w-3 mr-1" />
+                        Preview
+                      </Button>
                     </div>
                   </div>
                 ))}

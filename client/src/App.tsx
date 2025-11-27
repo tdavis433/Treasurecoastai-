@@ -8,6 +8,7 @@ import AdminDashboard from "@/pages/admin-dashboard";
 import AdminAppointments from "@/pages/admin-appointments";
 import AdminAnalytics from "@/pages/admin-analytics";
 import SuperAdmin from "@/pages/super-admin";
+import BotDashboard from "@/pages/bot-dashboard";
 import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
 import DemosPage from "@/pages/demos";
@@ -23,6 +24,7 @@ function Router() {
       <Route path="/admin/dashboard" component={AdminDashboard} />
       <Route path="/admin/appointments" component={AdminAppointments} />
       <Route path="/admin/analytics" component={AdminAnalytics} />
+      <Route path="/admin/bot/:botId" component={BotDashboard} />
       <Route path="/admin">
         <Redirect to="/admin/dashboard" />
       </Route>

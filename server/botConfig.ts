@@ -245,4 +245,53 @@ ${bp.amenities ? `- Amenities: ${bp.amenities.join(', ')}` : ''}
   return prompt + '\n\n' + businessInfo + faqInfo;
 }
 
+export function saveBotConfig(botId: string, config: BotConfig): boolean {
+  try {
+    const botFiles = fs.readdirSync(BOTS_DIR).filter(f => f.endsWith('.json'));
+    
+    for (const file of botFiles) {
+      const filePath = path.join(BOTS_DIR, file);
+      const content = fs.readFileSync(filePath, 'utf-8');
+      const existingConfig: BotConfig = JSON.parse(content);
+      
+      if (existingConfig.botId === botId) {
+        const updatedConfig = {
+          ...config,
+          botId: existingConfig.botId,
+          clientId: existingConfig.clientId,
+        };
+        
+        fs.writeFileSync(filePath, JSON.stringify(updatedConfig, null, 2), 'utf-8');
+        clearCache();
+        return true;
+      }
+    }
+    
+    return false;
+  } catch (error) {
+    console.error(`Error saving bot config for ${botId}:`, error);
+    return false;
+  }
+}
+
+export function getBotFileName(botId: string): string | null {
+  try {
+    const botFiles = fs.readdirSync(BOTS_DIR).filter(f => f.endsWith('.json'));
+    
+    for (const file of botFiles) {
+      const filePath = path.join(BOTS_DIR, file);
+      const content = fs.readFileSync(filePath, 'utf-8');
+      const config: BotConfig = JSON.parse(content);
+      
+      if (config.botId === botId) {
+        return file;
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    return null;
+  }
+}
+
 export { clearCache };

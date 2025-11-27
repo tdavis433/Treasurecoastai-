@@ -18,6 +18,7 @@ import {
   detectCrisisInMessage,
   getCrisisResponse as getBotCrisisResponse,
   buildSystemPromptFromConfig,
+  saveBotConfig,
   type BotConfig
 } from "./botConfig";
 import { logConversation as logConversationToFile, getConversationLogs, getLogStats } from "./conversationLogger";
@@ -1218,6 +1219,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get clients error:", error);
       res.status(500).json({ error: "Failed to fetch clients" });
+    }
+  });
+
+  // Get all bots as a flat list for individual editing
+  app.get("/api/super-admin/bots", requireSuperAdmin, (req, res) => {
+    try {
+      const allBots = getAllBotConfigs();
+      
+      const botList = allBots.map(bot => ({
+        botId: bot.botId,
+        clientId: bot.clientId,
+        name: bot.name,
+        description: bot.description,
+        businessType: bot.businessProfile.type,
+        businessName: bot.businessProfile.businessName,
+        isDemo: bot.metadata?.isDemo ?? false,
+        phone: bot.businessProfile.phone,
+        email: bot.businessProfile.email,
+        website: bot.businessProfile.website,
+        location: bot.businessProfile.location
+      }));
+      
+      res.json(botList);
+    } catch (error) {
+      console.error("Get bots error:", error);
+      res.status(500).json({ error: "Failed to fetch bots" });
+    }
+  });
+
+  // Get individual bot config for editing
+  app.get("/api/super-admin/bots/:botId", requireSuperAdmin, (req, res) => {
+    try {
+      const { botId } = req.params;
+      const botConfig = getBotConfigByBotId(botId);
+      
+      if (!botConfig) {
+        return res.status(404).json({ error: `Bot not found: ${botId}` });
+      }
+      
+      res.json(botConfig);
+    } catch (error) {
+      console.error("Get bot config error:", error);
+      res.status(500).json({ error: "Failed to fetch bot config" });
+    }
+  });
+
+  // Update individual bot config
+  app.put("/api/super-admin/bots/:botId", requireSuperAdmin, (req, res) => {
+    try {
+      const { botId } = req.params;
+      const updates = req.body;
+      
+      const existingConfig = getBotConfigByBotId(botId);
+      if (!existingConfig) {
+        return res.status(404).json({ error: `Bot not found: ${botId}` });
+      }
+      
+      const updatedConfig: BotConfig = {
+        ...existingConfig,
+        ...updates,
+        botId: existingConfig.botId,
+        clientId: existingConfig.clientId,
+      };
+      
+      const success = saveBotConfig(botId, updatedConfig);
+      
+      if (success) {
+        res.json({ success: true, config: updatedConfig });
+      } else {
+        res.status(500).json({ error: "Failed to save bot config" });
+      }
+    } catch (error) {
+      console.error("Update bot config error:", error);
+      res.status(500).json({ error: "Failed to update bot config" });
     }
   });
 

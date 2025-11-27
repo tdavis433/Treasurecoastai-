@@ -1,0 +1,972 @@
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useParams, useLocation } from "wouter";
+import { useState, useEffect } from "react";
+import { GlassCard, GlassCardHeader, GlassCardTitle, GlassCardDescription, GlassCardContent } from "@/components/ui/glass-card";
+import { NeonBadge } from "@/components/ui/neon-badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { AdminLayout } from "@/components/admin-layout";
+import { 
+  ArrowLeft, Settings, BookOpen, MessageSquare, Clock, Save, 
+  Phone, Mail, Globe, MapPin, Building2, Sparkles, AlertTriangle,
+  Calendar, Utensils, Scissors, Car, Dumbbell, Home, ClipboardList,
+  Users, DollarSign, Shield
+} from "lucide-react";
+
+interface BotFaq {
+  question: string;
+  answer: string;
+}
+
+interface BotConfig {
+  clientId: string;
+  botId: string;
+  name: string;
+  description: string;
+  businessProfile: {
+    businessName: string;
+    type: string;
+    location: string;
+    phone: string;
+    email: string;
+    website: string;
+    hours: Record<string, string>;
+    services?: string[];
+    amenities?: string[];
+    serviceArea?: string;
+    cuisine?: string;
+    booking?: {
+      onlineBookingUrl?: string;
+      walkInsWelcome?: boolean;
+      walkInsNote?: string;
+    };
+    membershipOptions?: string[];
+  };
+  rules: {
+    allowedTopics: string[];
+    forbiddenTopics: string[];
+    specialInstructions?: string[];
+    crisisHandling: {
+      onCrisisKeywords: string[];
+      responseTemplate: string;
+    };
+  };
+  systemPrompt: string;
+  faqs: BotFaq[];
+  metadata?: {
+    isDemo: boolean;
+    createdAt: string;
+    version: string;
+  };
+}
+
+interface AuthUser {
+  id: string;
+  username: string;
+  role: 'super_admin' | 'client_admin';
+}
+
+const BUSINESS_TYPE_ICONS: Record<string, typeof Building2> = {
+  sober_living: Home,
+  restaurant: Utensils,
+  barber: Scissors,
+  homeservice: Home,
+  autoservice: Car,
+  gym: Dumbbell,
+};
+
+const BUSINESS_TYPE_LABELS: Record<string, string> = {
+  sober_living: "Sober Living",
+  restaurant: "Restaurant",
+  barber: "Barber/Salon",
+  homeservice: "Home Services",
+  autoservice: "Auto Shop",
+  gym: "Gym/Fitness",
+};
+
+export default function BotDashboard() {
+  const { botId } = useParams<{ botId: string }>();
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const [hasChanges, setHasChanges] = useState(false);
+  const [editedConfig, setEditedConfig] = useState<BotConfig | null>(null);
+
+  const { data: currentUser, isLoading: authLoading } = useQuery<AuthUser>({
+    queryKey: ["/api/auth/me"],
+    queryFn: async () => {
+      const response = await fetch("/api/auth/me", { credentials: "include" });
+      if (!response.ok) throw new Error("Not authenticated");
+      return response.json();
+    },
+    retry: false,
+  });
+
+  const { data: botConfig, isLoading: configLoading } = useQuery<BotConfig>({
+    queryKey: ["/api/super-admin/bots", botId],
+    enabled: currentUser?.role === "super_admin" && !!botId,
+  });
+
+  useEffect(() => {
+    if (botConfig) {
+      setEditedConfig(botConfig);
+    }
+  }, [botConfig]);
+
+  useEffect(() => {
+    if (!authLoading && !currentUser) {
+      setLocation("/login");
+    } else if (currentUser && currentUser.role !== "super_admin") {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to access this page.",
+        variant: "destructive",
+      });
+      setLocation("/admin/dashboard");
+    }
+  }, [currentUser, authLoading, setLocation, toast]);
+
+  const saveMutation = useMutation({
+    mutationFn: async (config: BotConfig) => {
+      const response = await apiRequest("PUT", `/api/super-admin/bots/${botId}`, config);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/bots", botId] });
+      setHasChanges(false);
+      toast({ title: "Saved", description: "Bot configuration has been updated." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to save configuration.", variant: "destructive" });
+    },
+  });
+
+  const handleSave = () => {
+    if (editedConfig) {
+      saveMutation.mutate(editedConfig);
+    }
+  };
+
+  const updateConfig = (updates: Partial<BotConfig>) => {
+    if (editedConfig) {
+      setEditedConfig({ ...editedConfig, ...updates });
+      setHasChanges(true);
+    }
+  };
+
+  const updateBusinessProfile = (updates: Partial<BotConfig['businessProfile']>) => {
+    if (editedConfig) {
+      setEditedConfig({
+        ...editedConfig,
+        businessProfile: { ...editedConfig.businessProfile, ...updates }
+      });
+      setHasChanges(true);
+    }
+  };
+
+  const updateRules = (updates: Partial<BotConfig['rules']>) => {
+    if (editedConfig) {
+      setEditedConfig({
+        ...editedConfig,
+        rules: { ...editedConfig.rules, ...updates }
+      });
+      setHasChanges(true);
+    }
+  };
+
+  const updateFaq = (index: number, updates: Partial<BotFaq>) => {
+    if (editedConfig) {
+      const newFaqs = [...editedConfig.faqs];
+      newFaqs[index] = { ...newFaqs[index], ...updates };
+      setEditedConfig({ ...editedConfig, faqs: newFaqs });
+      setHasChanges(true);
+    }
+  };
+
+  const addFaq = () => {
+    if (editedConfig) {
+      setEditedConfig({
+        ...editedConfig,
+        faqs: [...editedConfig.faqs, { question: '', answer: '' }]
+      });
+      setHasChanges(true);
+    }
+  };
+
+  const removeFaq = (index: number) => {
+    if (editedConfig) {
+      const newFaqs = editedConfig.faqs.filter((_, i) => i !== index);
+      setEditedConfig({ ...editedConfig, faqs: newFaqs });
+      setHasChanges(true);
+    }
+  };
+
+  if (authLoading || configLoading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="flex items-center gap-3 text-white/55">
+            <Sparkles className="h-5 w-5 animate-pulse text-cyan-400" />
+            <span>Loading bot configuration...</span>
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  if (!currentUser || currentUser.role !== "super_admin" || !editedConfig) {
+    return null;
+  }
+
+  const businessType = editedConfig.businessProfile.type;
+  const BusinessIcon = BUSINESS_TYPE_ICONS[businessType] || Building2;
+  const businessLabel = BUSINESS_TYPE_LABELS[businessType] || businessType;
+
+  const renderBusinessTypeTabs = () => {
+    switch (businessType) {
+      case 'sober_living':
+        return (
+          <>
+            <TabsTrigger value="appointments" className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500/20 data-[state=active]:to-blue-500/20 data-[state=active]:text-cyan-400 data-[state=active]:border data-[state=active]:border-cyan-400/30 data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white transition-all" data-testid="tab-appointments">
+              <Calendar className="h-4 w-4" />
+              Appointments
+            </TabsTrigger>
+            <TabsTrigger value="intake" className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500/20 data-[state=active]:to-blue-500/20 data-[state=active]:text-cyan-400 data-[state=active]:border data-[state=active]:border-cyan-400/30 data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white transition-all" data-testid="tab-intake">
+              <ClipboardList className="h-4 w-4" />
+              Pre-Intake
+            </TabsTrigger>
+            <TabsTrigger value="crisis" className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500/20 data-[state=active]:to-blue-500/20 data-[state=active]:text-cyan-400 data-[state=active]:border data-[state=active]:border-cyan-400/30 data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white transition-all" data-testid="tab-crisis">
+              <Shield className="h-4 w-4" />
+              Crisis Handling
+            </TabsTrigger>
+          </>
+        );
+      case 'restaurant':
+        return (
+          <>
+            <TabsTrigger value="menu" className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500/20 data-[state=active]:to-blue-500/20 data-[state=active]:text-cyan-400 data-[state=active]:border data-[state=active]:border-cyan-400/30 data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white transition-all" data-testid="tab-menu">
+              <Utensils className="h-4 w-4" />
+              Menu & Cuisine
+            </TabsTrigger>
+            <TabsTrigger value="reservations" className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500/20 data-[state=active]:to-blue-500/20 data-[state=active]:text-cyan-400 data-[state=active]:border data-[state=active]:border-cyan-400/30 data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white transition-all" data-testid="tab-reservations">
+              <Calendar className="h-4 w-4" />
+              Reservations
+            </TabsTrigger>
+          </>
+        );
+      case 'barber':
+        return (
+          <>
+            <TabsTrigger value="services" className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500/20 data-[state=active]:to-blue-500/20 data-[state=active]:text-cyan-400 data-[state=active]:border data-[state=active]:border-cyan-400/30 data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white transition-all" data-testid="tab-services">
+              <Scissors className="h-4 w-4" />
+              Services & Pricing
+            </TabsTrigger>
+            <TabsTrigger value="appointments" className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500/20 data-[state=active]:to-blue-500/20 data-[state=active]:text-cyan-400 data-[state=active]:border data-[state=active]:border-cyan-400/30 data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white transition-all" data-testid="tab-appointments">
+              <Calendar className="h-4 w-4" />
+              Appointments
+            </TabsTrigger>
+          </>
+        );
+      case 'gym':
+        return (
+          <>
+            <TabsTrigger value="memberships" className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500/20 data-[state=active]:to-blue-500/20 data-[state=active]:text-cyan-400 data-[state=active]:border data-[state=active]:border-cyan-400/30 data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white transition-all" data-testid="tab-memberships">
+              <Users className="h-4 w-4" />
+              Memberships
+            </TabsTrigger>
+            <TabsTrigger value="classes" className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500/20 data-[state=active]:to-blue-500/20 data-[state=active]:text-cyan-400 data-[state=active]:border data-[state=active]:border-cyan-400/30 data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white transition-all" data-testid="tab-classes">
+              <Dumbbell className="h-4 w-4" />
+              Classes & Amenities
+            </TabsTrigger>
+          </>
+        );
+      case 'homeservice':
+      case 'autoservice':
+        return (
+          <>
+            <TabsTrigger value="services" className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500/20 data-[state=active]:to-blue-500/20 data-[state=active]:text-cyan-400 data-[state=active]:border data-[state=active]:border-cyan-400/30 data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white transition-all" data-testid="tab-services">
+              <ClipboardList className="h-4 w-4" />
+              Services & Pricing
+            </TabsTrigger>
+            <TabsTrigger value="scheduling" className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500/20 data-[state=active]:to-blue-500/20 data-[state=active]:text-cyan-400 data-[state=active]:border data-[state=active]:border-cyan-400/30 data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white transition-all" data-testid="tab-scheduling">
+              <Calendar className="h-4 w-4" />
+              Scheduling
+            </TabsTrigger>
+          </>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const renderBusinessTypeContent = () => {
+    switch (businessType) {
+      case 'sober_living':
+        return (
+          <>
+            <TabsContent value="appointments">
+              <GlassCard>
+                <GlassCardHeader>
+                  <GlassCardTitle>Appointment Configuration</GlassCardTitle>
+                  <GlassCardDescription>Configure appointment types and scheduling for Faith House</GlassCardDescription>
+                </GlassCardHeader>
+                <GlassCardContent>
+                  <div className="text-white/55 text-center py-8">
+                    <Calendar className="h-12 w-12 mx-auto mb-4 text-white/30" />
+                    <p>Appointment configuration is managed in the main Super Admin panel.</p>
+                    <Button 
+                      variant="outline" 
+                      className="mt-4"
+                      onClick={() => setLocation('/super-admin')}
+                      data-testid="button-go-super-admin"
+                    >
+                      Go to Super Admin
+                    </Button>
+                  </div>
+                </GlassCardContent>
+              </GlassCard>
+            </TabsContent>
+            <TabsContent value="intake">
+              <GlassCard>
+                <GlassCardHeader>
+                  <GlassCardTitle>Pre-Intake Questions</GlassCardTitle>
+                  <GlassCardDescription>Configure pre-qualification questions for potential residents</GlassCardDescription>
+                </GlassCardHeader>
+                <GlassCardContent>
+                  <div className="text-white/55 text-center py-8">
+                    <ClipboardList className="h-12 w-12 mx-auto mb-4 text-white/30" />
+                    <p>Pre-intake configuration is managed in the main Super Admin panel.</p>
+                    <Button 
+                      variant="outline" 
+                      className="mt-4"
+                      onClick={() => setLocation('/super-admin')}
+                      data-testid="button-go-super-admin-intake"
+                    >
+                      Go to Super Admin
+                    </Button>
+                  </div>
+                </GlassCardContent>
+              </GlassCard>
+            </TabsContent>
+            <TabsContent value="crisis">
+              <CrisisHandlingTab 
+                config={editedConfig} 
+                updateRules={updateRules}
+              />
+            </TabsContent>
+          </>
+        );
+      case 'restaurant':
+        return (
+          <>
+            <TabsContent value="menu">
+              <GlassCard>
+                <GlassCardHeader>
+                  <GlassCardTitle>Menu & Cuisine</GlassCardTitle>
+                  <GlassCardDescription>Configure menu highlights and cuisine type</GlassCardDescription>
+                </GlassCardHeader>
+                <GlassCardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-white/70">Cuisine Type</Label>
+                      <Input
+                        value={editedConfig.businessProfile.cuisine || ''}
+                        onChange={(e) => updateBusinessProfile({ cuisine: e.target.value })}
+                        className="bg-white/5 border-white/10 text-white mt-1"
+                        placeholder="e.g., Italian, Mexican, American"
+                        data-testid="input-cuisine"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-white/70">Services (one per line)</Label>
+                      <Textarea
+                        value={editedConfig.businessProfile.services?.join('\n') || ''}
+                        onChange={(e) => updateBusinessProfile({ services: e.target.value.split('\n').filter(s => s.trim()) })}
+                        className="bg-white/5 border-white/10 text-white mt-1 min-h-[120px]"
+                        placeholder="Dine-in&#10;Takeout&#10;Catering"
+                        data-testid="input-restaurant-services"
+                      />
+                    </div>
+                  </div>
+                </GlassCardContent>
+              </GlassCard>
+            </TabsContent>
+            <TabsContent value="reservations">
+              <GlassCard>
+                <GlassCardHeader>
+                  <GlassCardTitle>Reservation Settings</GlassCardTitle>
+                  <GlassCardDescription>Configure online reservation and walk-in policies</GlassCardDescription>
+                </GlassCardHeader>
+                <GlassCardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-white/70">Online Booking URL</Label>
+                      <Input
+                        value={editedConfig.businessProfile.booking?.onlineBookingUrl || ''}
+                        onChange={(e) => updateBusinessProfile({ 
+                          booking: { ...editedConfig.businessProfile.booking, onlineBookingUrl: e.target.value }
+                        })}
+                        className="bg-white/5 border-white/10 text-white mt-1"
+                        placeholder="https://..."
+                        data-testid="input-booking-url"
+                      />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        checked={editedConfig.businessProfile.booking?.walkInsWelcome || false}
+                        onCheckedChange={(checked) => updateBusinessProfile({ 
+                          booking: { ...editedConfig.businessProfile.booking, walkInsWelcome: checked }
+                        })}
+                        data-testid="switch-walkins"
+                      />
+                      <Label className="text-white/70">Walk-ins Welcome</Label>
+                    </div>
+                  </div>
+                </GlassCardContent>
+              </GlassCard>
+            </TabsContent>
+          </>
+        );
+      case 'barber':
+        return (
+          <>
+            <TabsContent value="services">
+              <ServicesTab 
+                config={editedConfig}
+                updateBusinessProfile={updateBusinessProfile}
+                serviceLabel="Haircut Services"
+              />
+            </TabsContent>
+            <TabsContent value="appointments">
+              <GlassCard>
+                <GlassCardHeader>
+                  <GlassCardTitle>Appointment Settings</GlassCardTitle>
+                  <GlassCardDescription>Configure booking and walk-in policies</GlassCardDescription>
+                </GlassCardHeader>
+                <GlassCardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-white/70">Online Booking URL</Label>
+                      <Input
+                        value={editedConfig.businessProfile.booking?.onlineBookingUrl || ''}
+                        onChange={(e) => updateBusinessProfile({ 
+                          booking: { ...editedConfig.businessProfile.booking, onlineBookingUrl: e.target.value }
+                        })}
+                        className="bg-white/5 border-white/10 text-white mt-1"
+                        placeholder="https://..."
+                        data-testid="input-barber-booking-url"
+                      />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        checked={editedConfig.businessProfile.booking?.walkInsWelcome || false}
+                        onCheckedChange={(checked) => updateBusinessProfile({ 
+                          booking: { ...editedConfig.businessProfile.booking, walkInsWelcome: checked }
+                        })}
+                        data-testid="switch-barber-walkins"
+                      />
+                      <Label className="text-white/70">Walk-ins Welcome</Label>
+                    </div>
+                    {editedConfig.businessProfile.booking?.walkInsWelcome && (
+                      <div>
+                        <Label className="text-white/70">Walk-in Note</Label>
+                        <Input
+                          value={editedConfig.businessProfile.booking?.walkInsNote || ''}
+                          onChange={(e) => updateBusinessProfile({ 
+                            booking: { ...editedConfig.businessProfile.booking, walkInsNote: e.target.value }
+                          })}
+                          className="bg-white/5 border-white/10 text-white mt-1"
+                          placeholder="e.g., Walk-ins based on availability"
+                          data-testid="input-walkin-note"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </GlassCardContent>
+              </GlassCard>
+            </TabsContent>
+          </>
+        );
+      case 'gym':
+        return (
+          <>
+            <TabsContent value="memberships">
+              <GlassCard>
+                <GlassCardHeader>
+                  <GlassCardTitle>Membership Options</GlassCardTitle>
+                  <GlassCardDescription>Configure available membership plans</GlassCardDescription>
+                </GlassCardHeader>
+                <GlassCardContent>
+                  <div>
+                    <Label className="text-white/70">Membership Options (one per line)</Label>
+                    <Textarea
+                      value={editedConfig.businessProfile.membershipOptions?.join('\n') || ''}
+                      onChange={(e) => updateBusinessProfile({ membershipOptions: e.target.value.split('\n').filter(s => s.trim()) })}
+                      className="bg-white/5 border-white/10 text-white mt-1 min-h-[150px]"
+                      placeholder="Basic - $29/month&#10;Premium - $49/month&#10;Family Plan - $79/month"
+                      data-testid="input-memberships"
+                    />
+                  </div>
+                </GlassCardContent>
+              </GlassCard>
+            </TabsContent>
+            <TabsContent value="classes">
+              <GlassCard>
+                <GlassCardHeader>
+                  <GlassCardTitle>Classes & Amenities</GlassCardTitle>
+                  <GlassCardDescription>Configure available classes and facility amenities</GlassCardDescription>
+                </GlassCardHeader>
+                <GlassCardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-white/70">Services/Classes (one per line)</Label>
+                      <Textarea
+                        value={editedConfig.businessProfile.services?.join('\n') || ''}
+                        onChange={(e) => updateBusinessProfile({ services: e.target.value.split('\n').filter(s => s.trim()) })}
+                        className="bg-white/5 border-white/10 text-white mt-1 min-h-[120px]"
+                        placeholder="Yoga&#10;Spin Class&#10;Personal Training"
+                        data-testid="input-gym-services"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-white/70">Amenities (one per line)</Label>
+                      <Textarea
+                        value={editedConfig.businessProfile.amenities?.join('\n') || ''}
+                        onChange={(e) => updateBusinessProfile({ amenities: e.target.value.split('\n').filter(s => s.trim()) })}
+                        className="bg-white/5 border-white/10 text-white mt-1 min-h-[120px]"
+                        placeholder="Pool&#10;Sauna&#10;Locker Rooms"
+                        data-testid="input-amenities"
+                      />
+                    </div>
+                  </div>
+                </GlassCardContent>
+              </GlassCard>
+            </TabsContent>
+          </>
+        );
+      case 'homeservice':
+      case 'autoservice':
+        return (
+          <>
+            <TabsContent value="services">
+              <ServicesTab 
+                config={editedConfig}
+                updateBusinessProfile={updateBusinessProfile}
+                serviceLabel={businessType === 'homeservice' ? "Home Services" : "Auto Services"}
+              />
+            </TabsContent>
+            <TabsContent value="scheduling">
+              <GlassCard>
+                <GlassCardHeader>
+                  <GlassCardTitle>Scheduling Settings</GlassCardTitle>
+                  <GlassCardDescription>Configure service area and booking options</GlassCardDescription>
+                </GlassCardHeader>
+                <GlassCardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-white/70">Service Area</Label>
+                      <Input
+                        value={editedConfig.businessProfile.serviceArea || ''}
+                        onChange={(e) => updateBusinessProfile({ serviceArea: e.target.value })}
+                        className="bg-white/5 border-white/10 text-white mt-1"
+                        placeholder="e.g., Treasure Coast, FL within 30 miles"
+                        data-testid="input-service-area"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-white/70">Online Booking URL</Label>
+                      <Input
+                        value={editedConfig.businessProfile.booking?.onlineBookingUrl || ''}
+                        onChange={(e) => updateBusinessProfile({ 
+                          booking: { ...editedConfig.businessProfile.booking, onlineBookingUrl: e.target.value }
+                        })}
+                        className="bg-white/5 border-white/10 text-white mt-1"
+                        placeholder="https://..."
+                        data-testid="input-service-booking-url"
+                      />
+                    </div>
+                  </div>
+                </GlassCardContent>
+              </GlassCard>
+            </TabsContent>
+          </>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <AdminLayout>
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              onClick={() => setLocation('/super-admin')}
+              className="text-white/55 hover:text-white"
+              data-testid="button-back"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-400/30">
+                <BusinessIcon className="h-6 w-6 text-cyan-400" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white" data-testid="text-bot-name">
+                  {editedConfig.businessProfile.businessName}
+                </h2>
+                <p className="text-white/55 text-sm">{businessLabel} Dashboard</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {editedConfig.metadata?.isDemo && (
+              <NeonBadge variant="default">Demo Bot</NeonBadge>
+            )}
+            <Button
+              onClick={handleSave}
+              disabled={!hasChanges || saveMutation.isPending}
+              className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
+              data-testid="button-save-config"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {saveMutation.isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        </div>
+
+        <Tabs defaultValue="profile" className="space-y-6">
+          <TabsList className="flex flex-wrap gap-2 h-auto p-1 bg-white/5 rounded-xl border border-white/10">
+            <TabsTrigger value="profile" className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500/20 data-[state=active]:to-blue-500/20 data-[state=active]:text-cyan-400 data-[state=active]:border data-[state=active]:border-cyan-400/30 data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white transition-all" data-testid="tab-profile">
+              <Building2 className="h-4 w-4" />
+              Business Profile
+            </TabsTrigger>
+            <TabsTrigger value="hours" className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500/20 data-[state=active]:to-blue-500/20 data-[state=active]:text-cyan-400 data-[state=active]:border data-[state=active]:border-cyan-400/30 data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white transition-all" data-testid="tab-hours">
+              <Clock className="h-4 w-4" />
+              Hours
+            </TabsTrigger>
+            <TabsTrigger value="faqs" className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500/20 data-[state=active]:to-blue-500/20 data-[state=active]:text-cyan-400 data-[state=active]:border data-[state=active]:border-cyan-400/30 data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white transition-all" data-testid="tab-faqs">
+              <BookOpen className="h-4 w-4" />
+              FAQs
+            </TabsTrigger>
+            <TabsTrigger value="prompt" className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500/20 data-[state=active]:to-blue-500/20 data-[state=active]:text-cyan-400 data-[state=active]:border data-[state=active]:border-cyan-400/30 data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white transition-all" data-testid="tab-prompt">
+              <MessageSquare className="h-4 w-4" />
+              System Prompt
+            </TabsTrigger>
+            {renderBusinessTypeTabs()}
+          </TabsList>
+
+          <TabsContent value="profile">
+            <GlassCard>
+              <GlassCardHeader>
+                <GlassCardTitle>Business Profile</GlassCardTitle>
+                <GlassCardDescription>Basic business information displayed to users</GlassCardDescription>
+              </GlassCardHeader>
+              <GlassCardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-white/70">Business Name</Label>
+                      <Input
+                        value={editedConfig.businessProfile.businessName}
+                        onChange={(e) => updateBusinessProfile({ businessName: e.target.value })}
+                        className="bg-white/5 border-white/10 text-white mt-1"
+                        data-testid="input-business-name"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-white/70">Description</Label>
+                      <Textarea
+                        value={editedConfig.description}
+                        onChange={(e) => updateConfig({ description: e.target.value })}
+                        className="bg-white/5 border-white/10 text-white mt-1"
+                        data-testid="input-description"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-white/70 flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        Location
+                      </Label>
+                      <Input
+                        value={editedConfig.businessProfile.location}
+                        onChange={(e) => updateBusinessProfile({ location: e.target.value })}
+                        className="bg-white/5 border-white/10 text-white mt-1"
+                        data-testid="input-location"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-white/70 flex items-center gap-2">
+                        <Phone className="h-4 w-4" />
+                        Phone
+                      </Label>
+                      <Input
+                        value={editedConfig.businessProfile.phone}
+                        onChange={(e) => updateBusinessProfile({ phone: e.target.value })}
+                        className="bg-white/5 border-white/10 text-white mt-1"
+                        data-testid="input-phone"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-white/70 flex items-center gap-2">
+                        <Mail className="h-4 w-4" />
+                        Email
+                      </Label>
+                      <Input
+                        value={editedConfig.businessProfile.email}
+                        onChange={(e) => updateBusinessProfile({ email: e.target.value })}
+                        className="bg-white/5 border-white/10 text-white mt-1"
+                        data-testid="input-email"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-white/70 flex items-center gap-2">
+                        <Globe className="h-4 w-4" />
+                        Website
+                      </Label>
+                      <Input
+                        value={editedConfig.businessProfile.website}
+                        onChange={(e) => updateBusinessProfile({ website: e.target.value })}
+                        className="bg-white/5 border-white/10 text-white mt-1"
+                        data-testid="input-website"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </GlassCardContent>
+            </GlassCard>
+          </TabsContent>
+
+          <TabsContent value="hours">
+            <HoursTab 
+              config={editedConfig}
+              updateBusinessProfile={updateBusinessProfile}
+            />
+          </TabsContent>
+
+          <TabsContent value="faqs">
+            <FaqsTab 
+              config={editedConfig}
+              updateFaq={updateFaq}
+              addFaq={addFaq}
+              removeFaq={removeFaq}
+            />
+          </TabsContent>
+
+          <TabsContent value="prompt">
+            <GlassCard>
+              <GlassCardHeader>
+                <GlassCardTitle>System Prompt</GlassCardTitle>
+                <GlassCardDescription>The AI's core instructions and personality</GlassCardDescription>
+              </GlassCardHeader>
+              <GlassCardContent>
+                <Textarea
+                  value={editedConfig.systemPrompt}
+                  onChange={(e) => updateConfig({ systemPrompt: e.target.value })}
+                  className="bg-white/5 border-white/10 text-white min-h-[400px] font-mono text-sm"
+                  data-testid="input-system-prompt"
+                />
+              </GlassCardContent>
+            </GlassCard>
+          </TabsContent>
+
+          {renderBusinessTypeContent()}
+        </Tabs>
+      </div>
+    </AdminLayout>
+  );
+}
+
+function HoursTab({ config, updateBusinessProfile }: { 
+  config: BotConfig; 
+  updateBusinessProfile: (updates: Partial<BotConfig['businessProfile']>) => void;
+}) {
+  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  
+  const updateHours = (day: string, value: string) => {
+    updateBusinessProfile({
+      hours: { ...config.businessProfile.hours, [day]: value }
+    });
+  };
+
+  return (
+    <GlassCard>
+      <GlassCardHeader>
+        <GlassCardTitle>Business Hours</GlassCardTitle>
+        <GlassCardDescription>Set your operating hours for each day</GlassCardDescription>
+      </GlassCardHeader>
+      <GlassCardContent>
+        <div className="space-y-4">
+          {days.map(day => (
+            <div key={day} className="flex items-center gap-4">
+              <div className="w-28 text-white/70 capitalize">{day}</div>
+              <Input
+                value={config.businessProfile.hours[day] || ''}
+                onChange={(e) => updateHours(day, e.target.value)}
+                className="bg-white/5 border-white/10 text-white flex-1"
+                placeholder="e.g., 9:00 AM - 5:00 PM or Closed"
+                data-testid={`input-hours-${day}`}
+              />
+            </div>
+          ))}
+        </div>
+      </GlassCardContent>
+    </GlassCard>
+  );
+}
+
+function FaqsTab({ config, updateFaq, addFaq, removeFaq }: {
+  config: BotConfig;
+  updateFaq: (index: number, updates: Partial<BotFaq>) => void;
+  addFaq: () => void;
+  removeFaq: (index: number) => void;
+}) {
+  return (
+    <GlassCard>
+      <GlassCardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <GlassCardTitle>Frequently Asked Questions</GlassCardTitle>
+            <GlassCardDescription>Add Q&A pairs the bot can reference</GlassCardDescription>
+          </div>
+          <Button onClick={addFaq} variant="outline" data-testid="button-add-faq">
+            Add FAQ
+          </Button>
+        </div>
+      </GlassCardHeader>
+      <GlassCardContent>
+        <div className="space-y-4">
+          {config.faqs.map((faq, index) => (
+            <div key={index} className="p-4 rounded-lg bg-white/5 border border-white/10 space-y-3">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <Label className="text-white/70">Question</Label>
+                    <Input
+                      value={faq.question}
+                      onChange={(e) => updateFaq(index, { question: e.target.value })}
+                      className="bg-white/5 border-white/10 text-white mt-1"
+                      placeholder="e.g., What are your hours?"
+                      data-testid={`input-faq-question-${index}`}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-white/70">Answer</Label>
+                    <Textarea
+                      value={faq.answer}
+                      onChange={(e) => updateFaq(index, { answer: e.target.value })}
+                      className="bg-white/5 border-white/10 text-white mt-1"
+                      placeholder="e.g., We are open Monday-Friday 9am-5pm."
+                      data-testid={`input-faq-answer-${index}`}
+                    />
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeFaq(index)}
+                  className="text-red-400 hover:text-red-300 hover:bg-red-400/10"
+                  data-testid={`button-remove-faq-${index}`}
+                >
+                  <AlertTriangle className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          ))}
+          {config.faqs.length === 0 && (
+            <div className="text-center py-8 text-white/40">
+              No FAQs configured. Click "Add FAQ" to create one.
+            </div>
+          )}
+        </div>
+      </GlassCardContent>
+    </GlassCard>
+  );
+}
+
+function ServicesTab({ config, updateBusinessProfile, serviceLabel }: {
+  config: BotConfig;
+  updateBusinessProfile: (updates: Partial<BotConfig['businessProfile']>) => void;
+  serviceLabel: string;
+}) {
+  return (
+    <GlassCard>
+      <GlassCardHeader>
+        <GlassCardTitle>{serviceLabel}</GlassCardTitle>
+        <GlassCardDescription>List all services offered</GlassCardDescription>
+      </GlassCardHeader>
+      <GlassCardContent>
+        <div>
+          <Label className="text-white/70">Services (one per line)</Label>
+          <Textarea
+            value={config.businessProfile.services?.join('\n') || ''}
+            onChange={(e) => updateBusinessProfile({ services: e.target.value.split('\n').filter(s => s.trim()) })}
+            className="bg-white/5 border-white/10 text-white mt-1 min-h-[200px]"
+            placeholder="Enter each service on a new line"
+            data-testid="input-services"
+          />
+        </div>
+      </GlassCardContent>
+    </GlassCard>
+  );
+}
+
+function CrisisHandlingTab({ config, updateRules }: {
+  config: BotConfig;
+  updateRules: (updates: Partial<BotConfig['rules']>) => void;
+}) {
+  return (
+    <GlassCard>
+      <GlassCardHeader>
+        <GlassCardTitle>Crisis Handling</GlassCardTitle>
+        <GlassCardDescription>Configure how the bot responds to crisis situations</GlassCardDescription>
+      </GlassCardHeader>
+      <GlassCardContent>
+        <div className="space-y-6">
+          <div>
+            <Label className="text-white/70">Crisis Keywords (one per line)</Label>
+            <Textarea
+              value={config.rules.crisisHandling.onCrisisKeywords.join('\n')}
+              onChange={(e) => updateRules({ 
+                crisisHandling: { 
+                  ...config.rules.crisisHandling, 
+                  onCrisisKeywords: e.target.value.split('\n').filter(k => k.trim()) 
+                }
+              })}
+              className="bg-white/5 border-white/10 text-white mt-1 min-h-[150px]"
+              placeholder="suicide&#10;overdose&#10;self-harm"
+              data-testid="input-crisis-keywords"
+            />
+            <p className="text-white/40 text-xs mt-1">When these keywords are detected, the crisis response will be triggered.</p>
+          </div>
+          <div>
+            <Label className="text-white/70">Crisis Response Template</Label>
+            <Textarea
+              value={config.rules.crisisHandling.responseTemplate}
+              onChange={(e) => updateRules({ 
+                crisisHandling: { 
+                  ...config.rules.crisisHandling, 
+                  responseTemplate: e.target.value 
+                }
+              })}
+              className="bg-white/5 border-white/10 text-white mt-1 min-h-[200px]"
+              placeholder="Enter the message that will be shown when crisis keywords are detected..."
+              data-testid="input-crisis-response"
+            />
+          </div>
+        </div>
+      </GlassCardContent>
+    </GlassCard>
+  );
+}
