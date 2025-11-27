@@ -11,7 +11,6 @@ import {
   Car, 
   Dumbbell, 
   Heart,
-  ExternalLink,
   MessageCircle
 } from "lucide-react";
 
@@ -160,15 +159,9 @@ export default function DemosPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="flex justify-center gap-4">
-              <Link href="/">
-                <Button variant="outline" data-testid="button-home">
-                  Back to Home
-                </Button>
-              </Link>
-              <Link href="/admin">
-                <Button variant="default" className="gap-2" data-testid="button-admin">
-                  <ExternalLink className="h-4 w-4" />
-                  Admin Panel
+              <Link href="/faith-house">
+                <Button variant="outline" data-testid="button-faith-house">
+                  Faith House Demo
                 </Button>
               </Link>
             </CardContent>

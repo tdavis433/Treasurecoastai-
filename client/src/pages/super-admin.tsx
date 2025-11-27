@@ -16,10 +16,21 @@ import {
 import { AdminLayout } from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
 
+interface BotInfo {
+  botId: string;
+  name: string;
+  description: string;
+  businessType: string;
+  businessName: string;
+  isDemo: boolean;
+}
+
 interface Client {
   id: string;
   name: string;
   status: string;
+  type?: string;
+  bots?: BotInfo[];
 }
 
 interface GeneralSettings {
@@ -155,7 +166,7 @@ interface AuthUser {
 export default function SuperAdmin() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const [activeClientId, setActiveClientId] = useState<string>('default-client');
+  const [activeClientId, setActiveClientId] = useState<string>('faith_house');
   
   const { data: currentUser, isLoading: authLoading, isError: authError } = useQuery<AuthUser>({
     queryKey: ["/api/auth/me"],
@@ -536,7 +547,7 @@ export default function SuperAdmin() {
           <div className="flex items-center gap-3">
             <Building2 className="h-5 w-5 text-cyan-400" />
             <Select value={activeClientId} onValueChange={setActiveClientId}>
-              <SelectTrigger className="w-[200px] bg-white/5 border-white/10 text-white" data-testid="select-client">
+              <SelectTrigger className="w-[280px] bg-white/5 border-white/10 text-white" data-testid="select-client">
                 <SelectValue placeholder="Select client" />
               </SelectTrigger>
               <SelectContent className="bg-[#0B0E13] border-white/10">
@@ -551,6 +562,9 @@ export default function SuperAdmin() {
                       <NeonBadge variant={client.status === 'active' ? 'success' : 'default'} className="text-xs">
                         {client.status}
                       </NeonBadge>
+                      {client.bots && client.bots.length > 0 && (
+                        <span className="text-white/40 text-xs">({client.bots.length} bots)</span>
+                      )}
                     </span>
                   </SelectItem>
                 ))}
@@ -558,6 +572,40 @@ export default function SuperAdmin() {
             </Select>
           </div>
         </div>
+
+        {/* Client Bots Overview */}
+        {activeClient?.bots && activeClient.bots.length > 0 && (
+          <GlassCard>
+            <GlassCardHeader>
+              <GlassCardTitle>Chatbots for {activeClient.name}</GlassCardTitle>
+              <GlassCardDescription>All bots associated with this client</GlassCardDescription>
+            </GlassCardHeader>
+            <GlassCardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {activeClient.bots.map(bot => (
+                  <div 
+                    key={bot.botId}
+                    className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-2"
+                    data-testid={`bot-card-${bot.botId}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium text-white">{bot.businessName}</h4>
+                      <NeonBadge variant={bot.isDemo ? 'default' : 'success'} className="text-xs">
+                        {bot.isDemo ? 'Demo' : 'Live'}
+                      </NeonBadge>
+                    </div>
+                    <p className="text-sm text-white/55">{bot.description}</p>
+                    <div className="flex items-center gap-2 text-xs text-white/40">
+                      <span className="capitalize">{bot.businessType.replace('_', ' ')}</span>
+                      <span>|</span>
+                      <span>ID: {bot.botId}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </GlassCardContent>
+          </GlassCard>
+        )}
 
         <Tabs defaultValue="general" className="space-y-6">
           {/* Tabs Navigation */}

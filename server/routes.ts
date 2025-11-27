@@ -1189,16 +1189,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // SUPER ADMIN API ENDPOINTS
   // =============================================
 
-  // Get list of clients (currently single-tenant with default-client only)
+  // Get list of clients with their bots (includes all from JSON configs)
   app.get("/api/super-admin/clients", requireSuperAdmin, async (req, res) => {
     try {
-      const settings = await storage.getSettings();
-      const clients = settings ? [{
-        id: 'default-client',
-        name: settings.businessName,
-        status: settings.status || 'active'
-      }] : [];
-      res.json(clients);
+      // Get clients from JSON config
+      const clientsData = getClients();
+      const allBots = getAllBotConfigs();
+      
+      // Build client list with bots
+      const clientsWithBots = clientsData.clients.map(client => ({
+        id: client.id,
+        name: client.name,
+        status: client.status || 'active',
+        type: client.type,
+        bots: allBots
+          .filter(bot => bot.clientId === client.id)
+          .map(bot => ({
+            botId: bot.botId,
+            name: bot.name,
+            description: bot.description,
+            businessType: bot.businessProfile.type,
+            businessName: bot.businessProfile.businessName,
+            isDemo: bot.metadata?.isDemo ?? false
+          }))
+      }));
+      
+      res.json(clientsWithBots);
     } catch (error) {
       console.error("Get clients error:", error);
       res.status(500).json({ error: "Failed to fetch clients" });
