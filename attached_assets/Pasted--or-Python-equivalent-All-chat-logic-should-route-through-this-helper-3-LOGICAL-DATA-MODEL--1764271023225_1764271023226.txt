@@ -1,0 +1,81 @@
+(or Python equivalent).
+
+All chat logic should route through this helper.
+
+⸻
+
+3) LOGICAL DATA MODEL (PRE-DATABASE)
+
+Implement a clean internal data model in code that matches the spec in the PDF:
+	•	Client:
+	•	id
+	•	name
+	•	type
+	•	bots[]
+	•	Bot:
+	•	clientId
+	•	botId
+	•	name
+	•	description
+	•	systemPrompt
+	•	rules
+	•	businessProfile
+	•	faqs[]
+	•	emergencyGuidance (optional)
+	•	metadata (optional)
+
+Right now this can live in JSON files under /bots and /clients.
+Design everything so it will be easy later to swap JSON out for MySQL/Postgres.
+
+⸻
+
+4) ROUTING & ENDPOINTS
+
+Refactor routing to support:
+	1.	Chat API
+POST /api/chat/:clientId/:botId
+This endpoint must:
+	•	Validate clientId and botId.
+	•	Use getBotConfig(clientId, botId) to load config.
+	•	Build the OpenAI Chat request using:
+	•	systemPrompt
+	•	any rules (like safety rules)
+	•	optional summary of businessProfile
+	•	Call OpenAI Chat Completions API.
+	•	Return JSON: { reply, meta }.
+	•	Log each interaction to /logs/{clientId}/{botId}-YYYYMMDD.log.
+	2.	Demo Selector Page
+GET /demos
+	•	Shows a list of available demo bots and Faith House:
+	•	Restaurant demo
+	•	Barber demo
+	•	Home services demo
+	•	Auto shop demo
+	•	Gym/fitness demo
+	•	Faith House
+	•	Each item links to a specific demo route for that bot.
+	3.	Demo Bot Page
+GET /demo/:botId
+	•	Renders a simple chat UI for that bot.
+	•	For demo bots, you can assume a generic clientId like "demo".
+	•	For Faith House, use clientId = "faith_house" and botId = "faith_house_main".
+	4.	Super-Admin Panel
+GET /admin
+	•	Shows:
+	•	List of clients
+	•	For each client, list of bots
+	•	For each bot:
+	•	Button/link to open that bot’s demo/chat page.
+	•	Button/link to view the JSON config pretty-printed (read-only is fine).
+	•	Authentication is not needed yet, but structure the code so auth can be added later.
+
+⸻
+
+5) CONVERSATION LOGGING
+
+Implement basic file-based logging:
+	•	Directory: /logs/{clientId}/
+	•	For each interaction, append a JSON line to:
+logs/{clientId}/{botId}-{YYYYMMDD}.log
+
+Fields:

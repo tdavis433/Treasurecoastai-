@@ -1,0 +1,105 @@
+I have uploaded two PDF files into this Replit project:
+	1.	treasure_coast_ai_multi_tenant_full_spec.pdf
+	2.	replit_one_shot_prompt.pdf
+
+These two documents contain the full instructions, architecture, bot specs, and requirements for converting this forked project into a multi-tenant AI chatbot platform + demo hub for Treasure Coast AI.
+
+Your tasks:
+
+⸻
+
+1. Read BOTH PDFs completely
+
+Understand:
+	•	The full multi-tenant architecture
+	•	Required folders and file structure
+	•	All routing requirements
+	•	Logging behavior
+	•	Safety rules
+	•	The Faith House bot config
+	•	The 5 demo bot configs
+	•	The admin panel
+	•	Demo selector page
+	•	README requirements
+	•	Final verification checklist
+
+You MUST follow these two PDFs exactly.
+
+⸻
+
+2. Begin the job by doing a full PROJECT ANALYSIS
+
+Before making ANY changes:
+	•	Scan every file in this Replit project
+	•	Identify the framework (Node/Express or Python/Flask)
+	•	Identify the main server entry file
+	•	Identify where the chatbot logic currently lives
+	•	Identify current routing
+	•	Identify how the frontend UI is structured
+	•	Identify how the OpenAI API is called
+	•	Output a short summary of the current architecture
+
+Do not modify any code yet.
+Only output the architecture summary first.
+
+⸻
+
+3. After the analysis is done and I approve, begin implementing the conversion
+
+Follow the steps EXACTLY as described in:
+	•	treasure_coast_ai_multi_tenant_full_spec.pdf
+	•	replit_one_shot_prompt.pdf
+
+In the same order:
+
+A. Restructure the project
+	•	Create /bots folder
+	•	Create JSON configs for all 6 bots
+	•	Create /logs folder
+	•	Create /demos, /admin pages
+	•	Create multi-tenant routing
+
+B. Implement getBotConfig()
+
+All bot data must load from JSON.
+
+C. Build full multi-tenant chat route
+
+POST /api/chat/:clientId/:botId
+
+D. Build Demo Selector page
+
+GET /demos
+
+E. Build Super-Admin Panel
+
+GET /admin
+
+F. Implement logging
+
+Write logs for each tenant/bot.
+
+G. Enforce global safety rules
+
+Crisis phrases → emergency template reply.
+
+H. Integrate ALL demo bots & Faith House
+
+Using the full config info in the PDF.
+
+I. Update README
+
+Using the documentation structure from the PDF.
+
+J. Final Verification Checklist
+
+Run through the required testing steps.
+
+⸻
+
+4. Confirm every milestone with me before proceeding
+
+At each checkpoint:
+	•	Show what you built
+	•	Show code changes
+	•	Ask for approval before moving forward
