@@ -16,8 +16,9 @@ import DemoBotPage from "@/pages/demo-bot";
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Home} />
+      <Route path="/" component={DemosPage} />
       <Route path="/demos" component={DemosPage} />
+      <Route path="/faith-house" component={Home} />
       <Route path="/demo/:botId" component={DemoBotPage} />
       <Route path="/admin/dashboard" component={AdminDashboard} />
       <Route path="/admin/appointments" component={AdminAppointments} />
