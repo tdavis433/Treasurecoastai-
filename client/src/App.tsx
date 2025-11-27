@@ -9,6 +9,7 @@ import AdminAppointments from "@/pages/admin-appointments";
 import AdminAnalytics from "@/pages/admin-analytics";
 import SuperAdmin from "@/pages/super-admin";
 import BotDashboard from "@/pages/bot-dashboard";
+import ClientDashboard from "@/pages/client-dashboard";
 import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
 import DemosPage from "@/pages/demos";
@@ -28,6 +29,7 @@ function Router() {
       <Route path="/admin">
         <Redirect to="/admin/dashboard" />
       </Route>
+      <Route path="/client/dashboard" component={ClientDashboard} />
       <Route path="/login" component={Login} />
       <Route path="/super-admin" component={SuperAdmin} />
       <Route component={NotFound} />

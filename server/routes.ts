@@ -53,20 +53,28 @@ async function ensureAdminUserExists() {
       console.log("Admin user migrated to super_admin role");
     }
 
-    // Create client_admin (staff) account
+    // Create client_admin (staff) account for Faith House
     const existingStaff = await storage.findAdminByUsername("staff");
     
     if (!existingStaff) {
-      console.log("Creating default client admin (staff) user...");
+      console.log("Creating default client admin (staff) user for Faith House...");
       const staffPasswordHash = await bcrypt.hash("staff123", 10);
       
       await db.insert(adminUsers).values({
         username: "staff",
         passwordHash: staffPasswordHash,
         role: "client_admin",
+        clientId: "faith_house",
       });
       
-      console.log("Default client admin (staff) user created successfully");
+      console.log("Default client admin (staff) user created successfully for Faith House");
+    } else if (!existingStaff.clientId) {
+      // Update existing staff user to have Faith House clientId
+      console.log("Updating staff user with Faith House clientId...");
+      await db.update(adminUsers)
+        .set({ clientId: "faith_house" })
+        .where(eq(adminUsers.username, "staff"));
+      console.log("Staff user updated with Faith House clientId");
     }
   } catch (error) {
     console.error("Error ensuring admin user exists:", error);
@@ -94,10 +102,38 @@ function requireClientAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.session.userId) {
     return res.status(401).json({ error: "Authentication required" });
   }
-  if (!req.session.clientId && req.session.userRole !== "super_admin") {
-    return res.status(403).json({ error: "Client access required" });
+  
+  // Client admin users MUST have a clientId
+  if (req.session.userRole === "client_admin") {
+    if (!req.session.clientId) {
+      return res.status(403).json({ error: "Client configuration required. Please contact your administrator." });
+    }
+    (req as any).effectiveClientId = req.session.clientId;
+    next();
+    return;
   }
-  next();
+  
+  // Super admins MUST specify which client to view via query param
+  if (req.session.userRole === "super_admin") {
+    if (!req.query.clientId) {
+      return res.status(400).json({ 
+        error: "Client ID required", 
+        message: "Super admins must specify clientId query parameter to view client data" 
+      });
+    }
+    // Validate the requested clientId exists
+    const allBots = getAllBotConfigs();
+    const clientExists = allBots.some(bot => bot.clientId === req.query.clientId);
+    if (!clientExists) {
+      return res.status(404).json({ error: "Client not found" });
+    }
+    (req as any).effectiveClientId = req.query.clientId as string;
+    next();
+    return;
+  }
+  
+  // Unknown role - reject
+  return res.status(403).json({ error: "Access denied" });
 }
 
 const openai = new OpenAI({
@@ -1601,6 +1637,221 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Update notification settings error:", error);
       res.status(400).json({ error: "Failed to update notification settings" });
+    }
+  });
+
+  // ============================================
+  // CLIENT DASHBOARD ENDPOINTS
+  // ============================================
+
+  // Get current client user's profile and business info
+  app.get("/api/client/me", requireClientAuth, async (req, res) => {
+    try {
+      const user = await db.select({
+        id: adminUsers.id,
+        username: adminUsers.username,
+        role: adminUsers.role,
+        clientId: adminUsers.clientId,
+      }).from(adminUsers).where(eq(adminUsers.id, req.session.userId!)).limit(1);
+      
+      if (!user[0]) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const clientId = (req as any).effectiveClientId;
+      let botConfig = null;
+      let businessInfo = null;
+
+      if (clientId) {
+        // Try to find bot config for this client
+        const allBots = getAllBotConfigs();
+        botConfig = allBots.find(bot => bot.clientId === clientId);
+        
+        if (botConfig) {
+          businessInfo = {
+            name: botConfig.businessProfile?.businessName,
+            type: botConfig.businessProfile?.type,
+            location: botConfig.businessProfile?.location,
+            phone: botConfig.businessProfile?.phone,
+            hours: botConfig.businessProfile?.hours,
+          };
+        }
+      }
+
+      res.json({
+        user: user[0],
+        clientId,
+        businessInfo,
+        botId: botConfig?.botId,
+      });
+    } catch (error) {
+      console.error("Get client profile error:", error);
+      res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+
+  // Get client dashboard stats
+  app.get("/api/client/stats", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      
+      // Get bot config for this client
+      const allBots = getAllBotConfigs();
+      const botConfig = allBots.find(bot => bot.clientId === clientId);
+      
+      if (!botConfig) {
+        return res.status(404).json({ error: "No bot found for this client" });
+      }
+
+      // Get conversation stats from file-based logs
+      const logStats = getLogStats(clientId);
+      
+      // For Faith House (real tenant), also get database stats
+      let dbStats = null;
+      if (clientId === "faith_house" || clientId === "default-client") {
+        const appointments = await storage.getAllAppointments();
+        const analytics = await storage.getAnalytics();
+        
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const weekAgo = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+        
+        dbStats = {
+          totalAppointments: appointments.length,
+          pendingAppointments: appointments.filter((a: any) => a.status === "new" || a.status === "pending").length,
+          completedAppointments: appointments.filter((a: any) => a.status === "confirmed" || a.status === "completed").length,
+          totalConversations: new Set(analytics.map((a: any) => a.sessionId)).size,
+          totalMessages: analytics.length,
+          weeklyConversations: new Set(analytics.filter((a: any) => new Date(a.createdAt) > weekAgo).map((a: any) => a.sessionId)).size,
+        };
+      }
+
+      res.json({
+        clientId,
+        botId: botConfig.botId,
+        businessName: botConfig.businessProfile?.businessName,
+        businessType: botConfig.businessProfile?.type,
+        logStats,
+        dbStats,
+      });
+    } catch (error) {
+      console.error("Get client stats error:", error);
+      res.status(500).json({ error: "Failed to fetch stats" });
+    }
+  });
+
+  // Get client's conversation logs
+  app.get("/api/client/conversations", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const offset = parseInt(req.query.offset as string) || 0;
+      
+      // Get bot config for this client
+      const allBots = getAllBotConfigs();
+      const botConfig = allBots.find(bot => bot.clientId === clientId);
+      
+      if (!botConfig) {
+        return res.status(404).json({ error: "No bot found for this client" });
+      }
+
+      // Get conversations from file-based logs
+      const logs = getConversationLogs(clientId, botConfig.botId);
+      
+      // For Faith House, also include database analytics
+      let dbConversations: any[] = [];
+      if (clientId === "faith_house" || clientId === "default-client") {
+        const analytics = await storage.getAnalytics();
+        
+        // Group by sessionId to create conversation threads
+        const sessionMap = new Map<string, any[]>();
+        analytics.forEach(msg => {
+          if (!sessionMap.has(msg.sessionId)) {
+            sessionMap.set(msg.sessionId, []);
+          }
+          sessionMap.get(msg.sessionId)!.push(msg);
+        });
+        
+        dbConversations = Array.from(sessionMap.entries())
+          .map(([sessionId, messages]) => ({
+            sessionId,
+            messageCount: messages.length,
+            firstMessage: messages[0]?.createdAt,
+            lastMessage: messages[messages.length - 1]?.createdAt,
+            preview: messages[0]?.content?.substring(0, 100),
+          }))
+          .sort((a, b) => new Date(b.lastMessage).getTime() - new Date(a.lastMessage).getTime())
+          .slice(offset, offset + limit);
+      }
+
+      res.json({
+        clientId,
+        botId: botConfig.botId,
+        fileLogs: logs,
+        dbConversations,
+      });
+    } catch (error) {
+      console.error("Get client conversations error:", error);
+      res.status(500).json({ error: "Failed to fetch conversations" });
+    }
+  });
+
+  // Get client's appointments (for business types that support them)
+  app.get("/api/client/appointments", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      
+      // For now, only Faith House has database-backed appointments
+      if (clientId !== "faith_house" && clientId !== "default-client") {
+        return res.json({ 
+          appointments: [], 
+          message: "Appointment tracking not enabled for this business type" 
+        });
+      }
+
+      const appointments = await storage.getAllAppointments();
+      
+      // Sort by creation date, most recent first
+      const sortedAppointments = appointments.sort(
+        (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+
+      res.json({
+        clientId,
+        appointments: sortedAppointments,
+        total: appointments.length,
+      });
+    } catch (error) {
+      console.error("Get client appointments error:", error);
+      res.status(500).json({ error: "Failed to fetch appointments" });
+    }
+  });
+
+  // Get bot configuration for the client (read-only view)
+  app.get("/api/client/bot-config", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      
+      const allBots = getAllBotConfigs();
+      const botConfig = allBots.find(bot => bot.clientId === clientId);
+      
+      if (!botConfig) {
+        return res.status(404).json({ error: "No bot found for this client" });
+      }
+
+      // Return a safe subset of the config (no internal prompts)
+      res.json({
+        botId: botConfig.botId,
+        clientId: botConfig.clientId,
+        businessName: botConfig.businessProfile?.businessName,
+        businessType: botConfig.businessProfile?.type,
+        businessProfile: botConfig.businessProfile,
+        metadata: botConfig.metadata,
+        faqs: botConfig.faqs,
+      });
+    } catch (error) {
+      console.error("Get client bot config error:", error);
+      res.status(500).json({ error: "Failed to fetch bot configuration" });
     }
   });
 

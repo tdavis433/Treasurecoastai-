@@ -70,6 +70,13 @@ Bot Files:
 - `/admin/bot/:botId` - Per-bot dashboard with business-type-specific tabs
 - `/super-admin` - Super admin configuration (super_admin role only)
 
+### Client Dashboard
+- `/client/dashboard` - Client-facing dashboard for viewing business data
+  - Shows conversation statistics and message counts
+  - Lists appointments (for applicable business types)
+  - Displays business information and bot configuration
+  - Data is scoped to the logged-in client's business only
+
 ## System Architecture
 The system employs a React, TypeScript, Tailwind CSS, and shadcn/ui frontend with an Express and Node.js backend. PostgreSQL (Neon) is used for data persistence, and OpenAI provides AI capabilities via Replit AI Integrations, with TanStack Query for state management.
 
@@ -122,3 +129,9 @@ The system employs a React, TypeScript, Tailwind CSS, and shadcn/ui frontend wit
   - Home/Auto Services: Services & Pricing, Scheduling
 - **Super-Admin Bot Listing:** All bots now listed individually with Dashboard and Preview buttons
 - **Bot Config API:** Added GET/PUT `/api/super-admin/bots/:botId` for editing bot JSON configs
+- **Client Dashboard:** Added `/client/dashboard` for each business to view their own data
+  - Client users are linked to their business via clientId in admin_users table
+  - Shows conversation stats, appointments, and business info
+  - Data properly scoped to prevent cross-tenant data leakage
+  - Super admins can view any client's data via query param
+- **Client API Endpoints:** Added `/api/client/*` endpoints for client-scoped data access
