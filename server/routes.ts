@@ -6,13 +6,22 @@ import OpenAI from "openai";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
+import {
+  getBotConfig,
+  getBotConfigByBotId,
+  getAllBotConfigs,
+  getClients,
+  getClientById,
+  getBotsByClientId,
+  getDemoBots,
+  getRealTenantBots,
+  detectCrisisInMessage,
+  getCrisisResponse as getBotCrisisResponse,
+  buildSystemPromptFromConfig,
+  type BotConfig
+} from "./botConfig";
+import { logConversation as logConversationToFile, getConversationLogs, getLogStats } from "./conversationLogger";
 
-declare module 'express-session' {
-  interface SessionData {
-    userId: string;
-    userRole: AdminRole;
-  }
-}
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -616,6 +625,203 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Chat error:", error);
       res.status(500).json({ error: "Failed to process chat message" });
+    }
+  });
+
+  // =============================================
+  // MULTI-TENANT CHAT ENDPOINTS
+  // =============================================
+
+  // Multi-tenant chat endpoint: POST /api/chat/:clientId/:botId
+  app.post("/api/chat/:clientId/:botId", async (req, res) => {
+    try {
+      const { clientId, botId } = req.params;
+      const { messages, sessionId, language = "en" } = req.body;
+
+      if (!messages || !Array.isArray(messages)) {
+        return res.status(400).json({ error: "Messages array is required" });
+      }
+
+      // Load bot configuration
+      const botConfig = getBotConfig(clientId, botId);
+      if (!botConfig) {
+        return res.status(404).json({ error: `Bot not found: ${clientId}/${botId}` });
+      }
+
+      const lastUserMessage = messages[messages.length - 1];
+      
+      // Check for crisis keywords using bot-specific configuration
+      if (lastUserMessage?.role === "user" && detectCrisisInMessage(lastUserMessage.content, botConfig)) {
+        const crisisReply = getBotCrisisResponse(botConfig);
+        
+        // Log to file
+        logConversationToFile({
+          timestamp: new Date().toISOString(),
+          clientId,
+          botId,
+          sessionId,
+          userMessage: lastUserMessage.content,
+          botReply: crisisReply
+        });
+
+        return res.json({ 
+          reply: crisisReply,
+          meta: { clientId, botId, crisis: true }
+        });
+      }
+
+      // Build system prompt from bot config
+      const systemPrompt = buildSystemPromptFromConfig(botConfig);
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4.1-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...messages
+        ],
+        max_completion_tokens: 500,
+      });
+
+      const defaultReply = language === "es" 
+        ? "Estoy aquí para ayudar. ¿Cómo puedo asistirte hoy?"
+        : "I'm here to help. How can I assist you today?";
+      const reply = completion.choices[0]?.message?.content || defaultReply;
+
+      // Log conversation to file
+      if (lastUserMessage?.role === "user") {
+        logConversationToFile({
+          timestamp: new Date().toISOString(),
+          clientId,
+          botId,
+          sessionId,
+          userMessage: lastUserMessage.content,
+          botReply: reply
+        });
+      }
+
+      res.json({ 
+        reply,
+        meta: { clientId, botId }
+      });
+    } catch (error) {
+      console.error("Multi-tenant chat error:", error);
+      res.status(500).json({ error: "Failed to process chat message" });
+    }
+  });
+
+  // =============================================
+  // DEMO BOT ENDPOINTS
+  // =============================================
+
+  // Get all demo bots
+  app.get("/api/demos", (req, res) => {
+    try {
+      const demoBots = getDemoBots();
+      const faithHouseBot = getBotConfig("faith_house", "faith_house_main");
+      
+      const allBots = faithHouseBot ? [faithHouseBot, ...demoBots] : demoBots;
+      
+      const botList = allBots.map(bot => ({
+        botId: bot.botId,
+        clientId: bot.clientId,
+        name: bot.name,
+        description: bot.description,
+        businessType: bot.businessProfile.type,
+        businessName: bot.businessProfile.businessName,
+        isDemo: bot.metadata?.isDemo ?? (bot.clientId === 'demo')
+      }));
+      
+      res.json({ bots: botList });
+    } catch (error) {
+      console.error("Get demos error:", error);
+      res.status(500).json({ error: "Failed to fetch demo bots" });
+    }
+  });
+
+  // Get specific bot config for demo UI
+  app.get("/api/demo/:botId", (req, res) => {
+    try {
+      const { botId } = req.params;
+      
+      const botConfig = getBotConfigByBotId(botId);
+      
+      if (!botConfig) {
+        return res.status(404).json({ error: `Bot not found: ${botId}` });
+      }
+      
+      // Return config without sensitive system prompt details
+      res.json({
+        botId: botConfig.botId,
+        clientId: botConfig.clientId,
+        name: botConfig.name,
+        description: botConfig.description,
+        businessProfile: botConfig.businessProfile,
+        faqs: botConfig.faqs,
+        isDemo: botConfig.metadata?.isDemo ?? (botConfig.clientId === 'demo')
+      });
+    } catch (error) {
+      console.error("Get demo bot error:", error);
+      res.status(500).json({ error: "Failed to fetch demo bot" });
+    }
+  });
+
+  // Get all clients and their bots (for admin panel)
+  app.get("/api/platform/clients", (req, res) => {
+    try {
+      const clientsData = getClients();
+      const allBots = getAllBotConfigs();
+      
+      const clientsWithBots = clientsData.clients.map(client => ({
+        ...client,
+        bots: allBots
+          .filter(bot => bot.clientId === client.id)
+          .map(bot => ({
+            botId: bot.botId,
+            name: bot.name,
+            description: bot.description,
+            businessType: bot.businessProfile.type,
+            isDemo: bot.metadata?.isDemo ?? false
+          }))
+      }));
+      
+      res.json({ clients: clientsWithBots });
+    } catch (error) {
+      console.error("Get platform clients error:", error);
+      res.status(500).json({ error: "Failed to fetch clients" });
+    }
+  });
+
+  // Get bot config (pretty-printed for admin view)
+  app.get("/api/platform/bots/:clientId/:botId", (req, res) => {
+    try {
+      const { clientId, botId } = req.params;
+      
+      const botConfig = getBotConfig(clientId, botId);
+      
+      if (!botConfig) {
+        return res.status(404).json({ error: `Bot not found: ${clientId}/${botId}` });
+      }
+      
+      res.json(botConfig);
+    } catch (error) {
+      console.error("Get bot config error:", error);
+      res.status(500).json({ error: "Failed to fetch bot config" });
+    }
+  });
+
+  // Get conversation logs for a client
+  app.get("/api/platform/logs/:clientId", requireAuth, (req, res) => {
+    try {
+      const { clientId } = req.params;
+      const { botId, date } = req.query;
+      
+      const logs = getConversationLogs(clientId, botId as string, date as string);
+      const stats = getLogStats(clientId);
+      
+      res.json({ logs, stats });
+    } catch (error) {
+      console.error("Get logs error:", error);
+      res.status(500).json({ error: "Failed to fetch logs" });
     }
   });
 

@@ -10,11 +10,15 @@ import AdminAnalytics from "@/pages/admin-analytics";
 import SuperAdmin from "@/pages/super-admin";
 import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
+import DemosPage from "@/pages/demos";
+import DemoBotPage from "@/pages/demo-bot";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/demos" component={DemosPage} />
+      <Route path="/demo/:botId" component={DemoBotPage} />
       <Route path="/admin/dashboard" component={AdminDashboard} />
       <Route path="/admin/appointments" component={AdminAppointments} />
       <Route path="/admin/analytics" component={AdminAnalytics} />

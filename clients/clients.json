@@ -1,0 +1,26 @@
+{
+  "clients": [
+    {
+      "id": "faith_house",
+      "name": "Faith House Sober Living",
+      "type": "sober_living",
+      "bots": ["faith_house_main"],
+      "status": "active",
+      "createdAt": "2025-11-27"
+    },
+    {
+      "id": "demo",
+      "name": "Demo Bots",
+      "type": "demo",
+      "bots": [
+        "restaurant_demo",
+        "barber_demo",
+        "homeservice_demo",
+        "autoservice_demo",
+        "gym_demo"
+      ],
+      "status": "active",
+      "createdAt": "2025-11-27"
+    }
+  ]
+}
