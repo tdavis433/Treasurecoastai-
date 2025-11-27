@@ -67,6 +67,7 @@ Bot Files:
 - `/admin/dashboard` - Appointment KPIs and overview
 - `/admin/appointments` - Appointment management
 - `/admin/analytics` - Chat analytics
+- `/admin/bot/:botId` - Per-bot dashboard with business-type-specific tabs
 - `/super-admin` - Super admin configuration (super_admin role only)
 
 ## System Architecture
@@ -112,3 +113,12 @@ The system employs a React, TypeScript, Tailwind CSS, and shadcn/ui frontend wit
 - Created Demo Hub UI for showcasing platform
 - Added file-based conversation logging
 - Added platform management API endpoints
+- **Individual Bot Editing:** Added per-bot dashboard at `/admin/bot/:botId`
+- **Business-Type Specific Dashboards:** Each bot type has custom tabs:
+  - Sober Living: Appointments, Pre-Intake, Crisis Handling
+  - Restaurant: Menu & Cuisine, Reservations
+  - Barber: Services & Pricing, Appointments
+  - Gym: Memberships, Classes & Amenities
+  - Home/Auto Services: Services & Pricing, Scheduling
+- **Super-Admin Bot Listing:** All bots now listed individually with Dashboard and Preview buttons
+- **Bot Config API:** Added GET/PUT `/api/super-admin/bots/:botId` for editing bot JSON configs
