@@ -90,6 +90,16 @@ function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+function requireClientAuth(req: Request, res: Response, next: NextFunction) {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+  if (!req.session.clientId && req.session.userRole !== "super_admin") {
+    return res.status(403).json({ error: "Client access required" });
+  }
+  next();
+}
+
 const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
@@ -1133,12 +1143,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         req.session.userId = user.id;
         req.session.userRole = (user.role as AdminRole) || "client_admin";
+        req.session.clientId = user.clientId || null;
         req.session.save((saveErr) => {
           if (saveErr) {
             console.error("Session save error:", saveErr);
             return res.status(500).json({ error: "Session save failed" });
           }
-          res.json({ success: true, user: { id: user.id, username: user.username, role: user.role } });
+          res.json({ success: true, user: { id: user.id, username: user.username, role: user.role, clientId: user.clientId } });
         });
       });
     } catch (error) {
