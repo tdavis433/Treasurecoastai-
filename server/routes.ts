@@ -11,8 +11,16 @@ import fs from "fs";
 import { eq } from "drizzle-orm";
 import {
   getBotConfig,
+  getBotConfigAsync,
   getBotConfigByBotId,
+  getBotConfigByBotIdAsync,
   getAllBotConfigs,
+  getAllBotConfigsAsync,
+  getAllTemplates,
+  getTemplateById,
+  getWorkspaces,
+  getWorkspaceBySlug,
+  getBotsByWorkspaceId,
   getClients,
   getClientById,
   getBotsByClientId,
@@ -22,6 +30,7 @@ import {
   getCrisisResponse as getBotCrisisResponse,
   buildSystemPromptFromConfig,
   saveBotConfig,
+  saveBotConfigAsync,
   registerClient,
   updateClientStatus,
   getClientStatus,
@@ -879,8 +888,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Messages array is required" });
       }
 
-      // Load bot configuration
-      const botConfig = getBotConfig(clientId, botId);
+      // Load bot configuration (try database first, then JSON fallback)
+      const botConfig = await getBotConfigAsync(clientId, botId);
       if (!botConfig) {
         return res.status(404).json({ error: `Bot not found: ${clientId}/${botId}` });
       }
@@ -1653,6 +1662,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get user error:", error);
       res.status(500).json({ error: "Failed to fetch user" });
+    }
+  });
+
+  // =============================================
+  // TEMPLATES API ENDPOINTS (Database-backed)
+  // =============================================
+
+  // Get all available bot templates
+  app.get("/api/templates", async (req, res) => {
+    try {
+      const templates = await getAllTemplates();
+      res.json(templates.map(t => ({
+        id: t.id,
+        templateId: t.templateId,
+        name: t.name,
+        description: t.description,
+        botType: t.botType,
+        icon: t.icon,
+        previewImage: t.previewImage,
+        isActive: t.isActive,
+        displayOrder: t.displayOrder,
+      })));
+    } catch (error) {
+      console.error("Get templates error:", error);
+      res.status(500).json({ error: "Failed to fetch templates" });
+    }
+  });
+
+  // Get a specific template by ID
+  app.get("/api/templates/:templateId", async (req, res) => {
+    try {
+      const { templateId } = req.params;
+      const template = await getTemplateById(templateId);
+      
+      if (!template) {
+        return res.status(404).json({ error: `Template not found: ${templateId}` });
+      }
+      
+      res.json(template);
+    } catch (error) {
+      console.error("Get template error:", error);
+      res.status(500).json({ error: "Failed to fetch template" });
+    }
+  });
+
+  // =============================================
+  // WORKSPACES API ENDPOINTS (Database-backed)
+  // =============================================
+
+  // Get all workspaces (admin only)
+  app.get("/api/workspaces", requireSuperAdmin, async (req, res) => {
+    try {
+      const workspaceList = await getWorkspaces();
+      res.json(workspaceList);
+    } catch (error) {
+      console.error("Get workspaces error:", error);
+      res.status(500).json({ error: "Failed to fetch workspaces" });
+    }
+  });
+
+  // Get workspace by slug
+  app.get("/api/workspaces/:slug", requireAuth, async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const workspace = await getWorkspaceBySlug(slug);
+      
+      if (!workspace) {
+        return res.status(404).json({ error: `Workspace not found: ${slug}` });
+      }
+      
+      res.json(workspace);
+    } catch (error) {
+      console.error("Get workspace error:", error);
+      res.status(500).json({ error: "Failed to fetch workspace" });
+    }
+  });
+
+  // Get bots for a workspace
+  app.get("/api/workspaces/:workspaceId/bots", requireAuth, async (req, res) => {
+    try {
+      const { workspaceId } = req.params;
+      const botConfigs = await getBotsByWorkspaceId(workspaceId);
+      
+      res.json(botConfigs.map(bot => ({
+        botId: bot.botId,
+        name: bot.name,
+        description: bot.description,
+        botType: bot.botType,
+        businessName: bot.businessProfile.businessName,
+        status: bot.metadata?.isDemo ? 'demo' : 'active',
+      })));
+    } catch (error) {
+      console.error("Get workspace bots error:", error);
+      res.status(500).json({ error: "Failed to fetch workspace bots" });
     }
   });
 

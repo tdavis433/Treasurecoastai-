@@ -1,5 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { db } from './storage';
+import { bots, botSettings, workspaces, botTemplates } from '@shared/schema';
+import { eq } from 'drizzle-orm';
 
 export interface BotBusinessProfile {
   businessName: string;
@@ -94,6 +97,8 @@ export interface BotConfig {
     createdAt: string;
     version: string;
   };
+  workspaceId?: string;
+  botType?: string;
 }
 
 export interface ClientRecord {
@@ -127,13 +132,58 @@ function clearCache(): void {
   cacheTimestamp = 0;
 }
 
-export function getBotConfig(clientId: string, botId: string): BotConfig | null {
-  const cacheKey = `${clientId}:${botId}`;
-  
-  if (isCacheValid() && botConfigCache.has(cacheKey)) {
-    return botConfigCache.get(cacheKey)!;
+async function loadBotFromDatabase(botId: string): Promise<BotConfig | null> {
+  try {
+    const [botRecord] = await db.select().from(bots).where(eq(bots.botId, botId)).limit(1);
+    
+    if (!botRecord) {
+      return null;
+    }
+    
+    const [settingsRecord] = await db.select().from(botSettings).where(eq(botSettings.botId, botId)).limit(1);
+    
+    const [workspaceRecord] = await db.select().from(workspaces).where(eq(workspaces.id, botRecord.workspaceId)).limit(1);
+    
+    const businessProfile = botRecord.businessProfile as BotBusinessProfile;
+    const rules = (settingsRecord?.rules || {}) as BotRules;
+    const faqs = (settingsRecord?.faqs || []) as BotFaq[];
+    const automations = (settingsRecord?.automations || {}) as BotAutomationConfig;
+    
+    const config: BotConfig = {
+      clientId: workspaceRecord?.slug || botRecord.workspaceId,
+      botId: botRecord.botId,
+      name: botRecord.name,
+      description: botRecord.description || '',
+      businessProfile,
+      rules: {
+        allowedTopics: rules.allowedTopics || [],
+        forbiddenTopics: rules.forbiddenTopics || [],
+        specialInstructions: rules.specialInstructions,
+        crisisHandling: rules.crisisHandling || {
+          onCrisisKeywords: [],
+          responseTemplate: 'If you are in crisis, please call 911 or your local emergency number.'
+        }
+      },
+      systemPrompt: botRecord.systemPrompt,
+      faqs,
+      automations,
+      metadata: {
+        isDemo: botRecord.isDemo,
+        createdAt: botRecord.createdAt.toISOString().split('T')[0],
+        version: '2.0'
+      },
+      workspaceId: botRecord.workspaceId,
+      botType: botRecord.botType
+    };
+    
+    return config;
+  } catch (error) {
+    console.error(`Error loading bot from database for botId ${botId}:`, error);
+    return null;
   }
-  
+}
+
+function loadBotFromJson(clientId: string, botId: string): BotConfig | null {
   try {
     const botFiles = fs.readdirSync(BOTS_DIR).filter(f => f.endsWith('.json'));
     
@@ -143,29 +193,18 @@ export function getBotConfig(clientId: string, botId: string): BotConfig | null 
       const config: BotConfig = JSON.parse(content);
       
       if (config.clientId === clientId && config.botId === botId) {
-        botConfigCache.set(cacheKey, config);
-        cacheTimestamp = Date.now();
         return config;
       }
     }
     
     return null;
   } catch (error) {
-    console.error(`Error loading bot config for ${clientId}/${botId}:`, error);
+    console.error(`Error loading bot config from JSON for ${clientId}/${botId}:`, error);
     return null;
   }
 }
 
-export function getBotConfigByBotId(botId: string): BotConfig | null {
-  if (isCacheValid()) {
-    const entries = Array.from(botConfigCache.entries());
-    for (const [key, config] of entries) {
-      if (config.botId === botId) {
-        return config;
-      }
-    }
-  }
-  
+function loadBotFromJsonByBotId(botId: string): BotConfig | null {
   try {
     const botFiles = fs.readdirSync(BOTS_DIR).filter(f => f.endsWith('.json'));
     
@@ -175,18 +214,106 @@ export function getBotConfigByBotId(botId: string): BotConfig | null {
       const config: BotConfig = JSON.parse(content);
       
       if (config.botId === botId) {
-        const cacheKey = `${config.clientId}:${config.botId}`;
-        botConfigCache.set(cacheKey, config);
-        cacheTimestamp = Date.now();
         return config;
       }
     }
     
     return null;
   } catch (error) {
-    console.error(`Error loading bot config for botId ${botId}:`, error);
+    console.error(`Error loading bot config from JSON for botId ${botId}:`, error);
     return null;
   }
+}
+
+export function getBotConfig(clientId: string, botId: string): BotConfig | null {
+  const cacheKey = `${clientId}:${botId}`;
+  
+  if (isCacheValid() && botConfigCache.has(cacheKey)) {
+    return botConfigCache.get(cacheKey)!;
+  }
+  
+  const jsonConfig = loadBotFromJson(clientId, botId);
+  if (jsonConfig) {
+    botConfigCache.set(cacheKey, jsonConfig);
+    cacheTimestamp = Date.now();
+    return jsonConfig;
+  }
+  
+  return null;
+}
+
+export async function getBotConfigAsync(clientId: string, botId: string): Promise<BotConfig | null> {
+  const cacheKey = `${clientId}:${botId}`;
+  
+  if (isCacheValid() && botConfigCache.has(cacheKey)) {
+    return botConfigCache.get(cacheKey)!;
+  }
+  
+  const dbConfig = await loadBotFromDatabase(botId);
+  if (dbConfig) {
+    botConfigCache.set(cacheKey, dbConfig);
+    cacheTimestamp = Date.now();
+    return dbConfig;
+  }
+  
+  const jsonConfig = loadBotFromJson(clientId, botId);
+  if (jsonConfig) {
+    botConfigCache.set(cacheKey, jsonConfig);
+    cacheTimestamp = Date.now();
+    return jsonConfig;
+  }
+  
+  return null;
+}
+
+export function getBotConfigByBotId(botId: string): BotConfig | null {
+  if (isCacheValid()) {
+    const entries = Array.from(botConfigCache.entries());
+    for (const [, config] of entries) {
+      if (config.botId === botId) {
+        return config;
+      }
+    }
+  }
+  
+  const jsonConfig = loadBotFromJsonByBotId(botId);
+  if (jsonConfig) {
+    const cacheKey = `${jsonConfig.clientId}:${jsonConfig.botId}`;
+    botConfigCache.set(cacheKey, jsonConfig);
+    cacheTimestamp = Date.now();
+    return jsonConfig;
+  }
+  
+  return null;
+}
+
+export async function getBotConfigByBotIdAsync(botId: string): Promise<BotConfig | null> {
+  if (isCacheValid()) {
+    const entries = Array.from(botConfigCache.entries());
+    for (const [, config] of entries) {
+      if (config.botId === botId) {
+        return config;
+      }
+    }
+  }
+  
+  const dbConfig = await loadBotFromDatabase(botId);
+  if (dbConfig) {
+    const cacheKey = `${dbConfig.clientId}:${dbConfig.botId}`;
+    botConfigCache.set(cacheKey, dbConfig);
+    cacheTimestamp = Date.now();
+    return dbConfig;
+  }
+  
+  const jsonConfig = loadBotFromJsonByBotId(botId);
+  if (jsonConfig) {
+    const cacheKey = `${jsonConfig.clientId}:${jsonConfig.botId}`;
+    botConfigCache.set(cacheKey, jsonConfig);
+    cacheTimestamp = Date.now();
+    return jsonConfig;
+  }
+  
+  return null;
 }
 
 export function getAllBotConfigs(): BotConfig[] {
@@ -212,6 +339,56 @@ export function getAllBotConfigs(): BotConfig[] {
   }
 }
 
+export async function getAllBotConfigsAsync(): Promise<BotConfig[]> {
+  try {
+    const dbBots = await db.select().from(bots);
+    const configs: BotConfig[] = [];
+    
+    for (const botRecord of dbBots) {
+      const config = await loadBotFromDatabase(botRecord.botId);
+      if (config) {
+        configs.push(config);
+        const cacheKey = `${config.clientId}:${config.botId}`;
+        botConfigCache.set(cacheKey, config);
+      }
+    }
+    
+    const jsonConfigs = getAllBotConfigs();
+    for (const jsonConfig of jsonConfigs) {
+      const exists = configs.some(c => c.botId === jsonConfig.botId);
+      if (!exists) {
+        configs.push(jsonConfig);
+      }
+    }
+    
+    cacheTimestamp = Date.now();
+    return configs;
+  } catch (error) {
+    console.error('Error loading all bot configs async:', error);
+    return getAllBotConfigs();
+  }
+}
+
+export async function getAllTemplates(): Promise<any[]> {
+  try {
+    const templates = await db.select().from(botTemplates).where(eq(botTemplates.isActive, true));
+    return templates;
+  } catch (error) {
+    console.error('Error loading templates:', error);
+    return [];
+  }
+}
+
+export async function getTemplateById(templateId: string): Promise<any | null> {
+  try {
+    const [template] = await db.select().from(botTemplates).where(eq(botTemplates.templateId, templateId)).limit(1);
+    return template || null;
+  } catch (error) {
+    console.error('Error loading template:', error);
+    return null;
+  }
+}
+
 export function getClients(): ClientsData {
   if (isCacheValid() && clientsCache) {
     return clientsCache;
@@ -229,6 +406,45 @@ export function getClients(): ClientsData {
   } catch (error) {
     console.error('Error loading clients:', error);
     return { clients: [] };
+  }
+}
+
+export async function getWorkspaces(): Promise<any[]> {
+  try {
+    const workspaceList = await db.select().from(workspaces);
+    return workspaceList;
+  } catch (error) {
+    console.error('Error loading workspaces:', error);
+    return [];
+  }
+}
+
+export async function getWorkspaceBySlug(slug: string): Promise<any | null> {
+  try {
+    const [workspace] = await db.select().from(workspaces).where(eq(workspaces.slug, slug)).limit(1);
+    return workspace || null;
+  } catch (error) {
+    console.error('Error loading workspace:', error);
+    return null;
+  }
+}
+
+export async function getBotsByWorkspaceId(workspaceId: string): Promise<BotConfig[]> {
+  try {
+    const botRecords = await db.select().from(bots).where(eq(bots.workspaceId, workspaceId));
+    const configs: BotConfig[] = [];
+    
+    for (const botRecord of botRecords) {
+      const config = await loadBotFromDatabase(botRecord.botId);
+      if (config) {
+        configs.push(config);
+      }
+    }
+    
+    return configs;
+  } catch (error) {
+    console.error('Error loading bots by workspace:', error);
+    return [];
   }
 }
 
@@ -253,13 +469,14 @@ export function getRealTenantBots(): BotConfig[] {
 
 export function detectCrisisInMessage(message: string, config: BotConfig): boolean {
   const normalized = message.toLowerCase().replace(/[^\w\s]/g, ' ');
-  const keywords = config.rules.crisisHandling.onCrisisKeywords;
+  const keywords = config.rules?.crisisHandling?.onCrisisKeywords || [];
   
   return keywords.some(keyword => normalized.includes(keyword.toLowerCase()));
 }
 
 export function getCrisisResponse(config: BotConfig): string {
-  return config.rules.crisisHandling.responseTemplate;
+  return config.rules?.crisisHandling?.responseTemplate || 
+    'If you are in crisis, please call 911 or your local emergency number.';
 }
 
 export function buildSystemPromptFromConfig(config: BotConfig): string {
@@ -287,6 +504,41 @@ ${bp.amenities ? `- Amenities: ${bp.amenities.join(', ')}` : ''}
   }
   
   return prompt + '\n\n' + businessInfo + faqInfo;
+}
+
+export async function saveBotConfigAsync(botId: string, updates: Partial<BotConfig>): Promise<boolean> {
+  try {
+    const [existingBot] = await db.select().from(bots).where(eq(bots.botId, botId)).limit(1);
+    
+    if (existingBot) {
+      const botUpdates: any = {};
+      if (updates.name) botUpdates.name = updates.name;
+      if (updates.description) botUpdates.description = updates.description;
+      if (updates.businessProfile) botUpdates.businessProfile = updates.businessProfile;
+      if (updates.systemPrompt) botUpdates.systemPrompt = updates.systemPrompt;
+      botUpdates.updatedAt = new Date();
+      
+      await db.update(bots).set(botUpdates).where(eq(bots.botId, botId));
+      
+      if (updates.faqs || updates.rules || updates.automations) {
+        const settingsUpdates: any = {};
+        if (updates.faqs) settingsUpdates.faqs = updates.faqs;
+        if (updates.rules) settingsUpdates.rules = updates.rules;
+        if (updates.automations) settingsUpdates.automations = updates.automations;
+        settingsUpdates.updatedAt = new Date();
+        
+        await db.update(botSettings).set(settingsUpdates).where(eq(botSettings.botId, botId));
+      }
+      
+      clearCache();
+      return true;
+    }
+    
+    return saveBotConfig(botId, updates as BotConfig);
+  } catch (error) {
+    console.error(`Error saving bot config async for ${botId}:`, error);
+    return false;
+  }
 }
 
 export function saveBotConfig(botId: string, config: BotConfig): boolean {
