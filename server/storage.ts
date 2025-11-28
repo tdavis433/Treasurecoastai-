@@ -108,6 +108,9 @@ export interface IStorage {
   
   // Inbox - conversation messages
   getSessionMessages(sessionId: string, clientId: string): Promise<ChatAnalyticsEvent[]>;
+  
+  // Health check
+  healthCheck?(): Promise<{ status: string; latencyMs?: number }>;
 }
 
 export class DbStorage implements IStorage {
@@ -783,6 +786,16 @@ export class DbStorage implements IStorage {
       ))
       .orderBy(chatAnalyticsEvents.createdAt);
     return results;
+  }
+  
+  async healthCheck(): Promise<{ status: string; latencyMs?: number }> {
+    const start = Date.now();
+    try {
+      await db.execute(sql`SELECT 1`);
+      return { status: 'ok', latencyMs: Date.now() - start };
+    } catch (error) {
+      return { status: 'error', latencyMs: Date.now() - start };
+    }
   }
 }
 

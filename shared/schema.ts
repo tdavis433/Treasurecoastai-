@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, integer, json } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, integer, json, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -20,7 +20,11 @@ export const appointments = pgTable("appointments", {
   timeline: text("timeline"),
   conversationSummary: text("conversation_summary"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  clientIdIdx: index("appointments_client_id_idx").on(table.clientId),
+  statusIdx: index("appointments_status_idx").on(table.status),
+  createdAtIdx: index("appointments_created_at_idx").on(table.createdAt),
+}));
 
 export const insertAppointmentSchema = createInsertSchema(appointments).omit({
   id: true,
@@ -237,7 +241,12 @@ export const chatSessions = pgTable("chat_sessions", {
   appointmentRequested: boolean("appointment_requested").notNull().default(false),
   topics: json("topics").$type<string[]>().default([]),
   metadata: json("metadata").$type<Record<string, any>>().default({}),
-});
+}, (table) => ({
+  sessionIdIdx: index("chat_sessions_session_id_idx").on(table.sessionId),
+  clientIdIdx: index("chat_sessions_client_id_idx").on(table.clientId),
+  botIdIdx: index("chat_sessions_bot_id_idx").on(table.botId),
+  startedAtIdx: index("chat_sessions_started_at_idx").on(table.startedAt),
+}));
 
 export const insertChatSessionSchema = createInsertSchema(chatSessions).omit({
   id: true,
@@ -258,7 +267,12 @@ export const chatAnalyticsEvents = pgTable("chat_analytics_events", {
   responseTimeMs: integer("response_time_ms"),
   metadata: json("metadata").$type<Record<string, any>>().default({}),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  clientIdIdx: index("chat_events_client_id_idx").on(table.clientId),
+  sessionIdIdx: index("chat_events_session_id_idx").on(table.sessionId),
+  eventTypeIdx: index("chat_events_event_type_idx").on(table.eventType),
+  createdAtIdx: index("chat_events_created_at_idx").on(table.createdAt),
+}));
 
 export const insertChatAnalyticsEventSchema = createInsertSchema(chatAnalyticsEvents).omit({
   id: true,
@@ -302,7 +316,9 @@ export const monthlyUsage = pgTable("monthly_usage", {
   leadsCapture: integer("leads_captured").notNull().default(0),
   automationsTriggered: integer("automations_triggered").notNull().default(0),
   lastUpdated: timestamp("last_updated").defaultNow().notNull(),
-});
+}, (table) => ({
+  clientIdMonthIdx: index("monthly_usage_client_month_idx").on(table.clientId, table.month),
+}));
 
 export const insertMonthlyUsageSchema = createInsertSchema(monthlyUsage).omit({
   id: true,
@@ -384,7 +400,12 @@ export const leads = pgTable("leads", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   lastContactedAt: timestamp("last_contacted_at"),
-});
+}, (table) => ({
+  clientIdIdx: index("leads_client_id_idx").on(table.clientId),
+  statusIdx: index("leads_status_idx").on(table.status),
+  priorityIdx: index("leads_priority_idx").on(table.priority),
+  createdAtIdx: index("leads_created_at_idx").on(table.createdAt),
+}));
 
 export const insertLeadSchema = createInsertSchema(leads).omit({
   id: true,
@@ -394,3 +415,32 @@ export const insertLeadSchema = createInsertSchema(leads).omit({
 
 export type InsertLead = z.infer<typeof insertLeadSchema>;
 export type Lead = typeof leads.$inferSelect;
+
+// Audit logs for tracking admin actions
+export const auditLogs = pgTable("audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  username: text("username").notNull(),
+  action: text("action").notNull(), // 'create', 'update', 'delete', 'login', 'logout'
+  resourceType: text("resource_type").notNull(), // 'bot', 'client', 'appointment', 'lead', 'settings'
+  resourceId: varchar("resource_id"),
+  clientId: varchar("client_id"),
+  details: json("details").$type<Record<string, any>>().default({}),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("audit_logs_user_id_idx").on(table.userId),
+  actionIdx: index("audit_logs_action_idx").on(table.action),
+  resourceTypeIdx: index("audit_logs_resource_type_idx").on(table.resourceType),
+  clientIdIdx: index("audit_logs_client_id_idx").on(table.clientId),
+  createdAtIdx: index("audit_logs_created_at_idx").on(table.createdAt),
+}));
+
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export type AuditLog = typeof auditLogs.$inferSelect;

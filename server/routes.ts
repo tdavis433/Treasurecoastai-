@@ -677,6 +677,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   initStripe().catch(console.error);
   
   // =============================================
+  // HEALTH CHECK ENDPOINT
+  // =============================================
+  
+  app.get('/api/health', async (_req, res) => {
+    try {
+      // Check database connectivity
+      const dbCheck = await storage.healthCheck?.() ?? { status: 'ok' };
+      
+      res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        version: process.env.npm_package_version || '1.0.0',
+        uptime: process.uptime(),
+        database: dbCheck,
+        environment: process.env.NODE_ENV || 'development',
+      });
+    } catch (error) {
+      res.status(503).json({
+        status: 'error',
+        timestamp: new Date().toISOString(),
+        error: 'Health check failed',
+      });
+    }
+  });
+  
+  // =============================================
   // EMBEDDABLE CHAT WIDGET - Static Files & CORS
   // =============================================
   

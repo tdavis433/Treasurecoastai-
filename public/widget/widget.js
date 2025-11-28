@@ -76,6 +76,17 @@
     return div.innerHTML;
   }
   
+  function isValidHexColor(color) {
+    if (!color || typeof color !== 'string') return false;
+    return /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(color);
+  }
+  
+  function sanitizeColor(color) {
+    if (isValidHexColor(color)) return color;
+    console.warn('Invalid color provided, using default: ' + color);
+    return '#2563eb'; // Default blue
+  }
+  
   function formatMessage(text) {
     return escapeHtml(text)
       .replace(/\n/g, '<br>')
@@ -295,6 +306,9 @@
     switch (data.type) {
       case 'TCAI_CONFIG':
         if (data.config) {
+          if (data.config.primaryColor) {
+            data.config.primaryColor = sanitizeColor(data.config.primaryColor);
+          }
           Object.assign(config, data.config);
           applyTheme();
         }
@@ -311,7 +325,7 @@
     var urlParams = getUrlParams();
     config.clientId = urlParams.clientId;
     config.botId = urlParams.botId;
-    config.primaryColor = urlParams.primaryColor;
+    config.primaryColor = sanitizeColor(urlParams.primaryColor);
     config.greeting = urlParams.greeting;
     config.apiUrl = getApiUrl();
     
