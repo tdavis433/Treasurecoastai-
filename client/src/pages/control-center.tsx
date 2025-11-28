@@ -305,11 +305,11 @@ export default function ControlCenter() {
                           <Building2 className={`h-4 w-4 ${isSelected ? 'text-cyan-400' : 'text-white/55'}`} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm truncate text-white">
+                          <div className="font-medium text-sm text-white leading-tight">
                             {bot.name || bot.businessProfile?.businessName}
                           </div>
                           <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-xs text-white/55 truncate">
+                            <span className="text-xs text-white/55">
                               {getBusinessTypeLabel(bot.businessProfile?.type)}
                             </span>
                             {client && (
@@ -468,8 +468,8 @@ export default function ControlCenter() {
                               }`}>
                                 <Building2 className={`h-5 w-5 ${isSelected ? '' : 'text-cyan-400'}`} />
                               </div>
-                              <div className="min-w-0">
-                                <GlassCardTitle className="text-sm truncate">
+                              <div className="min-w-0 flex-1">
+                                <GlassCardTitle className="text-sm leading-tight break-words">
                                   {bot.name || bot.businessProfile?.businessName}
                                 </GlassCardTitle>
                                 <GlassCardDescription className="text-xs">

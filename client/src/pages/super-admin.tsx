@@ -657,9 +657,9 @@ export default function SuperAdmin() {
                     className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3 hover:border-cyan-400/30 transition-colors"
                     data-testid={`bot-card-${bot.botId}`}
                   >
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium text-white">{bot.businessName}</h4>
-                      <NeonBadge variant={bot.isDemo ? 'default' : 'success'} className="text-xs">
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="font-medium text-white leading-tight">{bot.businessName}</h4>
+                      <NeonBadge variant={bot.isDemo ? 'default' : 'success'} className="text-xs flex-shrink-0">
                         {bot.isDemo ? 'Demo' : 'Live'}
                       </NeonBadge>
                     </div>
