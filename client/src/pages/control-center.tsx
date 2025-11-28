@@ -248,9 +248,9 @@ export default function ControlCenter() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar - Bot List */}
-        <aside className="w-72 border-r bg-card flex flex-col">
+        <aside className="w-80 border-r bg-card flex flex-col">
           <div className="p-4 border-b">
-            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">
+            <h3 className="font-semibold text-base text-muted-foreground uppercase tracking-wide mb-3">
               Chatbots ({clientBots.length})
             </h3>
             <div className="relative">
@@ -258,7 +258,7 @@ export default function ControlCenter() {
               <Input
                 data-testid="input-search-bots"
                 placeholder="Search bots..."
-                className="pl-9"
+                className="pl-9 text-base"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -266,9 +266,9 @@ export default function ControlCenter() {
           </div>
 
           <ScrollArea className="flex-1">
-            <div className="p-2">
+            <div className="p-3">
               {filteredBots.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No bots found</p>
+                <p className="text-base text-muted-foreground text-center py-4">No bots found</p>
               ) : (
                 filteredBots.map(bot => {
                   const client = clients.find(c => c.id === bot.clientId);
@@ -280,21 +280,25 @@ export default function ControlCenter() {
                         setSelectedBotId(bot.botId);
                         setActiveTab('settings');
                       }}
-                      className={`w-full text-left p-3 rounded-lg mb-1 transition-colors ${
+                      className={`w-full text-left p-4 rounded-lg mb-2 transition-colors ${
                         selectedBotId === bot.botId 
                           ? 'bg-primary/10 border border-primary/30' 
                           : 'hover:bg-muted'
                       }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <Bot className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                        <span className="font-medium truncate">{bot.name || bot.businessProfile?.businessName}</span>
-                      </div>
-                      <div className="flex items-center justify-between mt-1.5">
-                        <span className="text-xs text-muted-foreground">
-                          {getBusinessTypeLabel(bot.businessProfile?.type)}
-                        </span>
-                        {client && getStatusBadge(client.status)}
+                      <div className="flex items-start gap-3">
+                        <Bot className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-base leading-tight">
+                            {bot.name || bot.businessProfile?.businessName}
+                          </div>
+                          <div className="flex items-center justify-between mt-2">
+                            <span className="text-sm text-muted-foreground">
+                              {getBusinessTypeLabel(bot.businessProfile?.type)}
+                            </span>
+                            {client && getStatusBadge(client.status)}
+                          </div>
+                        </div>
                       </div>
                     </button>
                   );
@@ -307,7 +311,7 @@ export default function ControlCenter() {
 
           {/* Templates Section */}
           <div className="p-4">
-            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">
+            <h3 className="font-semibold text-base text-muted-foreground uppercase tracking-wide mb-3">
               Create New Bot
             </h3>
             <div className="space-y-1">
@@ -319,14 +323,14 @@ export default function ControlCenter() {
                     setSelectedTemplate(template);
                     setShowCreateModal(true);
                   }}
-                  className="w-full text-left p-2 rounded-lg hover:bg-muted transition-colors flex items-center justify-between group"
+                  className="w-full text-left p-3 rounded-lg hover:bg-muted transition-colors flex items-center justify-between group"
                 >
-                  <span className="text-sm">{template.metadata?.templateCategory || template.businessProfile?.type}</span>
-                  <Plus className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <span className="text-base">{template.metadata?.templateCategory || template.businessProfile?.type}</span>
+                  <Plus className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </button>
               ))}
               {templates.length > 4 && (
-                <p className="text-xs text-muted-foreground text-center pt-1">
+                <p className="text-sm text-muted-foreground text-center pt-2">
                   +{templates.length - 4} more templates
                 </p>
               )}
@@ -340,11 +344,11 @@ export default function ControlCenter() {
             <Button 
               data-testid="button-settings-legacy"
               variant="ghost" 
-              size="sm" 
-              className="w-full justify-start"
+              size="default" 
+              className="w-full justify-start text-base"
               onClick={() => setLocation('/super-admin')}
             >
-              <Settings className="h-4 w-4 mr-2" />
+              <Settings className="h-5 w-5 mr-2" />
               Legacy Admin
             </Button>
           </div>
