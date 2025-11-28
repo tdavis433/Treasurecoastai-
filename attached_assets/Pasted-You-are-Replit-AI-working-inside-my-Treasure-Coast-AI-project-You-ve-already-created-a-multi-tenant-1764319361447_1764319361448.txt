@@ -1,0 +1,183 @@
+You are Replit AI working inside my Treasure Coast AI project.
+You’ve already created a multi-tenant setup with:
+
+/bots/*.json
+
+/clients/clients.json
+
+server/botConfig.ts helpers
+
+client/src/pages/super-admin.tsx for advanced settings (Faith House)
+
+Now I want you to finish Phase 2, based on my system docs (TCAI_Total_SaaS_System_Documentation.pdf), with the following very specific goals.
+
+Do NOT rewrite everything. Keep the current architecture. Just extend it.
+
+1) ADD A TRUE “CONTROL CENTER” VIEW FOR ALL CLIENTS
+
+Goal: A super-admin page where I can see and manage every client + their bots from one place.
+
+Use existing helpers:
+
+getClients() and getBotsByClientId() from server/botConfig.ts
+
+Implement a new frontend page or rework super-admin.tsx into:
+
+A layout that shows:
+
+Left panel: list of all clients from clients/clients.json
+
+For selected client:
+
+List of its bots
+
+Status badge (active/paused/demo)
+
+Buttons: “Edit Bot Settings”, “Open Demo”, “Impersonate Dashboard” (stub ok)
+
+Use the existing UI style (GlassCard, NeonBadge, Tabs, etc.) so it matches the rest of the app.
+
+Add a clear “Clients & Bots” tab or section inside super-admin.tsx.
+
+2) ENFORCE CLIENT STATUS (ACTIVE / PAUSED / DEMO)
+
+Goal: Status isn’t just stored – it actually controls behavior.
+
+Use clientSettings.status and/or clients/clients.json status field.
+
+In server/routes.ts, update the chat route(s) so that:
+
+If the resolved client (Faith House or demo) has status === "paused":
+
+Do not call OpenAI.
+
+Return a safe message like:
+"This assistant is temporarily unavailable. Please contact the business or Treasure Coast AI for support."
+
+If status is demo, you don’t have to limit messages yet, but:
+
+At least tag it so we could display “Demo Mode” in the UI.
+
+Add a simple status toggle in super-admin.tsx for each client:
+
+Dropdown or buttons: ACTIVE / PAUSED / DEMO
+
+On change: update clients/clients.json and/or client_settings.status consistently through a backend endpoint.
+
+Important: Keep Faith House fully working. Don’t break existing logic; just layer status checks on top.
+
+3) GENERALIZE BUSINESS INFO EDITING FOR ALL BOTS
+
+Goal: From the super-admin UI, I want to edit key business info for any bot (not just Faith House) without touching JSON.
+
+The structure already exists in BotBusinessProfile (in server/botConfig.ts).
+
+Create backend endpoints:
+
+GET /api/super-admin/bots/:botId → returns merged bot config
+
+PUT /api/super-admin/bots/:botId → updates businessProfile fields and writes back to the right JSON file in /bots.
+
+In super-admin.tsx, add a “Bot Settings” panel that:
+
+For the selected bot, displays editable fields:
+
+Business name
+
+Phone
+
+Email
+
+Website
+
+Location/city
+
+Hours (even as simple text/string for now)
+
+On save, calls the new PUT endpoint.
+
+Make sure this works for:
+
+restaurant_demo
+
+barber_demo
+
+homeservice_demo
+
+autoservice_demo
+
+gym_demo
+
+faith_house bot
+
+Don’t overcomplicate it now — simple forms are fine as long as they work for every bot.
+
+4) ADD STRIPE BILLING (SIMPLE VERSION)
+
+Goal: Basic recurring subscription per client.
+
+Add new backend routes in server/routes.ts:
+
+POST /api/billing/create-checkout-session
+
+POST /api/billing/webhook
+
+Use environment variables:
+
+STRIPE_SECRET_KEY
+
+STRIPE_WEBHOOK_SECRET
+
+STRIPE_PRICE_ID
+
+FRONTEND_URL
+
+Behavior:
+
+create-checkout-session takes { clientId }, creates a subscription Checkout Session, and returns session.url.
+
+Webhook:
+
+On checkout.session.completed → set that client’s status to active.
+
+On invoice.payment_failed or subscription canceled → set status to paused.
+
+Minimal frontend:
+
+On the super-admin / client detail view, add a “Start Subscription / Manage Billing” button that calls create-checkout-session and redirects to Stripe.
+
+Keep it simple; don’t build a full billing portal yet.
+
+5) DO NOT BREAK WHAT ALREADY WORKS
+
+Keep Faith House flows intact (pre-intake, crisis redirects, appointments).
+
+Keep existing demos working.
+
+Keep current styles (glass cards, neon badges).
+
+Only add:
+
+Cross-client Control Center logic
+
+Status enforcement
+
+General bot editing
+
+Stripe billing
+
+When you’re done:
+
+Show me the list of new/updated files.
+
+Show key code snippets for:
+
+Status enforcement in chat
+
+BotSettings GET/PUT routes
+
+Stripe routes
+
+The new Control Center / client+bot listing UI.
+
+Do not half-implement any of this. Finish each piece completely before moving on.
