@@ -29,6 +29,7 @@ function Router() {
       <Route path="/admin/dashboard" component={AdminDashboard} />
       <Route path="/admin/appointments" component={AdminAppointments} />
       <Route path="/admin/analytics" component={AdminAnalytics} />
+      <Route path="/admin/bot/new" component={CreateBot} />
       <Route path="/admin/bot/:botId" component={BotDashboard} />
       <Route path="/admin">
         <Redirect to="/admin/dashboard" />
@@ -39,7 +40,6 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/super-admin" component={SuperAdmin} />
       <Route path="/super-admin/control-center" component={ControlCenter} />
-      <Route path="/admin/bot/new" component={CreateBot} />
       <Route component={NotFound} />
     </Switch>
   );
