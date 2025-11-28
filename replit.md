@@ -207,3 +207,23 @@ The system employs a React, TypeScript, Tailwind CSS, and shadcn/ui frontend wit
   - restaurant_demo, barber_demo, autoservice_demo, homeservice_demo, gym_demo
   - realestate_demo, medspa_demo, tattoo_demo, soberliving_demo
   - Each template includes business profile, system prompt, FAQs, and safety rules
+- **Leads Module:** Complete lead management system
+  - `/client/leads` - Lead list with search, status/priority filters
+  - Database table: leads (id, clientId, botId, sessionId, name, email, phone, source, status, priority, notes, tags, metadata)
+  - CRUD operations: Create, Read, Update, Delete leads
+  - Super-admin access with clientId query parameter
+  - Monthly usage tracking for lead capture limits
+  - API endpoints: GET/POST `/api/client/leads`, GET/PATCH/DELETE `/api/client/leads/:id`
+- **Inbox Module:** Conversation management interface
+  - `/client/inbox` - Two-panel layout for viewing conversations
+  - Session list with filtering (all, crisis detected, appointment requests)
+  - Message thread display with user/bot distinction
+  - Crisis and appointment badges on sessions
+  - Session metadata: message counts, timestamps, topics
+  - API endpoint: GET `/api/client/inbox/sessions/:sessionId`
+- **Dark Neon-Glass Theme:** Unified design system
+  - Background: `bg-[#0B0E13]`
+  - Text hierarchy: Primary (text-white), Secondary (text-white/85), Tertiary (text-white/55), Helper (text-white/40)
+  - Accent color: cyan-400
+  - GlassCard component for consistent panel styling
+  - Neon status badges with color-coded indicators
