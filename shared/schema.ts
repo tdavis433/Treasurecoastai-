@@ -444,3 +444,278 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
 
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type AuditLog = typeof auditLogs.$inferSelect;
+
+// ============================================================================
+// WORKSPACE & MULTI-TENANT TABLES
+// ============================================================================
+
+// Industry/Bot types for feature scoping
+export const BOT_TYPES = [
+  'sober_living',
+  'restaurant', 
+  'barber',
+  'gym',
+  'auto_shop',
+  'home_services',
+  'tattoo_studio',
+  'real_estate',
+  'med_spa',
+  'generic'
+] as const;
+
+export type BotType = typeof BOT_TYPES[number];
+
+// Workspace roles
+export const WORKSPACE_ROLES = ['owner', 'manager', 'staff', 'agent'] as const;
+export type WorkspaceRole = typeof WORKSPACE_ROLES[number];
+
+// Workspaces table - Each business is a workspace
+export const workspaces = pgTable("workspaces", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  ownerId: varchar("owner_id").notNull(), // References adminUsers.id
+  
+  // Plan & billing
+  plan: text("plan").notNull().default("free"), // free, starter, pro, enterprise
+  stripeCustomerId: varchar("stripe_customer_id"),
+  stripeSubscriptionId: varchar("stripe_subscription_id"),
+  
+  // Status
+  status: text("status").notNull().default("active"), // active, paused, suspended, cancelled
+  
+  // Settings (JSONB for flexibility)
+  settings: json("settings").$type<{
+    timezone?: string;
+    defaultLanguage?: string;
+    brandColor?: string;
+    logoUrl?: string;
+    notificationEmail?: string;
+    notificationPhone?: string;
+  }>().default({}),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  slugIdx: index("workspaces_slug_idx").on(table.slug),
+  ownerIdx: index("workspaces_owner_id_idx").on(table.ownerId),
+  statusIdx: index("workspaces_status_idx").on(table.status),
+}));
+
+export const insertWorkspaceSchema = createInsertSchema(workspaces).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertWorkspace = z.infer<typeof insertWorkspaceSchema>;
+export type Workspace = typeof workspaces.$inferSelect;
+
+// Workspace memberships - Links users to workspaces with roles
+export const workspaceMemberships = pgTable("workspace_memberships", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull(),
+  userId: varchar("user_id").notNull(), // References adminUsers.id
+  role: text("role").notNull().default("staff"), // owner, manager, staff, agent
+  
+  // Invitation tracking
+  invitedBy: varchar("invited_by"),
+  invitedAt: timestamp("invited_at").defaultNow().notNull(),
+  acceptedAt: timestamp("accepted_at"),
+  
+  // Status
+  status: text("status").notNull().default("active"), // active, pending, revoked
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  workspaceUserIdx: index("memberships_workspace_user_idx").on(table.workspaceId, table.userId),
+  userIdx: index("memberships_user_id_idx").on(table.userId),
+}));
+
+export const insertWorkspaceMembershipSchema = createInsertSchema(workspaceMemberships).omit({
+  id: true,
+  createdAt: true,
+  invitedAt: true,
+});
+
+export type InsertWorkspaceMembership = z.infer<typeof insertWorkspaceMembershipSchema>;
+export type WorkspaceMembership = typeof workspaceMemberships.$inferSelect;
+
+// Bots table - Full bot configuration (replaces JSON files)
+export const bots = pgTable("bots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull(),
+  botId: varchar("bot_id").notNull().unique(), // Human-readable ID like 'faith_house_main'
+  
+  // Basic info
+  name: text("name").notNull(),
+  description: text("description"),
+  botType: text("bot_type").notNull().default("generic"), // Industry type for feature scoping
+  
+  // Business profile (JSONB)
+  businessProfile: json("business_profile").$type<{
+    businessName: string;
+    type: string;
+    location?: string;
+    phone?: string;
+    email?: string;
+    website?: string;
+    hours?: Record<string, string>;
+    services?: string[];
+    amenities?: string[];
+    cuisine?: string; // Restaurant-specific
+    [key: string]: any;
+  }>().notNull(),
+  
+  // AI configuration
+  systemPrompt: text("system_prompt").notNull(),
+  
+  // Theme/appearance
+  theme: json("theme").$type<{
+    primaryColor?: string;
+    accentColor?: string;
+    headerGradient?: string;
+    fontFamily?: string;
+    avatarUrl?: string;
+    welcomeMessage?: string;
+  }>().default({}),
+  
+  // Status
+  status: text("status").notNull().default("active"), // active, paused, draft
+  isDemo: boolean("is_demo").notNull().default(false),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  workspaceIdx: index("bots_workspace_id_idx").on(table.workspaceId),
+  botIdIdx: index("bots_bot_id_idx").on(table.botId),
+  botTypeIdx: index("bots_bot_type_idx").on(table.botType),
+  statusIdx: index("bots_status_idx").on(table.status),
+}));
+
+export const insertBotSchema = createInsertSchema(bots).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertBot = z.infer<typeof insertBotSchema>;
+export type Bot = typeof bots.$inferSelect;
+
+// Bot settings - FAQs, rules, automations (separate for easier updates)
+export const botSettings = pgTable("bot_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  botId: varchar("bot_id").notNull().unique(), // References bots.botId
+  
+  // FAQs
+  faqs: json("faqs").$type<Array<{
+    id?: string;
+    question: string;
+    answer: string;
+    category?: string;
+    active?: boolean;
+  }>>().default([]),
+  
+  // Rules
+  rules: json("rules").$type<{
+    allowedTopics?: string[];
+    forbiddenTopics?: string[];
+    specialInstructions?: string[];
+    crisisHandling?: {
+      onCrisisKeywords?: string[];
+      responseTemplate?: string;
+    };
+  }>().default({}),
+  
+  // Automations V1 config
+  automations: json("automations").$type<{
+    officeHours?: {
+      schedule?: Record<string, { open: string; close: string }>;
+      timezone?: string;
+      afterHoursMessage?: string;
+      enableAfterHoursMode?: boolean;
+    };
+    leadCapture?: {
+      enabled?: boolean;
+      triggerKeywords?: string[];
+      captureFields?: string[];
+      successMessage?: string;
+    };
+    keywordTriggers?: Array<{
+      id?: string;
+      type?: string;
+      enabled?: boolean;
+      keywords?: string[];
+      response?: string;
+    }>;
+  }>().default({}),
+  
+  // Tone & personality settings
+  personality: json("personality").$type<{
+    tone?: 'professional' | 'friendly' | 'casual' | 'compassionate' | 'informative';
+    responseLength?: 'brief' | 'medium' | 'detailed';
+    formality?: number; // 0-100 slider
+    enthusiasm?: number;
+    humor?: number;
+    warmth?: number;
+  }>().default({}),
+  
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  botIdIdx: index("bot_settings_bot_id_idx").on(table.botId),
+}));
+
+export const insertBotSettingsSchema = createInsertSchema(botSettings).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type InsertBotSettings = z.infer<typeof insertBotSettingsSchema>;
+export type BotSettings = typeof botSettings.$inferSelect;
+
+// Bot templates - Industry templates for bot creation wizard
+export const botTemplates = pgTable("bot_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Template identification
+  templateId: varchar("template_id").notNull().unique(), // e.g., 'restaurant_template'
+  name: text("name").notNull(),
+  description: text("description"),
+  botType: text("bot_type").notNull(), // Industry type
+  
+  // Icon/visual
+  icon: text("icon"), // Lucide icon name
+  previewImage: text("preview_image"),
+  
+  // Default configuration (JSONB)
+  defaultConfig: json("default_config").$type<{
+    businessProfile: Record<string, any>;
+    systemPrompt: string;
+    faqs: Array<{ question: string; answer: string }>;
+    rules: Record<string, any>;
+    automations: Record<string, any>;
+    theme: Record<string, any>;
+    personality: Record<string, any>;
+  }>().notNull(),
+  
+  // Template metadata
+  isActive: boolean("is_active").notNull().default(true),
+  displayOrder: integer("display_order").notNull().default(0),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  botTypeIdx: index("bot_templates_bot_type_idx").on(table.botType),
+  activeIdx: index("bot_templates_active_idx").on(table.isActive),
+}));
+
+export const insertBotTemplateSchema = createInsertSchema(botTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertBotTemplate = z.infer<typeof insertBotTemplateSchema>;
+export type BotTemplate = typeof botTemplates.$inferSelect;

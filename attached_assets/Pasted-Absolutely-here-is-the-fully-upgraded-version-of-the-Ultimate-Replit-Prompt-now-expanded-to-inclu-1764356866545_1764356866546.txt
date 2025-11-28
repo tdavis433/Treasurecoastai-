@@ -1,0 +1,381 @@
+Absolutely — here is the fully upgraded version of the Ultimate Replit Prompt, now expanded to include EVERYTHING from my audit, including every missing feature, fix, improvement, structural change, UX correction, backend upgrade, and security requirement I found when analyzing your entire ZIP.
+
+This is now the strongest, most complete, owner-level SaaS rebuilding prompt possible.
+
+Copy + paste the whole thing into Replit exactly as-is.
+
+⸻
+
+🚀 THE FINAL, COMPLETE, OWNER-GRADE FULL-SYSTEM REBUILD PROMPT FOR REPLIT
+
+(Paste this into Replit)
+
+You are Replit AI.
+You must perform a complete audit, fix, rebuild, refactor, and polish of my entire multi-tenant chatbot SaaS platform.
+Follow everything below exactly as written.
+
+⸻
+
+✅ SECTION 1 — GLOBAL RULES (DO NOT IGNORE)
+
+You MUST:
+
+✔ Inspect every file in the entire project
+
+(server/, client/, shared/, public/widget/, bots/, clients/)
+
+✔ Identify EVERYTHING that needs to be:
+	•	fixed
+	•	added
+	•	updated
+	•	rewritten
+	•	reorganized
+	•	secured
+	•	optimized
+	•	standardized
+	•	removed
+
+✔ Implement ALL required changes directly in the codebase.
+
+✔ Preserve all working features (chat, bots, demo bots, leads, analytics, Stripe, admin portal).
+
+✔ Elevate the platform to true production-grade SaaS quality.
+
+✔ No partial upgrades. No TODOs. No skipping. No half-fixes.
+
+⸻
+
+✅ SECTION 2 — AUDIT FINDINGS THAT MUST BE FIXED
+
+Apply ALL the following findings from the audit.
+
+⸻
+
+📌 2.1 Remove JSON as live data sources
+
+Currently the system uses:
+	•	/clients/clients.json
+	•	/bots/*.json
+
+This creates duplicate truth and WILL break multi-tenant isolation.
+
+You MUST:
+	•	Remove JSON as runtime data
+	•	Move all client data into Postgres clients table
+	•	Move all bot configs into new DB tables:
+	•	bots
+	•	bot_settings
+	•	bot_knowledge (optional JSONB or relational)
+	•	Treat JSON files ONLY as templates used when creating a new bot
+
+⸻
+
+📌 2.2 Faith House features bleeding into all clients
+
+Currently:
+	•	crisis support
+	•	pre-intake flows
+	•	red flag logic
+appear in general UI.
+
+You MUST:
+	•	Add botType or industry column to bots table
+	•	Make all sober-living logic template-scoped only
+	•	Hide all Faith House flows for non-sober-living bots
+
+⸻
+
+📌 2.3 Control Center too dense
+
+You must:
+	•	Split interface into clear sections
+	•	Add tooltips
+	•	Improve empty states
+	•	Add helpful descriptions
+
+⸻
+
+📌 2.4 Missing Bot Creation Wizard
+
+Add a full 5-step wizard:
+	1.	Business basics
+	2.	Services
+	3.	FAQs
+	4.	Chat personality
+	5.	Install widget
+
+The wizard should generate a bot entry + DB config.
+
+⸻
+
+📌 2.5 Missing Workspace & membership model
+
+Add:
+	•	workspaces table
+	•	workspace_memberships table
+
+Each business = workspace.
+Each owner/team member = membership.
+
+⸻
+
+📌 2.6 Missing API endpoints
+
+You MUST add:
+	•	POST /api/bots (create)
+	•	PUT /api/bots/:id (update)
+	•	DELETE /api/bots/:id
+	•	GET /api/bots (list for workspace)
+	•	GET /api/chat/history (per bot)
+	•	GET /api/admin/logs
+	•	POST /api/workspaces
+	•	POST /api/workspaces/invite
+
+⸻
+
+📌 2.7 Validation missing on many endpoints
+
+You MUST:
+	•	Add Zod validation on EVERY route’s body and query
+	•	Reject malformed / unsafe / cross-tenant requests
+
+⸻
+
+📌 2.8 Multi-tenant security must be hardened
+
+All data access must be restricted by:
+	•	the authenticated user’s workspace
+	•	bot’s workspace
+	•	chat session’s workspace
+	•	lead’s workspace
+
+Add defensive checks in every service.
+
+⸻
+
+📌 2.9 Automations engine incomplete
+
+You MUST:
+	•	Isolate automations V1 into its own module
+	•	Add Automations V2:
+	•	visual node editor
+	•	triggers
+	•	conditions
+	•	variable storage
+	•	message nodes
+	•	lead-capture nodes
+	•	end nodes
+	•	Add backend flow evaluator
+
+⸻
+
+📌 2.10 Widget improvements
+
+You must:
+	•	Add bot avatar & bot name to header
+	•	Add welcome message
+	•	Add theme ability (colors, gradient, fonts)
+	•	Add mobile-friendly adjustments
+	•	Add protection so botId/clientId in widget cannot be spoofed
+	•	Add signed token widget initialization (recommended)
+	•	Add rate limiting
+
+⸻
+
+📌 2.11 Analytics improvements
+
+UI must display:
+	•	Last 7/30 days
+	•	Total conversations
+	•	Total leads
+	•	Total sessions
+	•	Conversion rate
+	•	Per-bot analytics
+
+Backend already stores the data — front-end must visualize it properly.
+
+⸻
+
+📌 2.12 Lead management improvements
+
+Add:
+	•	status field (new, contacted, closed)
+	•	notes field
+	•	pagination
+	•	search
+
+⸻
+
+📌 2.13 Inbox improvements
+
+Add:
+	•	typing indicator
+	•	message timestamps
+	•	show which flows triggered
+	•	“close conversation” action
+
+⸻
+
+📌 2.14 Appearance Polish Needed Across Entire App
+
+Apply the neon/dark-glass style consistently:
+	•	cards
+	•	tables
+	•	buttons
+	•	panels
+	•	modals
+	•	headers
+	•	widget
+
+⸻
+
+📌 2.15 Error & loading states missing
+
+Add:
+	•	Skeleton loaders
+	•	Placeholder cards
+	•	Friendly error messages
+	•	Retry buttons
+	•	Loading animations
+
+⸻
+
+📌 2.16 Remove unnecessary files
+
+Remove:
+	•	unused demo pages
+	•	old CSS
+	•	unused components
+	•	unused imports
+	•	legacy flow logic
+
+⸻
+
+📌 2.17 Add test coverage
+
+Add integration tests for:
+	•	chat
+	•	leads
+	•	automations
+	•	stripe webhooks
+	•	admin actions
+	•	widget init
+
+⸻
+
+📌 2.18 Billing polish missing
+
+Add:
+	•	plan-status card
+	•	next billing date
+	•	link to Stripe portal
+	•	on-hold banner
+	•	usage progress bars
+
+⸻
+
+📌 2.19 Super Admin incomplete
+
+Add:
+	•	impersonation
+	•	plan management
+	•	workspace suspension
+	•	global analytics
+	•	logs viewer
+
+⸻
+
+📌 2.20 Add industry demo bots
+
+Fill DB with templates for:
+	•	Restaurant
+	•	Barber
+	•	Gym
+	•	Auto shop
+	•	Home services
+	•	Tattoo studio
+	•	Real estate
+	•	Sober living (Faith House)
+
+Use your bot JSON files as seeds.
+
+⸻
+
+✅ SECTION 3 — REBUILD & IMPLEMENTATION REQUIREMENTS
+
+Now that you have the full audit, you must:
+
+✔ Fix every issue
+
+✔ Add every missing feature
+
+✔ Remove every bad pattern
+
+✔ Rewrite every weak module
+
+✔ Harden security
+
+✔ Improve UX/UI
+
+✔ Move all configs into DB
+
+✔ Clean structure and files
+
+✔ Improve widget
+
+✔ Improve admin systems
+
+✔ Improve analytics
+
+✔ Improve billing
+
+✔ Implement Bot Wizard
+
+✔ Implement Automations V2
+
+✔ Implement Workspace model
+
+✔ Implement proper bot CRUD
+
+✔ Polish everything visually
+
+⸻
+
+✅ SECTION 4 — WHEN IMPLEMENTATION IS FINISHED
+
+After you finish making every required change:
+
+✔ Run a full QA sweep
+
+Fix any bugs you find.
+
+✔ Print a list of all changes made
+
+Include paths to all updated/created files.
+
+✔ Confirm that:
+	•	chat works
+	•	widget works
+	•	multi-tenancy works
+	•	billing works
+	•	analytics works
+	•	automations work
+	•	admin panels work
+	•	demo bots work
+	•	security is enforced
+
+⸻
+
+🚀 BEGIN NOW
+
+Start with a full audit of all project files, list every required fix/change, and then immediately implement EVERYTHING above.
+
+Do not skip ANYTHING.
+Do not output partial fixes.
+Do not stop until the entire platform is fully upgraded to production SaaS quality.
+
+⸻
+
+Done.
+
+Copy + paste this into Replit now.

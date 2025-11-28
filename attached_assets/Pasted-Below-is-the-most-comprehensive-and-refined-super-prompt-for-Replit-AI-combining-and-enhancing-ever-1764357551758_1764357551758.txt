@@ -1,0 +1,207 @@
+Below is the most comprehensive and refined super-prompt for Replit AI, combining and enhancing every instruction from the previous drafts. It integrates all audit findings, required fixes, missing features, UI/UX improvements, security hardening, advanced features, and final QA. Paste this entire block into Replit AI—it’s designed to leave no ambiguity and produce a truly elite SaaS platform.
+
+⸻
+
+🚀  ULTIMATE OWNER-GRADE SAAS REBUILD PROMPT FOR REPLIT
+
+(Paste this entire prompt into Replit AI)
+
+You are Replit AI. You will perform a complete audit, rebuild, refactor, feature expansion, UI/UX overhaul, backend upgrade, security hardening, and final polish of my entire multi-tenant AI chatbot SaaS platform.
+
+You MUST follow every instruction below. There are no optional items. Do not skip anything. Do not leave TODOs. Do not implement partially. Maintain all existing working features (chat, leads, analytics, billing, demos, admin) while elevating the platform to production-grade quality.
+
+⸻
+
+✅ SECTION 1 — GLOBAL RULES
+	1.	Scan and analyze every file in the project (server/, client/, shared/, public/widget/, bots/, clients/, etc.).
+	2.	Identify every problem, missing feature, weak area, security flaw, and improvement opportunity.
+	3.	Fix or improve all issues you find.
+	4.	Implement all missing features listed below.
+	5.	Remove all dead, duplicated, outdated, or unnecessary code/files.
+	6.	Upgrade the UI, backend, database, widget, analytics, and admin to professional SaaS standards.
+	7.	Maintain all existing functionality (chat engine, Stripe, analytics, leads, demos, super admin).
+	8.	Ensure zero regressions.
+
+This is a full-system rebuild—not a partial patch.
+
+⸻
+
+✅ SECTION 2 — AUDIT FINDINGS & REQUIRED FIXES
+
+Implement ALL of the following:
+
+1. Remove JSON as Runtime Data
+	•	Currently: /clients/clients.json and /bots/*.json.
+	•	MUST migrate all live client data into PostgreSQL (clients table).
+	•	MUST migrate all live bot configs into DB tables: bots, bot_settings, and bot_knowledge.
+	•	Treat JSON files ONLY as templates used for cloning when creating a new bot.
+	•	Replace all file-based loading logic with DB queries.
+
+2. Implement Workspaces & Team System
+	•	Add workspaces and workspace_memberships tables.
+	•	Support roles: Owner, Manager, Staff, Support Agent.
+	•	Workspace users can manage bots, view analytics, manage leads, manage settings; Owners can manage billing.
+	•	Super Admin features must include workspace impersonation, suspension, global analytics, and logs.
+
+3. Fix Faith House Feature Leakage
+	•	Introduce industry or botType column.
+	•	Ensure sober-living (Faith House) features (crisis flow, pre-intake, red flags, special appointments) only appear when industry = sober_living.
+	•	Hide them for all other industries.
+
+4. Add Bot Creation Wizard
+	•	Create a 5-step guided wizard:
+	1.	Business Info — name, contact, address, industry
+	2.	Services — list builder
+	3.	FAQs — question/answer pairs
+	4.	Tone & Personality — sliders or presets
+	5.	Install Snippet — outputs widget code
+	•	Wizard output must insert bots, bot_settings, and bot_knowledge records, assign to workspace, and generate the widget snippet.
+
+5. Add Full Bot CRUD API
+	•	Add endpoints:
+	•	POST /api/bots
+	•	GET /api/bots
+	•	GET /api/bots/:id
+	•	PUT /api/bots/:id
+	•	DELETE /api/bots/:id
+	•	Enforce validation: workspace ownership, role permissions, bot/workspace mapping, multi-tenant boundaries.
+
+6. Harden Multi-Tenant Security
+	•	Require workspaceId in every DB query.
+	•	Resolve all chat requests via workspace → bot → conversation.
+	•	Deny cross-workspace access.
+	•	Validate widget requests for proper bot ownership.
+	•	Use signed widget tokens to prevent spoofing of clientId/botId.
+
+7. Apply Zod Validation Everywhere
+	•	Validate body, params, query, botId, and workspaceId on all routes.
+	•	Return clear errors for invalid input.
+
+8. Upgrade Automations Engine
+	•	V1 (Rules Engine): Fix weak logic, ensure consistent evaluation, add test coverage.
+	•	V2 (Flow Builder): Implement a drag-and-drop visual editor with node types:
+	•	Trigger, Condition, Send Message, Ask Question, Lead Capture, Set Variable, Branch (if/else), End.
+	•	Include flow preview, AI-assisted flow generation, and a backend executor.
+
+9. Upgrade Chat Widget
+	•	Add bot avatar and name in header.
+	•	Support customizable theme (colors, fonts, gradients, bubble shapes).
+	•	Add welcome message.
+	•	Improve mobile friendliness (slide-up chat).
+	•	Smooth animations, better minimize/close logic.
+	•	Rate limiting.
+	•	Signed tokens in widget initialization to prevent spoofing.
+
+10. Upgrade Analytics
+	•	Provide 7-day and 30-day filters.
+	•	Show conversation volume chart, leads chart, conversion rate, most common questions, per-bot analytics, active-hours heatmap, usage versus plan.
+	•	Backend logs events already—frontend must render these.
+
+11. Upgrade Lead Management
+	•	Add lead statuses: New, Active, Contacted, Closed.
+	•	Add notes and tags fields.
+	•	Implement search, sorting, and pagination.
+
+12. Upgrade Inbox
+	•	Show timestamps.
+	•	Add typing indicator.
+	•	Support agent reply mode and conversation closing.
+	•	Group messages by sender/day.
+	•	Show which automations triggered.
+
+13. Upgrade Appointment System
+	•	Make scheduling universal, not just for Faith House.
+	•	Support appointment types, staff assignment, calendar view, availability, and email/text reminders.
+
+14. UI/UX Overhaul
+	•	Apply a unified dark neon-glass aesthetic: consistent typography, spacing, gradients, cards, panels, buttons, tables, modals, inputs, and tooltips.
+	•	Add skeleton loaders, empty state illustrations, branded footer, sidebar icons, hover animations, and polished microcopy across the app.
+
+15. Remove Dead Code
+	•	Delete unused demo pages, components, CSS, duplicate functions, debugging logs, and placeholder code.
+
+16. Add Test Coverage
+	•	Write integration tests for the chat engine, automations, leads, Stripe webhooks, admin access, widget initialization, and multi-tenant boundaries.
+
+17. Billing Improvements
+	•	Add plan status card, next billing date, a link to the Stripe portal, an “on hold” banner, and usage progress bars.
+
+18. Complete Super Admin
+	•	Implement impersonation, plan management, workspace suspension, global analytics, and a comprehensive logs viewer.
+
+19. Seed Industry Templates
+	•	Create DB seed templates for:
+	•	Restaurant, Barber, Gym, Auto Shop, Home Services, Tattoo Studio, Real Estate, Sober Living.
+	•	Each template must include business info, services, FAQs, tone, flows (sober-living only where relevant), and widget themes.
+
+⸻
+
+✅ SECTION 3 — PREMIUM FEATURES (Implement ALL)
+
+To stand out from competitors, add these premium capabilities:
+	1.	Smart CRM
+	•	Customer profiles with conversation history, lead status timeline, notes, tags, and contact info.
+	2.	Reviews Engine
+	•	Detect positive sentiment and prompt customers:
+“Would you like to leave a Google review?”
+	•	Direct them to the business’s Google review link.
+	3.	Multi-Language Support
+	•	Auto-detect user language and respond accordingly.
+	•	Admin chooses primary and fallback languages.
+	4.	Vision Support (AI Image Understanding)
+	•	Allow users to upload images (car damage, products, tattoos, injuries, documents).
+	•	Use GPT-Vision to interpret and respond.
+	5.	Voice Messaging
+	•	Let users send audio messages via the widget.
+	•	Record, transcribe, and reply with AI.
+	6.	Auto-Train From Website
+	•	Admin pastes a URL; system scrapes about/services/hours/FAQs and auto-fills bot content.
+	7.	AI Lead Scoring
+	•	Classify leads as Hot, Warm, or Cold based on conversation content.
+	8.	AI Inbox Summaries
+	•	Provide summary, sentiment, urgency, lead quality, and next-step suggestions for each conversation.
+	9.	Knowledge Gap Alerts
+	•	Detect recurring questions not covered by the bot; prompt admins to expand FAQs.
+	10.	AI Appointment Suggestions
+	•	Check calendar availability and suggest appropriate time slots automatically.
+	11.	AI Personality Builder
+	•	Use sliders (Formality, Enthusiasm, Humor, Warmth) to generate customized system prompts for the bot.
+	12.	Real-Time Dashboard AI Assistant
+	•	Owners can query the system: “Show all warm leads this week.” “Summarize yesterday’s chats.” “List pricing inquiries today.” “How many conversations happened?”
+	•	AI answers directly within the dashboard.
+
+⸻
+
+✅ SECTION 4 — INDUSTRY DEMO TEMPLATES
+
+Import or create database templates for all industry types:
+	•	Restaurant
+	•	Barber
+	•	Gym
+	•	Auto Shop
+	•	Home Services
+	•	Tattoo Studio
+	•	Real Estate
+	•	Sober Living (Faith House)
+
+Each template must define business info, services, FAQs, tone, prompts, crisis flows (only for sober living), and widget styling.
+
+⸻
+
+✅ SECTION 5 — FINAL QA SWEEP
+
+Once all changes are implemented:
+	1.	Test authentication, role permissions, workspace boundaries, bot creation wizard, chat (including vision/voice), automations (V1 & V2), widget, leads, inbox, analytics, appointment system, billing limits, super admin features, industry demos, and mobile responsiveness.
+	2.	Fix every bug found.
+	3.	Print a list summarizing all changes, with file paths updated/created.
+	4.	Confirm everything works: chat engine, widget, multi-tenancy, billing, analytics, automations, admin panels, demo bots, and security.
+
+⸻
+
+🚀 BEGIN NOW
+
+Start by scanning all files, apply every fix and feature above, then conduct the final QA sweep. Do not skip steps, do not produce partial upgrades, and do not break existing functionality. Ensure the platform is ready for real clients.
+
+⸻
+
+Copy and paste this entire prompt into Replit AI to execute the complete overhaul.
