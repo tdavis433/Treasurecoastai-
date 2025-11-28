@@ -1,0 +1,142 @@
+You are Replit AI working inside the Treasure Coast AI multi-tenant SaaS platform.
+
+In the root directory is a PDF:
+
+TCAI_Total_SaaS_System_Documentation.pdf
+
+This PDF is the complete master blueprint for the entire platform.
+It describes everything the platform must have:
+
+Full file structure
+
+UI component library
+
+Control Center
+
+Template system
+
+Bot editing UI
+
+Client onboarding
+
+Analytics
+
+Stripe billing
+
+Status enforcement
+
+Feature gating
+
+Theming
+
+Cleanup
+
+Deployment
+
+Your task is to:
+
+⭐ 1. Read the entire PDF fully, carefully, and literally.
+
+No skipping.
+No guessing.
+No partial interpretation.
+You must follow every instruction exactly.
+
+⭐ 2. Implement the PDF’s instructions into the current codebase
+
+Do NOT restructure in your own way.
+Do NOT change the architecture unless the PDF explicitly states to.
+
+Implement EXACTLY what the PDF lays out:
+
+The final file structure
+
+The Control Center layout
+
+The UI component system
+
+The template system
+
+The bot editing system
+
+The analytics system
+
+The Stripe subscription endpoints
+
+Faith House gating
+
+Business profile editing
+
+Full theme.css
+
+All route files
+
+All service files
+
+All pages
+
+All React components
+
+EVERYTHING in the PDF must appear in the codebase.
+
+⭐ 3. For every step, show me:
+
+What files you created
+
+What files you updated
+
+The exact code inserted/replaced
+
+Why the change was needed
+
+How it connects to the PDF requirements
+
+⭐ 4. After implementing each module:
+
+You must test:
+
+Multi-tenant routing
+
+Status enforcement
+
+Bot loading
+
+Template cloning
+
+Bot editing form
+
+Analytics endpoint
+
+Billing → status sync
+
+Theme visually loading
+
+UIs rendering correctly
+
+Fix anything that breaks.
+
+⭐ 5. Continue building until the entire PDF is 100% implemented.
+
+Do NOT stop early.
+Do NOT assume “this is enough.”
+Do NOT leave TODO items.
+
+This must be a complete SaaS build exactly matching the documentation.
+
+⭐ 6. Keep everything clean, modular, and professional.
+
+This platform must feel:
+
+Premium
+
+Reliable
+
+Organized
+
+Easy to manage
+
+Scalable
+
+Real SaaS quality
+
+Exactly as defined in the PDF.

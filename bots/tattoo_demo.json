@@ -1,0 +1,90 @@
+{
+  "botId": "tattoo_demo",
+  "clientId": "demo",
+  "name": "Tattoo Studio Demo Bot",
+  "description": "AI assistant for tattoo studios and body art shops",
+  "metadata": {
+    "isDemo": true,
+    "isTemplate": true,
+    "templateCategory": "Tattoo Studio",
+    "version": "1.0.0",
+    "createdAt": "2025-11-01"
+  },
+  "businessProfile": {
+    "businessName": "Ink & Soul Tattoo",
+    "type": "tattoo",
+    "phone": "(555) 555-0140",
+    "email": "info@inkandsoul.com",
+    "website": "https://inkandsoul.com",
+    "location": "789 Art District Ave, Treasure Coast, FL",
+    "hours": {
+      "monday": "12:00 PM - 9:00 PM",
+      "tuesday": "12:00 PM - 9:00 PM",
+      "wednesday": "12:00 PM - 9:00 PM",
+      "thursday": "12:00 PM - 9:00 PM",
+      "friday": "12:00 PM - 10:00 PM",
+      "saturday": "11:00 AM - 10:00 PM",
+      "sunday": "12:00 PM - 6:00 PM"
+    },
+    "services": [
+      "Custom Tattoos",
+      "Cover-Ups",
+      "Touch-Ups",
+      "Flash Designs",
+      "Portraits",
+      "Traditional",
+      "Japanese",
+      "Realism",
+      "Blackwork",
+      "Watercolor",
+      "Piercings"
+    ],
+    "amenities": [
+      "Private Rooms Available",
+      "Walk-Ins Welcome (based on availability)",
+      "Free Consultations",
+      "Portfolio Viewing"
+    ],
+    "booking": {
+      "onlineBookingUrl": "https://inkandsoul.com/book",
+      "walkInsWelcome": true,
+      "walkInsNote": "Walk-ins welcome based on artist availability"
+    }
+  },
+  "systemPrompt": "You are a helpful assistant for Ink & Soul Tattoo studio. Help visitors learn about our artists, services, and booking process. Be friendly, creative, and informative. Encourage consultations for custom work and help potential clients understand our process.",
+  "faqs": [
+    {
+      "question": "How do I book an appointment?",
+      "answer": "You can book online at our website, call us at (555) 555-0140, or stop by for a consultation. For custom pieces, we recommend booking a free consultation first to discuss your ideas with an artist."
+    },
+    {
+      "question": "Do you accept walk-ins?",
+      "answer": "Yes! We welcome walk-ins based on artist availability. For larger or custom pieces, we recommend booking in advance to ensure your preferred artist is available."
+    },
+    {
+      "question": "How much do tattoos cost?",
+      "answer": "Pricing varies based on size, complexity, placement, and time required. We have a shop minimum of $80. For custom work, pricing is discussed during your consultation. Flash designs start at $100."
+    },
+    {
+      "question": "How should I prepare for my tattoo?",
+      "answer": "Get a good night's sleep, eat a meal before your appointment, stay hydrated, and avoid alcohol for 24 hours prior. Wear comfortable clothing that allows easy access to the area being tattooed."
+    },
+    {
+      "question": "What is your aftercare process?",
+      "answer": "We provide detailed aftercare instructions with every tattoo. Generally, keep it clean, moisturized, and out of direct sunlight during healing. Avoid swimming and soaking for 2-3 weeks. Our artists will walk you through everything."
+    },
+    {
+      "question": "Can you do cover-ups?",
+      "answer": "Absolutely! Several of our artists specialize in cover-ups. Book a consultation so we can assess the existing tattoo and discuss design options that will work best."
+    }
+  ],
+  "rules": {
+    "allowedTopics": ["tattoos", "piercings", "artists", "styles", "booking", "pricing basics", "aftercare", "preparation"],
+    "forbiddenTopics": ["age-restricted content to minors", "illegal designs"],
+    "specialInstructions": [
+      "Verify age (18+) for tattoo inquiries",
+      "Encourage consultations for custom work",
+      "Direct to portfolio for style examples"
+    ]
+  }
+}

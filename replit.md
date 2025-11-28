@@ -6,7 +6,7 @@ This project is a production-ready multi-tenant AI chatbot platform originally d
 ## User Preferences
 - **Current Mode:** Multi-tenant platform with JSON-based bot configurations
 - **Real Tenant:** Faith House Sober Living (fully functional)
-- **Demo Bots:** Restaurant, Barber/Salon, Home Services, Auto Shop, Gym
+- **Demo Bots:** Restaurant, Barber/Salon, Home Services, Auto Shop, Gym, Real Estate, Med Spa, Tattoo Studio (9 total templates)
 - **Super-Admin Access:** Password-protected settings management for business configuration
 - Privacy-first approach with PII protection
 
@@ -23,9 +23,12 @@ Bot Files:
 - `faith_house.json` - Real tenant (sober living)
 - `restaurant_demo.json` - Demo (restaurant)
 - `barber_demo.json` - Demo (barber/salon)
-- `home_services_demo.json` - Demo (home services)
-- `auto_shop_demo.json` - Demo (auto shop)
+- `homeservice_demo.json` - Demo (home services)
+- `autoservice_demo.json` - Demo (auto shop)
 - `gym_demo.json` - Demo (gym/fitness)
+- `realestate_demo.json` - Demo (real estate)
+- `medspa_demo.json` - Demo (med spa)
+- `tattoo_demo.json` - Demo (tattoo studio)
 
 ### Client Management (/clients folder)
 - `clients.json` - Central registry of all clients
@@ -69,6 +72,16 @@ Bot Files:
 - `/admin/analytics` - Chat analytics
 - `/admin/bot/:botId` - Per-bot dashboard with business-type-specific tabs
 - `/super-admin` - Super admin configuration (super_admin role only)
+
+### Control Center (Super Admin)
+- `/super-admin/control-center` - Unified platform management interface
+  - **Left Sidebar:** Lists all chatbots with search, templates for creating new clients
+  - **Overview Tab:** Quick stats (messages, conversations, leads, bookings), bot info, services, knowledge base
+  - **Bot Settings Tab:** Full bot editing (name, business profile, hours, services, system prompt, FAQs)
+  - **Billing Tab:** Stripe subscription status, checkout creation, customer portal
+  - **Analytics Tab:** Performance metrics with link to full dashboard
+  - **Logs Tab:** Conversation log files
+  - **Faith House Features:** Special section for sober_living clients with crisis detection, pre-intake forms, appointment booking
 
 ### Client Dashboard
 - `/client/dashboard` - Client-facing dashboard for viewing business data
@@ -164,3 +177,17 @@ The system employs a React, TypeScript, Tailwind CSS, and shadcn/ui frontend wit
   - Customer portal integration for self-service subscription management
   - Auto-deactivation on payment failure via webhook handlers (invoice.payment_failed, customer.subscription.deleted)
   - Stripe schema stored in PostgreSQL with automatic migration on startup
+- **Bot-Centric Control Center:** Unified management interface at `/super-admin/control-center`
+  - Left sidebar lists all bots (not clients) with search and template selection
+  - 5-tab structure: Overview, Bot Settings, Billing, Analytics, Logs
+  - Bot Settings includes editable FAQ management (add/edit/delete)
+  - Tone/Voice controls with 5 options (Professional, Friendly, Casual, Compassionate, Informative)
+  - Response length selector (Brief, Medium, Detailed)
+  - 3-step onboarding wizard for creating new bots from templates:
+    - Step 1: Business basics (name, ID, phone, email, website)
+    - Step 2: Address and primary contact information
+    - Step 3: Service tier and billing plan selection
+- **9 Business Templates:** Complete template system for new client onboarding
+  - restaurant_demo, barber_demo, autoservice_demo, homeservice_demo, gym_demo
+  - realestate_demo, medspa_demo, tattoo_demo, soberliving_demo
+  - Each template includes business profile, system prompt, FAQs, and safety rules

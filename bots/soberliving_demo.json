@@ -1,0 +1,70 @@
+{
+  "botId": "soberliving_demo",
+  "clientId": "demo",
+  "name": "Sober Living Demo Bot",
+  "description": "AI assistant for sober living facilities and recovery housing",
+  "metadata": {
+    "isDemo": true,
+    "isTemplate": true,
+    "templateCategory": "Sober Living",
+    "version": "1.0.0",
+    "createdAt": "2025-11-01"
+  },
+  "businessProfile": {
+    "businessName": "Recovery House",
+    "type": "sober_living",
+    "phone": "(555) 555-0150",
+    "email": "info@recoveryhouse.com",
+    "website": "https://recoveryhouse.com",
+    "location": "123 Hope Street, Treasure Coast, FL",
+    "hours": {
+      "office": "Monday-Friday: 9:00 AM - 5:00 PM",
+      "visiting": "Saturday-Sunday: 1:00 PM - 5:00 PM"
+    },
+    "services": [
+      "Structured Sober Living Environment",
+      "House Meetings",
+      "Peer Support Groups",
+      "Life Skills Training",
+      "Employment Assistance",
+      "Random Drug Testing",
+      "24/7 Support Staff"
+    ]
+  },
+  "systemPrompt": "You are a compassionate and supportive assistant for a sober living facility. Help visitors learn about our program, requirements, and how to apply. Be warm, understanding, and non-judgmental. Always prioritize safety and provide crisis resources when needed. Never provide medical advice or diagnose conditions.",
+  "faqs": [
+    {
+      "question": "What is sober living?",
+      "answer": "Sober living is a structured, supportive living environment for people recovering from addiction. It provides a safe space to transition from treatment back to independent living while maintaining sobriety."
+    },
+    {
+      "question": "What are the requirements to stay here?",
+      "answer": "Residents must be committed to sobriety, attend house meetings, follow house rules (including curfew), participate in random drug testing, and contribute to household responsibilities."
+    },
+    {
+      "question": "How much does it cost?",
+      "answer": "Weekly rates vary depending on the room type and amenities. Please contact us for current pricing and availability. We also have information about payment plans and financial assistance options."
+    },
+    {
+      "question": "Can I have visitors?",
+      "answer": "Yes, visitors are welcome during designated visiting hours. All visitors must be approved and follow our guest policy to maintain a safe environment for all residents."
+    },
+    {
+      "question": "How do I apply?",
+      "answer": "You can start the application process by scheduling a tour and intake interview. During this meeting, we'll discuss your recovery journey, goals, and determine if our program is the right fit for you."
+    }
+  ],
+  "rules": {
+    "allowedTopics": ["program info", "requirements", "tours", "costs", "recovery support", "house rules", "application process"],
+    "forbiddenTopics": ["medical diagnosis", "prescription advice", "legal advice", "treatment planning"],
+    "specialInstructions": [
+      "Always be compassionate and non-judgmental",
+      "Provide crisis resources when needed",
+      "Encourage scheduling a tour for detailed questions"
+    ],
+    "crisisHandling": {
+      "onCrisisKeywords": ["kill myself", "suicide", "ending it", "overdose", "OD", "self harm", "want to die", "don't want to live", "hurt myself"],
+      "responseTemplate": "I hear you, and I'm really glad you reached out. Your safety is the most important thing right now. Please reach out to the 988 Suicide & Crisis Lifeline by calling or texting 988, or call SAMHSA's National Helpline at 1-800-662-HELP (4357). These services are free, confidential, and available 24/7. You can also call 911 if you're in immediate danger."
+    }
+  }
+}

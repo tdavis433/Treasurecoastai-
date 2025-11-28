@@ -117,6 +117,9 @@ const BUSINESS_TYPES = [
   { value: 'home_services', label: 'Home Services' },
   { value: 'gym', label: 'Gym / Fitness' },
   { value: 'sober_living', label: 'Sober Living' },
+  { value: 'real_estate', label: 'Real Estate' },
+  { value: 'med_spa', label: 'Med Spa' },
+  { value: 'tattoo', label: 'Tattoo Studio' },
 ];
 
 export default function ControlCenter() {
@@ -126,7 +129,7 @@ export default function ControlCenter() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
-  const [activeTab, setActiveTab] = useState('settings');
+  const [activeTab, setActiveTab] = useState('overview');
 
   const { data: currentUser, isLoading: authLoading } = useQuery<AuthUser>({
     queryKey: ["/api/auth/me"],
@@ -401,12 +404,20 @@ export default function ControlCenter() {
                 </div>
               </div>
 
-              {/* Tabs */}
+              {/* Tabs - Per PDF: Overview, Bot Settings, Billing, Analytics, Logs */}
               <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList className="mb-6">
+                  <TabsTrigger data-testid="tab-overview" value="overview">
+                    <Eye className="h-4 w-4 mr-2" />
+                    Overview
+                  </TabsTrigger>
                   <TabsTrigger data-testid="tab-settings" value="settings">
                     <Settings className="h-4 w-4 mr-2" />
-                    Settings
+                    Bot Settings
+                  </TabsTrigger>
+                  <TabsTrigger data-testid="tab-billing" value="billing">
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Billing
                   </TabsTrigger>
                   <TabsTrigger data-testid="tab-analytics" value="analytics">
                     <BarChart3 className="h-4 w-4 mr-2" />
@@ -418,8 +429,16 @@ export default function ControlCenter() {
                   </TabsTrigger>
                 </TabsList>
 
+                <TabsContent value="overview">
+                  <OverviewPanel bot={selectedBot} client={selectedClient} />
+                </TabsContent>
+
                 <TabsContent value="settings">
-                  <BotSettingsPanel bot={selectedBot} />
+                  <BotSettingsPanel bot={selectedBot} clientType={selectedClient.type} />
+                </TabsContent>
+
+                <TabsContent value="billing">
+                  <BillingPanel clientId={selectedClient.id} clientName={selectedClient.name} status={selectedClient.status} />
                 </TabsContent>
 
                 <TabsContent value="analytics">
@@ -461,10 +480,280 @@ export default function ControlCenter() {
   );
 }
 
-// Bot Settings Panel
-function BotSettingsPanel({ bot }: { bot: BotConfig }) {
+// Overview Panel - Quick summary of bot and client
+function OverviewPanel({ bot, client }: { bot: BotConfig; client: Client }) {
+  const { data: analytics } = useQuery({
+    queryKey: ["/api/client/analytics/summary", client.id],
+    queryFn: async () => {
+      const response = await fetch(`/api/client/analytics/summary?clientId=${client.id}`, { credentials: "include" });
+      if (!response.ok) return null;
+      return response.json();
+    },
+  });
+
+  return (
+    <div className="space-y-6">
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Messages (7d)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{analytics?.messagesLast7d || 0}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Conversations</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{analytics?.conversations || 0}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Leads (7d)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{analytics?.leadsLast7d || 0}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Bookings (7d)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{analytics?.bookingsLast7d || 0}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Bot Info Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Bot Information</CardTitle>
+          <CardDescription>Quick overview of this chatbot</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-muted-foreground">Business Name</Label>
+              <p className="font-medium">{bot.businessProfile?.businessName || '-'}</p>
+            </div>
+            <div>
+              <Label className="text-muted-foreground">Business Type</Label>
+              <p className="font-medium">{BUSINESS_TYPES.find(t => t.value === bot.businessProfile?.type)?.label || bot.businessProfile?.type || '-'}</p>
+            </div>
+            <div>
+              <Label className="text-muted-foreground">Phone</Label>
+              <p className="font-medium">{bot.businessProfile?.phone || '-'}</p>
+            </div>
+            <div>
+              <Label className="text-muted-foreground">Email</Label>
+              <p className="font-medium">{bot.businessProfile?.email || '-'}</p>
+            </div>
+            <div>
+              <Label className="text-muted-foreground">Location</Label>
+              <p className="font-medium">{bot.businessProfile?.location || '-'}</p>
+            </div>
+            <div>
+              <Label className="text-muted-foreground">Website</Label>
+              <p className="font-medium">{bot.businessProfile?.website || '-'}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Services */}
+      {bot.businessProfile?.services && bot.businessProfile.services.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Services</CardTitle>
+            <CardDescription>What this business offers</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {bot.businessProfile.services.map((service, i) => (
+                <Badge key={i} variant="secondary">{service}</Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* FAQs Count */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Knowledge Base</CardTitle>
+          <CardDescription>FAQs and training data</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold">{bot.faqs?.length || 0}</div>
+              <div className="text-sm text-muted-foreground">FAQs</div>
+            </div>
+            <Separator orientation="vertical" className="h-12" />
+            <div className="text-center">
+              <div className="text-2xl font-bold">{bot.rules?.specialInstructions?.length || 0}</div>
+              <div className="text-sm text-muted-foreground">Special Instructions</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Billing Panel - Stripe subscription management
+function BillingPanel({ clientId, clientName, status }: { clientId: string; clientName: string; status: string }) {
+  const { toast } = useToast();
+
+  const { data: subscription, isLoading } = useQuery({
+    queryKey: ["/api/stripe/subscription", clientId],
+    queryFn: async () => {
+      const response = await fetch(`/api/stripe/subscription/${clientId}`, { credentials: "include" });
+      if (!response.ok) return null;
+      return response.json();
+    },
+  });
+
+  const createCheckoutMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/stripe/checkout", { clientId });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.url) {
+        window.open(data.url, '_blank');
+      }
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to create checkout session.", variant: "destructive" });
+    },
+  });
+
+  const openPortalMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/stripe/portal", { clientId });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.url) {
+        window.open(data.url, '_blank');
+      }
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to open billing portal.", variant: "destructive" });
+    },
+  });
+
+  if (isLoading) {
+    return <div className="text-center py-8 text-muted-foreground">Loading billing information...</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Current Status */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Subscription Status</CardTitle>
+          <CardDescription>Current billing status for {clientName}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Current Status</p>
+              <div className="flex items-center gap-2 mt-1">
+                {status === 'active' && <Badge className="bg-green-500/20 text-green-500 border-green-500/30">ACTIVE</Badge>}
+                {status === 'paused' && <Badge className="bg-red-500/20 text-red-500 border-red-500/30">PAUSED</Badge>}
+                {status === 'demo' && <Badge className="bg-blue-500/20 text-blue-500 border-blue-500/30">DEMO</Badge>}
+              </div>
+            </div>
+            {subscription?.plan && (
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">Plan</p>
+                <p className="font-medium">{subscription.plan}</p>
+              </div>
+            )}
+          </div>
+
+          {subscription?.currentPeriodEnd && (
+            <div>
+              <p className="text-sm text-muted-foreground">Next Billing Date</p>
+              <p className="font-medium">{new Date(subscription.currentPeriodEnd).toLocaleDateString()}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Billing Actions</CardTitle>
+          <CardDescription>Manage subscription and payments</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {!subscription ? (
+            <Button 
+              data-testid="button-create-subscription"
+              onClick={() => createCheckoutMutation.mutate()}
+              disabled={createCheckoutMutation.isPending}
+              className="w-full"
+            >
+              <CreditCard className="h-4 w-4 mr-2" />
+              {createCheckoutMutation.isPending ? 'Creating...' : 'Set Up Subscription'}
+            </Button>
+          ) : (
+            <Button 
+              data-testid="button-manage-billing"
+              variant="outline"
+              onClick={() => openPortalMutation.mutate()}
+              disabled={openPortalMutation.isPending}
+              className="w-full"
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              {openPortalMutation.isPending ? 'Opening...' : 'Manage Billing in Stripe'}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Billing History Note */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Billing Notes</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ul className="text-sm text-muted-foreground space-y-2">
+            <li>• Subscription status is synced automatically via Stripe webhooks</li>
+            <li>• Failed payments will automatically pause the account</li>
+            <li>• Use the Stripe portal to update payment methods or cancel</li>
+          </ul>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Tone/Voice options
+const TONE_OPTIONS = [
+  { value: 'professional', label: 'Professional', description: 'Formal and business-like communication' },
+  { value: 'friendly', label: 'Friendly', description: 'Warm and approachable tone' },
+  { value: 'casual', label: 'Casual', description: 'Relaxed and conversational' },
+  { value: 'compassionate', label: 'Compassionate', description: 'Empathetic and understanding' },
+  { value: 'informative', label: 'Informative', description: 'Educational and detailed' },
+];
+
+// Bot Settings Panel - Full editing capabilities
+function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: string }) {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
+  const [faqs, setFaqs] = useState<Array<{ question: string; answer: string }>>(bot.faqs || []);
+  const [editingFaqIndex, setEditingFaqIndex] = useState<number | null>(null);
+  const [newFaq, setNewFaq] = useState({ question: '', answer: '' });
+  const [showAddFaq, setShowAddFaq] = useState(false);
   const [formData, setFormData] = useState({
     name: bot.name || '',
     description: bot.description || '',
@@ -477,6 +766,8 @@ function BotSettingsPanel({ bot }: { bot: BotConfig }) {
     hours: formatHoursForDisplay(bot.businessProfile?.hours),
     services: bot.businessProfile?.services?.join(', ') || '',
     systemPrompt: bot.systemPrompt || '',
+    tone: (bot as any).tone || 'professional',
+    responseLength: (bot as any).responseLength || 'medium',
   });
 
   useEffect(() => {
@@ -492,8 +783,13 @@ function BotSettingsPanel({ bot }: { bot: BotConfig }) {
       hours: formatHoursForDisplay(bot.businessProfile?.hours),
       services: bot.businessProfile?.services?.join(', ') || '',
       systemPrompt: bot.systemPrompt || '',
+      tone: (bot as any).tone || 'professional',
+      responseLength: (bot as any).responseLength || 'medium',
     });
+    setFaqs(bot.faqs || []);
     setIsEditing(false);
+    setEditingFaqIndex(null);
+    setShowAddFaq(false);
   }, [bot.botId]);
 
   const saveMutation = useMutation({
@@ -514,6 +810,9 @@ function BotSettingsPanel({ bot }: { bot: BotConfig }) {
           services: formData.services.split(',').map(s => s.trim()).filter(Boolean),
         },
         systemPrompt: formData.systemPrompt,
+        tone: formData.tone,
+        responseLength: formData.responseLength,
+        faqs: faqs,
       };
       const response = await apiRequest("PUT", `/api/super-admin/bots/${bot.botId}`, updatedBot);
       return response.json();
@@ -527,6 +826,26 @@ function BotSettingsPanel({ bot }: { bot: BotConfig }) {
       toast({ title: "Error", description: "Failed to save settings.", variant: "destructive" });
     },
   });
+
+  // FAQ management functions
+  const handleAddFaq = () => {
+    if (newFaq.question.trim() && newFaq.answer.trim()) {
+      setFaqs([...faqs, { question: newFaq.question.trim(), answer: newFaq.answer.trim() }]);
+      setNewFaq({ question: '', answer: '' });
+      setShowAddFaq(false);
+    }
+  };
+
+  const handleUpdateFaq = (index: number, field: 'question' | 'answer', value: string) => {
+    const updated = [...faqs];
+    updated[index] = { ...updated[index], [field]: value };
+    setFaqs(updated);
+  };
+
+  const handleDeleteFaq = (index: number) => {
+    setFaqs(faqs.filter((_, i) => i !== index));
+    setEditingFaqIndex(null);
+  };
 
   return (
     <div className="space-y-6">
@@ -745,42 +1064,282 @@ function BotSettingsPanel({ bot }: { bot: BotConfig }) {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">AI Behavior</CardTitle>
-          <CardDescription>System prompt that defines how the bot responds</CardDescription>
+          <CardDescription>Configure how your bot communicates</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Tone & Voice Controls */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Tone / Voice</Label>
+              {isEditing ? (
+                <Select
+                  value={formData.tone}
+                  onValueChange={(value) => setFormData({ ...formData, tone: value })}
+                >
+                  <SelectTrigger data-testid="select-tone">
+                    <SelectValue placeholder="Select tone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TONE_OPTIONS.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        <div className="flex flex-col">
+                          <span>{option.label}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-sm mt-1">{TONE_OPTIONS.find(t => t.value === formData.tone)?.label || 'Professional'}</p>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                {TONE_OPTIONS.find(t => t.value === formData.tone)?.description}
+              </p>
+            </div>
+            <div>
+              <Label>Response Length</Label>
+              {isEditing ? (
+                <Select
+                  value={formData.responseLength}
+                  onValueChange={(value) => setFormData({ ...formData, responseLength: value })}
+                >
+                  <SelectTrigger data-testid="select-response-length">
+                    <SelectValue placeholder="Select length" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="brief">Brief (1-2 sentences)</SelectItem>
+                    <SelectItem value="medium">Medium (3-4 sentences)</SelectItem>
+                    <SelectItem value="detailed">Detailed (5+ sentences)</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-sm mt-1 capitalize">{formData.responseLength}</p>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <Label>System Prompt</Label>
+            {isEditing ? (
+              <Textarea
+                data-testid="input-system-prompt"
+                value={formData.systemPrompt}
+                onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
+                rows={8}
+                className="font-mono text-sm"
+              />
+            ) : (
+              <pre className="text-sm mt-1 whitespace-pre-wrap bg-muted p-3 rounded-lg max-h-48 overflow-auto">
+                {formData.systemPrompt || 'No system prompt configured'}
+              </pre>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* FAQs - Editable */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg">FAQs ({faqs.length})</CardTitle>
+              <CardDescription>Common questions and answers</CardDescription>
+            </div>
+            {isEditing && (
+              <Button
+                data-testid="button-add-faq"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAddFaq(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add FAQ
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
-          <Label>System Prompt</Label>
-          {isEditing ? (
-            <Textarea
-              data-testid="input-system-prompt"
-              value={formData.systemPrompt}
-              onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
-              rows={8}
-              className="font-mono text-sm"
-            />
+          {/* Add New FAQ Form */}
+          {showAddFaq && (
+            <div className="bg-muted p-4 rounded-lg mb-4 space-y-3">
+              <div>
+                <Label>Question</Label>
+                <Input
+                  data-testid="input-new-faq-question"
+                  value={newFaq.question}
+                  onChange={(e) => setNewFaq({ ...newFaq, question: e.target.value })}
+                  placeholder="Enter the question..."
+                />
+              </div>
+              <div>
+                <Label>Answer</Label>
+                <Textarea
+                  data-testid="input-new-faq-answer"
+                  value={newFaq.answer}
+                  onChange={(e) => setNewFaq({ ...newFaq, answer: e.target.value })}
+                  placeholder="Enter the answer..."
+                  rows={3}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  data-testid="button-save-new-faq"
+                  size="sm"
+                  onClick={handleAddFaq}
+                  disabled={!newFaq.question.trim() || !newFaq.answer.trim()}
+                >
+                  Add
+                </Button>
+                <Button
+                  data-testid="button-cancel-new-faq"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowAddFaq(false);
+                    setNewFaq({ question: '', answer: '' });
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {faqs.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              No FAQs configured. {isEditing && 'Click "Add FAQ" to create one.'}
+            </p>
           ) : (
-            <pre className="text-sm mt-1 whitespace-pre-wrap bg-muted p-3 rounded-lg max-h-48 overflow-auto">
-              {formData.systemPrompt || 'No system prompt configured'}
-            </pre>
+            <div className="space-y-3 max-h-80 overflow-auto">
+              {faqs.map((faq, i) => (
+                <div key={i} className="bg-muted p-3 rounded-lg">
+                  {editingFaqIndex === i && isEditing ? (
+                    <div className="space-y-2">
+                      <Input
+                        data-testid={`input-faq-question-${i}`}
+                        value={faq.question}
+                        onChange={(e) => handleUpdateFaq(i, 'question', e.target.value)}
+                        placeholder="Question"
+                      />
+                      <Textarea
+                        data-testid={`input-faq-answer-${i}`}
+                        value={faq.answer}
+                        onChange={(e) => handleUpdateFaq(i, 'answer', e.target.value)}
+                        placeholder="Answer"
+                        rows={3}
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          data-testid={`button-done-faq-${i}`}
+                          size="sm"
+                          onClick={() => setEditingFaqIndex(null)}
+                        >
+                          Done
+                        </Button>
+                        <Button
+                          data-testid={`button-delete-faq-${i}`}
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteFaq(i)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{faq.question}</p>
+                        <p className="text-sm text-muted-foreground mt-1">{faq.answer}</p>
+                      </div>
+                      {isEditing && (
+                        <Button
+                          data-testid={`button-edit-faq-${i}`}
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setEditingFaqIndex(i)}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>
 
-      {/* FAQs */}
-      {bot.faqs && bot.faqs.length > 0 && (
-        <Card>
+      {/* Faith House Feature Gating - Only for sober_living clients */}
+      {clientType === 'sober_living' && (
+        <Card className="border-primary/30 bg-primary/5">
           <CardHeader>
-            <CardTitle className="text-lg">FAQs ({bot.faqs.length})</CardTitle>
-            <CardDescription>Common questions and answers</CardDescription>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-primary" />
+              Faith House Features
+            </CardTitle>
+            <CardDescription>Special features for sober living facilities</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3 max-h-64 overflow-auto">
-              {bot.faqs.map((faq, i) => (
-                <div key={i} className="bg-muted p-3 rounded-lg">
-                  <p className="font-medium text-sm">{faq.question}</p>
-                  <p className="text-sm text-muted-foreground mt-1">{faq.answer}</p>
-                </div>
-              ))}
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Crisis Detection</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Automatic detection and response for crisis situations with 988 Suicide & Crisis Lifeline integration.
+                  </p>
+                  <Badge className="mt-2 bg-green-500/20 text-green-500">Enabled</Badge>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Pre-Intake Forms</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Collect sobriety status, support network, and timeline before booking tours.
+                  </p>
+                  <Badge className="mt-2 bg-green-500/20 text-green-500">Enabled</Badge>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Appointment Booking</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Allow visitors to schedule tours and intake appointments directly through chat.
+                  </p>
+                  <Badge className="mt-2 bg-green-500/20 text-green-500">Enabled</Badge>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Privacy Protection</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Automatic PII redaction from conversation logs and analytics.
+                  </p>
+                  <Badge className="mt-2 bg-green-500/20 text-green-500">Enabled</Badge>
+                </CardContent>
+              </Card>
             </div>
+
+            {/* Crisis Keywords */}
+            {bot.rules?.crisisHandling?.onCrisisKeywords && bot.rules.crisisHandling.onCrisisKeywords.length > 0 && (
+              <div>
+                <Label>Crisis Detection Keywords</Label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {bot.rules.crisisHandling.onCrisisKeywords.map((keyword, i) => (
+                    <Badge key={i} variant="outline" className="bg-red-500/10 text-red-500 border-red-500/30">{keyword}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -910,6 +1469,7 @@ function CreateFromTemplateModal({
   onSuccess: (botId: string) => void;
 }) {
   const { toast } = useToast();
+  const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     clientId: '',
     clientName: '',
@@ -918,10 +1478,20 @@ function CreateFromTemplateModal({
     email: '',
     website: '',
     location: '',
+    address: '',
+    city: '',
+    state: '',
+    zip: '',
+    contactName: '',
+    contactEmail: '',
+    contactPhone: '',
+    serviceTier: 'standard',
+    billingPlan: 'monthly',
   });
 
   useEffect(() => {
     if (open) {
+      setStep(1);
       setFormData({
         clientId: '',
         clientName: '',
@@ -930,12 +1500,22 @@ function CreateFromTemplateModal({
         email: '',
         website: '',
         location: '',
+        address: '',
+        city: '',
+        state: '',
+        zip: '',
+        contactName: '',
+        contactEmail: '',
+        contactPhone: '',
+        serviceTier: 'standard',
+        billingPlan: 'monthly',
       });
     }
   }, [open]);
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
+      const fullLocation = [data.address, data.city, data.state, data.zip].filter(Boolean).join(', ') || data.location;
       const response = await apiRequest("POST", "/api/super-admin/clients/from-template", {
         templateBotId: template?.botId,
         clientId: data.clientId,
@@ -947,7 +1527,20 @@ function CreateFromTemplateModal({
           phone: data.phone,
           email: data.email,
           website: data.website,
-          location: data.location,
+          location: fullLocation,
+          address: data.address,
+          city: data.city,
+          state: data.state,
+          zip: data.zip,
+        },
+        contact: {
+          name: data.contactName,
+          email: data.contactEmail,
+          phone: data.contactPhone,
+        },
+        billing: {
+          serviceTier: data.serviceTier,
+          billingPlan: data.billingPlan,
         },
       });
       return response.json();
@@ -967,11 +1560,21 @@ function CreateFromTemplateModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.clientId || !formData.clientName) {
-      toast({ title: "Error", description: "Client ID and Name are required.", variant: "destructive" });
-      return;
+    if (step === 1) {
+      if (!formData.clientId || !formData.clientName) {
+        toast({ title: "Error", description: "Client ID and Business Name are required.", variant: "destructive" });
+        return;
+      }
+      setStep(2);
+    } else if (step === 2) {
+      setStep(3);
+    } else {
+      createMutation.mutate(formData);
     }
-    createMutation.mutate(formData);
+  };
+
+  const handleBack = () => {
+    if (step > 1) setStep(step - 1);
   };
 
   const generateClientId = () => {
@@ -988,92 +1591,229 @@ function CreateFromTemplateModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Create New Bot</DialogTitle>
+          <DialogTitle>Create New Bot - Step {step} of 3</DialogTitle>
           <DialogDescription>
-            Create a new {template.metadata?.templateCategory || template.businessProfile?.type} chatbot from template
+            {step === 1 && "Basic business information"}
+            {step === 2 && "Contact and location details"}
+            {step === 3 && "Service tier and billing"}
           </DialogDescription>
         </DialogHeader>
 
+        {/* Progress Indicator */}
+        <div className="flex gap-2 mb-4">
+          {[1, 2, 3].map((s) => (
+            <div
+              key={s}
+              className={`h-2 flex-1 rounded-full ${s <= step ? 'bg-primary' : 'bg-muted'}`}
+            />
+          ))}
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <Label>Business Name *</Label>
-              <Input
-                data-testid="input-new-client-name"
-                value={formData.clientName}
-                onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
-                placeholder="My Business Name"
-              />
-            </div>
-            <div className="col-span-2">
-              <Label>Client ID *</Label>
-              <div className="flex gap-2">
+          {/* Step 1: Basic Info */}
+          {step === 1 && (
+            <div className="space-y-4">
+              <div>
+                <Label>Business Name *</Label>
                 <Input
-                  data-testid="input-new-client-id"
-                  value={formData.clientId}
-                  onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
-                  placeholder="my_business"
+                  data-testid="input-new-client-name"
+                  value={formData.clientName}
+                  onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
+                  placeholder="My Business Name"
                 />
-                <Button type="button" variant="outline" onClick={generateClientId}>
-                  Generate
-                </Button>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">Unique identifier (lowercase, underscores only)</p>
+              <div>
+                <Label>Client ID *</Label>
+                <div className="flex gap-2">
+                  <Input
+                    data-testid="input-new-client-id"
+                    value={formData.clientId}
+                    onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
+                    placeholder="my_business"
+                  />
+                  <Button type="button" variant="outline" onClick={generateClientId}>
+                    Generate
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Unique identifier (lowercase, underscores only)</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Business Phone</Label>
+                  <Input
+                    data-testid="input-new-phone"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="(555) 123-4567"
+                  />
+                </div>
+                <div>
+                  <Label>Business Email</Label>
+                  <Input
+                    data-testid="input-new-email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="contact@business.com"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label>Website</Label>
+                <Input
+                  data-testid="input-new-website"
+                  value={formData.website}
+                  onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                  placeholder="https://mybusiness.com"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
-          <Separator />
+          {/* Step 2: Address & Contact */}
+          {step === 2 && (
+            <div className="space-y-4">
+              <div>
+                <Label>Street Address</Label>
+                <Input
+                  data-testid="input-new-address"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  placeholder="123 Main Street"
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label>City</Label>
+                  <Input
+                    data-testid="input-new-city"
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    placeholder="City"
+                  />
+                </div>
+                <div>
+                  <Label>State</Label>
+                  <Input
+                    data-testid="input-new-state"
+                    value={formData.state}
+                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                    placeholder="FL"
+                  />
+                </div>
+                <div>
+                  <Label>ZIP</Label>
+                  <Input
+                    data-testid="input-new-zip"
+                    value={formData.zip}
+                    onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
+                    placeholder="34990"
+                  />
+                </div>
+              </div>
+              <Separator />
+              <p className="text-sm font-medium">Primary Contact</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <Label>Contact Name</Label>
+                  <Input
+                    data-testid="input-new-contact-name"
+                    value={formData.contactName}
+                    onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
+                    placeholder="John Smith"
+                  />
+                </div>
+                <div>
+                  <Label>Contact Email</Label>
+                  <Input
+                    data-testid="input-new-contact-email"
+                    value={formData.contactEmail}
+                    onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
+                    placeholder="john@business.com"
+                  />
+                </div>
+                <div>
+                  <Label>Contact Phone</Label>
+                  <Input
+                    data-testid="input-new-contact-phone"
+                    value={formData.contactPhone}
+                    onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
+                    placeholder="(555) 123-4567"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Phone</Label>
-              <Input
-                data-testid="input-new-phone"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="(555) 123-4567"
-              />
+          {/* Step 3: Service & Billing */}
+          {step === 3 && (
+            <div className="space-y-4">
+              <div>
+                <Label>Service Tier</Label>
+                <Select
+                  value={formData.serviceTier}
+                  onValueChange={(value) => setFormData({ ...formData, serviceTier: value })}
+                >
+                  <SelectTrigger data-testid="select-service-tier">
+                    <SelectValue placeholder="Select tier" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="starter">Starter - Basic chatbot features</SelectItem>
+                    <SelectItem value="standard">Standard - Full features + analytics</SelectItem>
+                    <SelectItem value="premium">Premium - Everything + priority support</SelectItem>
+                    <SelectItem value="enterprise">Enterprise - Custom solutions</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Billing Plan</Label>
+                <Select
+                  value={formData.billingPlan}
+                  onValueChange={(value) => setFormData({ ...formData, billingPlan: value })}
+                >
+                  <SelectTrigger data-testid="select-billing-plan">
+                    <SelectValue placeholder="Select plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly">Monthly - Billed each month</SelectItem>
+                    <SelectItem value="annual">Annual - 2 months free</SelectItem>
+                    <SelectItem value="trial">Free Trial - 14 days</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Card className="bg-muted/50">
+                <CardContent className="pt-4">
+                  <p className="text-sm font-medium mb-2">Summary</p>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>Business: {formData.clientName || '-'}</li>
+                    <li>Type: {template.metadata?.templateCategory || template.businessProfile?.type}</li>
+                    <li>Tier: {formData.serviceTier}</li>
+                    <li>Billing: {formData.billingPlan}</li>
+                  </ul>
+                </CardContent>
+              </Card>
             </div>
-            <div>
-              <Label>Email</Label>
-              <Input
-                data-testid="input-new-email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="contact@business.com"
-              />
-            </div>
-            <div>
-              <Label>Website</Label>
-              <Input
-                data-testid="input-new-website"
-                value={formData.website}
-                onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                placeholder="https://mybusiness.com"
-              />
-            </div>
-            <div>
-              <Label>Location</Label>
-              <Input
-                data-testid="input-new-location"
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                placeholder="123 Main St, City"
-              />
-            </div>
-          </div>
+          )}
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button 
-              data-testid="button-create-client"
-              type="submit" 
-              disabled={createMutation.isPending}
-            >
-              {createMutation.isPending ? 'Creating...' : 'Create Bot'}
-            </Button>
+          <DialogFooter className="flex justify-between">
+            <div>
+              {step > 1 && (
+                <Button type="button" variant="outline" onClick={handleBack}>
+                  Back
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button 
+                data-testid="button-next-step"
+                type="submit" 
+                disabled={createMutation.isPending}
+              >
+                {step < 3 ? 'Next' : (createMutation.isPending ? 'Creating...' : 'Create Bot')}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>
