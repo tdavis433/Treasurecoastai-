@@ -19,9 +19,28 @@ import {
   RefreshCw,
   FileText,
   Bot,
+  BarChart3,
+  Activity,
+  Zap,
+  AlertTriangle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useLocation } from "wouter";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
 
 interface ClientStats {
   clientId: string;
@@ -82,6 +101,55 @@ interface Conversation {
   preview: string;
 }
 
+interface AnalyticsSummary {
+  clientId: string;
+  botId: string;
+  totalConversations: number;
+  totalMessages: number;
+  userMessages: number;
+  botMessages: number;
+  avgResponseTimeMs: number;
+  crisisEvents: number;
+  appointmentRequests: number;
+  topicBreakdown: Record<string, number>;
+}
+
+interface DailyTrend {
+  date: string;
+  totalConversations: number;
+  totalMessages: number;
+  userMessages: number;
+  botMessages: number;
+  crisisEvents: number;
+  appointmentRequests: number;
+}
+
+interface ChatSession {
+  id: string;
+  sessionId: string;
+  clientId: string;
+  botId: string;
+  startedAt: string;
+  endedAt: string | null;
+  userMessageCount: number;
+  botMessageCount: number;
+  totalResponseTimeMs: number;
+  crisisDetected: boolean;
+  appointmentRequested: boolean;
+  topics: string[];
+}
+
+const TOPIC_COLORS = [
+  "#3b82f6", // blue
+  "#10b981", // green
+  "#f59e0b", // amber
+  "#ef4444", // red
+  "#8b5cf6", // purple
+  "#06b6d4", // cyan
+  "#f97316", // orange
+  "#ec4899", // pink
+];
+
 export default function ClientDashboard() {
   const [, setLocation] = useLocation();
 
@@ -108,6 +176,29 @@ export default function ClientDashboard() {
     dbConversations: Conversation[];
   }>({
     queryKey: ["/api/client/conversations"],
+  });
+
+  // Analytics queries
+  const { data: analyticsData, isLoading: analyticsLoading } = useQuery<AnalyticsSummary>({
+    queryKey: ["/api/client/analytics/summary"],
+  });
+
+  const { data: trendsData, isLoading: trendsLoading } = useQuery<{
+    clientId: string;
+    botId: string;
+    days: number;
+    trends: DailyTrend[];
+  }>({
+    queryKey: ["/api/client/analytics/trends", { days: 14 }],
+  });
+
+  const { data: sessionsData, isLoading: sessionsLoading } = useQuery<{
+    clientId: string;
+    botId: string;
+    sessions: ChatSession[];
+    total: number;
+  }>({
+    queryKey: ["/api/client/analytics/sessions"],
   });
 
   if (profileLoading) {
@@ -275,8 +366,12 @@ export default function ClientDashboard() {
         </div>
       )}
 
-      <Tabs defaultValue="conversations" className="w-full">
+      <Tabs defaultValue="analytics" className="w-full">
         <TabsList data-testid="tabs-dashboard">
+          <TabsTrigger value="analytics" data-testid="tab-analytics">
+            <BarChart3 className="h-4 w-4 mr-2" />
+            Analytics
+          </TabsTrigger>
           <TabsTrigger value="conversations" data-testid="tab-conversations">
             <MessageSquare className="h-4 w-4 mr-2" />
             Conversations
@@ -292,6 +387,293 @@ export default function ClientDashboard() {
             Business Info
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="analytics" className="mt-4 space-y-6">
+          {/* Analytics Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card data-testid="card-analytics-messages">
+              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Messages</CardTitle>
+                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                {analyticsLoading ? (
+                  <Skeleton className="h-8 w-20" />
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">{analyticsData?.totalMessages || 0}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {analyticsData?.userMessages || 0} user / {analyticsData?.botMessages || 0} bot
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-analytics-response-time">
+              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Avg Response Time</CardTitle>
+                <Zap className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                {analyticsLoading ? (
+                  <Skeleton className="h-8 w-20" />
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">
+                      {analyticsData?.avgResponseTimeMs 
+                        ? `${(analyticsData.avgResponseTimeMs / 1000).toFixed(1)}s` 
+                        : "—"}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Per conversation
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-analytics-appointments">
+              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Booking Requests</CardTitle>
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                {analyticsLoading ? (
+                  <Skeleton className="h-8 w-20" />
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">{analyticsData?.appointmentRequests || 0}</div>
+                    <p className="text-xs text-muted-foreground">
+                      From chat conversations
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-analytics-crisis">
+              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Crisis Events</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                {analyticsLoading ? (
+                  <Skeleton className="h-8 w-20" />
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold text-amber-600">{analyticsData?.crisisEvents || 0}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Safety redirects triggered
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Daily Trends Chart */}
+            <Card data-testid="card-daily-trends">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  Daily Activity (Last 14 Days)
+                </CardTitle>
+                <CardDescription>
+                  Conversations and messages over time
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {trendsLoading ? (
+                  <Skeleton className="h-[300px] w-full" />
+                ) : trendsData?.trends && trendsData.trends.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={trendsData.trends}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis 
+                        dataKey="date" 
+                        tickFormatter={(date) => format(new Date(date), "MM/dd")}
+                        className="text-xs"
+                      />
+                      <YAxis className="text-xs" />
+                      <Tooltip 
+                        labelFormatter={(date) => format(new Date(date), "MMM d, yyyy")}
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))', 
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '6px'
+                        }}
+                      />
+                      <Legend />
+                      <Line 
+                        type="monotone" 
+                        dataKey="totalConversations" 
+                        stroke="#3b82f6" 
+                        strokeWidth={2}
+                        name="Conversations"
+                        dot={false}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="totalMessages" 
+                        stroke="#10b981" 
+                        strokeWidth={2}
+                        name="Messages"
+                        dot={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                    <div className="text-center">
+                      <Activity className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p>No activity data yet</p>
+                      <p className="text-sm">Start chatting to see trends</p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Topic Breakdown Chart */}
+            <Card data-testid="card-topic-breakdown">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Topic Breakdown
+                </CardTitle>
+                <CardDescription>
+                  What visitors are asking about
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {analyticsLoading ? (
+                  <Skeleton className="h-[300px] w-full" />
+                ) : analyticsData?.topicBreakdown && Object.keys(analyticsData.topicBreakdown).length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={Object.entries(analyticsData.topicBreakdown).map(([name, value], idx) => ({
+                          name: name.charAt(0).toUpperCase() + name.slice(1),
+                          value,
+                          fill: TOPIC_COLORS[idx % TOPIC_COLORS.length]
+                        }))}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={100}
+                        paddingAngle={2}
+                        dataKey="value"
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        labelLine={false}
+                      >
+                        {Object.entries(analyticsData.topicBreakdown).map((_, idx) => (
+                          <Cell key={idx} fill={TOPIC_COLORS[idx % TOPIC_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                    <div className="text-center">
+                      <BarChart3 className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p>No topics tracked yet</p>
+                      <p className="text-sm">Topics will appear as visitors chat</p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Recent Sessions */}
+          <Card data-testid="card-recent-sessions">
+            <CardHeader>
+              <CardTitle>Recent Chat Sessions</CardTitle>
+              <CardDescription>
+                Individual conversation sessions with your AI assistant
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {sessionsLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map(i => (
+                    <Skeleton key={i} className="h-20" />
+                  ))}
+                </div>
+              ) : sessionsData?.sessions && sessionsData.sessions.length > 0 ? (
+                <ScrollArea className="h-[300px]">
+                  <div className="space-y-3">
+                    {sessionsData.sessions.map((session) => (
+                      <div
+                        key={session.id}
+                        className="p-4 border rounded-lg space-y-2"
+                        data-testid={`session-${session.id}`}
+                      >
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium text-sm">
+                              Session #{session.sessionId.slice(0, 12)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {session.crisisDetected && (
+                              <Badge variant="destructive" className="text-xs">
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                Crisis
+                              </Badge>
+                            )}
+                            {session.appointmentRequested && (
+                              <Badge variant="secondary" className="text-xs">
+                                <Calendar className="h-3 w-3 mr-1" />
+                                Booking
+                              </Badge>
+                            )}
+                            <Badge variant="outline" className="text-xs">
+                              {session.userMessageCount + session.botMessageCount} msgs
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {format(new Date(session.startedAt), "MMM d, h:mm a")}
+                          </span>
+                          {session.totalResponseTimeMs > 0 && (
+                            <span className="flex items-center gap-1">
+                              <Zap className="h-3 w-3" />
+                              Avg: {(session.totalResponseTimeMs / Math.max(session.botMessageCount, 1) / 1000).toFixed(1)}s
+                            </span>
+                          )}
+                        </div>
+                        {session.topics && session.topics.length > 0 && (
+                          <div className="flex gap-1 flex-wrap">
+                            {session.topics.slice(0, 5).map((topic, idx) => (
+                              <Badge key={idx} variant="outline" className="text-xs">
+                                {topic}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No sessions recorded yet</p>
+                  <p className="text-sm">Chat sessions will appear here once visitors start chatting</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="conversations" className="mt-4">
           <Card>
