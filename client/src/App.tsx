@@ -8,6 +8,7 @@ import AdminDashboard from "@/pages/admin-dashboard";
 import AdminAppointments from "@/pages/admin-appointments";
 import AdminAnalytics from "@/pages/admin-analytics";
 import SuperAdmin from "@/pages/super-admin";
+import ControlCenter from "@/pages/control-center";
 import BotDashboard from "@/pages/bot-dashboard";
 import ClientDashboard from "@/pages/client-dashboard";
 import CreateBot from "@/pages/create-bot";
@@ -33,6 +34,7 @@ function Router() {
       <Route path="/client/dashboard" component={ClientDashboard} />
       <Route path="/login" component={Login} />
       <Route path="/super-admin" component={SuperAdmin} />
+      <Route path="/super-admin/control-center" component={ControlCenter} />
       <Route path="/admin/bot/new" component={CreateBot} />
       <Route component={NotFound} />
     </Switch>

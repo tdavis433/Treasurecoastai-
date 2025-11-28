@@ -616,10 +616,7 @@ async function initStripe() {
   try {
     console.log('Initializing Stripe schema...');
     const { runMigrations } = await import('stripe-replit-sync');
-    await runMigrations({ 
-      databaseUrl,
-      schema: 'stripe'
-    });
+    await runMigrations({ databaseUrl });
     console.log('Stripe schema ready');
 
     const { getStripeSync } = await import('./stripeClient');
@@ -1678,6 +1675,130 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Create bot error:", error);
       res.status(500).json({ error: "Failed to create bot" });
+    }
+  });
+
+  // Get templates (demo bots with isTemplate flag or isDemo flag)
+  app.get("/api/super-admin/templates", requireSuperAdmin, (req, res) => {
+    try {
+      const allBots = getAllBotConfigs();
+      
+      // Templates are bots with isTemplate or isDemo metadata flag
+      const templates = allBots
+        .filter(bot => bot.metadata?.isTemplate || bot.metadata?.isDemo || bot.clientId === 'demo')
+        .map(bot => ({
+          botId: bot.botId,
+          clientId: bot.clientId,
+          metadata: {
+            name: bot.name,
+            description: bot.description,
+            businessType: bot.businessProfile?.type,
+            isTemplate: true,
+            templateCategory: bot.businessProfile?.type || bot.metadata?.templateCategory
+          },
+          businessProfile: bot.businessProfile,
+          faqs: bot.faqs,
+          safetyRules: bot.rules,
+        }));
+      
+      res.json(templates);
+    } catch (error) {
+      console.error("Get templates error:", error);
+      res.status(500).json({ error: "Failed to fetch templates" });
+    }
+  });
+
+  // Create client from template (full workflow)
+  app.post("/api/super-admin/clients/from-template", requireSuperAdmin, (req, res) => {
+    try {
+      const { templateBotId, clientId, clientName, type, businessProfile } = req.body;
+      
+      // Validate required fields
+      if (!templateBotId || !clientId || !clientName) {
+        return res.status(400).json({ error: "templateBotId, clientId, and clientName are required" });
+      }
+      
+      // Check if clientId already exists
+      const existingClient = getClientById(clientId);
+      if (existingClient) {
+        return res.status(409).json({ error: `Client with ID '${clientId}' already exists` });
+      }
+      
+      // Get template config
+      const templateConfig = getBotConfigByBotId(templateBotId);
+      if (!templateConfig) {
+        return res.status(404).json({ error: `Template bot not found: ${templateBotId}` });
+      }
+      
+      // Create new bot ID based on client ID
+      const newBotId = `${clientId}_main`;
+      
+      // Check if bot already exists
+      const existingBot = getBotConfigByBotId(newBotId);
+      if (existingBot) {
+        return res.status(409).json({ error: `Bot with ID '${newBotId}' already exists` });
+      }
+      
+      // Clone template and apply overrides
+      const mergedBusinessProfile = {
+        ...templateConfig.businessProfile,
+        ...(businessProfile || {}),
+        businessName: clientName,
+        type: type || templateConfig.businessProfile?.type,
+      };
+      
+      const newConfig: BotConfig = {
+        ...templateConfig,
+        botId: newBotId,
+        clientId: clientId,
+        name: clientName,
+        description: `AI assistant for ${clientName}`,
+        businessProfile: mergedBusinessProfile,
+        metadata: {
+          isDemo: false,
+          isTemplate: false,
+          clonedFrom: templateBotId,
+          createdAt: new Date().toISOString().split('T')[0],
+          version: '1.0',
+        },
+      };
+      
+      // Save the new bot config
+      const saveSuccess = saveBotConfig(newBotId, newConfig);
+      
+      if (!saveSuccess) {
+        return res.status(500).json({ error: "Failed to save bot config" });
+      }
+      
+      // Create log directory
+      const logDir = path.join(process.cwd(), 'logs', clientId);
+      if (!fs.existsSync(logDir)) {
+        fs.mkdirSync(logDir, { recursive: true });
+      }
+      
+      // Register the new client
+      const clientResult = registerClient(
+        clientId, 
+        clientName, 
+        type || templateConfig.businessProfile?.type || 'general', 
+        newBotId, 
+        'active'
+      );
+      
+      if (!clientResult.success) {
+        return res.status(500).json({ error: clientResult.error || "Failed to register client" });
+      }
+      
+      res.status(201).json({ 
+        success: true,
+        clientId: clientId,
+        client: clientResult.client,
+        botId: newBotId,
+        config: newConfig
+      });
+    } catch (error) {
+      console.error("Create client from template error:", error);
+      res.status(500).json({ error: "Failed to create client from template" });
     }
   });
 

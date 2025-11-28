@@ -47,6 +47,9 @@ export interface BotConfig {
   faqs: BotFaq[];
   metadata?: {
     isDemo: boolean;
+    isTemplate?: boolean;
+    templateCategory?: string;
+    clonedFrom?: string;
     createdAt: string;
     version: string;
   };

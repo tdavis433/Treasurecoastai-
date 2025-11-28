@@ -1,0 +1,366 @@
+You are Replit AI working inside my existing Treasure Coast AI multi-tenant chatbot platform project (Node/Express + TypeScript backend, React + Vite frontend, Neon/Drizzle DB, JSON bot configs).
+
+In the project root there is a PDF file named:
+
+TCAI_Simple_Powerful_Client_Ready_Blueprint.pdf
+
+This PDF is the master spec for how this platform must work going forward.
+
+Your job is to:
+
+Read the entire PDF carefully, word for word.
+
+Execute and implement the blueprint as accurately as possible in this codebase.
+
+Keep the platform simple to operate, easy to modify through UI, and powerful enough to sell as a premium SaaS product.
+
+Do not ignore or skip sections.
+Do not partially implement ideas.
+Treat this PDF as the source of truth.
+
+1) FIRST – ANALYZE THE CURRENT PROJECT
+
+Before changing code:
+
+Scan the existing project and identify:
+
+Main backend entry point (Express app).
+
+Where routes are defined.
+
+Where bot configs live (/bots).
+
+Where clients are defined (/clients or DB table).
+
+Where logging and analytics logic lives.
+
+Where React admin/super-admin dashboards live.
+
+Output a short summary to me:
+
+What routes exist now.
+
+What admin/super-admin pages exist now.
+
+How bots + clients are currently wired.
+
+How status is currently stored (if at all).
+
+Do not refactor yet. Just report what you see.
+
+2) READ & FOLLOW THE PDF BLUEPRINT
+
+Open and fully read:
+
+TCAI_Simple_Powerful_Client_Ready_Blueprint.pdf
+
+Understand and implement all of the following, as defined in the PDF:
+
+One Central “Control Center” Page (Super-Admin)
+
+Route: /super-admin/control-center
+
+Layout:
+
+Left sidebar: Clients list, Template list, System section.
+
+Main panel: tabs for selected client → Overview, Bot Settings, Status & Subscription, Analytics, Logs.
+
+Right-side panel: context actions (e.g. “Create Client From Template”, “Open Client Demo”).
+
+From THIS page, I must be able to:
+
+Create a new client from a template.
+
+Edit any client’s bot settings.
+
+Pause/activate client status.
+
+Change business info.
+
+Change lead collection options (where applicable).
+
+Change bot tone (simple options).
+
+View logs.
+
+Toggle crisis mode for Faith House–type client only.
+
+All Business Info Editable in UI (No manual JSON editing)
+Implement a Bot Settings tab that lets me edit, via forms:
+
+Business name
+
+Business type (restaurant, barber, auto, home_services, gym, sober_living, etc.)
+
+Phone, email, website
+
+Location / city
+
+Hours (simple approach is fine: text field(s) or structured later)
+
+Services list (repeatable)
+
+Short description/tagline
+
+FAQs (question + answer pairs)
+
+Integrations (booking URL, social links, etc.)
+
+Tone setting (choice like: friendly, professional, supportive)
+
+When I click Save:
+
+Changes must be sent via PUT /api/super-admin/bots/:botId (or an equivalent update endpoint).
+
+Backend must merge changes into existing bot config (JSON or DB) safely.
+
+After saving, bot behavior must reflect updated info.
+
+Templates for Everything (Demo → Client)
+Implement templates exactly like the PDF describes:
+
+Define template bots (Restaurant, Barber, Auto, Home Services, Gym, Faith House) using existing demo bots but with metadata.isTemplate = true or similar.
+
+Create backend endpoints:
+
+GET /api/super-admin/templates → list template bots.
+
+POST /api/super-admin/clients/from-template
+Body includes:
+
+templateBotId
+
+new clientId
+
+clientName
+
+type
+
+businessProfile overrides (phone, email, website, hours, location, etc.)
+
+On POST:
+
+Validate clientId is unique.
+
+Create a new client entry.
+
+Clone template bot into a new bot for this client (new botId, e.g. ${clientId}_main).
+
+Override businessProfile using provided overrides.
+
+Save new bot config (JSON/DB) and link it to the new client.
+
+Wire this into Control Center:
+
+In the Templates list, add a “Create New Client From This Template” button that opens the form and calls the above endpoint.
+
+Client Status Control (Active / Paused / Demo)
+Use the PDF’s status model and enforce it everywhere:
+
+Status values: "active" | "paused" | "demo".
+
+Store status on the client (in clients.json or DB table).
+
+In Control Center:
+
+Show a status badge for each client.
+
+Allow super-admin to change status via a toggle/dropdown:
+
+Call PUT /api/super-admin/clients/:clientId/status.
+
+Enforcement in Chat:
+
+In POST /api/chat/:clientId/:botId:
+
+Load client by clientId.
+
+If status === "paused" → return a “service paused/unavailable” message and do NOT call OpenAI.
+
+If status === "demo" → optionally treat as demo mode (e.g., tag response or limit usage).
+
+If status === "active" → normal behavior.
+
+Enforcement in Dashboards:
+
+If client logs in and status is paused:
+
+Show a “Your account is paused” screen.
+
+Do not show full dashboards.
+
+If demo:
+
+Show normal UI but label as “Demo Mode”.
+
+If active:
+
+Full access.
+
+Simple but Impressive Analytics
+Implement analytics as described in the PDF:
+
+Per client, at minimum:
+
+Messages handled in last 7 days.
+
+Leads captured in last 7 days.
+
+Booking requests in last 7 days (if applicable).
+
+Backend endpoints:
+
+GET /api/super-admin/analytics/:clientId
+
+GET /api/admin/analytics/:clientId (for that client’s own view, if not already present)
+
+Derive data from:
+
+Conversation logs (file-based or DB).
+
+Lead capture / booking events tables or tags, if they exist.
+
+Frontend:
+
+In Control Center → Overview/Analytics tab:
+
+Show 3 stat cards.
+
+Show a simple trend chart (messages over time).
+
+Clean, Unified Branding (Same vibe everywhere)
+Apply the branding rules in the PDF across:
+
+Public landing page.
+
+Super-admin dashboard.
+
+Client admin dashboard.
+
+Demo pages / chat frames.
+
+Login screens.
+
+Use consistent:
+
+Colors (coastal blue gradient + white + navy accents).
+
+Typography.
+
+Card styling (rounded, soft shadows).
+
+Buttons.
+
+Spacing.
+
+Implement a centralized theme system (CSS vars or Tailwind config) and refactor components to use it, so the entire app feels like one cohesive SaaS product.
+
+Stripe Subscription – Simple Version First
+Implement basic subscription logic as described in the PDF:
+
+Backend:
+
+Add env vars for Stripe:
+
+STRIPE_SECRET_KEY
+
+STRIPE_WEBHOOK_SECRET
+
+FRONTEND_BASE_URL
+
+Implement:
+
+POST /api/billing/create-checkout-session
+
+Takes clientId.
+
+Creates a Stripe Checkout Session for a subscription plan.
+
+Returns session.url to redirect the user.
+
+POST /api/billing/webhook
+
+Verifies webhook signature.
+
+Handles events:
+
+checkout.session.completed → set client.status = "active" and store subscriptionId.
+
+invoice.payment_failed or subscription canceled → set client.status = "paused".
+
+Frontend:
+
+In Control Center → Status & Subscription tab:
+
+If client has no subscriptionId:
+
+Show “Start Subscription” button → calls create-checkout-session → redirects.
+
+If subscriptionId exists:
+
+Show simple “Active Subscription” state.
+
+Wire status updates to the existing status control.
+
+Hide Complex Features From Basic Clients (Faith House gating)
+Implement feature gating based on client type (see PDF):
+
+Add/confirm type property on client (e.g. "sober_living", "restaurant", "barber", etc.).
+
+Only show Faith House–specific UI (crisis settings, intake flows, etc.) when client.type === "sober_living".
+
+For all other types:
+
+Hide crisis-specific controls and flows.
+
+Use generic business configuration only.
+
+Make sure global safety rules (no medical/legal/crisis advice) still apply to all bots, but Faith House is the only one with special extra options.
+
+3) ROADMAP & ORDER OF OPERATIONS (FOLLOW THIS ORDER)
+
+Implement changes in this order, exactly as laid out in the PDF:
+
+Enforce client.status in chat and dashboards.
+
+Build Control Center skeleton (/super-admin/control-center) with client & template lists and Overview tab.
+
+Implement Templates → Create Client flow (backend endpoints + UI modal).
+
+Build Bot Settings tab with full businessProfile + FAQ editing wired to backend.
+
+Implement simple analytics endpoints & UI for messages/leads/bookings.
+
+Wire up Stripe basic subscription flow and connect to status.
+
+Unify branding across admin, client, and demo UIs.
+
+Gate Faith House features by client.type.
+
+Clean up unused code, confirm everything routes through the new Control Center.
+
+After each major step, summarize what you changed and verify:
+
+All existing bots (Faith House + demo bots) still work.
+
+Multi-tenant behavior is preserved.
+
+No critical routes are broken.
+
+4) QUALITY & SAFETY REQUIREMENTS
+
+Do not remove existing working functionality unless it’s clearly obsolete.
+
+Keep all existing bots (Faith House + 5 demo bots) fully functional.
+
+Keep OpenAI integration intact.
+
+Respect all safety constraints already in place (no medical/legal advice, no crisis counseling, crisis-safe responses).
+
+Write clean, well-typed TypeScript on backend and frontend.
+
+Use existing component patterns where possible (no random new styling approaches that break the theme).
+
+Your mission:
+Implement the PDF TCAI_Simple_Powerful_Client_Ready_Blueprint.pdf as literally and completely as possible in this codebase, keeping everything simple for the operator (me) and powerful & polished for clients.
