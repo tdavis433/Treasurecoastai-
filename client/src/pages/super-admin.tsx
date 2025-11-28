@@ -11,7 +11,8 @@ import { useLocation } from "wouter";
 import { 
   Settings, Palette, Clock, Bell, BookOpen, LogOut, Send, AlertCircle, Shield, 
   Trash2, Plus, X, Sparkles, Building2, Calendar, ClipboardList, Edit2, 
-  GripVertical, ChevronDown, ChevronUp, Save, Phone, Mail, Globe, MapPin
+  GripVertical, ChevronDown, ChevronUp, Save, Phone, Mail, Globe, MapPin,
+  BarChart3, MessageSquare, Users, Zap, AlertTriangle
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,28 @@ interface Client {
   status: string;
   type?: string;
   bots?: BotInfo[];
+}
+
+interface PlatformAnalytics {
+  totals: {
+    totalConversations: number;
+    totalMessages: number;
+    userMessages: number;
+    botMessages: number;
+    crisisEvents: number;
+    appointmentRequests: number;
+  };
+  bots: Array<{
+    clientId: string;
+    botId: string;
+    businessName: string;
+    businessType: string;
+    totalConversations: number;
+    totalMessages: number;
+    crisisEvents: number;
+    appointmentRequests: number;
+  }>;
+  totalBots: number;
 }
 
 interface GeneralSettings {
@@ -235,6 +258,12 @@ export default function SuperAdmin() {
 
   const { data: settings, isLoading } = useQuery<ClientSettings>({
     queryKey: ["/api/settings"],
+    enabled: currentUser?.role === "super_admin",
+  });
+
+  // Platform-wide analytics
+  const { data: platformAnalytics, isLoading: analyticsLoading } = useQuery<PlatformAnalytics>({
+    queryKey: ["/api/super-admin/analytics/overview"],
     enabled: currentUser?.role === "super_admin",
   });
 
@@ -648,6 +677,117 @@ export default function SuperAdmin() {
                 </div>
               )}
             </div>
+          </GlassCardContent>
+        </GlassCard>
+
+        {/* Platform Analytics Overview */}
+        <GlassCard>
+          <GlassCardHeader>
+            <GlassCardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-cyan-400" />
+              Platform Analytics
+            </GlassCardTitle>
+            <GlassCardDescription>Real-time performance metrics across all chatbots</GlassCardDescription>
+          </GlassCardHeader>
+          <GlassCardContent>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-center">
+                <div className="flex items-center justify-center mb-2">
+                  <Users className="h-5 w-5 text-blue-400" />
+                </div>
+                <div className="text-2xl font-bold text-white" data-testid="stat-total-conversations">
+                  {analyticsLoading ? '—' : (platformAnalytics?.totals?.totalConversations || 0)}
+                </div>
+                <div className="text-xs text-white/55">Conversations</div>
+              </div>
+              
+              <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-center">
+                <div className="flex items-center justify-center mb-2">
+                  <MessageSquare className="h-5 w-5 text-green-400" />
+                </div>
+                <div className="text-2xl font-bold text-white" data-testid="stat-total-messages">
+                  {analyticsLoading ? '—' : (platformAnalytics?.totals?.totalMessages || 0)}
+                </div>
+                <div className="text-xs text-white/55">Total Messages</div>
+              </div>
+              
+              <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-center">
+                <div className="flex items-center justify-center mb-2">
+                  <Zap className="h-5 w-5 text-purple-400" />
+                </div>
+                <div className="text-2xl font-bold text-white" data-testid="stat-user-messages">
+                  {analyticsLoading ? '—' : (platformAnalytics?.totals?.userMessages || 0)}
+                </div>
+                <div className="text-xs text-white/55">User Messages</div>
+              </div>
+              
+              <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-center">
+                <div className="flex items-center justify-center mb-2">
+                  <Sparkles className="h-5 w-5 text-cyan-400" />
+                </div>
+                <div className="text-2xl font-bold text-white" data-testid="stat-bot-messages">
+                  {analyticsLoading ? '—' : (platformAnalytics?.totals?.botMessages || 0)}
+                </div>
+                <div className="text-xs text-white/55">Bot Messages</div>
+              </div>
+              
+              <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-center">
+                <div className="flex items-center justify-center mb-2">
+                  <Calendar className="h-5 w-5 text-amber-400" />
+                </div>
+                <div className="text-2xl font-bold text-white" data-testid="stat-appointments">
+                  {analyticsLoading ? '—' : (platformAnalytics?.totals?.appointmentRequests || 0)}
+                </div>
+                <div className="text-xs text-white/55">Booking Requests</div>
+              </div>
+              
+              <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-center">
+                <div className="flex items-center justify-center mb-2">
+                  <AlertTriangle className="h-5 w-5 text-red-400" />
+                </div>
+                <div className="text-2xl font-bold text-amber-500" data-testid="stat-crisis-events">
+                  {analyticsLoading ? '—' : (platformAnalytics?.totals?.crisisEvents || 0)}
+                </div>
+                <div className="text-xs text-white/55">Crisis Events</div>
+              </div>
+            </div>
+
+            {/* Per-Bot Stats */}
+            {platformAnalytics?.bots && platformAnalytics.bots.length > 0 && (
+              <div className="mt-6 pt-6 border-t border-white/10">
+                <h4 className="text-sm font-medium text-white/70 mb-4">Per-Bot Performance</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {platformAnalytics.bots.map((bot) => (
+                    <div 
+                      key={bot.botId}
+                      className="p-3 rounded-lg bg-white/5 border border-white/10 flex items-center justify-between"
+                      data-testid={`analytics-bot-${bot.botId}`}
+                    >
+                      <div>
+                        <p className="font-medium text-white text-sm">{bot.businessName}</p>
+                        <p className="text-xs text-white/40">{bot.businessType}</p>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs">
+                        <div className="text-center">
+                          <span className="block font-bold text-cyan-400">{bot.totalConversations}</span>
+                          <span className="text-white/40">chats</span>
+                        </div>
+                        <div className="text-center">
+                          <span className="block font-bold text-green-400">{bot.totalMessages}</span>
+                          <span className="text-white/40">msgs</span>
+                        </div>
+                        {bot.crisisEvents > 0 && (
+                          <div className="text-center">
+                            <span className="block font-bold text-amber-400">{bot.crisisEvents}</span>
+                            <span className="text-white/40">crisis</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </GlassCardContent>
         </GlassCard>
 

@@ -100,6 +100,9 @@ The system employs a React, TypeScript, Tailwind CSS, and shadcn/ui frontend wit
 - `client_settings`: Customizable business settings
 - `conversation_analytics`: Chat metrics with PII-sanitized responses
 - `admin_users`: Admin authentication with roles
+- `chat_analytics_events`: Per-message analytics with topics, response times
+- `chat_sessions`: Aggregated session data with crisis flags, topics arrays
+- `daily_analytics`: Daily rollup for trends visualization
 
 **Privacy & Data Protection:**
 - **PII Sanitization:** Automatic redaction of phone numbers, emails, SSNs
@@ -141,3 +144,11 @@ The system employs a React, TypeScript, Tailwind CSS, and shadcn/ui frontend wit
   - Supports cloning from existing templates (inherits system prompt, FAQs, safety rules)
   - Start from scratch option with default configurations
   - Auto-generate IDs feature based on business name
+- **Comprehensive Analytics System:** Multi-layer analytics tracking for chatbot performance
+  - Per-message event tracking: Topics, response times, crisis detection, appointment requests
+  - Session-level aggregation: Total messages, topics arrays, crisis/appointment flags
+  - Daily rollups: Trends visualization for conversations, messages, events
+  - Client dashboard Analytics tab: Charts (line/pie), metrics cards, session history
+  - Super-admin Platform Analytics: Platform-wide overview with per-bot performance
+  - Tenant-scoped APIs: `/api/client/analytics/summary`, `/api/client/analytics/trends`, `/api/client/analytics/sessions`
+  - Platform-wide API: `/api/super-admin/analytics/overview`
