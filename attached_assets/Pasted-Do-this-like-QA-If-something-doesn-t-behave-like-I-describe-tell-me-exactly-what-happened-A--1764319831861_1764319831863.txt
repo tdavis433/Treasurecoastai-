@@ -1,0 +1,138 @@
+Do this like QA. If something doesn’t behave like I describe, tell me exactly what happened.
+
+🧪 A. Control Center
+
+Log in as super-admin.
+
+Go to whatever route shows the new view (probably /super-admin or /super-admin/control-center).
+
+Confirm:
+
+Left side shows all clients (Faith House + demo).
+
+Clicking a client shows its bots.
+
+Each bot has:
+
+Name
+
+Status badge
+
+“Edit Bot Settings” button
+
+“Open Demo” (for demo bots)
+
+If any of that is missing or janky, screenshot it and send it.
+
+🧪 B. Status Enforcement
+
+Pick one demo client first so you don’t mess with Faith House.
+
+In Control Center:
+
+Pick the demo client.
+
+Toggle status → PAUSED.
+
+Open that client’s chat (demo page or widget).
+
+Try sending a message.
+
+✅ Expected:
+
+You get a clear “service is paused” style message.
+
+No real AI reply.
+
+Try logging into that client’s admin / dashboard if that exists.
+
+If there’s logic there yet, it should either:
+
+Block access
+
+Or at least show paused status clearly
+
+Then:
+
+Toggle back to ACTIVE.
+
+Send a message again.
+
+✅ Expected:
+
+Bot works normally again.
+
+If that works → your pause system is legit.
+
+🧪 C. Bot Editing (this is your “full control” test)
+
+In Control Center:
+
+Pick a demo bot (e.g. Restaurant).
+
+Click Edit Bot Settings.
+
+In the form:
+
+Change Business Name to something obvious like:
+
+“TEST — Coastal Breeze Grill”
+
+Change Phone to a fake number
+
+Change one FAQ answer to add [TEST] somewhere.
+
+Save.
+
+Now:
+
+Either open the demo page for that bot
+
+Or send a question that would trigger that FAQ.
+
+✅ Expected:
+
+Bot’s language now uses the new business name.
+
+The FAQ answer should reflect [TEST].
+
+If that works → you officially have UI-driven bot config, no JSON needed.
+
+🧪 D. Stripe Billing (use test mode)
+
+Only do this once your .env is set with Stripe test keys.
+
+Add:
+
+STRIPE_SECRET_KEY (test key)
+
+STRIPE_WEBHOOK_SECRET
+
+STRIPE_PRICE_ID (test subscription price)
+
+FRONTEND_URL (http://localhost:port
+ for now)
+
+Restart the server.
+
+In Control Center:
+
+On a client view, find the Subscribe / Billing / Start Subscription button (whatever Replit labeled it).
+
+Click it.
+
+✅ Expected:
+
+Browser redirects you to a Stripe Checkout page.
+
+Complete checkout with Stripe test card:
+
+Use 4242 4242 4242 4242 etc.
+
+After success:
+
+Confirm the client’s status flips to ACTIVE (if it wasn’t already).
+
+Try pausing in Stripe (cancel subscription / simulate failure) and make sure webhook drives status → PAUSED.
+
+If that loop works → your SaaS is truly subscription-driven.

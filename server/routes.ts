@@ -1766,8 +1766,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           clonedFrom: templateBotId,
           createdAt: new Date().toISOString().split('T')[0],
           version: '1.0',
-          contact: contact,
-          billing: billing,
         },
       };
       
@@ -1800,7 +1798,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate Stripe checkout URL for the new client (PDF requirement: "Stripe link generated")
       let checkoutUrl = null;
       try {
-        const stripeService = new StripeService();
+        const { stripeService } = await import('./stripeService');
         const email = businessProfile?.email || contact?.email || `${clientId}@placeholder.com`;
         
         // Create Stripe customer
@@ -1810,9 +1808,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const products = await stripeService.listProductsWithPrices(true, 10, 0);
         if (products && products.length > 0) {
           const defaultProduct = products[0];
-          const priceId = defaultProduct.price_id;
+          const priceId = defaultProduct.price_id as string;
           
-          if (priceId) {
+          if (priceId && typeof priceId === 'string') {
             const baseUrl = process.env.REPLIT_DEV_DOMAIN 
               ? `https://${process.env.REPLIT_DEV_DOMAIN}`
               : 'http://localhost:5000';

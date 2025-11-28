@@ -4,7 +4,9 @@
       "id": "faith_house",
       "name": "Faith House Sober Living",
       "type": "sober_living",
-      "bots": ["faith_house_main"],
+      "bots": [
+        "faith_house_main"
+      ],
       "status": "active",
       "createdAt": "2025-11-27"
     },
