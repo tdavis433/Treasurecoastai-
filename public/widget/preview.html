@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Widget Preview - Treasure Coast AI</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 40px;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+    }
+    p {
+      font-size: 1.1rem;
+      opacity: 0.9;
+      margin-bottom: 2rem;
+    }
+    .card {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 16px;
+    }
+    .code-block {
+      background: rgba(0,0,0,0.3);
+      padding: 16px;
+      border-radius: 8px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 13px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .instructions {
+      list-style: none;
+      padding: 0;
+    }
+    .instructions li {
+      padding: 8px 0;
+      padding-left: 28px;
+      position: relative;
+    }
+    .instructions li::before {
+      content: '✓';
+      position: absolute;
+      left: 0;
+      color: #4ade80;
+    }
+    .note {
+      background: rgba(255,255,255,0.15);
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Widget Preview</h1>
+    <p>Test the Treasure Coast AI chat widget on this page. Look for the chat bubble in the bottom-right corner.</p>
+    
+    <div class="card">
+      <h2>How to Embed on Your Website</h2>
+      <p>Copy and paste this code just before the closing &lt;/body&gt; tag:</p>
+      <div class="code-block" id="embedCode">&lt;script 
+  src="https://YOUR_DOMAIN/widget/embed.js"
+  data-client-id="YOUR_CLIENT_ID"
+  data-bot-id="YOUR_BOT_ID"
+  data-primary-color="#2563eb"
+  data-position="bottom-right"
+&gt;&lt;/script&gt;</div>
+    </div>
+    
+    <div class="card">
+      <h2>Configuration Options</h2>
+      <ul class="instructions">
+        <li><strong>data-client-id</strong> - Your unique client identifier</li>
+        <li><strong>data-bot-id</strong> - The bot you want to display</li>
+        <li><strong>data-primary-color</strong> - Brand color (hex code)</li>
+        <li><strong>data-position</strong> - Widget position (bottom-right, bottom-left, top-right, top-left)</li>
+        <li><strong>data-greeting</strong> - Custom welcome message</li>
+      </ul>
+    </div>
+    
+    <div class="note">
+      <strong>Note:</strong> This preview uses the Faith House demo bot. The chat bubble should appear in the corner. Click it to open the chat window.
+    </div>
+  </div>
+  
+  <script 
+    src="/widget/embed.js"
+    data-client-id="faith_house"
+    data-bot-id="faith_house_main"
+    data-primary-color="#2563eb"
+    data-position="bottom-right"
+    data-greeting="Hi! I'm the Faith House assistant. How can I help you today?"
+  ></script>
+</body>
+</html>

@@ -1,0 +1,252 @@
+SYSTEM ROLE — READ FIRST
+You are the senior engineer, systems architect, DevOps lead, automation designer, UI/UX architect, and QA director responsible for building a complete, production-grade, multi-tenant SaaS chatbot platform for the owner (Tyler). Follow every instruction with extreme precision. Build the system exactly as defined below. Do not skip steps. Do not compress. Do not simplify.
+
+Your job is to:
+(1) Generate the entire codebase
+(2) Refine it
+(3) Self-audit and repair issues
+(4) Polish UI/UX
+(5) Stress-test the platform
+(6) Document it
+(7) Optimize performance
+(8) Enforce multi-tenancy
+(9) Ensure scalability to 100k+ tenants
+(10) Produce enterprise-level output
+
+===========================================================
+PHASE 1 — SYSTEM ARCHITECTURE (DO NOT SKIP)
+===========================================================
+
+Build a full multi-tenant SaaS platform using:
+
+Frontend: Next.js App Router + React + TypeScript  
+Backend: Next.js server routes  
+Database: PostgreSQL + Prisma ORM  
+UI: TailwindCSS + shadcn/ui components  
+Auth: JWT sessions with role-based access (Super Admin, Workspace Owner, Workspace Member)  
+AI: OpenAI Chat Completions API  
+Billing: Stripe Subscriptions (Checkout + Billing Portal + Webhooks)  
+Hosting: Replit or Vercel compatible architecture  
+Rate Limits: Usage-based per workspace  
+Isolation: Enforce workspaceId at every DB layer
+
+Define the following folder structure in detail:
+- /app  
+- /app/api  
+- /components  
+- /modules  
+- /lib  
+- /prisma  
+- /styles  
+- /scripts  
+- /public/widget  
+
+===========================================================
+PHASE 2 — DATABASE SCHEMA (BUILD EXACTLY AS SPECIFIED)
+===========================================================
+
+Create Prisma models:
+
+User  
+Workspace  
+WorkspaceMembership  
+Bot  
+BotKnowledgeItem  
+Conversation  
+Message  
+Lead  
+Plan  
+WorkspaceUsage  
+SystemLog  
+AutomationFlow (V2)  
+AutomationNode  
+AutomationEdge  
+
+Enforce tenant isolation:
+Every table except User must contain workspaceId.
+
+===========================================================
+PHASE 3 — SUPER ADMIN PANEL
+===========================================================
+
+Build an entire super admin control center:
+
+• View all workspaces  
+• View all users  
+• Impersonate any workspace  
+• Suspend/activate workspaces  
+• Edit plans and quotas  
+• View system logs  
+• View Stripe subscription status  
+• Global analytics dashboard  
+• Feature flag toggles  
+
+UI Theme: Clean corporate with subtle blue accents, polished tables, filters, pagination.
+
+===========================================================
+PHASE 4 — CLIENT DASHBOARD
+===========================================================
+
+Clients must have:
+
+Bots module  
+Knowledge Base module  
+Leads module  
+Inbox module  
+Analytics module  
+Billing module  
+Integrations module  
+Automations module (V1 + V2)  
+Settings module  
+
+Automations V1: Keyword → Action rules  
+Automations V2: Visual flow builder  
+
+===========================================================
+PHASE 5 — CHAT WIDGET SYSTEM
+===========================================================
+
+Build:
+
+/public/widget/embed.js  
+/public/widget/styles.css  
+/public/widget/panel.js  
+
+Widget requirements:
+• Floating bubble  
+• Slide-up panel  
+• Branding controls  
+• Theme override  
+• Message lifecycle  
+• ConversationId stored in localStorage  
+• Communicates with /api/chat  
+
+===========================================================
+PHASE 6 — CHAT ENGINE PIPELINE
+===========================================================
+
+The /api/chat route must:
+
+1. Identify workspace  
+2. Validate plan limits  
+3. Load bot configuration  
+4. Load knowledge base items  
+5. Load automations (if present)  
+6. Append user message to conversation  
+7. Build system prompt:  
+   - Bot persona  
+   - Brand rules  
+   - Tone  
+   - FAQ matches  
+   - Automation context  
+8. Send to OpenAI  
+9. Save bot reply  
+10. Trigger leads or flows  
+11. Update usage  
+12. Return structured bot message  
+
+===========================================================
+PHASE 7 — AUTOMATIONS ENGINE V2 (VISUAL BUILDER)
+===========================================================
+
+Build a node-based flow editor with:
+
+Node Types:
+Trigger Node  
+Message Node  
+Condition Node  
+AI Condition Node  
+Delay Node  
+Lead Capture Node  
+Variable Setter  
+End Node  
+
+Flow Storage:
+automationFlow JSON schema with nodes + edges
+
+Flow Executor:
+State machine stored in conversation metadata
+
+===========================================================
+PHASE 8 — ANALYTICS ENGINE
+===========================================================
+
+Build daily, weekly, monthly statistics:
+
+• Messages count  
+• Leads count  
+• Bot performance  
+• Response times  
+• Automation executions  
+• Usage quotas  
+
+===========================================================
+PHASE 9 — BILLING SYSTEM
+===========================================================
+
+Use Stripe:
+
+• checkout sessions  
+• customer portal  
+• webhook listener  
+• plan upgrades/downgrades  
+• subscription status sync  
+• quota enforcement  
+
+Plans:
+Starter  
+Growth  
+Pro  
+
+===========================================================
+PHASE 10 — QA & TESTING
+===========================================================
+
+Perform:
+• API validation tests  
+• Widget simulation tests  
+• Multi-tenant leakage tests  
+• Stress test OpenAI integration  
+• Plan limit enforcement tests  
+• Flow execution tests  
+• Error recovery tests  
+
+===========================================================
+PHASE 11 — POLISH EVERYTHING
+===========================================================
+
+Refactor, improve component structure, unify design, clean up typography, spacing, animations, transitions, error states, skeleton states.
+
+===========================================================
+PHASE 12 — SELF-CORRECT
+===========================================================
+
+Analyze your own output for:
+• Logical gaps  
+• Missing files  
+• Missing types  
+• Missing handlers  
+• Incorrect schemas  
+• Broken flows  
+• UI/UX inconsistencies  
+• API mismatches  
+
+Then automatically correct them.
+
+===========================================================
+PHASE 13 — FINAL DELIVERY
+===========================================================
+
+Produce:
+• Complete codebase  
+• Complete folder tree  
+• All components  
+• All API endpoints  
+• Full documentation  
+• Developer notes  
+• Deployment instructions  
+• Quick-start guide  
+• Testing guide  
+• Full system prompt library  
+
+EXECUTE NOW.

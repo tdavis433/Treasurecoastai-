@@ -18,7 +18,7 @@ import {
   Bot, Users, FileText, Settings, BarChart3, MessageSquare, 
   Plus, Play, Pause, Eye, Edit2, Save, X, LogOut, Zap, 
   AlertTriangle, Phone, Mail, Globe, MapPin, Clock, Trash2,
-  ChevronRight, Search, CreditCard, ExternalLink, Building2
+  ChevronRight, Search, CreditCard, ExternalLink, Building2, Code, Copy, Check
 } from "lucide-react";
 
 interface Client {
@@ -585,6 +585,10 @@ export default function ControlCenter() {
                       <MessageSquare className="h-4 w-4 mr-1" />
                       Logs
                     </TabsTrigger>
+                    <TabsTrigger data-testid="tab-install" value="install" className="text-xs">
+                      <Code className="h-4 w-4 mr-1" />
+                      Install
+                    </TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="overview">
@@ -605,6 +609,10 @@ export default function ControlCenter() {
 
                   <TabsContent value="logs">
                     <LogsPanel clientId={selectedClient.id} botId={selectedBot.botId} />
+                  </TabsContent>
+
+                  <TabsContent value="install">
+                    <InstallPanel bot={selectedBot} client={selectedClient} />
                   </TabsContent>
                 </Tabs>
               </div>
@@ -2134,5 +2142,192 @@ function CreateFromTemplateModal({
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+// Install Panel - Embed code generator for widget installation
+function InstallPanel({ bot, client }: { bot: BotConfig; client: Client }) {
+  const [copied, setCopied] = useState(false);
+  const [position, setPosition] = useState("bottom-right");
+  const [primaryColor, setPrimaryColor] = useState("#2563eb");
+  const [greeting, setGreeting] = useState(`Hi! How can I help you today?`);
+  
+  const baseUrl = window.location.origin;
+  
+  const embedCode = `<script
+  src="${baseUrl}/widget/embed.js"
+  data-client-id="${client.id}"
+  data-bot-id="${bot.botId}"
+  data-primary-color="${primaryColor}"
+  data-position="${position}"
+  data-greeting="${greeting}"
+></script>`;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(embedCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Code className="h-5 w-5" />
+            Widget Installation
+          </CardTitle>
+          <CardDescription>
+            Add the chatbot to your website by copying this code snippet
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Customization Options */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label>Position</Label>
+              <Select value={position} onValueChange={setPosition}>
+                <SelectTrigger data-testid="select-widget-position">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bottom-right">Bottom Right</SelectItem>
+                  <SelectItem value="bottom-left">Bottom Left</SelectItem>
+                  <SelectItem value="top-right">Top Right</SelectItem>
+                  <SelectItem value="top-left">Top Left</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Primary Color</Label>
+              <div className="flex gap-2">
+                <Input
+                  data-testid="input-widget-color"
+                  type="color"
+                  value={primaryColor}
+                  onChange={(e) => setPrimaryColor(e.target.value)}
+                  className="w-12 h-10 p-1 cursor-pointer"
+                />
+                <Input
+                  data-testid="input-widget-color-text"
+                  type="text"
+                  value={primaryColor}
+                  onChange={(e) => setPrimaryColor(e.target.value)}
+                  className="flex-1"
+                  placeholder="#2563eb"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Greeting Message</Label>
+              <Input
+                data-testid="input-widget-greeting"
+                value={greeting}
+                onChange={(e) => setGreeting(e.target.value)}
+                placeholder="Hi! How can I help you today?"
+              />
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Embed Code */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Embed Code</Label>
+              <Button
+                data-testid="button-copy-embed"
+                variant="outline"
+                size="sm"
+                onClick={handleCopy}
+              >
+                {copied ? (
+                  <>
+                    <Check className="h-4 w-4 mr-2" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy Code
+                  </>
+                )}
+              </Button>
+            </div>
+            <div className="relative">
+              <pre className="bg-muted p-4 rounded-md overflow-x-auto text-sm font-mono">
+                <code data-testid="code-embed-snippet">{embedCode}</code>
+              </pre>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Instructions */}
+          <div className="space-y-3">
+            <Label>Installation Steps</Label>
+            <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+              <li>Copy the embed code above</li>
+              <li>Paste it just before the closing <code className="bg-muted px-1 rounded">&lt;/body&gt;</code> tag on your website</li>
+              <li>The chat widget will appear automatically in the selected position</li>
+              <li>Visitors can click the bubble to start chatting with your AI assistant</li>
+            </ol>
+          </div>
+
+          {/* Preview Button */}
+          <div className="flex gap-2">
+            <Button
+              data-testid="button-preview-widget"
+              variant="outline"
+              onClick={() => window.open(`/widget/preview.html?clientId=${client.id}&botId=${bot.botId}`, '_blank')}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              Preview Widget
+            </Button>
+            <Button
+              data-testid="button-test-widget"
+              variant="outline"
+              onClick={() => window.open(`/demo/${bot.botId}`, '_blank')}
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Test in Demo Mode
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Widget Configuration Details */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Configuration Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-muted-foreground">Client ID:</span>
+              <code className="ml-2 bg-muted px-2 py-1 rounded">{client.id}</code>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Bot ID:</span>
+              <code className="ml-2 bg-muted px-2 py-1 rounded">{bot.botId}</code>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Business:</span>
+              <span className="ml-2">{bot.businessProfile?.businessName || client.name}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Status:</span>
+              <Badge variant={client.status === 'active' ? 'default' : 'secondary'} className="ml-2">
+                {client.status}
+              </Badge>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

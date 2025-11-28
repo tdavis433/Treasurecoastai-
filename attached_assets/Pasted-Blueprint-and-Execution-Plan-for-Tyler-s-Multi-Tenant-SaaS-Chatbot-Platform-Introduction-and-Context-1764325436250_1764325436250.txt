@@ -1,0 +1,275 @@
+Blueprint and Execution Plan for Tyler’s Multi‑Tenant SaaS Chatbot Platform
+Introduction and Context
+
+Tyler wants a production‑ready SaaS chatbot platform that supports multiple business clients (tenants) and is easy for a non‑technical founder to manage. The platform must include a super‑admin area, client dashboard, multi‑bot system, embedded chat widget, AI chat backend, lead capture, conversations inbox, knowledge base, automations, billing, usage limits, analytics, a dark neon glass UI, and clear documentation.
+
+The plan below breaks the project into phases—build, polish, QA, upgrade (advanced automations) and documentation—so the system can be delivered iteratively yet maintain a clean architecture. It also incorporates best practices from the latest multi‑tenant architectures and SaaS boilerplates.
+
+Phase 1 – Build the Full SaaS System (Blueprint)
+1.1 Technology stack
+
+Framework: Next.js with React and TypeScript.
+
+UI: Tailwind CSS (dark‑mode default) and shadcn/ui components for a premium look.
+
+Backend: Node.js API routes (Next.js app router).
+
+Database: PostgreSQL with Prisma ORM. Multi‑tenant isolation can be achieved by associating each record with a workspace/tenant ID.
+
+Auth: JSON Web Tokens (JWT). Provide password login and future OAuth support.
+
+AI: OpenAI chat completions API – maintain a messages array with roles (system, user, assistant) to preserve context
+freecodecamp.org
+.
+
+Payments: Stripe subscriptions integration with webhooks for automatic syncing of plans and statuses
+github.com
+.
+
+Deployment: Replit or Vercel; ensure environment variables (DB URL, Stripe keys, OpenAI API key) are configurable.
+
+1.2 Core domain models
+
+Use Prisma to define models for users, workspaces, memberships, bots, knowledge items, conversations, messages, leads, plans, workspace usage, and system logs. A best‑practice many‑to‑many relationship between users and organizations (workspaces) is illustrated in Mike Alche’s multi‑tenant guide
+mikealche.com
+. Each table should have timestamps (createdAt, updatedAt) and foreign‑key constraints.
+
+User – email, passwordHash, role (Super Admin, Client Owner, Member), timestamps.
+
+Workspace – name, status, planId, stripeCustomerId, createdAt, updatedAt.
+
+WorkspaceMembership – userId, workspaceId, role (Owner, Admin, Agent)
+mikealche.com
+.
+
+Bot – workspaceId, name, description, avatarUrl, welcomeMessage, toneOfVoice, brand colors, isActive.
+
+BotKnowledgeItem – botId, type (FAQ or static text), question, answer, tags.
+
+Conversation – workspaceId, botId, startedAt, endedAt, status.
+
+Message – conversationId, senderType (user/bot/agent), content, metadata.
+
+Lead – workspaceId, botId, name, email, phone, customFields, createdAt.
+
+Plan – name, monthlyPrice, maxBots, maxMessagesPerMonth, features (JSON).
+
+WorkspaceUsage – workspaceId, periodStart, periodEnd, messagesCount, openAITokensUsed.
+
+SystemLog – message, level (info/warn/error), workspaceId, createdAt.
+
+1.3 Super‑admin features
+
+Overview dashboard: show total workspaces, total users, message volume, leads and monthly recurring revenue.
+
+Workspace management: list all workspaces, view details, edit plan limits, suspend/activate tenants, impersonate accounts.
+
+Plan management: define starter, growth and pro plans; adjust limits and pricing.
+
+Feature toggles: enable or disable advanced features per workspace (e.g., advanced automations).
+
+System logs: view error logs and usage events.
+
+1.4 Client dashboard features
+
+Bots list & creation: clients can create multiple bots; each bot uses the workspace’s quota.
+
+Bot settings tabs:
+
+General: name, avatar, welcome message, tone of voice, brand colors.
+
+Knowledge base: table of FAQs; ability to import, edit and delete Q&A pairs.
+
+Automations (v1 rules): simple keyword triggers, fallback responses, office‑hours conditions, lead capture toggles.
+
+Lead capture: choose which fields to request; configure when to ask for leads.
+
+Appearance: brand colour, widget position, bubble shape.
+
+Install: provides a script tag and attributes; guidance on embedding the widget on any site.
+
+Inbox: list conversations, view message threads, respond as a human agent, close conversations, view lead details.
+
+Analytics: charts for message counts and leads by day; summary cards for active bots, messages this month, leads captured.
+
+Billing: display current plan, usage, upgrade/downgrade options. Use Stripe checkout & billing portal to manage subscriptions
+github.com
+.
+
+1.5 Chat widget
+
+Implement a JS script that loads a floating chat bubble on the client’s website. The script should:
+
+Render a responsive UI with dark glass theme and neon accents.
+
+Connect to the /api/chat endpoint with botId and workspaceId.
+
+Maintain a conversation ID in local storage or cookies.
+
+Support animations (open/close).
+
+Apply brand colours to accent elements.
+
+1.6 Chat backend endpoint (/api/chat)
+
+Validate tenant and plan limits: ensure the bot belongs to the workspace and the workspace is within its message quota.
+
+Create or retrieve conversation: based on conversationId from request; if none, create a new conversation record.
+
+Store user message: save message with senderType = USER.
+
+Fetch knowledge items: search FAQs for keywords or tags; optionally integrate vector embeddings for semantic search (future extension).
+
+Prepare system prompt: combine bot tone, brand context, and relevant Q&A pairs. Use the messages array with roles system, user and assistant so OpenAI maintains context
+freecodecamp.org
+.
+
+Call OpenAI: send chat completion request with conversation history; handle errors gracefully.
+
+Store bot reply: save reply with senderType = BOT.
+
+Update usage: increment messagesCount and token usage; enforce quotas.
+
+Return response: send the assistant’s message and optional metadata (lead capture triggers) to the frontend.
+
+1.7 Analytics and usage limits
+
+Track messages and leads per workspace per month.
+
+Provide charts (7‑ and 30‑day windows) showing daily counts.
+
+Trigger warnings when approaching usage limits; block further replies if limits are exceeded until the workspace upgrades its plan.
+
+Provide a super‑admin overview of total messages across all workspaces.
+
+1.8 Billing and plans
+
+Offer Starter, Growth and Pro plans with different bot and message quotas. Use Stripe’s subscription features to manage recurring payments. The Vercel subscription starter demonstrates automatic syncing of pricing plans via Stripe webhooks
+github.com
+.
+
+When a user upgrades or downgrades, update the Plan record and adjust quotas accordingly.
+
+On plan cancellation, gracefully disable bots and show “Subscription expired” messages to end users.
+
+1.9 Code quality and project structure
+
+Organize the repository with clear folders: /app or /pages (routes), /components (UI), /modules (features), /lib (utilities), /prisma (schema), /styles (Tailwind config).
+
+Provide comprehensive comments and a README.md detailing setup, environment variables, migrations, and seed instructions.
+
+Implement a seed script that creates a demo super‑admin, a sample workspace, and a bot with example FAQs for quick testing.
+
+Follow accessibility best practices: semantic HTML, ARIA labels, keyboard navigation.
+
+Phase 2 – Polish the Entire App (Premium UI & UX)
+
+After the core system is functional, refine the user experience to match premium SaaS products:
+
+Global styling: unify spacing, fonts, and colour palette. Use Tailwind to define consistent paddings (p‑4, py‑2), heading sizes (text‑xl, text‑2xl) and dark glass surfaces with subtle gradients.
+
+Reusable components: abstract buttons, inputs, modals, tables and cards so all screens share the same look and feel.
+
+Micro‑interactions: add subtle animations for hovering, clicking, loading states and transitions between pages.
+
+Loading skeletons: display skeleton placeholders while data loads to improve perceived performance.
+
+Error and empty states: design informative states for when there is no data (e.g., “No bots yet, create your first bot”), and handle API errors with user‑friendly messages.
+
+Responsive design: verify that all dashboards and the chat widget look great on tablets and mobile devices.
+
+Navigation: clean up the navigation bar, breadcrumbs and sidebars for both super‑admin and client areas. Indicate the current section clearly.
+
+Phase 3 – Full QA Test of Every Feature
+
+Perform a thorough quality‑assurance sweep as if you are a senior QA engineer. The test plan should include:
+
+Authentication: test sign‑up, login, session persistence and password reset. Verify role‑based access: super‑admins can view all workspaces; client owners and members cannot access other tenants’ data.
+
+Super‑admin functions: test listing workspaces, editing plans, suspending and activating workspaces, and impersonation. Ensure feature toggles function.
+
+Client dashboard: verify creation and editing of bots; CRUD operations for knowledge items; rule creation for automations; lead capture forms; editing appearance and retrieving the install snippet.
+
+Widget: embed the script in a sample HTML page; confirm the bubble appears, theme matches the brand settings, conversation ID persists across sessions, and messages flow to/from the API.
+
+Chat API: verify message storage, OpenAI responses, relevance of knowledge base and enforcement of usage limits. Intentionally exceed quotas to ensure the system blocks additional responses.
+
+Inbox: check conversation list sorting, message thread display, agent replies, closing conversations and linking leads.
+
+Analytics: ensure charts render without errors; filters and date ranges produce accurate data.
+
+Billing: upgrade and downgrade plans via Stripe; ensure the billing portal loads; confirm quotas adjust accordingly.
+
+Bug report: record each issue with a title, reproduction steps, expected vs. actual behaviour, and proposed fix. Prioritize severity and fix what can be solved in the codebase before deployment.
+
+Phase 4 – V2 Advanced Automations System
+
+Once the V1 rules engine works, upgrade the Automations tab to a powerful flow builder:
+
+Visual flow builder: implement a node‑based UI where users can drag and drop nodes representing triggers (message received, keyword match, inactivity), conditions (IF/ELSE), messages, questions, variable setters, lead capture forms and end steps. Save the entire flow as JSON with references to the bot and workspace.
+
+AI‑assisted generation: allow users to input natural language instructions (e.g., “Create a flow that asks for name and email, then schedules a call if the user mentions ‘appointment’”). Use OpenAI to generate a structured flow and pre‑populate the builder.
+
+Variables system: capture user responses (e.g., {name}, {service}) and substitute them into later messages. Persist variables in conversation metadata.
+
+Event triggers: support first message triggers, keyword triggers, inactivity timers and after‑N‑messages triggers.
+
+Flow preview: enable simulation of flows within the builder so users can test without deploying.
+
+Flow execution engine: extend /api/chat to parse and execute flow JSON. Maintain state of which node is active in conversation metadata; progress through nodes based on conditions and triggers. For loops or delays, schedule tasks (a jobs table or background worker).
+
+Future‑proofing: design the engine to allow new node types (webhook calls, external API requests, variable math) to be added later without rewriting existing flows.
+
+Phase 5 – Generate a Full PDF Documentation Package
+
+After polishing and implementing advanced automations, compile a comprehensive PDF that covers all aspects of the platform:
+
+Cover page – project name, date, and owner.
+
+System overview – summary of the platform’s purpose and capabilities.
+
+Architecture diagrams – illustrate the multi‑tenant model (tenants mapped to subdomains with middleware, as in Vercel’s template
+vercel.com
+), client–server interactions (widget → API → AI → DB), and advanced automations engine.
+
+Database schema – include entity relationship diagrams showing tables and relationships (use the many‑to‑many membership pattern
+mikealche.com
+).
+
+Backend logic – document API endpoints, authentication middleware, usage tracking, Stripe webhook handling and automations engine.
+
+Frontend structure – describe Next.js folder structure, component hierarchy and styling strategy.
+
+Bot builder details – explain each tab and configurable setting.
+
+Automations (V1 & V2) – describe rule logic, flow builder UI, node types and execution model.
+
+Widget installation guide – show how to embed the chat widget and set data attributes.
+
+AI engine logic – describe how messages are prepared for OpenAI, including the messages array structure
+freecodecamp.org
+.
+
+Admin & client guides – step‑by‑step instructions for super‑admins to manage tenants and for clients to create bots, use automations, view analytics and manage billing.
+
+Usage & limits – explain quotas, plan differences and how overages are handled.
+
+Security model – discuss role‑based access control, data isolation, secure storage of API keys and secrets, rate limiting and monitoring.
+
+Error handling – document how the system handles and logs errors at the API and UI level.
+
+Future roadmap – outline potential expansions (e.g., additional channels like WhatsApp, CRM integration, advanced analytics).
+
+Deployment notes – include environment configuration, migrations, seeding, and recommended hosting providers (Vercel, Replit).
+
+The PDF should be professionally formatted, with headings, tables, diagrams and code snippets. Use diagrams to visualise the multi‑tenant routing and the advanced automations flow engine. Provide examples of how to call the API endpoints.
+
+Conclusion
+
+This blueprint provides Tyler with a clear, comprehensive plan to build a high‑quality multi‑tenant SaaS chatbot platform. It combines reliable frameworks (Next.js, Prisma, Stripe, OpenAI) with modern UI/UX practices and advanced automation capabilities. The phased approach—build, polish, test, upgrade, document—ensures a robust and maintainable product. By following this roadmap and referencing the cited resources (e.g., Vercel’s multi‑tenant architecture
+vercel.com
+, multi‑tenancy database patterns
+mikealche.com
+ and OpenAI message handling
+freecodecamp.org
+), Tyler can create a scalable, competitive SaaS business

@@ -1,5 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
+import express from "express";
 import { storage, db } from "./storage";
 import { insertAppointmentSchema, insertClientSettingsSchema, adminUsers, type AdminRole } from "@shared/schema";
 import OpenAI from "openai";
@@ -650,6 +651,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await ensureAdminUserExists();
   
   initStripe().catch(console.error);
+  
+  // =============================================
+  // EMBEDDABLE CHAT WIDGET - Static Files & CORS
+  // =============================================
+  
+  // CORS middleware for widget endpoints
+  const widgetCors = (req: Request, res: Response, next: NextFunction) => {
+    // Allow any origin to access widget resources (for embedding on client sites)
+    const origin = req.headers.origin;
+    if (origin) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Max-Age', '86400');
+    
+    if (req.method === 'OPTIONS') {
+      return res.status(204).end();
+    }
+    next();
+  };
+  
+  // Apply CORS to widget chat endpoint
+  app.options('/api/chat/:clientId/:botId', widgetCors);
+  app.use('/api/chat/:clientId/:botId', widgetCors);
+  
+  // Serve widget static files with proper headers
+  const widgetPath = path.join(process.cwd(), 'public', 'widget');
+  app.use('/widget', (req: Request, res: Response, next: NextFunction) => {
+    // Set CORS headers for widget files
+    const origin = req.headers.origin;
+    if (origin) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+    }
+    
+    // Set appropriate content types
+    const ext = path.extname(req.path).toLowerCase();
+    if (ext === '.js') {
+      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    } else if (ext === '.css') {
+      res.setHeader('Content-Type', 'text/css; charset=utf-8');
+    } else if (ext === '.html') {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    }
+    
+    // Cache control for production
+    if (process.env.NODE_ENV === 'production') {
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+    }
+    
+    next();
+  }, express.static(widgetPath));
+  
+  // Widget configuration endpoint
+  app.get('/api/widget/config/:clientId/:botId', widgetCors, async (req, res) => {
+    try {
+      const { clientId, botId } = req.params;
+      
+      const botConfig = getBotConfig(clientId, botId);
+      if (!botConfig) {
+        return res.status(404).json({ error: 'Bot not found' });
+      }
+      
+      const clientStatus = getClientStatus(clientId);
+      if (clientStatus === 'paused') {
+        return res.json({
+          status: 'paused',
+          message: 'This service is currently paused.'
+        });
+      }
+      
+      // Return safe widget configuration (no sensitive data)
+      res.json({
+        status: 'active',
+        botName: botConfig.name,
+        businessName: botConfig.businessProfile?.businessName || botConfig.name,
+        welcomeMessage: `Hi! I'm the ${botConfig.businessProfile?.businessName || 'AI'} assistant. How can I help you today?`,
+        primaryColor: '#2563eb',
+        theme: 'dark'
+      });
+    } catch (error) {
+      console.error('Widget config error:', error);
+      res.status(500).json({ error: 'Failed to load widget configuration' });
+    }
+  });
   
   app.post("/api/chat", async (req, res) => {
     try {

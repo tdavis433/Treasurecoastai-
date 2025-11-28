@@ -1,0 +1,323 @@
+SYSTEM ROLE — VERSION 2 EXPANSION
+You are the senior engineering team responsible for expanding the SaaS chatbot platform into a full AI Automation OS for businesses. Build everything with production quality, clean code, scalability, and clear documentation. Integrate seamlessly into all systems from Version 1.
+
+Your mission:
+Add CRM, voice AI, SMS, email sequences, pipeline management, tasks, calendar sync, integrations, custom webhooks, and a V3 enterprise-level automations engine.
+
+==================================================
+PHASE 1 — EXTEND DATABASE SCHEMA
+==================================================
+
+Add new models:
+
+• Contact  
+  - name, email, phone, tags[], source, createdAt  
+  - linked to Workspace and optionally Leads
+
+• Pipeline  
+  - name, stages[] (array), workspaceId
+
+• PipelineStage  
+  - name, order, pipelineId
+
+• PipelineItem  
+  - contactId  
+  - pipelineId  
+  - stageId  
+  - notes  
+  - activity history
+
+• Task  
+  - title, description, status, dueDate  
+  - assignedTo (User)  
+  - related to Conversation OR Contact OR Lead
+
+• ActivityLog  
+  - type: "call" | "sms" | "email" | "note" | "automation"  
+  - description  
+  - target: Contact / Lead / Conversation  
+  - createdAt  
+
+• AutomationFlowV3  
+  - advanced JSON flow  
+  - includes conditions, variables, webhooks, delays, loops  
+
+• EmailSequence  
+  - sequenceName  
+  - emails[] (subject/body/delay)  
+  - assignedContacts[]
+
+• EmailEvent  
+  - logs each sent email
+
+• SMSMessage  
+  - direction: "inbound" | "outbound"  
+  - status  
+  - body  
+
+• VoiceCallLog  
+  - call recording URL  
+  - transcript  
+  - status  
+  - AI summary  
+  - sentiment analysis  
+
+• IntegrationProvider  
+  - type: "Google" | "Outlook" | "Zapier" | "Webhook"  
+  - workspaceId  
+  - credentials JSON
+
+Update all foreign key relationships.
+
+==================================================
+PHASE 2 — BUILD THE CRM MODULE
+==================================================
+
+Add a dedicated CRM section inside client dashboard with:
+
+1. **Contacts Table**  
+   - search, tags, filters  
+   - lead score  
+   - touch history  
+   - click to open contact profile
+
+2. **Contact Profile Page**  
+   - info  
+   - pipeline status  
+   - conversation history  
+   - tasks  
+   - activity log  
+   - linked automations  
+   - timeline feed  
+
+3. **Bulk Actions**  
+   - bulk tagging  
+   - bulk sequence enrollment  
+   - bulk pipeline movement
+
+==================================================
+PHASE 3 — PIPELINE MANAGEMENT
+==================================================
+
+Create a drag-and-drop kanban pipeline with multiple columns (stages):
+
+• Add pipelines  
+• Add stages  
+• Drag contacts between stages  
+• Update activity logs  
+• Trigger automation actions on stage change  
+
+Example stage names: “New → Engaged → Qualified → Booked → Closed”.
+
+==================================================
+PHASE 4 — TASK MANAGEMENT SYSTEM
+==================================================
+
+Tasks appear globally and inside:
+• Contacts  
+• Leads  
+• Conversations  
+
+Features:
+• Create tasks  
+• Assign tasks  
+• Set due dates  
+• Status (open, in progress, blocked, done)  
+• Reminder notifications  
+• Calendar sync options
+
+==================================================
+PHASE 5 — SMS MESSAGING SYSTEM
+==================================================
+
+Integrate Twilio or an SMS-compatible API.
+
+Features:
+• Send SMS from contact profile  
+• Two-way SMS  
+• Automation triggers on SMS received  
+• SMS sequences  
+• Include dynamic variables  
+• Logging & transcripts  
+
+==================================================
+PHASE 6 — VOICE AI CALLING SYSTEM
+==================================================
+
+Connect with an AI voice API (like OpenAI Realtime API or ElevenLabs).
+
+Features:
+• Make outbound AI calls to leads or contacts  
+• Transcribe the call  
+• Summarize the call using AI  
+• Detect sentiment  
+• Store call recordings  
+• Log conversation  
+• Trigger automations based on call outcome  
+
+Example:
+“Call this lead and confirm their appointment.”
+
+==================================================
+PHASE 7 — EMAIL SEQUENCE ENGINE
+==================================================
+
+Build a full email automation system:
+
+• Create sequences (Day 1, Day 3, Day 7, etc.)  
+• Subject + Body editors (markdown)  
+• Attach variables like {name}, {business_name}  
+• Send scheduling with delays  
+• Stats: open rate, click rate, reply tracking  
+• Sequence history per contact  
+
+==================================================
+PHASE 8 — CALENDAR SYNC (GOOGLE + OUTLOOK)
+==================================================
+
+Build an integration layer that allows:
+
+• OAuth connection  
+• Read/write events  
+• Sync appointments  
+• Book appointments from chatbot  
+• Show availability  
+• Trigger automations  
+
+==================================================
+PHASE 9 — INTEGRATION PANEL + WEBHOOKS
+==================================================
+
+Create a dedicated “Integrations” page inside client dashboard.
+
+Integrations:
+• Google  
+• Outlook  
+• Twilio  
+• Zapier  
+• Custom Webhooks  
+
+Add Webhook Manager:
+• Create webhook triggers (contact.created, lead.updated, pipeline.stage.changed)  
+• Test webhook  
+• View webhook logs  
+
+==================================================
+PHASE 10 — AUTOMATIONS ENGINE V3 (ENTERPRISE)
+==================================================
+
+Upgrade automations engine to be a real workflow builder.
+
+Nodes:
+• Trigger  
+• Condition  
+• AI Condition (evaluate text)  
+• Delay (minutes/hours/days)  
+• Loop  
+• Branch  
+• Webhook  
+• Update Contact  
+• Move Pipeline Stage  
+• Send Email  
+• Send SMS  
+• Generate Task  
+• AI Generate Message  
+• Human Handoff  
+• Set Variable  
+• End Flow  
+
+FEATURES:
+• Visual builder with draggable nodes  
+• Execution logs  
+• Per-contact automation state  
+• Restart, skip, pause, resume flows  
+• AI-assisted flow creation:
+  “Create a flow that follows up every 3 days until reply.”  
+
+==================================================
+PHASE 11 — SUPER ADMIN EXPANSIONS
+==================================================
+
+Add analytics for:
+• Total contacts  
+• Total SMS usage  
+• Total email sends  
+• AI voice minutes  
+• Automations execution volume  
+• Error logs per workspace  
+• Billing performance  
+
+Add Super Admin controls:
+• Manage global APIs (OpenAI, SMS provider, etc.)  
+• Override workspace usage  
+• Manage plan add-ons (SMS, Email, Voice minutes)  
+
+==================================================
+PHASE 12 — POLISH ALL NEW MODULES
+==================================================
+
+Apply the same premium dark neon-glass UI style to:
+
+• CRM  
+• Pipelines  
+• Voice logs  
+• Email sequences  
+• SMS panel  
+• Tasks  
+• Integrations  
+• Automations V3  
+• Webhooks  
+
+==================================================
+PHASE 13 — FULL QA TESTING OF EVERYTHING
+==================================================
+
+Perform end-to-end QA across:
+
+CRM  
+Pipelines  
+Tasks  
+SMS  
+Voice  
+Email sequences  
+Integrations  
+Automations V3  
+Calendar  
+Webhooks  
+
+Generate a full bug report.  
+Fix everything automatically.
+
+==================================================
+PHASE 14 — GENERATE FULL VERSION 2 PDF DOCUMENTATION
+==================================================
+
+Compile *everything from Version 1 and Version 2* into a massive PDF system blueprint.
+
+Include:
+
+• Architecture diagrams  
+• Data models  
+• UI screenshots (generate placeholders if needed)  
+• Flow diagrams for automations  
+• Integration setup instructions  
+• API references  
+• Webhook specifications  
+• CRM usage guide  
+• Voice AI usage guide  
+• SMS usage guide  
+• Email sequence examples  
+• Pipeline management guide  
+• Permissions model  
+• Full roadmap for Version 3  
+
+Format it professionally.  
+Export as a downloadable PDF.
+
+==================================================
+PHASE 15 — EXECUTE ALL PHASES
+==================================================
+
+Build → Polish → Test → Upgrade → Integrate → Document.
+
+Deliver Version 2 of the full AI SaaS platform.
