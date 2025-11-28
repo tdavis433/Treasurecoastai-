@@ -294,4 +294,111 @@ export function getBotFileName(botId: string): string | null {
   }
 }
 
+export function saveClients(clientsData: ClientsData): boolean {
+  try {
+    const clientsDir = path.dirname(CLIENTS_FILE);
+    if (!fs.existsSync(clientsDir)) {
+      fs.mkdirSync(clientsDir, { recursive: true });
+    }
+    fs.writeFileSync(CLIENTS_FILE, JSON.stringify(clientsData, null, 2), 'utf-8');
+    clearCache();
+    return true;
+  } catch (error) {
+    console.error('Error saving clients:', error);
+    return false;
+  }
+}
+
+export function registerClient(
+  clientId: string, 
+  name: string, 
+  type: string, 
+  botId: string,
+  status: 'active' | 'paused' | 'demo' = 'active'
+): { success: boolean; client?: ClientRecord; error?: string } {
+  try {
+    const clientsData = getClients();
+    
+    const existingClient = clientsData.clients.find(c => c.id === clientId);
+    if (existingClient) {
+      if (!existingClient.bots.includes(botId)) {
+        existingClient.bots.push(botId);
+        saveClients(clientsData);
+      }
+      return { success: true, client: existingClient };
+    }
+    
+    const newClient: ClientRecord = {
+      id: clientId,
+      name,
+      type,
+      bots: [botId],
+      status,
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+    
+    clientsData.clients.push(newClient);
+    const saved = saveClients(clientsData);
+    
+    if (saved) {
+      return { success: true, client: newClient };
+    }
+    return { success: false, error: 'Failed to save clients file' };
+  } catch (error) {
+    console.error('Error registering client:', error);
+    return { success: false, error: String(error) };
+  }
+}
+
+export function updateClientStatus(
+  clientId: string, 
+  status: 'active' | 'paused' | 'demo'
+): { success: boolean; client?: ClientRecord; error?: string } {
+  try {
+    const clientsData = getClients();
+    const client = clientsData.clients.find(c => c.id === clientId);
+    
+    if (!client) {
+      return { success: false, error: `Client not found: ${clientId}` };
+    }
+    
+    client.status = status;
+    const saved = saveClients(clientsData);
+    
+    if (saved) {
+      return { success: true, client };
+    }
+    return { success: false, error: 'Failed to save clients file' };
+  } catch (error) {
+    console.error('Error updating client status:', error);
+    return { success: false, error: String(error) };
+  }
+}
+
+export function addBotToClient(clientId: string, botId: string): boolean {
+  try {
+    const clientsData = getClients();
+    const client = clientsData.clients.find(c => c.id === clientId);
+    
+    if (!client) {
+      return false;
+    }
+    
+    if (!client.bots.includes(botId)) {
+      client.bots.push(botId);
+      return saveClients(clientsData);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error adding bot to client:', error);
+    return false;
+  }
+}
+
+export function getClientStatus(clientId: string): string | null {
+  const client = getClientById(clientId);
+  return client?.status || null;
+}
+
 export { clearCache };

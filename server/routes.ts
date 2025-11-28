@@ -21,6 +21,9 @@ import {
   getCrisisResponse as getBotCrisisResponse,
   buildSystemPromptFromConfig,
   saveBotConfig,
+  registerClient,
+  updateClientStatus,
+  getClientStatus,
   type BotConfig
 } from "./botConfig";
 import { logConversation as logConversationToFile, getConversationLogs, getLogStats } from "./conversationLogger";
@@ -697,6 +700,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const botConfig = getBotConfig(clientId, botId);
       if (!botConfig) {
         return res.status(404).json({ error: `Bot not found: ${clientId}/${botId}` });
+      }
+
+      // Check client status - only allow active clients to use the bot
+      const clientStatus = getClientStatus(clientId);
+      if (clientStatus === 'paused') {
+        return res.status(503).json({ 
+          error: "Service temporarily unavailable",
+          message: "This service is currently paused. Please contact the business for more information.",
+          status: 'paused'
+        });
       }
 
       const lastUserMessage = messages[messages.length - 1];
@@ -1396,6 +1409,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update client status (Active / Paused / Demo)
+  app.put("/api/super-admin/clients/:clientId/status", requireSuperAdmin, async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      const { status } = req.body;
+      
+      if (!['active', 'paused', 'demo'].includes(status)) {
+        return res.status(400).json({ error: "Status must be 'active', 'paused', or 'demo'" });
+      }
+      
+      const result = updateClientStatus(clientId, status);
+      
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          client: result.client,
+          message: `Client status updated to ${status}`
+        });
+      } else {
+        res.status(404).json({ error: result.error || "Failed to update client status" });
+      }
+    } catch (error) {
+      console.error("Update client status error:", error);
+      res.status(500).json({ error: "Failed to update client status" });
+    }
+  });
+
   // Get all bots as a flat list for individual editing
   app.get("/api/super-admin/bots", requireSuperAdmin, (req, res) => {
     try {
@@ -1571,7 +1611,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           fs.mkdirSync(logDir, { recursive: true });
         }
         
-        res.status(201).json({ success: true, config: newConfig });
+        // Automatically register the client if they don't exist
+        const clientName = newConfig.businessProfile?.businessName || name;
+        const businessType = newConfig.businessProfile?.type || 'general';
+        const clientResult = registerClient(clientId, clientName, businessType, botId, 'active');
+        
+        if (!clientResult.success) {
+          console.warn(`Warning: Bot created but client registration failed: ${clientResult.error}`);
+        }
+        
+        res.status(201).json({ 
+          success: true, 
+          config: newConfig,
+          client: clientResult.client || null,
+          clientRegistered: clientResult.success
+        });
       } else {
         res.status(500).json({ error: "Failed to save bot config" });
       }
