@@ -12,6 +12,7 @@ import ControlCenter from "@/pages/control-center";
 import BotDashboard from "@/pages/bot-dashboard";
 import ClientDashboard from "@/pages/client-dashboard";
 import LeadsPage from "@/pages/leads";
+import InboxPage from "@/pages/inbox";
 import CreateBot from "@/pages/create-bot";
 import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
@@ -34,6 +35,7 @@ function Router() {
       </Route>
       <Route path="/client/dashboard" component={ClientDashboard} />
       <Route path="/client/leads" component={LeadsPage} />
+      <Route path="/client/inbox" component={InboxPage} />
       <Route path="/login" component={Login} />
       <Route path="/super-admin" component={SuperAdmin} />
       <Route path="/super-admin/control-center" component={ControlCenter} />

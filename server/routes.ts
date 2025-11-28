@@ -2655,6 +2655,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // =============================================
+  // CLIENT INBOX ENDPOINTS
+  // =============================================
+
+  // Get messages for a specific session
+  app.get("/api/client/inbox/sessions/:sessionId", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      const { sessionId } = req.params;
+      
+      const messages = await storage.getSessionMessages(sessionId, clientId);
+      
+      res.json({
+        clientId,
+        sessionId,
+        messages,
+        total: messages.length,
+      });
+    } catch (error) {
+      console.error("Get session messages error:", error);
+      res.status(500).json({ error: "Failed to fetch session messages" });
+    }
+  });
+
   // Get client usage summary (plan limits and current usage)
   app.get("/api/client/usage", requireClientAuth, async (req, res) => {
     try {

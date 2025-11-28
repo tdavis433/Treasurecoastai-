@@ -92,16 +92,16 @@ export default function LeadsPage() {
 
   // Build query URL with clientId for super_admin
   const buildQueryUrl = (base: string, params?: Record<string, string | undefined>) => {
-    const url = new URL(base, window.location.origin);
+    const queryParams: string[] = [];
     if (isSuperAdmin || urlClientId) {
-      url.searchParams.set('clientId', effectiveClientId);
+      queryParams.push(`clientId=${encodeURIComponent(effectiveClientId)}`);
     }
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
-        if (value) url.searchParams.set(key, value);
+        if (value) queryParams.push(`${key}=${encodeURIComponent(value)}`);
       });
     }
-    return url.pathname + url.search;
+    return queryParams.length > 0 ? `${base}?${queryParams.join('&')}` : base;
   };
 
   const { data: leadsData, isLoading, refetch } = useQuery<{

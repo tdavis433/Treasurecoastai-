@@ -105,6 +105,9 @@ export interface IStorage {
   updateLead(id: string, updates: Partial<Lead>): Promise<Lead>;
   deleteLead(id: string): Promise<void>;
   getLeadBySessionId(sessionId: string, clientId: string): Promise<Lead | undefined>;
+  
+  // Inbox - conversation messages
+  getSessionMessages(sessionId: string, clientId: string): Promise<ChatAnalyticsEvent[]>;
 }
 
 export class DbStorage implements IStorage {
@@ -768,6 +771,18 @@ export class DbStorage implements IStorage {
       ))
       .limit(1);
     return lead;
+  }
+
+  async getSessionMessages(sessionId: string, clientId: string): Promise<ChatAnalyticsEvent[]> {
+    const results = await db
+      .select()
+      .from(chatAnalyticsEvents)
+      .where(and(
+        eq(chatAnalyticsEvents.sessionId, sessionId),
+        eq(chatAnalyticsEvents.clientId, clientId)
+      ))
+      .orderBy(chatAnalyticsEvents.createdAt);
+    return results;
   }
 }
 
