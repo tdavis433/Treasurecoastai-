@@ -12,7 +12,7 @@ This project is a multi-tenant AI chatbot platform designed to support various b
 
 ## Current Build Progress (10-Phase Roadmap)
 - **Phase 1 (Database Foundation):** COMPLETE - 5 new tables (workspaces, workspace_memberships, bots, bot_settings, bot_templates)
-- **Phase 2 (API & Security):** PARTIAL - Templates/workspaces endpoints complete, Zod validation pending
+- **Phase 2 (API & Security):** COMPLETE - Zod validation on all major routes, workspace membership validation, HMAC-signed widget tokens
 - **Phase 3 (Bot Wizard):** COMPLETE - 5-step wizard at /admin/bot/wizard
 - **Phases 4-10:** Pending
 
