@@ -33,38 +33,75 @@ interface Client {
 interface BotConfig {
   botId: string;
   clientId: string;
-  metadata: {
-    name: string;
-    description: string;
-    businessType: string;
+  name: string;
+  description: string;
+  metadata?: {
+    isDemo?: boolean;
     isTemplate?: boolean;
     templateCategory?: string;
+    clonedFrom?: string;
+    createdAt?: string;
+    version?: string;
   };
   businessProfile: {
     businessName: string;
+    type: string;
     phone?: string;
     email?: string;
     website?: string;
     location?: string;
-    hours?: string;
-    tagline?: string;
+    hours?: Record<string, string>;
     services?: string[];
-    tone?: string;
+    amenities?: string[];
+    serviceArea?: string;
+    cuisine?: string;
+    membershipOptions?: string[];
+    booking?: {
+      onlineBookingUrl?: string;
+      walkInsWelcome?: boolean;
+      walkInsNote?: string;
+    };
   };
+  rules?: {
+    allowedTopics?: string[];
+    forbiddenTopics?: string[];
+    specialInstructions?: string[];
+    crisisHandling?: {
+      onCrisisKeywords?: string[];
+      responseTemplate?: string;
+    };
+  };
+  systemPrompt?: string;
   faqs?: Array<{ question: string; answer: string }>;
-  safetyRules?: any;
-  integrations?: {
-    bookingUrl?: string;
-    facebook?: string;
-    instagram?: string;
-  };
 }
 
 interface Template extends BotConfig {
-  metadata: BotConfig['metadata'] & {
+  metadata: NonNullable<BotConfig['metadata']> & {
     isTemplate: true;
     templateCategory: string;
   };
+}
+
+function formatHoursForDisplay(hours?: Record<string, string>): string {
+  if (!hours) return '';
+  return Object.entries(hours)
+    .map(([day, time]) => `${day.charAt(0).toUpperCase() + day.slice(1)}: ${time}`)
+    .join(', ');
+}
+
+function parseHoursFromString(hoursStr: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  if (!hoursStr) return result;
+  const parts = hoursStr.split(',').map(s => s.trim());
+  for (const part of parts) {
+    const colonIdx = part.indexOf(':');
+    if (colonIdx > 0) {
+      const day = part.substring(0, colonIdx).trim().toLowerCase();
+      const time = part.substring(colonIdx + 1).trim();
+      if (day && time) result[day] = time;
+    }
+  }
+  return result;
 }
 
 interface AnalyticsSummary {
@@ -455,19 +492,25 @@ export default function ControlCenter() {
                     data-testid="button-crisis-settings"
                     variant="outline" 
                     size="sm" 
-                    className="w-full justify-start"
+                    className="w-full justify-start opacity-60"
+                    disabled
+                    title="Coming soon"
                   >
                     <AlertTriangle className="h-4 w-4 mr-2" />
                     Crisis Settings
+                    <Badge variant="outline" className="ml-auto text-xs">Soon</Badge>
                   </Button>
                   <Button 
                     data-testid="button-intake-settings"
                     variant="outline" 
                     size="sm" 
-                    className="w-full justify-start"
+                    className="w-full justify-start opacity-60"
+                    disabled
+                    title="Coming soon"
                   >
                     <FileText className="h-4 w-4 mr-2" />
                     Intake Settings
+                    <Badge variant="outline" className="ml-auto text-xs">Soon</Badge>
                   </Button>
                 </div>
               </>
@@ -544,9 +587,9 @@ function OverviewTab({
                 className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
               >
                 <div>
-                  <div className="font-medium">{bot.metadata.name || bot.botId}</div>
+                  <div className="font-medium">{bot.name || bot.botId}</div>
                   <div className="text-sm text-muted-foreground">
-                    {bot.metadata.businessType} • {bot.businessProfile?.businessName || 'No business name'}
+                    {bot.businessProfile?.type} • {bot.businessProfile?.businessName || 'No business name'}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -579,6 +622,16 @@ function OverviewTab({
   );
 }
 
+interface FormDataType {
+  businessName: string;
+  type: string;
+  phone: string;
+  email: string;
+  website: string;
+  location: string;
+  hoursStr: string;
+}
+
 function BotSettingsTab({ 
   client, 
   bots, 
@@ -593,7 +646,15 @@ function BotSettingsTab({
   const { toast } = useToast();
   const bot = bots.find(b => b.botId === selectedBotId) || bots[0];
   
-  const [formData, setFormData] = useState<Partial<BotConfig['businessProfile']>>({});
+  const [formData, setFormData] = useState<FormDataType>({
+    businessName: '',
+    type: '',
+    phone: '',
+    email: '',
+    website: '',
+    location: '',
+    hoursStr: '',
+  });
   const [faqs, setFaqs] = useState<Array<{ question: string; answer: string }>>([]);
   const [services, setServices] = useState<string[]>([]);
   const [newService, setNewService] = useState('');
@@ -601,9 +662,18 @@ function BotSettingsTab({
 
   useEffect(() => {
     if (bot) {
-      setFormData(bot.businessProfile || {});
+      const bp = bot.businessProfile || {};
+      setFormData({
+        businessName: bp.businessName || '',
+        type: bp.type || '',
+        phone: bp.phone || '',
+        email: bp.email || '',
+        website: bp.website || '',
+        location: bp.location || '',
+        hoursStr: formatHoursForDisplay(bp.hours),
+      });
       setFaqs(bot.faqs || []);
-      setServices(bot.businessProfile?.services || []);
+      setServices(bp.services || []);
     }
   }, [bot]);
 
@@ -624,7 +694,13 @@ function BotSettingsTab({
   const handleSave = () => {
     updateBotMutation.mutate({
       businessProfile: {
-        ...formData,
+        businessName: formData.businessName,
+        type: formData.type,
+        phone: formData.phone,
+        email: formData.email,
+        website: formData.website,
+        location: formData.location,
+        hours: parseHoursFromString(formData.hoursStr),
         services,
       },
       faqs,
@@ -669,7 +745,7 @@ function BotSettingsTab({
             <SelectContent>
               {bots.map(b => (
                 <SelectItem key={b.botId} value={b.botId}>
-                  {b.metadata.name || b.botId}
+                  {b.name || b.botId}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -689,37 +765,26 @@ function BotSettingsTab({
               <Input
                 id="businessName"
                 data-testid="input-business-name"
-                value={formData.businessName || ''}
+                value={formData.businessName}
                 onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="tone">Tone</Label>
+              <Label htmlFor="type">Business Type</Label>
               <Select 
-                value={formData.tone || 'friendly'} 
-                onValueChange={(value) => setFormData({ ...formData, tone: value })}
+                value={formData.type || 'restaurant'} 
+                onValueChange={(value) => setFormData({ ...formData, type: value })}
               >
-                <SelectTrigger data-testid="select-tone">
+                <SelectTrigger data-testid="select-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {TONE_OPTIONS.map(opt => (
+                  {BUSINESS_TYPES.map(opt => (
                     <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="tagline">Tagline / Description</Label>
-            <Textarea
-              id="tagline"
-              data-testid="input-tagline"
-              value={formData.tagline || ''}
-              onChange={(e) => setFormData({ ...formData, tagline: e.target.value })}
-              rows={2}
-            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -731,7 +796,7 @@ function BotSettingsTab({
                   id="phone"
                   data-testid="input-phone"
                   className="pl-9"
-                  value={formData.phone || ''}
+                  value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 />
               </div>
@@ -744,7 +809,7 @@ function BotSettingsTab({
                   id="email"
                   data-testid="input-email"
                   className="pl-9"
-                  value={formData.email || ''}
+                  value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 />
               </div>
@@ -760,7 +825,7 @@ function BotSettingsTab({
                   id="website"
                   data-testid="input-website"
                   className="pl-9"
-                  value={formData.website || ''}
+                  value={formData.website}
                   onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                 />
               </div>
@@ -773,7 +838,7 @@ function BotSettingsTab({
                   id="location"
                   data-testid="input-location"
                   className="pl-9"
-                  value={formData.location || ''}
+                  value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                 />
               </div>
@@ -781,17 +846,17 @@ function BotSettingsTab({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="hours">Hours</Label>
+            <Label htmlFor="hours">Hours (e.g., Monday: 9am-5pm, Tuesday: 9am-5pm)</Label>
             <div className="relative">
               <Clock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Textarea
                 id="hours"
                 data-testid="input-hours"
                 className="pl-9"
-                value={formData.hours || ''}
-                onChange={(e) => setFormData({ ...formData, hours: e.target.value })}
+                value={formData.hoursStr}
+                onChange={(e) => setFormData({ ...formData, hoursStr: e.target.value })}
                 rows={2}
-                placeholder="e.g., Mon-Fri: 9am-5pm, Sat: 10am-2pm"
+                placeholder="e.g., Monday: 9am-5pm, Tuesday: 9am-5pm"
               />
             </div>
           </div>
@@ -1143,14 +1208,13 @@ function CreateClientFromTemplateModal({
     email: '',
     website: '',
     location: '',
-    hours: '',
   });
 
   useEffect(() => {
     if (template) {
       setFormData(prev => ({
         ...prev,
-        type: template.metadata.templateCategory || template.metadata.businessType || '',
+        type: template.metadata?.templateCategory || template.businessProfile?.type || '',
       }));
     }
   }, [template]);
@@ -1163,11 +1227,12 @@ function CreateClientFromTemplateModal({
         clientName: data.clientName,
         type: data.type,
         businessProfile: {
+          businessName: data.clientName,
+          type: data.type,
           phone: data.phone,
           email: data.email,
           website: data.website,
           location: data.location,
-          hours: data.hours,
         },
       });
       return response.json();

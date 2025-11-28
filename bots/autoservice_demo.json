@@ -84,6 +84,8 @@
   ],
   "metadata": {
     "isDemo": true,
+    "isTemplate": true,
+    "templateCategory": "Auto Shop",
     "createdAt": "2025-11-27",
     "version": "1.0"
   }
