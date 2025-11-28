@@ -34,71 +34,6 @@ export const app = express();
 // Trust proxy for rate limiting to work correctly behind reverse proxies
 app.set('trust proxy', 1);
 
-// Security: Helmet for secure HTTP headers
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", "https://api.openai.com", "https://api.stripe.com"],
-      frameSrc: ["'self'", "https://js.stripe.com"],
-    },
-  },
-  crossOriginEmbedderPolicy: false, // Allow widget embedding
-}));
-
-// Security: CORS for widget embeds on third-party sites
-const corsOptions: cors.CorsOptions = {
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
-    
-    // In production, you could validate against registered client domains
-    // For now, allow all origins for widget functionality
-    callback(null, true);
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-};
-app.use('/api/chat/:clientId/:botId', cors(corsOptions));
-app.use('/widget', cors(corsOptions));
-app.use('/api/demos', cors(corsOptions));
-app.use('/api/demo', cors(corsOptions));
-
-// Security: Rate limiting to prevent abuse
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per window
-  message: { error: 'Too many requests, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // Limit each IP to 10 login attempts per window
-  message: { error: 'Too many login attempts, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-const chatLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 30, // Limit each IP to 30 chat messages per minute
-  message: { error: 'Too many messages, please slow down.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Apply rate limiting to specific routes
-app.use('/api/auth/login', authLimiter);
-app.use('/api/chat', chatLimiter);
-app.use('/api/', apiLimiter);
-
 declare module 'http' {
   interface IncomingMessage {
     rawBody: unknown
@@ -113,26 +48,29 @@ declare module 'express-session' {
   }
 }
 
-if (!process.env.SESSION_SECRET) {
-  throw new Error("SESSION_SECRET environment variable must be set for security. Please set a strong random secret.");
-}
+// Build CSP directives based on environment
+const isDev = process.env.NODE_ENV !== 'production';
+const cspConnectSrc = isDev 
+  ? ["'self'", "https://api.openai.com", "https://api.stripe.com", "ws:", "wss:"]
+  : ["'self'", "https://api.openai.com", "https://api.stripe.com"];
 
-app.use(session({
-  store: new PgStore({
-    pool: pgPool as any,
-    tableName: 'session',
-    createTableIfMissing: true,
-  }),
-  secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    maxAge: 7 * 24 * 60 * 60 * 1000
-  }
+// Security: Helmet for secure HTTP headers
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://js.stripe.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: cspConnectSrc,
+      frameSrc: ["'self'", "https://js.stripe.com"],
+    },
+  },
+  crossOriginEmbedderPolicy: false, // Allow widget embedding
 }));
 
+// Stripe webhook MUST come before json body parser (needs raw body)
 app.post(
   '/api/stripe/webhook/:uuid',
   express.raw({ type: 'application/json' }),
@@ -163,12 +101,86 @@ app.post(
   }
 );
 
+// Body parsers - MUST come before rate limiting and routes
 app.use(express.json({
   verify: (req, _res, buf) => {
     req.rawBody = buf;
   }
 }));
 app.use(express.urlencoded({ extended: false }));
+
+// Security: CORS for widget embeds on third-party sites ONLY
+// Admin/internal routes use same-origin policy (no CORS)
+const widgetCorsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    // Allow all origins for widget embedding functionality
+    callback(null, true);
+  },
+  credentials: false, // Widget doesn't need credentials
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+};
+// Only apply CORS to widget-specific routes
+app.use('/api/chat/:clientId/:botId', cors(widgetCorsOptions));
+app.use('/widget', cors(widgetCorsOptions));
+app.use('/api/widget', cors(widgetCorsOptions));
+
+// Security: Rate limiting to prevent abuse
+// Skip rate limiting for Stripe webhooks and health checks
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per window
+  message: { error: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting for Stripe webhooks and health check
+    return req.path.startsWith('/api/stripe/webhook') || req.path === '/api/health';
+  },
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // Limit each IP to 10 login attempts per window
+  message: { error: 'Too many login attempts, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const chatLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 30, // Limit each IP to 30 chat messages per minute
+  message: { error: 'Too many messages, please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply rate limiting to specific routes (after body parsers)
+app.use('/api/auth/login', authLimiter);
+app.use('/api/chat', chatLimiter);
+app.use('/api/', apiLimiter);
+
+if (!process.env.SESSION_SECRET) {
+  throw new Error("SESSION_SECRET environment variable must be set for security. Please set a strong random secret.");
+}
+
+app.use(session({
+  store: new PgStore({
+    pool: pgPool as any,
+    tableName: 'session',
+    createTableIfMissing: true,
+  }),
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 7 * 24 * 60 * 60 * 1000
+  }
+}));
 
 app.use((req, res, next) => {
   const start = Date.now();
