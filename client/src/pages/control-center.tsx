@@ -1485,6 +1485,9 @@ function CreateFromTemplateModal({
     contactName: '',
     contactEmail: '',
     contactPhone: '',
+    hours: '',
+    services: '',
+    customFaq: { question: '', answer: '' },
     serviceTier: 'standard',
     billingPlan: 'monthly',
   });
@@ -1507,6 +1510,9 @@ function CreateFromTemplateModal({
         contactName: '',
         contactEmail: '',
         contactPhone: '',
+        hours: '',
+        services: '',
+        customFaq: { question: '', answer: '' },
         serviceTier: 'standard',
         billingPlan: 'monthly',
       });
@@ -1516,6 +1522,9 @@ function CreateFromTemplateModal({
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       const fullLocation = [data.address, data.city, data.state, data.zip].filter(Boolean).join(', ') || data.location;
+      const customFaqs = data.customFaq.question && data.customFaq.answer 
+        ? [{ question: data.customFaq.question, answer: data.customFaq.answer }]
+        : [];
       const response = await apiRequest("POST", "/api/super-admin/clients/from-template", {
         templateBotId: template?.botId,
         clientId: data.clientId,
@@ -1532,6 +1541,8 @@ function CreateFromTemplateModal({
           city: data.city,
           state: data.state,
           zip: data.zip,
+          hours: data.hours ? parseHoursFromString(data.hours) : undefined,
+          services: data.services ? data.services.split(',').map(s => s.trim()).filter(Boolean) : undefined,
         },
         contact: {
           name: data.contactName,
@@ -1542,6 +1553,7 @@ function CreateFromTemplateModal({
           serviceTier: data.serviceTier,
           billingPlan: data.billingPlan,
         },
+        customFaqs,
       });
       return response.json();
     },
@@ -1740,6 +1752,47 @@ function CreateFromTemplateModal({
                     placeholder="(555) 123-4567"
                   />
                 </div>
+              </div>
+              <Separator />
+              <p className="text-sm font-medium">Business Details</p>
+              <div>
+                <Label>Business Hours</Label>
+                <Textarea
+                  data-testid="input-new-hours"
+                  value={formData.hours}
+                  onChange={(e) => setFormData({ ...formData, hours: e.target.value })}
+                  placeholder="Monday-Friday: 9am-5pm&#10;Saturday: 10am-2pm&#10;Sunday: Closed"
+                  rows={3}
+                />
+                <p className="text-xs text-muted-foreground mt-1">One schedule per line</p>
+              </div>
+              <div>
+                <Label>Services Offered</Label>
+                <Textarea
+                  data-testid="input-new-services"
+                  value={formData.services}
+                  onChange={(e) => setFormData({ ...formData, services: e.target.value })}
+                  placeholder="Service 1, Service 2, Service 3"
+                  rows={2}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Comma-separated list</p>
+              </div>
+              <div>
+                <Label>Custom FAQ (Optional)</Label>
+                <Input
+                  data-testid="input-new-faq-q"
+                  value={formData.customFaq.question}
+                  onChange={(e) => setFormData({ ...formData, customFaq: { ...formData.customFaq, question: e.target.value } })}
+                  placeholder="Question"
+                  className="mb-2"
+                />
+                <Textarea
+                  data-testid="input-new-faq-a"
+                  value={formData.customFaq.answer}
+                  onChange={(e) => setFormData({ ...formData, customFaq: { ...formData.customFaq, answer: e.target.value } })}
+                  placeholder="Answer"
+                  rows={2}
+                />
               </div>
             </div>
           )}
