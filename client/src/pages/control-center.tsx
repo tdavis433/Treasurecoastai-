@@ -1560,6 +1560,17 @@ function CreateFromTemplateModal({
     onSuccess: (data) => {
       toast({ title: "Bot Created", description: `Successfully created: ${formData.clientName}` });
       onSuccess(data.botId || `${formData.clientId}_bot`);
+      
+      // PDF requirement: "Stripe link generated" - redirect to checkout if available
+      if (data.checkoutUrl) {
+        toast({ 
+          title: "Billing Setup", 
+          description: "Redirecting to Stripe checkout...",
+        });
+        setTimeout(() => {
+          window.open(data.checkoutUrl, '_blank');
+        }, 1000);
+      }
     },
     onError: (error: any) => {
       toast({ 

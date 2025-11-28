@@ -1709,9 +1709,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create client from template (full workflow)
-  app.post("/api/super-admin/clients/from-template", requireSuperAdmin, (req, res) => {
+  app.post("/api/super-admin/clients/from-template", requireSuperAdmin, async (req, res) => {
     try {
-      const { templateBotId, clientId, clientName, type, businessProfile } = req.body;
+      const { templateBotId, clientId, clientName, type, businessProfile, contact, billing, customFaqs } = req.body;
       
       // Validate required fields
       if (!templateBotId || !clientId || !clientName) {
@@ -1747,6 +1747,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type: type || templateConfig.businessProfile?.type,
       };
       
+      // Merge FAQs if customFaqs provided
+      const mergedFaqs = customFaqs && customFaqs.length > 0
+        ? [...(templateConfig.faqs || []), ...customFaqs]
+        : templateConfig.faqs;
+      
       const newConfig: BotConfig = {
         ...templateConfig,
         botId: newBotId,
@@ -1754,12 +1759,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: clientName,
         description: `AI assistant for ${clientName}`,
         businessProfile: mergedBusinessProfile,
+        faqs: mergedFaqs,
         metadata: {
           isDemo: false,
           isTemplate: false,
           clonedFrom: templateBotId,
           createdAt: new Date().toISOString().split('T')[0],
           version: '1.0',
+          contact: contact,
+          billing: billing,
         },
       };
       
@@ -1789,12 +1797,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ error: clientResult.error || "Failed to register client" });
       }
       
+      // Generate Stripe checkout URL for the new client (PDF requirement: "Stripe link generated")
+      let checkoutUrl = null;
+      try {
+        const stripeService = new StripeService();
+        const email = businessProfile?.email || contact?.email || `${clientId}@placeholder.com`;
+        
+        // Create Stripe customer
+        const customer = await stripeService.createCustomer(email, clientId, clientName);
+        
+        // Get default product/price for billing plan
+        const products = await stripeService.listProductsWithPrices(true, 10, 0);
+        if (products && products.length > 0) {
+          const defaultProduct = products[0];
+          const priceId = defaultProduct.price_id;
+          
+          if (priceId) {
+            const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+              ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+              : 'http://localhost:5000';
+            
+            const session = await stripeService.createCheckoutSession(
+              customer.id,
+              priceId,
+              clientId,
+              `${baseUrl}/super-admin/control-center?checkout=success&clientId=${clientId}`,
+              `${baseUrl}/super-admin/control-center?checkout=canceled&clientId=${clientId}`
+            );
+            
+            checkoutUrl = session.url;
+          }
+        }
+      } catch (stripeError) {
+        console.log("Stripe checkout generation skipped (not configured or no products):", stripeError);
+        // Continue without Stripe - not a failure condition
+      }
+      
       res.status(201).json({ 
         success: true,
         clientId: clientId,
         client: clientResult.client,
         botId: newBotId,
-        config: newConfig
+        config: newConfig,
+        checkoutUrl: checkoutUrl, // PDF: "Stripe link generated"
       });
     } catch (error) {
       console.error("Create client from template error:", error);
