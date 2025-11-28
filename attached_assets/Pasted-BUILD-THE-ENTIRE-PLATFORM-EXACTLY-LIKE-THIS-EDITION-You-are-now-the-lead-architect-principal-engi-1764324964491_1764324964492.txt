@@ -1,0 +1,533 @@
+BUILD THE ENTIRE PLATFORM EXACTLY LIKE THIS” EDITION
+
+You are now the lead architect, principal engineer, backend specialist, frontend specialist, AI engineer, DevOps engineer, and QA automation lead responsible for generating a complete SaaS application from scratch exactly according to the specification provided below.
+
+You MUST follow every requirement literally.
+You MUST output complete code.
+You MUST generate all files, all components, all API routes, all database models, all hooks, all utilities, all styles, and all documentation steps.
+You MUST NOT skip, simplify, or “assume” any part of the system.
+You MUST NOT produce placeholder comments like “implement later”.
+Everything must be production-ready on first draft.
+
+Your job is to generate every single part of this product until the platform is complete.
+
+🔥 SECTION 1 — GLOBAL RULES YOU MUST FOLLOW
+Read these carefully. They override everything.
+
+Generate ALL code in Next.js 14 App Router, TypeScript, Tailwind, shadcn/ui, Prisma, PostgreSQL, JWT, Stripe, OpenAI API, and fully Replit-compatible.
+
+Use a clean, enterprise folder structure, including:
+
+/app
+/components
+/modules
+/lib
+/prisma
+/styles
+/hooks
+/utils
+/types
+
+
+Never output TODOs or stubs.
+
+Every API route must include:
+
+validation
+
+error handling
+
+workspace permission enforcement
+
+rate limiting
+
+structured JSON return types
+
+Every database model must include:
+
+createdAt
+
+updatedAt
+
+workspaceId
+
+Every page must be responsive, mobile-friendly, and consistent with dark-glass-neon UI.
+
+Every part of the UX must be smooth, animated, and modern.
+
+All code must be copy/paste ready with no broken imports.
+
+🔥 SECTION 2 — BUILD THE ENTIRE MULTI-TENANT SAAS
+
+You will now generate every file required to create a full SaaS platform with:
+
+Super Admin Portal
+
+Client Dashboard
+
+Multi-Bot System
+
+AI Chat Engine
+
+Lead Capture System
+
+Inbox
+
+Knowledge Base
+
+Automations (V1 simple rules + future-ready architecture for V2 node system)
+
+Billing (Stripe)
+
+Usage Quotas
+
+Analytics
+
+Settings
+
+Embeddable Chat Widget
+
+Authentication
+
+Error Logging
+
+Dark Neon Glass UI Theme
+
+Clean, strict architecture everywhere
+
+🔥 SECTION 3 — DOMAIN MODELS (PRISMA) — YOU MUST BUILD ALL TABLES
+
+You MUST generate full Prisma schema including all models below, fully typed, with indexes and relation rules:
+
+User
+
+Workspace
+
+WorkspaceMembership
+
+Bot
+
+BotKnowledgeItem
+
+Conversation
+
+Message
+
+Lead
+
+AutomationRule (for V1)
+
+Plan
+
+WorkspaceUsage
+
+SystemLog
+
+APIKey (for future private API access)
+
+Each of these MUST include workspaceId where applicable.
+
+🔥 SECTION 4 — AUTH + ACCESS CONTROL
+
+You MUST build:
+
+Signup
+
+Login
+
+Logout
+
+Forgot password
+
+JWT issuance
+
+JWT verification middleware
+
+Workspace membership enforcement
+
+Role system:
+
+SUPERADMIN
+
+OWNER
+
+ADMIN
+
+AGENT
+
+Each request MUST check:
+
+Auth token
+
+Workspace membership
+
+Role permission
+
+Usage permissions
+
+Plan limits
+
+🔥 SECTION 5 — SUPER ADMIN PANEL
+
+You MUST build the entire Super Admin system:
+
+List all workspaces
+
+View workspace details
+
+Suspend/activate workspace
+
+Change plans
+
+Edit plan limits
+
+Feature flags
+
+Impersonate any workspace’s owner
+
+View global analytics
+
+View global system logs
+
+🔥 SECTION 6 — CLIENT DASHBOARD
+
+You MUST build full dashboard with routes:
+
+/dashboard
+
+Summary cards:
+
+total messages
+
+total leads
+
+active bots
+
+usage limit status
+
+/dashboard/bots
+
+Create bot
+
+Edit bot
+
+Tabs:
+
+General
+
+Knowledge Base
+
+Automations
+
+Appearance
+
+Leads
+
+Install Snippet
+
+/dashboard/inbox
+
+Live conversation list
+
+Thread view
+
+Agent reply box
+
+Mark conversation as closed
+
+/dashboard/leads
+
+Lead list
+
+Lead details
+
+Export leads
+
+/dashboard/analytics
+
+7-day and 30-day charts
+
+Lead funnels
+
+Bot performance metrics
+
+/dashboard/billing
+
+Connect to Stripe checkout
+
+Upgrade/downgrade plan
+
+View usage
+
+Portal link
+
+/dashboard/settings
+
+Workspace name
+
+Workspace members
+
+Invite system
+
+API keys
+
+🔥 SECTION 7 — EMBEDDABLE CHAT WIDGET
+
+You MUST generate:
+
+1. Chat bubble
+2. Animated slide-up chat window
+3. Widget theme engine
+4. Widget network client
+5. Local storage for conversationId
+6. Handling for multiple bots
+7. Script loader snippet like:
+
+<script src="https://cdn.yourapp.com/widget.js"
+  data-bot-id="BOT_ID"
+  data-workspace-id="WORKSPACE_ID">
+</script>
+
+🔥 SECTION 8 — CHAT ENGINE (API)
+
+You MUST implement complete backend logic for:
+
+Validate:
+
+workspace
+
+bot
+
+quotas
+
+Append message
+
+Fetch knowledge base
+
+Apply V1 automation rules
+
+Construct final system prompt
+
+Call OpenAI API
+
+Save assistant reply
+
+Increment usage counters
+
+Return structured response
+
+The engine MUST be stable and production-safe.
+
+🔥 SECTION 9 — AUTOMATIONS ENGINE (V1)
+
+You MUST build:
+
+Keyword triggers
+
+Fallback responses
+
+Office hours logic
+
+Lead capture triggers
+
+Conditional logic
+
+Tag-based routing
+
+🔥 SECTION 10 — ANALYTICS SYSTEM
+
+You MUST implement:
+
+Daily aggregates
+
+Message counts
+
+Lead counts
+
+Unique user count
+
+Charts ready for client dashboard
+
+Workspace-scoped metrics
+
+Super Admin global metrics
+
+🔥 SECTION 11 — BILLING (STRIPE)
+
+You MUST create:
+
+Stripe products + prices
+
+Stripe Checkout
+
+Stripe billing portal
+
+Webhooks for:
+
+subscription created
+
+subscription updated
+
+subscription canceled
+
+payment failed
+
+You MUST update Workspace.planId and usage limits on every event.
+
+🔥 SECTION 12 — ERROR LOGGING SYSTEM
+
+Every critical event MUST log into SystemLog:
+
+error messages
+
+failed API calls
+
+rate limit events
+
+automation failures
+
+message processing errors
+
+🔥 SECTION 13 — FULL UI STYLE SYSTEM
+
+Build a unified design:
+
+Dark mode default
+
+Glassy panels
+
+Neon accents
+
+Smooth animations
+
+shadcn/ui components
+
+Responsive grid
+
+Modern, elegant, SaaS aesthetic
+
+🔥 SECTION 14 — DEVELOPER EXPERIENCE
+
+You MUST generate:
+
+README.md
+
+ENVs list
+
+Setup instructions
+
+Migration instructions
+
+Seed script
+
+Project overview
+
+Security notes
+
+Contribution rules
+
+🔥 SECTION 15 — QA TEST PLAN
+
+You MUST generate:
+
+complete QA checklist
+
+test cases
+
+edge cases
+
+break tests
+
+load tests
+
+security tests
+
+billing tests
+
+widget tests
+
+Your output MUST include the full QA plan.
+
+🔥 SECTION 16 — AFTER YOU BUILD EVERYTHING
+
+You MUST:
+
+Review for missing files
+
+Validate imports
+
+Validate all prisma models
+
+Validate all endpoints
+
+Validate routing
+
+Validate themes
+
+Validate auth
+
+Validate automations
+
+Validate chat engine
+
+Validate widget
+
+Validate super admin
+
+Validate client dashboard
+
+Validate billing
+
+Validate usage enforcement
+
+Then FIX ANYTHING that isn't perfect.
+
+🔥 SECTION 17 — FINAL OUTPUT FORMAT
+
+You MUST generate output in this order:
+
+Folder Structure Overview
+
+Prisma Schema
+
+ENV Setup
+
+Lib Utilities
+
+Middleware
+
+Authentication
+
+API Routes
+
+Modules
+
+Components
+
+Dashboard Pages
+
+Super Admin Pages
+
+Widget Files
+
+Automation Logic
+
+AI Engine Logic
+
+Analytics Logic
+
+Billing Files
+
+Seed Script
+
+README.md
+
+QA Plan
+
+Final Verification Summary
+
+You MUST generate every file required for the entire system to run without errors.
+
+🚀 END OF PROMPT
+
+Generate the entire SaaS platform now.
