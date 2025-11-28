@@ -58,6 +58,214 @@ const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+// =============================================
+// ZOD VALIDATION SCHEMAS FOR API ROUTES
+// =============================================
+
+// Common param/query schemas
+const clientIdParamSchema = z.object({
+  clientId: z.string().min(1, "clientId is required").regex(/^[a-zA-Z0-9_-]+$/, "Invalid clientId format"),
+});
+
+const botIdParamSchema = z.object({
+  botId: z.string().min(1, "botId is required").regex(/^[a-zA-Z0-9_-]+$/, "Invalid botId format"),
+});
+
+const clientBotParamsSchema = z.object({
+  clientId: z.string().min(1).regex(/^[a-zA-Z0-9_-]+$/),
+  botId: z.string().min(1).regex(/^[a-zA-Z0-9_-]+$/),
+});
+
+const idParamSchema = z.object({
+  id: z.string().min(1, "id is required"),
+});
+
+const slugParamSchema = z.object({
+  slug: z.string().min(1, "slug is required").regex(/^[a-zA-Z0-9_-]+$/, "Invalid slug format"),
+});
+
+const workspaceIdParamSchema = z.object({
+  workspaceId: z.string().min(1, "workspaceId is required"),
+});
+
+const templateIdParamSchema = z.object({
+  templateId: z.string().min(1, "templateId is required"),
+});
+
+// Chat endpoint schemas
+const chatMessageSchema = z.object({
+  role: z.enum(["user", "assistant", "system"]),
+  content: z.string().min(1, "Message content is required"),
+});
+
+const chatBodySchema = z.object({
+  messages: z.array(chatMessageSchema).min(1, "At least one message is required"),
+  sessionId: z.string().optional(),
+  language: z.enum(["en", "es"]).optional().default("en"),
+});
+
+// Appointment schemas
+const appointmentUpdateSchema = z.object({
+  status: z.enum(["new", "contacted", "scheduled", "completed", "cancelled"]).optional(),
+  notes: z.string().optional(),
+  appointmentType: z.string().optional(),
+  preferredTime: z.string().optional(),
+  contactPreference: z.enum(["phone", "text", "email"]).optional(),
+});
+
+const appointmentStatusSchema = z.object({
+  status: z.enum(["new", "contacted", "scheduled", "completed", "cancelled"]),
+});
+
+// Super-admin bot creation schema
+const createBotBodySchema = z.object({
+  botId: z.string().min(1, "botId is required").regex(/^[a-zA-Z0-9_-]+$/, "Invalid botId format"),
+  clientId: z.string().min(1, "clientId is required").regex(/^[a-zA-Z0-9_-]+$/, "Invalid clientId format"),
+  name: z.string().min(1, "Bot name is required"),
+  description: z.string().optional(),
+  businessProfile: z.object({
+    businessName: z.string().optional(),
+    type: z.string().optional(),
+    location: z.string().optional(),
+    phone: z.string().optional(),
+    email: z.string().email().optional().or(z.literal("")),
+    website: z.string().url().optional().or(z.literal("")),
+    hours: z.record(z.string()).optional(),
+    services: z.array(z.string()).optional(),
+  }).optional(),
+  systemPrompt: z.string().optional(),
+  faqs: z.array(z.object({
+    question: z.string(),
+    answer: z.string(),
+    category: z.string().optional(),
+  })).optional(),
+  rules: z.object({
+    allowedTopics: z.array(z.string()).optional(),
+    forbiddenTopics: z.array(z.string()).optional(),
+    crisisHandling: z.object({
+      onCrisisKeywords: z.array(z.string()).optional(),
+      responseTemplate: z.string().optional(),
+    }).optional(),
+  }).optional(),
+  personality: z.object({
+    formality: z.number().min(0).max(100).optional(),
+    enthusiasm: z.number().min(0).max(100).optional(),
+    warmth: z.number().min(0).max(100).optional(),
+    humor: z.number().min(0).max(100).optional(),
+    responseLength: z.enum(["short", "medium", "long"]).optional(),
+  }).optional(),
+  templateBotId: z.string().optional(),
+});
+
+// Client status update schema
+const updateClientStatusSchema = z.object({
+  status: z.enum(["active", "paused", "suspended"]),
+});
+
+// Template creation schema
+const createFromTemplateSchema = z.object({
+  templateBotId: z.string().min(1, "templateBotId is required"),
+  clientId: z.string().min(1, "clientId is required").regex(/^[a-zA-Z0-9_-]+$/),
+  clientName: z.string().min(1, "clientName is required"),
+  type: z.string().optional(),
+  businessProfile: z.record(z.any()).optional(),
+  contact: z.object({
+    phone: z.string().optional(),
+    email: z.string().email().optional().or(z.literal("")),
+  }).optional(),
+  billing: z.object({
+    plan: z.enum(["free", "starter", "pro", "enterprise"]).optional(),
+  }).optional(),
+  customFaqs: z.array(z.object({
+    question: z.string(),
+    answer: z.string(),
+  })).optional(),
+});
+
+// Lead schemas - botId is optional because client leads may derive it from session context
+const createLeadSchema = z.object({
+  name: z.string().optional(),
+  email: z.string().email().optional().or(z.literal("")),
+  phone: z.string().optional(),
+  source: z.enum(["chat", "widget", "manual"]).optional().default("manual"),
+  status: z.enum(["new", "contacted", "qualified", "converted", "lost"]).optional().default("new"),
+  priority: z.enum(["low", "medium", "high"]).optional().default("medium"),
+  notes: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  botId: z.string().optional(),
+});
+
+const updateLeadSchema = z.object({
+  name: z.string().optional(),
+  email: z.string().email().optional().or(z.literal("")),
+  phone: z.string().optional(),
+  status: z.enum(["new", "contacted", "qualified", "converted", "lost"]).optional(),
+  priority: z.enum(["low", "medium", "high"]).optional(),
+  notes: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+});
+
+// Query schema for pagination/filtering
+const paginationQuerySchema = z.object({
+  limit: z.string().regex(/^\d+$/).transform(Number).optional(),
+  offset: z.string().regex(/^\d+$/).transform(Number).optional(),
+});
+
+const appointmentQuerySchema = z.object({
+  status: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  search: z.string().optional(),
+  limit: z.string().regex(/^\d+$/).transform(Number).optional(),
+  offset: z.string().regex(/^\d+$/).transform(Number).optional(),
+});
+
+// Analytics query schemas
+const analyticsDateRangeQuerySchema = z.object({
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD format").optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD format").optional(),
+});
+
+const analyticsTrendsQuerySchema = z.object({
+  botId: z.string().optional(),
+  days: z.string().regex(/^\d+$/).transform(Number).optional().default("30"),
+});
+
+const analyticsSessionsQuerySchema = z.object({
+  botId: z.string().optional(),
+  limit: z.string().regex(/^\d+$/).transform(Number).optional().default("50"),
+});
+
+const conversationsQuerySchema = z.object({
+  botId: z.string().optional(),
+  limit: z.string().regex(/^\d+$/).transform(Number).optional().default("50"),
+  offset: z.string().regex(/^\d+$/).transform(Number).optional().default("0"),
+});
+
+const superAdminOverviewQuerySchema = z.object({
+  days: z.string().regex(/^\d+$/).transform(Number).optional().default("30"),
+});
+
+// Auth schemas
+const loginBodySchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(1, "Password is required"),
+});
+
+const superAdminClientQuerySchema = z.object({
+  clientId: z.string().min(1, "clientId is required"),
+});
+
+// Validation helper function
+function validateRequest<T>(schema: z.ZodSchema<T>, data: unknown): { success: true; data: T } | { success: false; error: string } {
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    const errors = result.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+    return { success: false, error: errors };
+  }
+  return { success: true, data: result.data };
+}
+
 async function ensureAdminUserExists() {
   try {
     // Get credentials from environment variables (secure approach)
@@ -154,7 +362,9 @@ function requireClientAuth(req: Request, res: Response, next: NextFunction) {
   
   // Super admins MUST specify which client to view via query param
   if (req.session.userRole === "super_admin") {
-    if (!req.query.clientId) {
+    // Validate clientId query param with Zod
+    const queryValidation = superAdminClientQuerySchema.safeParse(req.query);
+    if (!queryValidation.success) {
       return res.status(400).json({ 
         error: "Client ID required", 
         message: "Super admins must specify clientId query parameter to view client data" 
@@ -162,11 +372,11 @@ function requireClientAuth(req: Request, res: Response, next: NextFunction) {
     }
     // Validate the requested clientId exists
     const allBots = getAllBotConfigs();
-    const clientExists = allBots.some(bot => bot.clientId === req.query.clientId);
+    const clientExists = allBots.some(bot => bot.clientId === queryValidation.data.clientId);
     if (!clientExists) {
       return res.status(404).json({ error: "Client not found" });
     }
-    (req as any).effectiveClientId = req.query.clientId as string;
+    (req as any).effectiveClientId = queryValidation.data.clientId;
     next();
     return;
   }
@@ -802,11 +1012,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/chat", async (req, res) => {
     try {
-      const { messages, sessionId, language = "en" } = req.body;
-      
-      if (!messages || !Array.isArray(messages)) {
-        return res.status(400).json({ error: "Messages array is required" });
+      const validation = validateRequest(chatBodySchema, req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: validation.error });
       }
+      const { messages, sessionId, language } = validation.data;
 
       if (sessionId && messages.length > 0) {
         const lastUserMessage = messages[messages.length - 1];
@@ -881,12 +1091,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const startTime = Date.now();
     
     try {
-      const { clientId, botId } = req.params;
-      const { messages, sessionId, language = "en" } = req.body;
-
-      if (!messages || !Array.isArray(messages)) {
-        return res.status(400).json({ error: "Messages array is required" });
+      // Validate params
+      const paramsValidation = validateRequest(clientBotParamsSchema, req.params);
+      if (!paramsValidation.success) {
+        return res.status(400).json({ error: paramsValidation.error });
       }
+      const { clientId, botId } = paramsValidation.data;
+      
+      // Validate body
+      const bodyValidation = validateRequest(chatBodySchema, req.body);
+      if (!bodyValidation.success) {
+        return res.status(400).json({ error: bodyValidation.error });
+      }
+      const { messages, sessionId, language } = bodyValidation.data;
 
       // Load bot configuration (try database first, then JSON fallback)
       const botConfig = await getBotConfigAsync(clientId, botId);
@@ -960,7 +1177,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           messageContent: lastUserMessage.content,
           category: 'crisis',
           responseTimeMs: responseTime,
-          metadata: { language },
+          metadata: { language: language ?? "en" } as any,
         });
         
         await storage.createOrUpdateChatSession(sessionData);
@@ -1073,7 +1290,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           metadata: { 
             ...automationResult.action.payload,
             language
-          },
+          } as any,
         });
         
         // Increment lead counter
@@ -1118,7 +1335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           actor: 'user',
           messageContent: lastUserMessage.content,
           category: messageCategory,
-          metadata: { language },
+          metadata: { language: language ?? "en" } as any,
         });
       }
       
@@ -1130,7 +1347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         actor: 'bot',
         messageContent: reply,
         responseTimeMs: responseTime,
-        metadata: { language },
+        metadata: { language } as any,
       });
       
       await storage.createOrUpdateChatSession(sessionData);
@@ -1442,24 +1659,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/appointments/:id", requireAuth, async (req, res) => {
     try {
-      const allowedFields = ['status', 'notes', 'appointmentType', 'preferredTime', 'contactPreference'];
-      const updates: any = {};
-      
-      for (const field of allowedFields) {
-        if (req.body[field] !== undefined) {
-          updates[field] = req.body[field];
-        }
+      // Validate params
+      const paramsValidation = validateRequest(idParamSchema, req.params);
+      if (!paramsValidation.success) {
+        return res.status(400).json({ error: paramsValidation.error });
       }
       
+      // Validate body
+      const bodyValidation = validateRequest(appointmentUpdateSchema, req.body);
+      if (!bodyValidation.success) {
+        return res.status(400).json({ error: bodyValidation.error });
+      }
+      
+      const updates = bodyValidation.data;
       if (Object.keys(updates).length === 0) {
         return res.status(400).json({ error: "No valid fields to update" });
       }
       
-      if (updates.status && !['new', 'contacted', 'scheduled', 'completed', 'cancelled'].includes(updates.status)) {
-        return res.status(400).json({ error: "Invalid status value" });
-      }
-      
-      const appointment = await storage.updateAppointment(req.params.id, updates);
+      const appointment = await storage.updateAppointment(paramsValidation.data.id, updates);
       res.json(appointment);
     } catch (error) {
       console.error("Update appointment error:", error);
@@ -1469,9 +1686,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/appointments/:id/status", requireAuth, async (req, res) => {
     try {
-      const { id } = req.params;
-      const { status } = req.body;
-      await storage.updateAppointmentStatus(id, status);
+      // Validate params and body
+      const paramsValidation = validateRequest(idParamSchema, req.params);
+      if (!paramsValidation.success) {
+        return res.status(400).json({ error: paramsValidation.error });
+      }
+      
+      const bodyValidation = validateRequest(appointmentStatusSchema, req.body);
+      if (!bodyValidation.success) {
+        return res.status(400).json({ error: bodyValidation.error });
+      }
+      
+      await storage.updateAppointmentStatus(paramsValidation.data.id, bodyValidation.data.status);
       res.json({ success: true });
     } catch (error) {
       console.error("Update appointment status error:", error);
@@ -1523,10 +1749,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/analytics/summary", requireAuth, async (req, res) => {
     try {
-      const { startDate, endDate } = req.query;
+      // Validate query params
+      const queryValidation = validateRequest(analyticsDateRangeQuerySchema, req.query);
+      if (!queryValidation.success) {
+        return res.status(400).json({ error: queryValidation.error });
+      }
       
-      const start = startDate ? new Date(startDate as string) : undefined;
-      const end = endDate ? new Date(endDate as string) : undefined;
+      const { startDate, endDate } = queryValidation.data;
+      const start = startDate ? new Date(startDate) : undefined;
+      const end = endDate ? new Date(endDate) : undefined;
       
       const summary = await storage.getAnalyticsSummary(start, end);
       res.json(summary);
@@ -1899,6 +2130,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new bot
   app.post("/api/super-admin/bots", requireSuperAdmin, (req, res) => {
     try {
+      // Validate request body
+      const validation = validateRequest(createBotBodySchema, req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: validation.error });
+      }
       const { 
         botId, 
         clientId, 
@@ -1909,12 +2145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         faqs, 
         rules,
         templateBotId 
-      } = req.body;
-      
-      // Validate required fields
-      if (!botId || !clientId || !name) {
-        return res.status(400).json({ error: "botId, clientId, and name are required" });
-      }
+      } = validation.data;
       
       // Check if botId already exists
       const existingBot = getBotConfigByBotId(botId);
@@ -1937,7 +2168,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...businessProfile,
           businessName: businessProfile?.businessName || name || templateConfig.businessProfile?.businessName,
           hours: businessProfile?.hours || templateConfig.businessProfile?.hours,
-          services: businessProfile?.services?.length > 0 ? businessProfile.services : templateConfig.businessProfile?.services,
+          services: (businessProfile?.services?.length ?? 0) > 0 ? businessProfile!.services : templateConfig.businessProfile?.services,
         };
         
         newConfig = {
@@ -1949,7 +2180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           businessProfile: mergedBusinessProfile,
           systemPrompt: systemPrompt || templateConfig.systemPrompt,
           faqs: faqs || templateConfig.faqs,
-          rules: rules || templateConfig.rules,
+          rules: (rules || templateConfig.rules) as any,
         };
       } else {
         // Create from scratch with provided values
@@ -1983,7 +2214,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           businessProfile: { ...defaultBusinessProfile, ...businessProfile },
           systemPrompt: systemPrompt || defaultSystemPrompt,
           faqs: faqs || [],
-          rules: rules || defaultRules,
+          rules: (rules || defaultRules) as any,
         };
       }
       
@@ -2588,9 +2819,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get client's conversation logs
   app.get("/api/client/conversations", requireClientAuth, async (req, res) => {
     try {
+      // Validate query params
+      const queryValidation = validateRequest(conversationsQuerySchema, req.query);
+      if (!queryValidation.success) {
+        return res.status(400).json({ error: queryValidation.error });
+      }
+      
       const clientId = (req as any).effectiveClientId;
-      const limit = parseInt(req.query.limit as string) || 50;
-      const offset = parseInt(req.query.offset as string) || 0;
+      const { limit, offset } = queryValidation.data;
       
       // Get bot config for this client
       const allBots = getAllBotConfigs();
@@ -2707,12 +2943,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get analytics summary for client's bot
   app.get("/api/client/analytics/summary", requireClientAuth, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
-      const botId = req.query.botId as string | undefined;
-      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
-      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+      // Validate query params
+      const querySchema = z.object({
+        botId: z.string().optional(),
+        startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD format").optional(),
+        endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD format").optional(),
+      });
+      const queryValidation = validateRequest(querySchema, req.query);
+      if (!queryValidation.success) {
+        return res.status(400).json({ error: queryValidation.error });
+      }
       
-      const summary = await storage.getClientAnalyticsSummary(clientId, botId, startDate, endDate);
+      const clientId = (req as any).effectiveClientId;
+      const { botId, startDate, endDate } = queryValidation.data;
+      const start = startDate ? new Date(startDate) : undefined;
+      const end = endDate ? new Date(endDate) : undefined;
+      
+      const summary = await storage.getClientAnalyticsSummary(clientId, botId, start, end);
       
       res.json({
         clientId,
@@ -2728,9 +2975,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get daily analytics trends for client
   app.get("/api/client/analytics/trends", requireClientAuth, async (req, res) => {
     try {
+      // Validate query params
+      const queryValidation = validateRequest(analyticsTrendsQuerySchema, req.query);
+      if (!queryValidation.success) {
+        return res.status(400).json({ error: queryValidation.error });
+      }
+      
       const clientId = (req as any).effectiveClientId;
-      const botId = req.query.botId as string | undefined;
-      const days = parseInt(req.query.days as string) || 30;
+      const { botId, days } = queryValidation.data;
       
       const trends = await storage.getClientDailyTrends(clientId, botId, days);
       
@@ -2776,9 +3028,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get recent chat sessions for client
   app.get("/api/client/analytics/sessions", requireClientAuth, async (req, res) => {
     try {
+      // Validate query params
+      const queryValidation = validateRequest(analyticsSessionsQuerySchema, req.query);
+      if (!queryValidation.success) {
+        return res.status(400).json({ error: queryValidation.error });
+      }
+      
       const clientId = (req as any).effectiveClientId;
-      const botId = req.query.botId as string | undefined;
-      const limit = parseInt(req.query.limit as string) || 50;
+      const { botId, limit } = queryValidation.data;
       
       const sessions = await storage.getClientRecentSessions(clientId, botId, limit);
       
@@ -2887,14 +3144,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new lead
   app.post("/api/client/leads", requireClientAuth, async (req, res) => {
     try {
+      // Validate body
+      const bodyValidation = validateRequest(createLeadSchema, req.body);
+      if (!bodyValidation.success) {
+        return res.status(400).json({ error: bodyValidation.error });
+      }
+      
       const clientId = (req as any).effectiveClientId;
+      
+      // If botId not provided, try to get default bot for this client
+      let botId = bodyValidation.data.botId;
+      if (!botId) {
+        const clientBots = getBotsByClientId(clientId);
+        if (clientBots.length > 0) {
+          botId = clientBots[0].botId;
+        } else {
+          botId = `${clientId}_default`;
+        }
+      }
+      
       const leadData = {
-        ...req.body,
+        ...bodyValidation.data,
         clientId,
-        source: req.body.source || 'manual',
+        botId,
+        source: bodyValidation.data.source || 'manual',
       };
       
-      const lead = await storage.createLead(leadData);
+      const lead = await storage.createLead(leadData as any);
       
       // Increment monthly leads count
       const currentMonth = new Date().toISOString().slice(0, 7);
@@ -2910,7 +3186,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update a lead
   app.patch("/api/client/leads/:id", requireClientAuth, async (req, res) => {
     try {
-      const lead = await storage.getLeadById(req.params.id);
+      // Validate params
+      const paramsValidation = validateRequest(idParamSchema, req.params);
+      if (!paramsValidation.success) {
+        return res.status(400).json({ error: paramsValidation.error });
+      }
+      
+      // Validate body
+      const bodyValidation = validateRequest(updateLeadSchema, req.body);
+      if (!bodyValidation.success) {
+        return res.status(400).json({ error: bodyValidation.error });
+      }
+      
+      const lead = await storage.getLeadById(paramsValidation.data.id);
       
       if (!lead) {
         return res.status(404).json({ error: "Lead not found" });
@@ -2922,7 +3210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Access denied" });
       }
       
-      const updated = await storage.updateLead(req.params.id, req.body);
+      const updated = await storage.updateLead(paramsValidation.data.id, bodyValidation.data as any);
       res.json(updated);
     } catch (error) {
       console.error("Update lead error:", error);
@@ -2933,7 +3221,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete a lead
   app.delete("/api/client/leads/:id", requireClientAuth, async (req, res) => {
     try {
-      const lead = await storage.getLeadById(req.params.id);
+      // Validate params
+      const paramsValidation = validateRequest(idParamSchema, req.params);
+      if (!paramsValidation.success) {
+        return res.status(400).json({ error: paramsValidation.error });
+      }
+      
+      const lead = await storage.getLeadById(paramsValidation.data.id);
       
       if (!lead) {
         return res.status(404).json({ error: "Lead not found" });
@@ -2945,7 +3239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Access denied" });
       }
       
-      await storage.deleteLead(req.params.id);
+      await storage.deleteLead(paramsValidation.data.id);
       res.status(204).send();
     } catch (error) {
       console.error("Delete lead error:", error);
@@ -2960,7 +3254,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get platform-wide analytics overview
   app.get("/api/super-admin/analytics/overview", requireSuperAdmin, async (req, res) => {
     try {
-      const days = parseInt(req.query.days as string) || 30;
+      // Validate query params
+      const queryValidation = validateRequest(superAdminOverviewQuerySchema, req.query);
+      if (!queryValidation.success) {
+        return res.status(400).json({ error: queryValidation.error });
+      }
+      
+      const { days } = queryValidation.data;
       const allBots = getAllBotConfigs();
       
       const overview: any[] = [];
