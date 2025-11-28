@@ -5,6 +5,7 @@ interface GlassCardProps {
   className?: string;
   hover?: boolean;
   glow?: boolean;
+  onClick?: () => void;
   "data-testid"?: string;
 }
 
@@ -13,6 +14,7 @@ export function GlassCard({
   className, 
   hover = false,
   glow = false,
+  onClick,
   "data-testid": testId 
 }: GlassCardProps) {
   return (
@@ -24,6 +26,7 @@ export function GlassCard({
         glow && "hover:shadow-[0px_4px_30px_rgba(79,195,247,0.15)]",
         className
       )}
+      onClick={onClick}
       data-testid={testId}
     >
       {children}
