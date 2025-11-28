@@ -75,13 +75,29 @@ Bot Files:
 
 ### Control Center (Super Admin)
 - `/super-admin/control-center` - Unified platform management interface
-  - **Left Sidebar:** Lists all chatbots with search, templates for creating new clients
-  - **Overview Tab:** Quick stats (messages, conversations, leads, bookings), bot info, services, knowledge base
-  - **Bot Settings Tab:** Full bot editing (name, business profile, hours, services, system prompt, FAQs)
-  - **Billing Tab:** Stripe subscription status, checkout creation, customer portal
-  - **Analytics Tab:** Performance metrics with link to full dashboard
-  - **Logs Tab:** Conversation log files
-  - **Faith House Features:** Special section for sober_living clients with crisis detection, pre-intake forms, appointment booking
+  - **Layout:** True split-pane with persistent dashboard grid + inline detail panel (no overlay)
+  - **Left Sidebar Navigation:**
+    - Search input for filtering bots (synced with grid and all counts)
+    - Bot list with name, business type, and status badge (shows "X of Y" when filtered)
+    - Selected bot highlighted with primary color
+    - Quick action buttons: Add New Bot, Legacy Admin
+  - **Main Content - Dashboard (always visible, shrinks when detail panel open):**
+    - Stats cards: Total Bots, Active, Demo, Paused counts
+    - Bot cards grid (responsive: adjusts columns when detail panel opens)
+    - Each card shows: business name, type, status badge, FAQs count, creation date
+    - Selected card highlighted with ring-2 and shadow-lg
+    - "Add New Bot" dashed card for quick creation
+  - **Bot Detail Panel (inline split-pane, no overlay):**
+    - Opens inline as right panel (lg:w-1/2 xl:w-2/5)
+    - Grid remains fully interactive - can select other bots without closing
+    - Bot header with icon, name, type, close button (X)
+    - Status badge and quick actions (Preview, Status selector)
+    - Tab navigation: Overview, Settings, Billing, Analytics, Logs
+  - **CreateFromTemplateModal:** 
+    - Local template state (localTemplate) prevents wizard reset on parent re-renders
+    - useEffect only depends on `open` for initialization
+    - Step 0: Template selection grid
+    - Steps 1-3: Business info, Contact/Location, Service tier/Billing
 
 ### Client Dashboard
 - `/client/dashboard` - Client-facing dashboard for viewing business data

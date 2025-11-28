@@ -1,0 +1,1031 @@
+Treasure Coast AI Platform – Final Technical Specification & Execution Plan
+1. UX & Interface Overhaul Across Core Pages
+1.1 Control Center UI
+
+Overview: The Control Center serves as the main hub for users (e.g. Tyler/admin) to manage bots and clients. The upgraded design will feature a clean, card-based overview of all chatbot projects (each representing a client’s business). Each project is displayed as a “business card” style panel showing the business name, status (Active, Demo, On-Hold), and key metrics at a glance. This aligns with the brand’s modern and approachable feel.
+
+Layout: Use a responsive grid (e.g. 3-column on desktop, 1-column on mobile) to display project cards uniformly. Ensure consistent padding and margins using an 8px grid system for alignment
+cieden.com
+cieden.com
+. Place a prominent “Add New Bot” card or button as the last item, styled as a dashed outline card inviting creation of a new bot.
+
+Navigation: A left-side navigation bar (or top nav on mobile) provides links to “Dashboard”, “Bots”, “Settings”, etc. In Control Center view, highlight “Bots” section. The nav should collapse into icons on smaller screens (hamburger menu if mobile).
+
+Project Cards: Each card includes: Business Name (Title), an optional small logo or icon, Status Badge (e.g. “Demo”, “Active”, “On Hold”), and brief stats (e.g. conversations this week, last active time). Clicking a card opens that bot’s Dashboard (or settings). Hover states: elevate the card with a subtle shadow and show a “Manage” quick action button. On touch devices, use a clear “Manage” button on the card instead of hover.
+
+Interactions: Hovering on cards and buttons will use smooth transitions (e.g. 0.2s ease-in-out) to highlight interactivity. For example, hovering a project card slightly raises it and changes background from #FFFFFF to a very light gray (#f9f9f9). Primary buttons (like “Add New Bot”) use the brand’s Ocean Blue (#0A5CFF) as background by default, darkening on hover. Secondary actions use Aqua Teal (#00C2B3) or a neutral outline style. All interactive elements should have a focus state for accessibility (e.g. outline or glow).
+
+1.2 Bot Dashboard UI
+
+Overview: Each bot’s Dashboard provides an analytics summary and controls specific to that bot. The upgraded dashboard will have a clean, modular layout: top section for the bot’s “business card” info and status, and below it a two-column layout for analytics and recent activity.
+
+Top Section: Display the In-Dashboard Business Card – a panel with the business’s name, logo, industry, and contact info (from onboarding data). Include a status indicator (green dot for Active, orange for Demo, red for On-Hold). If the bot is in demo mode or on hold, show a banner or notice here (see Section 5).
+
+Analytics Panels: Use cards for each key metric (e.g. “Conversations (24h)”, “Leads Captured”, “Avg Response Time”). These cards should have a consistent style (e.g. light charcoal text on white, subtle shadow, rounded corners 6px). The metrics auto-update when new data comes in (see data flow in Section 6.2). When a card is hovered, if clickable, it should highlight (e.g. slight scale up or glow); if not clickable, just maintain static style.
+
+Recent Activity Feed: One panel lists recent user questions and bot answers (or recent conversations) in a scrollable area. Each entry shows timestamp, snippet of user query and bot response. This feed updates in real-time or on refresh. Hover highlight each entry on mouseover. Clicking an entry could expand it to view full conversation (future feature).
+
+Responsive Behavior: On smaller screens, the two-column layout should stack to one column. Cards should become full-width. Charts (if any) should resize or use scroll if too wide. Ensure readability on mobile by scaling font sizes appropriately (e.g. base 16px on desktop, 14px on mobile). Use relative units or media queries for responsive typography.
+
+Control Elements: At the top of the dashboard, include primary action buttons for this bot: e.g. “Edit Bot Settings”, “View Live Chat”, “Share Bot”. Primary actions use the solid primary button style; less-used actions use secondary style (outline). Only one primary action should be dominant at a time
+balsamiq.com
+balsamiq.com
+, for example “Edit Bot” as primary, and others as secondary.
+
+1.3 Bot Settings Page UI
+
+Overview: The Bot Settings page allows live editing of the bot’s configuration (e.g. greeting message, FAQs, business info, behavior settings). It should be structured with clear sections and consistent form components. Use a tabbed interface or subtabs if content is large (e.g. “General Settings”, “Knowledge Base”, “Integration”, “Appearance”).
+
+Form Layout: Use a two-column form layout on desktop (labels on left, inputs on right) for wider screens, and a single column on mobile. Group related fields inside card sections with headers. For example, a “Business Info” card contains fields for Business Name, Contact Email, Phone, Address, Hours, etc. A “Bot Personality” card contains fields for greeting text, brand tone (dropdown or preset based on “Friendly/Professional” etc.), and fallback responses. Each card uses consistent padding and spacing (16px padding inside, margin 24px between cards, following the 8pt spacing grid
+cieden.com
+).
+
+Inputs & Controls: All inputs (text fields, text areas, selects, toggles) have a standardized style: a light border radius (4px), 1px solid border in neutral grey (e.g. #ccc), and a focus state with border in the brand blue (#0A5CFF) and slight box-shadow to emphasize selection. Ensure sufficient padding inside inputs (e.g. 8px vertical, 12px horizontal) for a comfortable touch target
+balsamiq.com
+. Include helper text under fields where needed (e.g. “This greeting is the first message customers see.”). Use placeholder text that is instructive (e.g. <Your greeting message here>). Validation messages (errors) appear directly beneath fields in red, in a friendly tone (e.g. “Please enter a valid email address.”) – see Section 4 on language.
+
+Buttons: The settings page will have a sticky footer (on desktop) or a bottom section with the action buttons: “Save Changes” (primary), “Discard” (secondary), etc. The primary Save button uses a filled style (brand color) and is disabled (greyed out) until there are unsaved changes. Secondary buttons (like “Discard”) use an outline style or a quieter tone to indicate lesser importance
+balsamiq.com
+. On hover: primary button slightly lightens or darkens (for contrast), secondary button darkens its text or border. On click: provide immediate visual feedback (pressed state) and then possibly a spinner if the save is in progress.
+
+Transitions: When switching between tabs (General, Integration, etc.), use a subtle fade or slide transition to make the change in content feel smooth. Form field interactions should feel snappy: no noticeable lag on typing. After clicking “Save”, if successful, show a brief success toast or banner (e.g. “Settings saved successfully”) in a non-intrusive way (maybe a green check icon and message at top or bottom). If validation fails, smoothly scroll to the first invalid field and highlight it.
+
+Responsive Design: On mobile, use a single-column layout. The sticky footer with action buttons should either become a fixed bottom bar or transform into a floating action button for “Save” to avoid taking too much screen space. All text should remain legible (use at least 14px font on mobile forms). Collapsible sections or accordions can be used in place of wide cards on narrow screens to improve usability.
+
+2. Interface Behaviors & Responsive Requirements
+2.1 Hover States & Active States
+
+All interactive components should clearly indicate hover or focus:
+
+Buttons: On hover (or focus via keyboard), primary buttons increase brightness of the background color slightly (e.g. from brand blue to a slightly lighter blue) and show a tooltip if applicable (e.g. “Save changes”). Secondary buttons (outlined) fill with a light grey or the brand teal tint on hover for contrast. On active click, use a brief pressed effect (e.g. darken by 10%) and then revert on release
+balsamiq.com
+. Disabled buttons are styled with a grey background or border and no hover effect, with a not-allowed cursor.
+
+Links: Text links (used sparingly, e.g. “Learn more”) have an underline on hover and perhaps a slight color change to the teal or blue. Ensure links are visually distinct from buttons (buttons have filled backgrounds or outlines, links are plain text style)
+balsamiq.com
+balsamiq.com
+.
+
+Cards/Rows: Project cards in the Control Center lift slightly (translateY(-2px)) and add a drop shadow on hover. List rows (if any in settings or logs) can highlight background on hover (#f5f5f5).
+
+Menus & Dropdowns: When a user hovers a dropdown trigger or profile avatar (if used for account menu), show the menu with a short fade-down animation (e.g. 0.15s ease). Menu items highlight to a light brand color background on hover.
+
+2.2 Transitions & Feedback
+
+Use CSS transitions for color, opacity, and position changes to make the UI feel smooth. For example, modal dialogs (like a confirmation dialog) should fade in and slide down slightly from the top of screen, rather than appearing abruptly. Hover highlighting of cards or list items should fade in rather than instant, to feel polished.
+
+Loading indicators: When loading data (e.g. on initial dashboard load or while saving settings), provide feedback. Use a subtle spinner or skeleton UI for charts and cards while data is loading. For instance, show grey placeholder bars in the analytics cards until the real numbers load.
+
+Toast notifications: Success or error toasts slide in at the top-right or bottom of the screen and disappear after a few seconds. Use the brand’s friendly tone in messaging, even for errors (see Section 4). For example, a success toast could say “✅ Bot updated!” and an error toast: “⚠️ Couldn’t save changes. Please try again.” Ensure these toasts also appear (or are accessible) on mobile (perhaps full-width at top).
+
+Responsive transitions: On mobile, avoid large modals that cover content; instead use slide-up panels or full-screen overlays for actions (e.g. editing something) to feel native. Transitions on mobile should be optimized (use transform instead of heavy box-shadows for performance).
+
+2.3 Responsive Layout & Breakpoints
+
+The app should be fully responsive, supporting common breakpoints (e.g. <576px for mobile, 576-768px small tablet, 768-992px tablet, >992px desktop, >1200px large desktop). Use a mobile-first CSS approach or a responsive framework (like Bootstrap or Tailwind) for consistency.
+
+Mobile UI Adjustments: The sidebar nav becomes a top nav or hamburger menu. Table or grid views (like analytics cards) stack vertically. Multi-column forms collapse into one column. Interactive elements get slightly larger tap targets (e.g. increase padding on buttons). Use the 8px spacing system but allow slightly more padding for touch (e.g. 12-16px inside buttons) for comfort
+cieden.com
+.
+
+Typography scaling: Use relative units (rem/em) for font sizes so that on smaller screens text can be scaled down slightly if needed. Ensure headings, labels, and data remain readable without zoom. For instance, the dashboard big numbers might be 2rem on desktop, and 1.5rem on mobile. Maintain line-heights in multiples of 4 or 8px for consistency
+cieden.com
+.
+
+Testing: The interface should be tested at different sizes: e.g., iPhone SE width (~320px) to ensure cards and forms do not overflow, as well as large monitors (up to 1440px or more) to ensure content doesn’t look sparse. Possibly cap the container width on very large screens (e.g. max 1200px) and center it to maintain focus.
+
+Conditional Content: Certain content might be hidden or simplified on smaller screens. For example, an analytics chart might be omitted or replaced with a summary number on mobile if it cannot fit. Ensure that any hidden content is not critical or provide an alternate way to access it.
+
+3. Standardized UI Components & Design System
+
+The platform will adopt a consistent design system for all UI components to provide a polished, cohesive user experience. Below are standards for key component types:
+
+3.1 Color Palette & Typography
+
+Brand Colors: Use the official Treasure Coast AI palette throughout for consistency: Primary Blue (#0A5CFF) for main accents and primary buttons, Aqua Teal (#00C2B3) for secondary accents or highlights, Charcoal (#1A1A1A) for most text, and White (#FFFFFF) for backgrounds. Utilize shades of gray for borders, backgrounds, and disabled states (e.g. light gray #f0f0f0 for input background).
+
+States: Use semantic colors for certain states – e.g. Green (a shade like #28a745) for success messages or active status, Red (#dc3545) for errors or destructive actions (like “Delete Bot” button), and Orange/Amber for warnings or on-hold status. These should be used sparingly and consistently (e.g. all error text in the app is the same red tone).
+
+Typography: Choose a clean, professional sans-serif font stack (e.g. -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif) for readability. Base font size 16px. Headings should use a consistent scale (e.g. H1 32px, H2 24px, H3 18px, etc., all matching the 8px grid). All text and headings should reflect the brand tone – friendly and straightforward, which in visual terms means no overly decorative fonts or all-caps shouting. Use sentence case for most labels and headings (capitalize only the first word and proper nouns) for a relatable tone, unless brand style dictates Title Case in specific places (e.g. page titles).
+
+3.2 Spacing & Sizing System
+
+Adopt a 8pt spacing grid throughout the UI for paddings and margins
+cieden.com
+. All standard spacings are multiples of 8px (with 4px as a half-step for fine adjustments): e.g. 8, 16, 24, 32px gaps. This ensures alignment and rhythm in the layout
+cieden.com
+.
+
+Container Padding: Standard page content padding is 24px on desktop, 16px on mobile. Card inner padding is typically 16px.
+
+Grid Gutters: If using a grid system, maintain ~24px gutters on large screens (which is 3×8px) and 16px on small screens.
+
+Internal vs External Spacing: Follow the internal ≤ external rule
+cieden.com
+ – space around components (e.g. margin between cards) should be equal or greater than internal padding, to clearly separate groups
+cieden.com
+cieden.com
+. For example, if a card has 16px internal padding, there should be at least 16px or more margin between adjacent cards. This keeps the interface uncluttered and elements distinct.
+
+Component Sizing: Standardize component sizes where possible: e.g. buttons have a minimum touch size of 40px height (with padding adjusting based on text), inputs are at least 40px tall, icons are aligned to an 16px or 24px grid (e.g. use 24px icons for action buttons, 16px icons inside text fields).
+
+3.3 Buttons
+
+Primary Buttons: Use a solid fill with the primary brand blue (#0A5CFF) for high-emphasis actions
+balsamiq.com
+. Text on primary buttons is white for contrast. These buttons should appear prominently (use for one primary action per page context, e.g. form submission or main call-to-action).
+
+Secondary Buttons: Use an outlined style or a toned-down fill. For outline: border 2px solid brand blue or teal, text in brand color, and transparent background. On hover, a secondary button might fill with a very light blue/teal to indicate interactivity. Alternatively, secondary could use Aqua Teal fill if we want a two-color hierarchy (blue for main, teal for secondary). Ensure consistent sizing with primary buttons for a cohesive look
+balsamiq.com
+ – e.g. same height, same padding, only style differs.
+
+Tertiary/Link Buttons: These are minimal buttons often just text (for less important or additional actions, like “Cancel” or “Learn More”). Style them as plain text links or with subtle styling (e.g. grey text that turns blue on hover). Avoid too many different button styles – stick to the hierarchy: primary (solid), secondary (outline or subtle fill), tertiary (text only)
+balsamiq.com
+.
+
+States: All buttons should have distinct states: default, hover, active, disabled. Use CSS transitions for state changes (e.g. 0.1s transition for background color). For accessibility, also show focus outline when a button is tab-focused (e.g. a 2px outline in a high-contrast color or glow). Disabled state: use a lighter color (e.g. light grey fill or border) and suppress hover effects.
+
+Iconography: If buttons include icons (e.g. a save icon), ensure the icon does not overwhelm text. Spacing between icon and text should be ~8px. Use icons only where they clarify meaning (trash can for delete, etc.), not for decoration alone.
+
+Quantity: As a rule, avoid multiple primary (high-emphasis) buttons on the same screen to reduce user confusion
+balsamiq.com
+. There should typically be one clear primary action per view.
+
+3.4 Form Inputs & Components
+
+Text Fields: Use a consistent component for all text inputs (single-line <input> and multi-line <textarea>). Style: 1px solid border in #ccc (neutral grey) by default, 4px corner radius, padding of 8px vertical and 12px horizontal for text fields to ensure a comfortable click/tap area. On focus, change border to 2px solid brand blue and add a light blue shadow or glow to make the focus obvious. Include subtle transition on focus/blur. Each text field is accompanied by a label (placed above or to the left) and optional helper text or placeholder. Labels should be in a slightly heavier font weight than input text to differentiate.
+
+Selects & Dropdowns: Style dropdowns similarly to text fields (same height, border, radius). Use native select where possible for consistency on mobile, or a custom select component with a consistent style. Ensure the dropdown menu options are legible and match the overall style (white background, same text font, highlight option on hover with light brand color).
+
+Checkboxes & Toggles: Use custom-styled checkboxes that fit brand colors: e.g. when checked, use a brand blue fill with a white check icon. Radius can be 3px for checkboxes. For toggles (switches), when “on”, fill with brand teal or blue and place the toggle indicator to the right; when “off”, show a grey background. All form controls should have labels (either visible or aria-label for accessibility). If using toggle switches for boolean settings, accompany them with clear labels (e.g. “Enable Feature X”).
+
+Error States: Input validation errors are displayed with a red border or underline on the field and a short error message below in red text. Keep error messages concise and clear
+uxwritinghub.com
+ – e.g. “This field is required.” or “Invalid email format.” Avoid technical jargon. Do not use overly casual “Oops” phrasing in errors
+uxwritinghub.com
+ to maintain a professional but friendly tone. Instead of “Oops, something went wrong!”, say “Unable to save. Please try again.” (See Section 4 for language).
+
+Form Layout: Use consistent vertical spacing between form fields (e.g. 16px). Group related fields under section headings or within card components to avoid one long form. If an action is destructive (like “Delete Bot”), isolate it visually (maybe in a separate panel with a red delete button) to prevent accidental clicks.
+
+3.5 Cards & Panels
+
+Card Style: As mentioned, a “card” is a container with a light background (usually white) and a slight shadow or border. Standardize card appearance: e.g. border-radius 6px, box-shadow: 0 1px 3px rgba(0,0,0,0.1) or similar gentle shadow, or alternatively a 1px solid #e0e0e0 border for a flatter look. All cards should have consistent padding (16px or 24px depending on density of content).
+
+Usage: Use cards for grouping related content: e.g. each metric in dashboard, each form section in settings, each bot project in Control Center. This provides a modular feel and helps the user parse information quickly. Maintain consistent spacing between cards in a grid or column (e.g. 24px margin-bottom).
+
+Header & Body: If a card has a header (title), style the header text slightly larger (e.g. 14px uppercase or 16px bold, depending on hierarchy) and perhaps a bottom border or extra padding separating it from the body. Example: a “Analytics Summary” card might have a header with that title and a gear icon for settings, then the body contains the metrics.
+
+Interactive Cards: If cards are clickable (like project cards), indicate that by a change on hover and maybe an arrow icon or “View” link within the card. Non-interactive cards (purely informational) should not change cursor on hover. If a card contains internal interactive elements (buttons, dropdowns), handle hover carefully so that the whole card doesn’t also treat as clickable. Typically, only make a card clickable if the entire card is one big target leading to a single destination; otherwise, use contained buttons/links.
+
+3.6 Alerts, Notices, and Banners
+
+Alert Styles: Standardize the styling of informational messages, warnings, and error alerts across the app. These can appear as banners at top of content or inline messages. For example:
+
+Info Banner (Demo Mode): Uses brand blue or teal background with white or dark text (depending on contrast) for general info. Example content: “You are currently in Demo Mode – some features are limited.” (See Section 5.1).
+
+Success Alert: Use a green accent background or border-left with a check icon and text, or a subtle green text for inline confirmation messages (“Settings saved successfully.”).
+
+Warning/On-Hold Alert: Use an amber/yellow background or border with a warning icon for on-hold notices (Section 5.2). Keep text black for readability. Example: “Account on hold: please update billing information to resume service.”
+
+Error Alert: Use a light red/pink background with a red text/icon for critical issues (e.g. “Failed to load data. Please refresh.”).
+
+Positioning: Banners related to account status (demo or on-hold) should appear at the very top of the app (below the main nav) and span full width, so the user cannot miss them. Inline form errors should appear directly near the field or action that caused them. Toasts can appear top-right for ephemeral messages not requiring immediate action.
+
+Language: Maintain the brand’s confident but friendly tone in all alerts. For example, instead of a generic “Error 500 – Internal Server Error”, say “We’re sorry, something went wrong on our end. Please try again or contact support.” Avoid overly casual “uh-oh” or “whoops” which could undermine professionalism
+uxwritinghub.com
+. Avoid blaming the user; phrase issues neutrally or as actions for the user (“Please check your network connection.” rather than “You lost connection.”)
+uxwritinghub.com
+.
+
+Icons: Include appropriate small icons to the left of alert text for quick recognition: e.g. info icon (ℹ️) for info, checkmark for success, exclamation triangle for warning, cross or stop for error. Ensure the icon style matches (simple line or filled icons consistent across all).
+
+Dismissal: If an alert/banner can be dismissed (e.g. a demo mode reminder might be permanent until upgraded, so maybe not dismissible; a one-time info might allow dismiss), provide a small “X” button to close it. The close button should be visible on hover (slightly muted when not hovered). Use screen-reader labels for it (“Dismiss alert”).
+
+4. Copy & Language Updates (Labels, Microcopy, Alerts)
+4.1 Tone and Voice Consistency
+
+All text in the application must be reviewed and updated to match the Treasure Coast AI brand voice: friendly, relatable, confident, and straightforward. This means:
+
+Clarity: Use simple, clear language for all labels and messages. Avoid technical jargon or acronyms when a plain-English term exists (e.g. say “subscription” instead of “plan ID”, “chatbot” instead of “agent instance”, etc.). Keep sentences concise
+uxwritinghub.com
+ – aim for under 15 words when possible for prompts and messages, to ensure readability.
+
+Confidence & Positivity: Phrase things in a positive or action-oriented manner. For instance, instead of “No bots configured” use “Let’s create your first bot!” to encourage action. Instead of “Error: cannot save” use “Couldn’t save changes, please try again.” (Focus on solution or next step).
+
+Approachable Style: Write as if speaking to a local business owner in a helpful tone. Use contractions naturally (“you’ll” instead of “you will”, “it’s” instead of “it is”) to avoid sounding too formal
+learn.microsoft.com
+. But do not go into overly casual slang. Avoid filler words or fluff – straightforward means get to the point without being curt.
+
+Case and Punctuation: Use sentence case for most UI text (e.g. buttons: “Save changes”, headings: “Bot settings”), which feels more human. Use title case only for titles or proper nouns (e.g. product name). Ensure consistent punctuation: end all full-sentence messages with a period. For short labels or fragments (like button text or menu items), no period needed.
+
+4.2 Labels & Microcopy Standardization
+
+Audit all form labels, button texts, tooltips, and instructional text. They should speak the user’s language – reflecting how a non-technical business owner would refer to things. For example, label the bot’s name field as “Bot Name (for your reference)” if it’s an internal name, or “Assistant Name (what your customers will see)” if it’s public-facing. Use helpful hints in placeholders (e.g. a field for business hours placeholder might be “e.g. Mon-Fri 9am-5pm”).
+
+Button Text: Make sure calls-to-action are clear and use strong verbs: “Save Changes”, “Create Bot”, “Upgrade Plan”, “Send Test Message”. Avoid vague labels like “Submit” if context can be clearer (“Send”, “Upload Image”, etc.). If an action is destructive, make it explicit: “Delete Bot” instead of just “Delete”. Use consistent terminology – e.g. don’t use “Chatbot” in one place and “Assistant” in another unless intentionally differentiating; pick one term and stick to it across the UI.
+
+Menu Items: Menu and navigation labels should be short but descriptive: “Dashboard”, “My Bots”, “Account Settings”, “Support”, etc. If space is an issue (mobile nav), use icons with clear labels on tap.
+
+Tooltip & Help Text: For any icons or less obvious controls, add tooltips that explain their function. E.g., a small “?” icon next to “Knowledge Base” might say “Pre-defined Q&A that your bot will use to answer questions”. Keep these hints brief and friendly.
+
+Empty States: Provide guiding text in empty states (e.g., if no data is available in analytics, show “No conversations yet. Your bot’s activity will appear here once it interacts with users.”). Possibly include a call to action or tip, like a button “Test your bot now” in an empty conversation log. This microcopy should reassure and guide the user on next steps.
+
+4.3 Alert & Error Message Language
+
+Informational Messages: e.g. Demo mode banner (Section 5.1) text: “🚧 You’re using a demo bot. Some features are disabled until you upgrade.” This is clear on what the state is and implies what to do (upgrade). It’s friendly and not overly apologetic or childlike.
+
+On-Hold Warning: e.g. “⚠️ Your account is currently on hold. Please update your billing information to resume service.” This message is factual and instructive, not blaming the user. It avoids all-caps or alarming language, yet uses an emoji or icon to draw attention.
+
+Error Popups/Toasts: Use polite, first-person plural or passive voice to describe issues. For instance, “We couldn’t load that data. Please check your internet connection and try again.” or “Unable to save settings – please try again in a moment.” Avoid generic “Failed!” messages; always give a hint of what the user can do or what happened. If known, mention the specific issue (“Your session expired. Log in again to continue.”).
+
+No “Oops”: As a rule, avoid starting error messages with “Oops” or “Uh-oh”
+uxwritinghub.com
+ to maintain a professional tone. Our brand voice can be friendly but should remain respectful – e.g. “Let’s try that again” can replace an “Oops” in a friendly way, but use it sparingly and only if it fits the situation. Generally, be straightforward: if an appointment booking fails, say “Appointment booking failed to send. Please try again.” rather than “Whoops, I couldn’t do that!”.
+
+Confirmation Messages: When the user completes an action, use positive reinforcement. E.g., after saving: “✅ Changes saved successfully.” After creating a new bot: “🎉 Bot created! Next, configure its details below.” Small celebratory emojis or words (like the confetti emoji or “Great job!”) can be used in onboarding flows to keep things upbeat, but ensure it aligns with the brand persona of being confident and not overly playful.
+
+Consistency: Create a small internal content style guide for common messages (error, success, warning) to ensure consistency. For example, decide on whether to use “Please…” in messages (often good for instructions), how to refer to the user (“you” vs passive voice), and stick to it. All messaging should also respect the brand’s local-friendly angle – e.g. maybe occasionally using a mild regional touch or colloquial tone if appropriate, but never in a way that confuses or alienates non-local users.
+
+5. New UI Elements: Demo Mode, On-Hold, and Business Cards
+5.1 Demo Mode Banners
+
+To clearly indicate when a bot or account is in “demo” status, implement a banner that appears across relevant pages:
+
+When to Show: If the user is viewing a demo bot (a chatbot that was set up as a free demo for a prospective client) or if the entire account is in a demo trial period, display the banner. This check is done on page load for Control Center and Bot Dashboard pages (based on a property like user.accountStatus == 'demo' or bot.status == 'demo').
+
+Appearance: A full-width banner at the top of the content (right below main nav). Style it with an info/warning blend: perhaps a striped background or an info icon. For example, a light blue background (#EAF4FF) with the brand blue text for contrast, or a yellow accent bar on the left. Keep it noticeable but not alarming (demo isn’t an error).
+
+Content: Use friendly tone to explain limitations and next step. E.g.: “💡 You are currently using a demo bot with limited features. Upgrade to a full account to unlock all features and keep your bot running 24/7.” Follow this with an Upgrade button on the banner (styled as a small primary button) that takes the user to the billing/upgrade page. Ensure the text is concise and possibly bold the call-to-action part.
+
+Behavior: The banner can be persistent on every page until the user upgrades (since it’s important). Optionally, allow the user to dismiss it for the session (with an “X” close button) – but it should likely return next session as long as they are in demo. The dismissal state could be stored in local state or not at all to ensure they’re reminded.
+
+Responsive: On small screens, the banner text may wrap to 2-3 lines; ensure the “Upgrade” button is still visible (it could be below the text on a new line if needed). The banner should not take more than ~15-20% of the screen height on a small device. Use an icon and short text to help with this (e.g. “Demo Mode: Some features disabled. [Upgrade]”).
+
+Examples: For instance, if Tyler sets up a demo for a restaurant client, when he’s viewing that bot’s dashboard before the client converts to paid, he sees this banner so he knows the bot is not fully active long-term until upgraded.
+
+5.2 On-Hold Messages
+
+In cases where an account or bot is put “On Hold” (likely due to billing issues, such as payment failure or subscription cancellation), the UI should clearly reflect this status and guide the user to resolution:
+
+On-Hold State Definition: accountStatus = 'on_hold' might occur when a Stripe webhook indicates payment failure after retries or a subscription is past due (see Section 6.3). When on hold, all bots may be paused (not responding to end-users). The user should be alerted immediately on login.
+
+Banner/Modal: Use a prominent warning banner similar to the demo banner but in an warning style (e.g. light orange background, ⚠️ icon). For example: “⚠️ Your account is on hold due to a billing issue. Your bots are temporarily inactive.” Provide a direct link or button: “Update Billing Info”. This button should take them to the billing page or open a Stripe billing portal. This banner should appear on every page (or at least on the Control Center and any attempt to go to a bot’s dashboard/settings) until resolved.
+
+Blocking Critical Actions: In addition to the banner, consider disabling certain actions while on hold – e.g. the user shouldn’t be able to add new bots or modify bots significantly. If they try, either prevent it or show a modal reminding them the account is on hold. For instance, if they click “Add New Bot” while on hold, show a modal: “Account On Hold – Add Bot Disabled: Please update your payment method to continue.” with a link to billing.
+
+Styling: The banner text should be clear and somewhat urgent, but still polite. Avoid excessive exclamation points or scare tactics; simply state the situation and next step. Use the color and icon to convey seriousness. Possibly use the brand charcoal (#1A1A1A) text on a yellow #FFF4E5 background for good contrast.
+
+Dismissal: Do not allow dismissal of this on-hold warning (or if allowed, it should re-appear frequently), because it’s directly tied to account status and service interruption. It should remain until the status is lifted.
+
+Success Case: After the user updates billing and the account is active again (webhook or API updates status), remove the banner automatically. Optionally, show a confirmation: “✅ Payment received. Your account is active again.” (maybe as a green success banner or toast). This lets the user know things are resolved.
+
+5.3 In-Dashboard Business Cards
+
+To reinforce branding and clarity for each bot’s context, each bot dashboard will include a “business card” section:
+
+What It Is: A panel that looks like a business’s card or profile, displaying key details of the client business that the bot represents. This helps Tyler (or the user) quickly recall the specifics of that client while in the dashboard, and also serves as a quick-reference for information that the bot might be using.
+
+Content: The business card panel includes:
+
+Business Name & Logo: The name of the business in bold, maybe with a small thumbnail of their logo or an industry icon if no logo.
+
+Industry/Type: A subtitle line like “Restaurant” or “Tattoo Studio” to identify which template or industry this bot is for (especially if using an industry-specific template, see Section 8).
+
+Key Details: A few important fields from onboarding: e.g. Location (City or Address), Contact phone/email, Hours of operation (if short enough to display), and perhaps a link to their website if provided. These details come from the onboarding info collected. They should be presented in a clean list or set of icons+text (e.g. a phone icon followed by the phone number).
+
+Status Badge: Within this card, show the current status of the bot – e.g. a small pill badge: “Active”, “Demo”, or “On Hold” in appropriate color (green, grey/orange, red respectively). This duplicates the banner info but in context of the bot specifically (useful if, say, one particular bot is paused while others active, though likely status is account-wide).
+
+Plan Info: Optionally include a note like “Plan: Pro ($297/mo)” or “Demo – not subscribed” to remind what plan the client is on.
+
+Design: Make this panel visually distinct but consistent with card style. It could be placed at the top-left of the dashboard page as a fixed-size sidebar card (e.g. occupying 1/3 of width on desktop and full width on mobile at top). Style it with a slight accent or background image if desired (maybe a faint version of the client’s logo or an abstract pattern) to resemble a real business card. Use the brand colors subtly – e.g. a bottom border in aqua teal.
+
+Interactivity: Mostly this card is static info. Possibly include an “Edit Info” link (if the user needs to update the business details, which could just jump to the Bot Settings -> Business Info section). Also, if the business has an external site or social, could include a small external link icon for quick access.
+
+Usage: This in-dashboard card helps ensure polished, client-facing feel – if the client themselves ever see it (if they log in or if this is shown in reports), it looks like a professional summary of their business. It also reminds the platform user (Tyler) of the specific data in use.
+
+Responsiveness: On mobile, this card should appear at the top of the scroll (above analytics) as a nice header. Possibly center the text/logo for mobile layout. For desktop, aligning it top-left while analytics occupy top-right can work; ensure margins and alignment are neat. If the dashboard has a two-column layout, this card might occupy the left column fully, and the right column starts with analytics.
+
+Consistency: Use the same component style for all bots. If any field is missing (e.g. no logo), just omit that element and center the text or use a placeholder icon. Ensure the content from onboarding (like hours or contact) is kept up-to-date if edited in settings (the panel should reflect current saved data).
+
+6. Data Flow & Backend Logic
+
+This section describes how data moves through the system and the endpoints or processes required for key features: live bot editing, analytics updates, and billing integration. All endpoints should be documented with their request/response formats for clarity.
+
+6.1 Live Bot Editing Flow
+
+To allow users to edit a bot’s content and settings in real-time:
+
+Data Model: Each bot (chatbot project) is represented in the database (e.g. a collection or table Bots). A bot has fields like id, name, industry, status (demo/active/hold), greetingMessage, faqs (list of Q&A or knowledge base entries), businessInfo (structured data like hours, address, etc.), config (any other settings, e.g. tone or integration keys), and references to related data (like conversation logs, user owner, etc.).
+
+Endpoint – Get Bot Settings: Create or use an endpoint like GET /api/bots/{botId} that returns all editable information about the bot. This is called when loading the Bot Settings page (and possibly the Dashboard for displaying info). The response JSON might look like:
+
+{
+  "id": "abc123",
+  "name": "Joe's Pizza Bot",
+  "industry": "Restaurant",
+  "status": "demo",
+  "greetingMessage": "Hi! Hungry? I can help you with our menu, orders, or reservations.",
+  "faqs": [
+     {"q": "What are your hours?", "a": "We're open daily 11am-10pm."},
+     {"q": "Where are you located?", "a": "123 Ocean Drive, Example City."},
+     ... 
+  ],
+  "businessInfo": {
+     "hours": "Mon-Fri 11am-10pm, Sat-Sun 5pm-10pm",
+     "address": "123 Ocean Drive, Example City",
+     "phone": "555-1234",
+     "email": "[email protected]",
+     "website": "https://joespizza.com"
+  },
+  "config": {
+     "tone": "friendly", 
+     "avatar": "pizza-bot.png",
+     "integrations": { ... }
+  }
+}
+
+
+This allows the front-end to populate the settings form with current values.
+
+Endpoint – Update Bot Settings: Implement PUT /api/bots/{botId} or POST /api/bots/{botId}/update to save changes. The client will send a JSON payload with fields that were edited. For example, updating greeting and hours:
+
+{ "greetingMessage": "Hi! Hungry?...", "businessInfo": { "hours": "New hours text" } }
+
+
+The backend should validate this input (e.g. required fields not empty, string lengths) and then persist to the database. On success, respond with updated bot data or at least a success flag: {"success": true, "bot": { ...updated fields... }}. On validation failure, return appropriate error messages (HTTP 400 with error details).
+
+Live Update Considerations: If the user is editing while the bot is actively in use (e.g. embedded on a website), consider how updates apply. Ideally, changes take effect immediately once saved – meaning if a new conversation starts after save, it uses the updated info. We might not need real-time sync to the running bot instance if each query fetches latest data, but if any part of the bot is cached in memory, implement a mechanism to refresh it. For simplicity, assume stateless design: the bot logic always pulls latest from DB on each query, or we call an internal function to reload bot config after save.
+
+User Feedback: After a successful save via the API, the front-end should update the UI immediately (optimistically or using returned data). For example, if the user changes the greeting text, once saved, the new greeting should reflect in the form and perhaps on the dashboard card. If multiple admins could edit simultaneously (unlikely for this SaaS scenario as mostly single-user), we might implement websocket to broadcast changes, but that’s probably overkill.
+
+File Uploads: If the settings include uploading files (e.g. business logo, custom avatar for bot), provide an endpoint e.g. POST /api/bots/{botId}/upload-logo or handle via the update endpoint with multipart form data. The uploaded file should be stored (perhaps in a directory or cloud storage) and its URL saved in bot’s data. The front-end should show a preview after upload. (Ensure to restrict types and size, e.g. accept only .png/.jpg under 2MB, and store path in something like businessInfo.logoUrl).
+
+Security: Only authenticated users (the owner of the bot or an admin) can hit these endpoints. Use an auth middleware to verify session/API token. If a user tries to edit a bot they don’t own, return 403 Forbidden.
+
+6.2 Analytics Summary Updates
+
+Each bot dashboard shows an analytics summary (conversation counts, performance metrics). We need to fetch and update this data regularly:
+
+Data Collection: The system likely logs each conversation or question the bot handles, stored in e.g. a Conversations table (with fields: botId, timestamp, userMessage, botResponse, etc.). Analytical metrics can be derived from these logs or stored in an aggregated form (like a daily stats table). For simplicity, implement on-the-fly calculation or daily batch updates. Key metrics might include:
+
+Number of conversations (today, this week, total)
+
+Number of leads captured (if lead = user gave contact)
+
+Average response time (if we measure query to answer)
+
+Resolution rate or user satisfaction (if tracked)
+
+Endpoint – Get Analytics: Provide an endpoint like GET /api/bots/{botId}/analytics-summary that returns the numbers needed for the dashboard. E.g.:
+
+{
+  "todayConversations": 5,
+  "weekConversations": 23,
+  "monthConversations": 100,
+  "leadsCaptured": 4,
+  "avgResponseTimeSeconds": 2.1
+}
+
+
+The front-end will call this when loading the dashboard and populate the respective cards. If real-time updates are desired, the front-end could poll this endpoint every N seconds or use webhooks/websocket (more complex). A simpler approach: refresh on page load and maybe allow manual refresh.
+
+Updating in Real-time: If we want live updates as new conversations happen, implementing a WebSocket can push increments to the dashboard. For example, when a conversation log is inserted for a bot, the server (or a separate real-time service) emits an event. However, given the likely scale (small business usage), a periodic refresh (like every 30 seconds) might suffice and be easier. We can note in the spec: Implement either periodic polling (e.g. every 30s) or WebSocket updates to keep dashboard metrics live. If using polling, ensure the interval is not too frequent to overload server, and possibly allow user to click a refresh icon on the dashboard cards to fetch new data on demand.
+
+Calculations: The backend should handle computing these stats efficiently. This may involve:
+
+For conversations count: a quick count query on the Conversations table filtered by botId and date range (today, this week, etc.). Consider indexing by botId and timestamp for performance.
+
+For leads captured: if a “lead” is defined as some event (like user provided contact), we may need to mark those in logs or have a separate Leads table. The summary would then query those counts.
+
+Average response time: if we store a response time per conversation (duration from user question to bot answer), average those for a period. Alternatively, if using an AI API, measure from API call start to response.
+
+Response Shape: Ensure the JSON fields are clearly named and documented. Units should be clarified (e.g. response time in seconds). The front-end will likely format these (e.g. add “s” for seconds, or display only one decimal).
+
+Historical Data (Future): The spec can mention possibly adding an endpoint for more detailed analytics or trends (like an array of daily counts for a chart). But for now, summary is fine. This is an area to note for expansion but not necessary in initial completion.
+
+Permissions: Only the bot owner or relevant admin can fetch analytics. Protect the endpoint similarly to others.
+
+Front-end Integration: When the data is retrieved, the front-end populates the card components. If using a framework like React, ensure state updates trigger re-render of those components. If using polling, avoid memory leaks by clearing interval on component unload. If using WebSocket, manage the connection lifecycle properly.
+
+6.3 Billing Integration (Stripe)
+
+Stripe is used for subscription billing. The system should handle creating checkout sessions, updating subscription status, and responding to webhook events to update our database. We need to outline:
+
+Pricing & Plans: Based on the business model, there might be a single plan (e.g. $X per month per client bot) or multiple tiers. Let’s assume a base plan “Pro” at $297/month as per the starter pricing. We’ll have a Stripe Price ID for this recurring plan (e.g. price_ABC123). Future tiers could be added similarly.
+
+Checkout/Upgrade Flow: When a user (Tyler or an end-client) decides to upgrade from demo to paid:
+
+Front-end: They click “Upgrade” (from the banner or an Account/Billing page). This triggers a call to our backend to create a Stripe Checkout session.
+
+Endpoint – Create Checkout Session: e.g. POST /api/billing/checkout-session. The backend will use Stripe’s API (with our secret key) to create a Checkout Session for the plan. It should include the customer identifier (if Tyler is paying for all, maybe one customer account for him; if each client pays separately, then perhaps each client is a customer – but likely Tyler’s agency is paying and then charging clients offline? However, given SaaS nature, assume each user of platform pays directly). For now, assume the logged-in user is the payer. The endpoint will:
+
+If user does not have a Stripe Customer ID in our DB, create one via Stripe API and save it.
+
+Create a CheckoutSession with mode=subscription, line_items including the plan’s Price ID and quantity (usually 1).
+
+Set success_url (where to send user after payment, e.g. back to our app billing success page) and cancel_url.
+
+Possibly set metadata (like userId or botId) to identify whose subscription.
+
+Return the session URL or session ID to the front-end.
+
+Front-end then either redirects the user to session.url or uses Stripe.js to handle the checkout redirect.
+
+Stripe Webhook Endpoint: Implement a webhook handler at e.g. POST /webhook/stripe to receive events from Stripe
+docs.stripe.com
+. We must configure Stripe to send events for our account (likely events for checkout completion, subscription status changes, invoice payments, etc.). Key events to handle:
+
+checkout.session.completed: Indicates the user successfully completed checkout. We can fetch the session (or use included info) to get customer and subscription IDs. Then mark the user’s account or that specific bot as “active” (paid). Perhaps update a Subscription record in our DB with status active, next billing date, etc.
+
+invoice.payment_succeeded or invoice.paid: A recurring payment succeeded. We might use this to extend service, or just log it.
+
+invoice.payment_failed: Payment for a renewal failed. Stripe by default will retry, but if ultimately fails, it may trigger subscription to enter past_due or canceled. We should respond by marking account on hold and notifying (this triggers our on-hold UI)
+docs.stripe.com
+docs.stripe.com
+. For example, after final failure, handle event customer.subscription.updated with status = past_due/canceled.
+
+customer.subscription.updated: Check if status changed (active -> past_due or canceled, trial -> active after trial payment, etc.). Particularly if status == 'past_due' or status == 'canceled', then mark the account as on hold or canceled in our system and maybe send an email to Tyler/admin.
+
+customer.subscription.deleted: This could mean the subscription was canceled (by user or after max retries). Mark account as canceled (or on hold if we allow grace period). Possibly disable bots.
+
+(Also customer.subscription.trial_will_end if we had free trials, to notify, but we might not use trial in Stripe, since demo is handled separately.)
+
+Webhook Security: Use Stripe’s signing secret to verify the webhook payload signature. Reject if not valid (return 400).
+
+Database Impact: We should have a way to track subscription status on a user or account level. For instance, a table Accounts with fields: stripeCustomerId, stripeSubscriptionId, plan (name or id), status (active, on_hold, canceled), current_period_end etc. The webhook events will update these fields.
+
+Account vs Bot Linking: If one subscription covers all bots (i.e. Tyler pays one fee for the whole platform usage), then accountStatus is what matters (likely the case given it’s an agency model). If each bot for a client requires a separate subscription (less likely unless each client pays individually), then we might track at bot level. For now, assume one subscription covers the whole account’s ability to have active bots beyond demos. Possibly limit number of bots if needed, but that’s out of scope here. We will mark all bots as demo/disabled if account not active.
+
+Post-Webhook Actions: When we get confirmation of payment, if the user was in demo, upgrade them: e.g. set accountStatus to active, remove any demo limitations (banners stop showing). If payment fails and subscription moves to past_due/canceled, set accountStatus to on_hold and trigger the UI banner (the front-end will likely poll the account status or get it on login; we might also push a notification/email to user). As per Stripe guidelines, consider emailing the user on failed payment as well
+docs.stripe.com
+ (but that can be done via Stripe’s built-in emails or separate).
+
+Testing: Ensure to test webhook handling using Stripe’s test mode and the Stripe CLI or dashboard to simulate events. Especially test the on_hold scenario (simulate a payment failure sequence) and upgrade scenario.
+
+6.4 Additional Data Flows
+
+(If applicable, brief notes on other dynamic behaviors)
+
+Bot Chat Flow: When an end-user interacts with the bot (via website widget or similar), the flow would be: Web frontend sends user message to our backend POST /api/bots/{botId}/query (for example), backend processes it (possibly calls OpenAI API or uses a Q&A database), logs the conversation, and returns the bot’s answer. This is outside the admin UI, but mention to ensure the bot uses latest settings: e.g. include the greetingMessage as the first message if conversation starts, use faqs knowledge to answer FAQs, etc. This ensures that live editing truly affects the bot’s answers.
+
+Contact/Lead Capture: If the bot captures a lead (like user leaves phone/email), ensure that is saved perhaps in a Leads table with botId reference. This ties into the analytics summary (leadsCaptured).
+
+Email Notifications: Possibly when certain events happen (like payment issues or new lead captured), the system might send an email to the user. This could be mentioned as part of backend services but is optional. For instance, when a new lead is captured, send Tyler an email "You got a new lead from [BotName]." Similarly, if account on hold, send an email "Update your payment". While not explicitly requested, these are common SaaS polish items.
+
+7. Backend Structure & Code Improvements
+
+To meet professional standards, the backend code should be well-organized, clean, and configurable. Below is the recommended structure and necessary refactors:
+
+7.1 Service Architecture Overview
+
+Monolithic Service: The platform can run as a single server application (e.g. a Node.js Express app or a Python Flask/FastAPI app) handling both the web frontend (if SSR) and the APIs. If the frontend is a separate single-page app (React/Vue), then the backend is purely an API + static file server. In either case, structure the backend into clear modules:
+
+Routes/Controllers: Define all HTTP endpoints in a structured way (e.g. Express routers or similar). Group by feature: auth.js, bots.js, analytics.js, billing.js etc. Each route file defines endpoints and delegates to controllers or services for logic.
+
+Services/Logic: Implement business logic in service classes or functions, separate from request/response handling. E.g. a BotService to handle CRUD on bots, BillingService to interact with Stripe, AnalyticsService for computing stats, ChatService for processing bot queries (calls to AI). This separation makes it easier to test and maintain.
+
+Database Models: Use an ORM or query builder (if using SQL) or a structured schema (if using NoSQL). For instance, define a Bot model, User model, ConversationLog model etc. If using Sequelize or Mongoose, define schemas with clear fields and validation where possible.
+
+Background Jobs: If any long-running tasks or scheduled jobs (e.g. a daily summary email or cleaning old logs) are needed, structure a simple job runner or cron tasks. Possibly not needed for MVP, but keep the code ready for cron (maybe a scripts/ or jobs/ folder).
+
+External Integrations: Wrap external API calls (like OpenAI or Stripe) in their own modules. E.g. OpenAIClient or StripeClient to isolate their logic (like API keys, endpoints calls) from the core app. This helps with testing (can mock these).
+
+7.2 File Organization & Cleanup
+
+Maintain a logical file structure. For example, in a Node/Express project:
+
+/src
+  /controllers  (or routes)
+  /services
+  /models       (DB schemas or ORM models)
+  /middlewares  (auth, error handling, etc.)
+  /utils        (helper functions, e.g. formatting, validators)
+  server.js (entry point)
+
+
+If using React for frontend:
+
+/client
+  /src
+    /components
+    /pages
+    /services (for API calls from frontend)
+    ...
+
+
+The Replit project should be configured so that both the API and the static client build (if any) are served correctly.
+
+Remove Dead Code: Delete any outdated files, prototypes, or console.log debugging lines. For instance, if there’s an old test.js or unused route, remove it to avoid confusion. Comb through for TODO comments or deprecated functions and address or remove them.
+
+Refactoring Needs: Identify any large files or functions that do too much. E.g., if server.js contains all route definitions inline, refactor to separate route modules. If business logic is directly in route handlers, move it to service functions. Aim for each function to do one clear task.
+
+Naming Consistency: Use consistent naming conventions (camelCase for variables and functions in JS, PascalCase for classes, etc.). For files, you might use kebab-case or camelCase consistently (e.g. botService.js vs BotService.js; pick one style). Use descriptive names (e.g. createCheckoutSession() is clearer than stripeThing()).
+
+Environment-based Config: Ensure any file paths or URLs are not hardcoded. If the code currently uses absolute paths, refactor to use relative paths or config. Clean up any system-specific assumptions (like file directories not present on Replit). Use a config file or environment variables for things like database URL, API keys, etc. (See 7.4 below.)
+
+7.3 Constants & Configuration
+
+Central Config: Create a module (e.g. config.js or a directory with index and environment files) to store constants and configuration values. For example:
+
+PORT, NODE_ENV, DATABASE_URL from environment.
+
+Stripe specific IDs: plan price IDs, webhook secret.
+
+Perhaps plan names or limits (e.g. max bots allowed on certain plan).
+
+Feature flags (if any).
+By centralizing, if something changes (say the Price ID for the plan in Stripe), it’s a one-line update in config rather than scattered in code.
+
+Environment Variables: Use environment variables for any sensitive or environment-specific data. Likely Replit has a Secrets management; ensure keys like STRIPE_SECRET_KEY, OPENAI_API_KEY, DATABASE_URL are not hard-coded. The app at startup should read these (e.g. using dotenv library in Node to load a .env file).
+
+No Hardcoded Strings: Things like alert messages that are reused, or status codes, should be defined as constants. e.g., define STATUS = { ACTIVE: 'active', DEMO: 'demo', ON_HOLD: 'on_hold' } and use STATUS.ON_HOLD in code instead of repeating the string. This prevents typos and eases changes. The same goes for event names or any magic numbers (like default trial days).
+
+Localization Ready: Though not required now, writing text in constants (or at least grouping UI text in a single file or object) can help if later needing to support different languages or simply to adjust tone. For now, even grouping all UI copy strings in one place isn’t necessary, but at least keep them easily searchable and not scattered (particularly for emails or system messages).
+
+Configurable Settings: If certain aspects should be adjustable without code changes (like how long a demo lasts, or whether to use a certain model for AI), consider putting them in config. E.g., DEMO_MAX_DAYS = 7 or OPENAI_MODEL = "gpt-4". This way, when fine-tuning the product, these can be tweaked centrally.
+
+7.4 Environment Setup & Deployment Config
+
+Prepare the app for smooth deployment:
+
+Dev vs Prod: The config should distinguish between development and production. For instance, enable verbose logging in dev, but not in prod. Possibly use a NODE_ENV check or a config file per environment. On Replit, everything might run as one environment, but we can mimic dev by an env variable. For example, LOG_LEVEL=debug in dev and info in prod. Also, use Stripe test keys in dev and live keys in prod.
+
+Replit Specifics: If using Replit, ensure the replit.nix or run configuration includes building the client (if React, run npm run build and serve static files). Or use Replit’s web server. Confirm that environment secrets are added via Replit’s interface (not committed to code). Document in the spec: The following environment variables need to be set in Replit Secrets: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, OPENAI_API_KEY, DATABASE_URL, etc.
+
+File Storage: If the app stores files (e.g. uploaded images for bot avatars), clarify where these go. On Replit, persistent storage might be limited; could integrate AWS S3 or similar in future. For now, maybe store in a /public/uploads folder and reference via URL. Note to monitor file sizes and maybe have a cleanup strategy if needed (though likely low volume).
+
+Testing & Logging: Include a robust error handling middleware. Any uncaught exceptions should be logged (to console or a file). On Replit, console logs can be seen in the output. Consider adding an endpoint /health for a simple health check (returns 200 OK) for uptime monitoring. Not required but indicates completeness.
+
+Refactoring and Review: After implementing all above, do a final code review focusing on:
+
+Removing any leftover credentials in code (they should be in env).
+
+Ensuring all promises are handled (no unhandled promise rejections).
+
+Ensuring inputs are validated and sanitized (to prevent injection or bad data).
+
+Ensuring dependency versions are up-to-date and locked (use package-lock.json if Node).
+
+Document any setup steps in a README (for Replit or local run).
+
+By following the above structure and cleanup guidelines, the backend will be robust, maintainable, and ready for handoff. Replit’s AI (or any developer) can easily navigate a clean file structure and well-named functions, reducing ambiguity and speeding up development.
+
+8. Finalized Demo Bot Templates (Industries & Sample Content)
+
+We will provide ready-to-use chatbot templates for various industries. Each template includes a greeting and a set of example Q&A pairs (FAQs) with placeholder values that can be easily customized during client onboarding. Below are the templates for the requested industries:
+
+8.1 Restaurant Bot – Template for restaurants (e.g. cafes, diners)
+
+Greeting: “Hi! Hungry? I can help you view the menu, place an order, reserve a table, or check wait times.” This friendly greeting invites the user to various common actions (menu, order, reservation, wait time).
+
+Sample Business Info:
+
+Name: Sunset Grill (placeholder for the restaurant’s name)
+
+Hours: Mon-Fri 11:00am–10:00pm; Sat-Sun 9:00am–11:00pm (example hours)
+
+Location: 123 Ocean Drive, Beach City (example address)
+
+Phone: (555) 123-4567
+
+FAQs & Responses:
+
+Q: “What are your hours today?”
+A: “We’re open today from 11am to 10pm. On weekends we open a bit earlier at 9am.”
+
+Q: “Can I see the menu?”
+A: “Absolutely! You can view our full menu here: [Link to Menu]. I can also recommend our specials if you’re interested.”
+
+Q: “Do I need a reservation?”
+A: “Reservations aren’t required but are recommended during dinner hours. I can book a table for you – just let me know the time and number of people.”
+
+Q: “Do you have vegetarian options?”
+A: “Yes, we do! We have several vegetarian dishes, like our grilled veggie pasta and the margherita flatbread. I can list more or you can check the ‘Veggie’ section on our menu.”
+
+Notes: The template assumes the bot can share links (for menu or ordering). Placeholders like menu link or special dishes should be filled with the actual business info. The tone is friendly and helpful, in line with the brand.
+
+8.2 Barber/Salon Bot – Template for barbershops or hair salons
+
+Greeting: “Want to book an appointment? I can show availability and help you schedule.” This quick greeting focuses on scheduling, the primary use case for salons, in a helpful tone.
+
+Sample Business Info:
+
+Name: Sharp Cutz Barbershop
+
+Hours: Tue-Sat 10:00am–7:00pm; Sun-Mon closed
+
+Location: 45 Barber Blvd, Hairtown
+
+Phone: (555) 987-6543
+
+FAQs & Responses:
+
+Q: “When are you open?”
+A: “Our shop is open Tuesday through Saturday from 10am to 7pm. We’re closed on Sundays and Mondays.”
+
+Q: “How can I book an appointment?”
+A: “You can book right here with me! Just let me know what day and time you’d like, and I’ll check our barbers’ availability. We also accept walk-ins if we have space.”
+
+Q: “Do you take walk-ins?”
+A: “Yes, we do take walk-ins when available, but appointments have priority. If you walk in, we’ll fit you in with the next available barber. To avoid waiting, I recommend booking an appointment.”
+
+Q: “What services do you offer?”
+A: “We offer haircuts, shaves, beard trims, and even kids’ cuts. For a full list of services and prices, check out our Services page [Link] or ask me about a specific service.”
+
+Q: “How much is a haircut?”
+A: “A standard adult haircut is $25. We also have a detailed price list – type ‘pricing’ to see all services and prices.”
+
+Notes: The barber bot focuses on booking and common inquiries (services, prices). It should integrate with a scheduling system or at least collect preferred time to be followed up on. The template answers can be adjusted for salons (mention stylists, coloring services, etc., as needed).
+
+8.3 Gym/Fitness Center Bot – Template for gyms, fitness clubs
+
+Greeting: “Hi! Looking to get in shape or have questions about our gym? I can help with membership options, class schedules, or even set you up with a free trial.” (Encourages user’s goals and offers help with key gym queries)
+
+Sample Business Info:
+
+Name: FitLife Gym
+
+Hours: Open 24/7 (or specify staffed hours, e.g. Staffed Mon-Fri 6am–9pm)
+
+Location: 100 Fitness Ave, Muscle City
+
+Phone: (555) 222-3333
+
+FAQs & Responses:
+
+Q: “What membership plans do you have?”
+A: “We offer monthly memberships at $50/month, annual at $500/year, and a premium plan at $70/month that includes all classes. We also have family plans. I can send you a link to see details or help schedule a visit to discuss options.”
+
+Q: “Do you offer a free trial?”
+A: “Yes! We have a 7-day free trial for new members. I can help you sign up for it – you’ll get full access for a week with no commitment.”
+
+Q: “What classes do you have today?”
+A: “Today’s classes include: 6am Yoga, 12pm HIIT, 6pm Spinning. Would you like to see the full weekly schedule or reserve a spot in a class?”
+
+Q: “Is there a personal trainer available?”
+A: “We have personal trainers available by appointment. We offer a free consultation with a trainer when you join. If you’re interested, I can arrange for a trainer to contact you.”
+
+Q: “Do you have childcare?”
+A: “Yes, we offer a Kids’ Club childcare service during peak hours (8am-11am and 5pm-8pm). It’s free for premium members or $5/hour for others. You can drop off your kids while you work out.”
+
+Notes: The gym bot emphasizes membership and class info. It should be ready to provide schedule info, which might require a data structure for classes. For demo purposes, static examples suffice. Encourage conversion by mentioning free trial and consultation.
+
+8.4 Auto Shop Bot – Template for auto repair shops, mechanics
+
+Greeting: “Hello! Need help with your car? I can get you a repair quote, help schedule a service appointment, or answer questions about what we do.” (Friendly and service-oriented greeting)
+
+Sample Business Info:
+
+Name: QuickFix Auto Repair
+
+Hours: Mon-Sat 8:00am–6:00pm; Closed Sunday
+
+Location: 789 Mechanic Lane, Autoville
+
+Phone: (555) 444-1212
+
+FAQs & Responses:
+
+Q: “What services do you offer?”
+A: “We handle everything from oil changes and brake repairs to engine diagnostics and transmission work. We also do tire rotations, AC fixing – basically full-service auto repair. If you have a specific issue, ask and I’ll let you know if we can help (spoiler: we probably can!).”
+
+Q: “How can I get a quote for a repair?”
+A: “I can help with that. First, I’ll need to know your car’s make/model/year and what issue you’re experiencing. Then I can give an estimated range. For a precise quote, we might suggest a free inspection.”
+
+Q: “Can I schedule an appointment?”
+A: “Sure. Let me know a preferred date and time, and the service you need (like ‘oil change’ or ‘brake check’). I’ll check our calendar and set it up for you. We also welcome same-day drop-ins for quick issues if available.”
+
+Q: “Do you offer any warranty on repairs?”
+A: “Yes, we do. We provide a 12-month/12,000-mile warranty on all our repairs, so you can have peace of mind. If anything goes wrong with a repair we did within that period, just bring the car back and we’ll make it right.”
+
+Q: “Are you certified for [specific car brand]?”
+A: “Our mechanics are ASE certified and experienced with all major makes and models. We also have specific certifications for Toyota and Ford, to name a couple. Rest assured, your car is in good hands with us.”
+
+Notes: The auto shop bot handles quote and scheduling. The template should capture necessary info (vehicle details), possibly by prompting in steps – but for demo, a simple Q&A is given. The content builds trust (mentioning warranty and certifications).
+
+8.5 Home Services Bot – Template for home service providers (plumbers, electricians, cleaners, etc.)
+
+Greeting: “Need a quote? Tell me what you need done and your location. I’ll take care of the rest.” This greeting is straightforward and invites the user to describe their need for a quick quote.
+
+Sample Business Info:
+
+Name: BrightHome Plumbing (could be any service)
+
+Hours: Mon-Sun 7:00am–7:00pm (often extended hours for home emergencies)
+
+Service Area: Within 30 miles of Springfield (example region)
+
+Phone: (555) 555-7890
+
+FAQs & Responses:
+
+Q: “What services do you offer?”
+A: “We offer a wide range of home services. For plumbing, we fix leaks, unclog drains, install fixtures, and more. If you need something specific, just ask! For a full list of our services, check our Services page or let me know what you’re looking for.”
+
+Q: “How do I get an estimate?”
+A: “Easy – let me know what kind of issue or project you have, and your address. We provide free estimates. For many common jobs, I can give a ballpark range here. For a precise quote, we can schedule an in-person assessment (also free).”
+
+Q: “Do you charge an emergency fee for after-hours calls?”
+A: “We do have an after-hours emergency service. If it’s outside our normal 7am-7pm hours, an emergency visit has an extra $50 fee. We’ll always inform you of any extra charges up front. During normal hours, no extra fee.”
+
+Q: “Are you licensed and insured?”
+A: “Absolutely. We are fully licensed by the state and carry insurance. All our technicians are certified professionals. We can provide license numbers or insurance info on request for your peace of mind.”
+
+Q: “How quickly can you come out?”
+A: “For urgent issues, we try to get someone out the same day. For non-emergencies, typically within 1-2 days. If you let me know your zip code and problem, I can give you the next available appointment slot.”
+
+Notes: This template is generic to fit various home services (plumbing, electrical, HVAC, cleaning, etc.). It emphasizes quick quotes and trust (licensed/insured). Placeholder content like service list should be adjusted per business (the assistant can easily modify the text for an electrician vs a cleaner when using the template).
+
+8.6 Tattoo Studio Bot – Template for tattoo parlors and artists
+
+Greeting: “Hey there! Interested in a tattoo or piercing? I can help with booking a consultation, showing our artists’ portfolios, or answering any questions about the process.” (Friendly, with a creative vibe)
+
+Sample Business Info:
+
+Name: InkMasters Tattoo Studio
+
+Hours: Mon-Sat 12:00pm–8:00pm; Closed Sunday
+
+Location: 321 Artistry Lane, Ink City
+
+Phone: (555) 111-2222
+
+FAQs & Responses:
+
+Q: “How do I book an appointment?”
+A: “We usually start with a consultation to discuss your tattoo idea. You can book a consultation with a specific artist by telling me a date/time that works for you. After the consult, we’ll schedule the tattoo session. If you already know what you want and it’s simple, we might book you directly for a tattoo appointment.”
+
+Q: “Can I see your artists’ work?”
+A: “Sure! You can view our artists’ portfolios here: [Link to Portfolio]. Each artist has a unique style – if you have someone in mind, I can also send you direct links to their work or Instagram profile.”
+
+Q: “What are your rates?”
+A: “Our pricing depends on the size and complexity of the tattoo. We have a shop minimum of $100. Smaller pieces might be around $100-$200, larger or custom pieces are priced by the hour (around $150/hour). We’ll give you an exact quote during the consultation when we see the design and size.”
+
+Q: “Do you allow walk-ins?”
+A: “We do accept walk-ins for small tattoos if we have an artist available. It’s always best to call ahead (or just ask me here) to see if someone’s free. For anything more than a quick small piece, we recommend making an appointment.”
+
+Q: “How should I take care of my new tattoo?”
+A: “Great question! After your tattoo, we’ll apply a bandage. You should keep it covered for a few hours, then gently wash with unscented soap and pat dry. Apply a thin layer of the ointment we provide 2-3 times a day. Avoid submerging it in water (no swimming) and keep it out of direct sun until it’s healed. We’ll give you a full aftercare sheet, and you can always ask us if you’re unsure about anything!”
+
+Notes: The tattoo bot handles scheduling and common queries about portfolios and aftercare. It should present the studio as professional but creative. It might integrate with an appointment system or at least collect contact info to follow up. The template covers pre- and post-service questions.
+
+8.7 Real Estate Bot – Template for real estate agents or property managers
+
+Greeting: “I can schedule showings, send listings, or answer questions about buying or renting.” This covers buyers or renters and emphasizes scheduling and info sharing.
+
+Sample Business Info:
+
+Name: Sunshine Realty (could be agent name or brokerage)
+
+Focus: Residential Sales & Rentals (example focus)
+
+Service Area: Miami, FL (example area)
+
+Phone: (555) 777-8888
+
+FAQs & Responses:
+
+Q: “Can you send me listings in [Neighborhood]?”
+A: “Absolutely! Let me gather some listings in [Neighborhood]. To tailor the list, could you tell me your price range and how many bedrooms you need? I’ll then send you a few top listings that match.”
+
+Q: “I’d like to schedule a home tour for 123 Palm St.”
+A: “Sure thing. 123 Palm St is a great property! It’s currently vacant so we can tour almost anytime. What day/time works for you? I’ll coordinate with the listing agent to confirm and get back to you with a confirmation.”
+
+Q: “How is the school district in that area?”
+A: “That area is served by the Palm District Schools, which include Palm Elementary and Oceanview High. They’re rated among the top in the region – Oceanview High has a 9/10 rating. Families often move to that neighborhood for the schools. I can send you a link to the school ratings if you’d like more details.”
+
+Q: “What do I need to get pre-approved for a mortgage?”
+A: “Generally, you’ll want to talk to a lender who will check your income, credit, and savings to determine how much you can afford. I can refer you to a couple of trusted mortgage brokers. Pre-approval is usually a quick process (a day or two) and it will strengthen any offers you make. Basic documents you’d need are pay stubs, bank statements, and tax returns.”
+
+Q: “Do you handle rentals as well?”
+A: “Yes, we do handle rentals. I can help you find a great rental property too. Just let me know what you’re looking for (budget, location, bedrooms) and I’ll share some available rentals. Our agency helps with lease paperwork and negotiations as well.”
+
+Notes: The real estate bot has to handle a wide range of questions from listings to financing. The template likely would tie into an MLS or listing database for actual data, but for demo we use placeholders. Key is that it offers help and to follow up (since an agent will likely personally take over complex tasks like sending listings).
+
+8.8 Sober Living (Faith House model) Bot – Template for a sober living home or rehabilitation program (based on “Faith House” style program)
+
+Greeting: “Hi! Welcome to Faith House. I’m here to answer any questions about our sober living program, like availability, program rules, or how to apply to join us.” (Warm and supportive tone, considering the sensitive context)
+
+Sample Program Info:
+
+Program Name: Faith House Sober Living
+
+Capacity: 10 residents (example)
+
+Location: Springfield, State (or a general location)
+
+Contact: (555) 321-0000, [email protected]
+
+FAQs & Responses:
+
+Q: “What is the Faith House program?”
+A: “Faith House is a sober living home designed to support men in early recovery (for example). Our program provides a structured, safe environment with a focus on community, accountability, and personal growth. We have house meetings, curfews, and required 12-step meeting attendance, all aimed at helping our residents build a stable, sober life.”
+
+Q: “How do I join the program?”
+A: “To join, you’ll need to fill out an application and complete an interview with our program director. Generally, we require that applicants have completed a detox or rehab program recently and are committed to sobriety. If you’d like, I can provide the application form or connect you with our admissions coordinator.”
+
+Q: “Are there any fees or costs?”
+A: “Yes, there is a weekly program fee to cover housing and amenities. For example, Faith House might charge $150 per week. This covers your room, utilities, and program services. We can discuss payment plans or any financial concerns during the interview – we try to make it work for those who are serious about recovery.”
+
+Q: “What are the house rules?”
+A: “We have a structured but supportive environment. Key rules include: no drugs or alcohol (with random testing), adherence to curfew (usually 10pm weekdays, midnight weekends), attendance at house meetings and at least 5 outside meetings per week, chores and room cleanliness, and respect for fellow residents. There’s also a zero-tolerance policy for violence or theft. These rules help ensure everyone’s safety and progress. I can send you the full list of house guidelines if you want more details.”
+
+Q: “Do you have any available beds right now?”
+A: “We currently have 2 beds available (this can change quickly). If you’re interested, I’d encourage you to apply as soon as possible. Once we receive your application, we can schedule a tour or interview typically within a couple of days.”
+
+Q: “Can I talk to someone who went through the program?”
+A: “We do have alumni who are willing to share their experiences. I can certainly arrange for you to speak with a graduate of Faith House, or I can share some testimonials. Many of our alumni stay connected and are happy to support new applicants.”
+
+Notes: The sober living bot must be very empathetic and informative. The above template is tailored to a “Faith House” model which implies a faith-based or structured sober living environment. It emphasizes rules, support, and how to get in. Privacy and sensitivity are key – the bot should encourage contacting staff for personal discussions (hence providing coordinator contact). This template likely won’t integrate with external systems, but serves as a guided FAQ. The content is a bit longer-form due to the nature of questions; that’s acceptable as users in this context may need thorough answers.
+
+Each of these templates is designed to be loaded as the initial knowledge base for a new demo bot in that industry. During onboarding, Tyler or the admin can replace sample values (business name, hours, pricing, etc.) with the real client’s data – many of these align with the Onboarding Questions (business name, hours, services, etc.). The tone across all templates remains helpful, approachable, and aligned with Treasure Coast AI’s brand (friendly, confident, no fluff). They provide a professional starting point so that prospective clients immediately see a chatbot that speaks their language and can envision its value.
+
+9. Execution Plan & Next Steps
+
+To implement the above specifications and ensure the platform is completed to a premium standard, we outline the execution steps and priorities:
+
+9.1 Phase 1: Design & Frontend Implementation
+
+Design Finalization: Create high-fidelity mockups or wireframes of the new Control Center, Dashboard, and Bot Settings pages incorporating the described layout and components. Include states (hover, mobile view, etc.). This will serve as a blueprint for frontend coding. (If a designer is available, they should produce these; if not, proceed with direct implementation guided by the spec).
+
+UI Component Library: Set up a basic design system in code. For example, if using React, create shared components: Button, Input, Card, Banner, etc., that encapsulate the standardized styles (as per Section 3). This will reduce duplication and enforce consistency. Build these components with the described styling, testing each state:
+
+Buttons: primary vs secondary vs disabled styles.
+
+Inputs: with labels and error display.
+
+Cards: base card container component.
+
+Alerts/Banners: maybe a component that takes a type (“info”, “warning”, etc.) and message.
+
+Page Layouts: Implement the page layouts:
+
+ControlCenterPage: Use a grid layout to display Bot project cards. Ensure it is responsive (CSS grid or flex with wrap). Integrate the navigation sidebar and ensure it toggles on mobile.
+
+DashboardPage: Layout the business card panel and analytics cards. For charts or numbers, initially can use placeholder values or simple bar indicators. Ensure the recent activity feed is styled (possibly a list component).
+
+SettingsPage: Build the form sections. Use a state management (like React state or context) to handle form data. Possibly integrate a form library for easier validation. Include tabs if splitting settings into sub-sections.
+
+Responsive CSS: Write media queries or use a responsive framework to meet the responsive behaviors. Test by resizing the browser or using dev tools for common device widths.
+
+Microcopy Integration: Update all existing text strings in the UI to the improved versions. Go through each component/page implemented and replace any placeholder or old text:
+
+E.g., change button text “Submit” to “Save Changes” if that exists, etc.
+
+Ensure all form labels and error messages follow the style guide (clear, concise, polite).
+
+Demo Banners & On-Hold UI: Implement the conditional rendering of the Demo and On-Hold banners:
+
+In the main app component (or layout), check user/account status from context or API. If status==="demo", render the <Banner type="info">Demo mode message…</Banner> at top. If status==="on_hold", render <Banner type="warning">On hold message…</Banner>.
+
+Ensure the Upgrade button in the demo banner triggers the upgrade flow (Phase 2 will implement actual checkout, but front-end should have the button ready).
+
+The On-Hold banner’s “Update Billing” button should link to billing settings or payment method update (to be wired with Stripe in Phase 2).
+
+Business Card Panel: Implement the component for the in-dashboard business card. It will fetch or receive via props the business info (name, contact, etc.) – likely from the bot settings data. Make sure it updates if the underlying data changes (e.g. after editing settings).
+
+Testing Frontend: Manually test the UI in the browser:
+
+Try different screen sizes.
+
+Hover and click every interactive element to verify visual feedback.
+
+Enter sample data in forms and trigger validations (e.g. leave required fields empty to see error messages).
+
+Simulate a demo account by forcing status="demo" and verifying the banner and disabled states appear correctly. Do similarly for on_hold.
+
+Test the navigation workflow: from Control Center to a Bot Dashboard to Bot Settings and back, ensuring state (like current bot context) carries over correctly.
+
+Accessibility check: Verify that you can navigate via keyboard (tab through buttons/links) and that focus states are visible. Also ensure proper ARIA labels for any icons-only buttons (like close [X] on banners). This improves overall quality and compliance.
+
+9.2 Phase 2: Backend Integration & Refactoring
+
+API Endpoint Development: Implement or update the backend endpoints as specified:
+
+GET /api/bots/:id to retrieve bot settings (Section 6.1). Ensure it joins any related tables (like FAQs, business info) or otherwise returns a complete data structure.
+
+PUT /api/bots/:id to update settings. Include server-side validation (e.g. required fields like business name, and length limits to prevent overly long inputs). Use proper HTTP status codes (200 for success, 400 for bad input with error messages, 500 for server errors).
+
+GET /api/bots/:id/analytics-summary (Section 6.2). Implement queries to get counts. If needed, write SQL or use ORM functions with date filters (e.g. WHERE date > today midnight for daily count). Optimize as needed (maybe these numbers are also stored daily, but initially on-the-fly is fine).
+
+POST /api/billing/checkout-session for Stripe (Section 6.3). Use the Stripe SDK to create session. Return the session ID or URL.
+
+POST /webhook/stripe to handle incoming events. Use the Stripe library to verify signature and parse event. Then handle relevant event types updating the DB:
+
+On checkout.session.completed: mark user as paid (update accountStatus to active, store subscription ID).
+
+On invoice.payment_failed or subscription.updated (to canceled): mark accountStatus to on_hold.
+
+Possibly on customer.subscription.deleted: mark account as canceled (could reuse on_hold or a separate status like “canceled” that also triggers on_hold UI).
+
+Log other events for debugging.
+
+Respond 200 to Stripe promptly (within 3s ideally) after processing, to avoid retries.
+
+Database Changes: Modify/add tables as needed:
+
+Add a field for account status in Users or Account table (if not existing). This should reflect demo/active/on_hold.
+
+If a separate Account table (where one account can have multiple bots), ensure bots link to account and use that status collectively.
+
+Create tables for any new data: e.g., if “faqs” (Q&A) for bots aren’t stored yet, create a BotFAQ table linking each question/answer to a bot ID. Or incorporate them as a JSON in Bot table. Decide based on how dynamic they are. Likely a separate table for flexibility.
+
+Ensure the Conversations/Leads tables exist for analytics. If not, set them up:
+
+Conversations: id, botId, timestamp, userQuestion, botAnswer, maybe duration.
+
+Leads: id, botId, timestamp, contact (email/phone), name, etc (depending on capture).
+
+If needed, create a Subscription table to track Stripe subscription info (customerId, subId, status, current_period_end, etc.), or simply store in the Account table if one account = one subscription.
+
+Refactor & Organize Code: Apply the structural changes:
+
+Break out route handlers into modules per feature, if not already done. E.g. have botsController.js for bots endpoints, billingController.js for Stripe endpoints, etc.
+
+Introduce service layer modules. For instance, a BotService.updateBot(id, data) that handles the logic of updating a bot (maybe merging businessInfo and faqs into the Bot record as needed).
+
+Implement the config file to store constants (Stripe keys, etc.). Use process.env for sensitive ones.
+
+Remove any console logs or test endpoints used during initial dev that aren’t needed in production. Ensure debug logs in webhook can be toggled off or on via environment (so production logs are clean).
+
+Integrate Frontend with Backend: Now connect the UI with the live data:
+
+On the Control Center page, fetch the list of bots from an API (e.g. GET /api/bots listing basic info for cards). Populate cards dynamically.
+
+On Dashboard load, call GET /api/bots/:id/analytics-summary and update state with the numbers. Possibly also call GET /api/bots/:id to get any info needed (like business info for the card). If we already navigated from Control Center with that data, might not need again. But ensure analytics call is done.
+
+On Settings page, load initial values via GET /api/bots/:id (populating form fields). When user hits Save, call PUT /api/bots/:id with the updated fields. Handle the response:
+
+On success, update any relevant state (like business name changed – update the top navbar or card if it displays name).
+
+On validation error (400), display the message near the field or as a toast (depending on how errors are returned; ideally return a structured error like { field: 'email', message: 'Invalid email'}).
+
+Ensure the Demo/On-hold banners reflect real account status. Likely, when the app loads, do GET /api/account to fetch the current user’s account info (including status, and maybe subscription info if needed). Store that in a context or global state. The UI then checks that for showing banners. Also, if hitting an upgrade event, you might proactively set status to active once confirmed, or rely on the webhook to update and then maybe a page reload.
+
+Stripe Checkout Integration: In the frontend, implement the Upgrade button click:
+
+Call POST /api/billing/checkout-session to create a session.
+
+Receive session ID or URL. If using Stripe.js, use stripe.redirectToCheckout({ sessionId }) to redirect. If simpler, just get the URL and set window.location = url.
+
+Create a success page or callback route (the success_url in Stripe likely points to something like /billing-success). On that page, you can call backend to confirm subscription active (or rely on webhook to already have done it). Possibly call GET /api/account again to refresh status.
+
+Similarly have a cancel_url route (if user abandons, just let them return gracefully).
+
+Testing Back-end & Integration:
+
+Use a tool like Postman or curl to simulate API calls for bots and verify data persistence.
+
+Simulate webhook events: Stripe CLI can send test events for payment success/failure. Alternatively, temporarily log incoming events to verify processing.
+
+Run through a full upgrade flow in test mode: start with account marked demo, click upgrade, go through Stripe test checkout (card 4242...), then see that webhook flips account to active and banner disappears on next load.
+
+Simulate a failed payment: In Stripe test, you can update a subscription to use a card that fails (e.g. 4000 0000 0000 0341 test card fails after first payment). Then trigger an invoice.payment_failed event. Ensure webhook marks on_hold and UI banner appears. This might require some manual steps in Stripe’s test dashboard.
+
+Test editing bots: change greeting, save, refresh page, see it persisted. Also test that these changes reflect when using the bot (if a chat interface is available, ensure new greeting is used).
+
+Ensure analytics summary values make sense: possibly insert some fake conversation logs and see that counts show up correctly on dashboard.
+
+Multi-browser/device test for UI responsiveness after integration as well.
+
+9.3 Phase 3: Polish and QA
+
+UI Polish: Go through the app and compare with the spec details:
+
+Are all spacings consistent multiples of 8px? Adjust CSS margins/padding where off.
+
+Are fonts and colors exactly as specified (use the brand colors, ensure text contrast is good – e.g. small grey text is still readable on white, etc.)?
+
+Check the microcopy one more time: do all alerts and buttons use the phrasing guidelines? E.g., the delete confirmation dialog (if any) should say “Are you sure you want to delete this bot? This action cannot be undone.” (Professional and clear). If any “Lorem ipsum” or placeholders remain, replace them.
+
+Performance: Optimize any slow parts:
+
+If the bot list or analytics call is slow due to large data, consider adding indices or optimizing queries.
+
+Compress images (like any icons or logos used).
+
+If using React, make sure production build is enabled (minified assets).
+
+If using any heavy library just for one small use, consider lighter alternatives to keep app snappy.
+
+Error Handling: Intentionally break some things to see how the app responds:
+
+Stop the database or alter an API to return 500, see if the UI shows a generic error message gracefully.
+
+Try an invalid route in browser to see 404 page (if none, maybe add a simple 404 page).
+
+Try forbidden actions (if multi-user roles existed, e.g. access a bot not owned – should return 403 JSON and UI should handle by maybe redirecting to an error page or showing “Not authorized”).
+
+Documentation: Although this spec is comprehensive, update the project’s README file to reflect:
+
+Setup instructions (how to run locally or in Replit, including setting env variables).
+
+A summary of the design system (colors, components) for future dev reference.
+
+Any remaining limitations or TODOs for future (like “currently analytics are basic; future version will have charts” – just to set expectations).
+
+Launch Prep: Remove any test data from DB (if any) and set environment to production mode. If using test keys for Stripe, switch to live keys (and update price IDs accordingly). Do a final run-through with live mode in a controlled way if possible (maybe with a $0 test product or something if not wanting real charges, or test in live with a real but minimal plan).
+
+Handoff: Now that the platform is built to spec, it’s ready to hand off. Replit’s team (or any developer) can follow this document to verify each element. No ambiguity remains: file paths and functions are named as per spec, UI behaves as described, and all copy and design aligns with a professional SaaS product.
+
+With these steps completed, Treasure Coast AI will have a polished, client-ready SaaS platform. Every interaction from the UI visuals to the backend logic will reflect a high-quality product, minimizing any guesswork for developers and delivering a consistent experience for users. The above execution plan ensures nothing is missed and provides a clear roadmap to achieve the final result.

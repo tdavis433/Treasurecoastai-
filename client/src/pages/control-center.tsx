@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -231,37 +231,36 @@ export default function ControlCenter() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="h-14 border-b bg-card flex items-center justify-between px-6">
+      <header className="h-14 border-b bg-card flex items-center justify-between px-6 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <Zap className="h-6 w-6 text-primary" />
+          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
+            <Zap className="h-4 w-4 text-primary-foreground" />
+          </div>
           <span className="font-semibold text-lg">Treasure Coast AI – Control Center</span>
         </div>
         <div className="flex items-center gap-4">
-          <Badge variant="outline" className="text-green-500 border-green-500/30">
+          <Badge variant="outline" className="status-active">
             All Systems Operational
           </Badge>
           <span className="text-sm text-muted-foreground">{currentUser?.username}</span>
-          <Button data-testid="button-logout" variant="ghost" size="sm" onClick={handleLogout}>
+          <Button data-testid="button-logout" variant="ghost" size="icon" onClick={handleLogout}>
             <LogOut className="h-4 w-4" />
           </Button>
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left Sidebar - Bot List */}
-        <aside className="w-80 border-r bg-card flex flex-col">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Left Sidebar - Bot Navigation */}
+        <aside className="w-72 border-r bg-card flex flex-col flex-shrink-0">
           <div className="p-4 border-b">
-            <h3 className="font-semibold text-base text-muted-foreground uppercase tracking-wide mb-3">
-              Chatbots ({clientBots.length})
-            </h3>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 data-testid="input-search-bots"
                 placeholder="Search bots..."
-                className="pl-9 text-base"
+                className="pl-9"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -270,36 +269,52 @@ export default function ControlCenter() {
 
           <ScrollArea className="flex-1">
             <div className="p-3">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide px-2 mb-2">
+                Chatbots ({filteredBots.length}{searchQuery ? ` of ${clientBots.length}` : ''})
+              </p>
               {filteredBots.length === 0 ? (
-                <p className="text-base text-muted-foreground text-center py-4">No bots found</p>
+                <p className="text-sm text-muted-foreground text-center py-4">No bots found</p>
               ) : (
                 filteredBots.map(bot => {
                   const client = clients.find(c => c.id === bot.clientId);
+                  const isSelected = selectedBotId === bot.botId;
                   return (
                     <button
                       key={bot.botId}
                       data-testid={`button-bot-${bot.botId}`}
                       onClick={() => {
                         setSelectedBotId(bot.botId);
-                        setActiveTab('settings');
+                        setActiveTab('overview');
                       }}
-                      className={`w-full text-left p-4 rounded-lg mb-2 transition-colors ${
-                        selectedBotId === bot.botId 
+                      className={`w-full text-left p-3 rounded-lg mb-1 transition-colors ${
+                        isSelected 
                           ? 'bg-primary/10 border border-primary/30' 
                           : 'hover:bg-muted'
                       }`}
                     >
-                      <div className="flex items-start gap-3">
-                        <Bot className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+                      <div className="flex items-center gap-3">
+                        <div className={`h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                          isSelected ? 'bg-primary/20' : 'bg-muted'
+                        }`}>
+                          <Building2 className={`h-4 w-4 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+                        </div>
                         <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-base leading-tight">
+                          <div className="font-medium text-sm truncate">
                             {bot.name || bot.businessProfile?.businessName}
                           </div>
-                          <div className="flex items-center justify-between mt-2">
-                            <span className="text-sm text-muted-foreground">
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs text-muted-foreground truncate">
                               {getBusinessTypeLabel(bot.businessProfile?.type)}
                             </span>
-                            {client && getStatusBadge(client.status)}
+                            {client && (
+                              <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                client.status === 'active' ? 'bg-green-500/20 text-green-500' :
+                                client.status === 'demo' ? 'bg-blue-500/20 text-blue-500' :
+                                'bg-amber-500/20 text-amber-500'
+                              }`}>
+                                {client.status}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -312,67 +327,214 @@ export default function ControlCenter() {
 
           <Separator />
 
-          {/* Templates Section */}
-          <div className="p-4 pb-2">
-            <h3 className="font-semibold text-base text-muted-foreground uppercase tracking-wide mb-3">
-              Create New Bot
-            </h3>
-            <ScrollArea className="h-[280px]">
-              <div className="space-y-1 pr-3">
-                {templates.map(template => (
-                  <button
-                    key={template.botId}
-                    data-testid={`button-template-${template.botId}`}
-                    onClick={() => {
-                      setSelectedTemplate(template);
-                      setShowCreateModal(true);
-                    }}
-                    className="w-full text-left p-3 rounded-lg hover:bg-muted transition-colors flex items-center justify-between group"
-                  >
-                    <span className="text-base">{template.metadata?.templateCategory || template.businessProfile?.type}</span>
-                    <Plus className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </button>
-                ))}
-              </div>
-            </ScrollArea>
-          </div>
-
-          <Separator />
-
-          {/* System Links */}
-          <div className="p-4">
+          {/* Quick Actions */}
+          <div className="p-3">
+            <Button 
+              data-testid="button-add-bot"
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => setShowCreateModal(true)}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add New Bot
+            </Button>
             <Button 
               data-testid="button-settings-legacy"
               variant="ghost" 
-              size="default" 
-              className="w-full justify-start text-base"
+              className="w-full justify-start mt-1"
               onClick={() => setLocation('/super-admin')}
             >
-              <Settings className="h-5 w-5 mr-2" />
+              <Settings className="h-4 w-4 mr-2" />
               Legacy Admin
             </Button>
           </div>
         </aside>
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-auto">
-          {selectedBot && selectedClient ? (
-            <div className="p-6 max-w-5xl">
-              {/* Bot Header */}
-              <div className="flex items-start justify-between mb-6">
-                <div>
-                  <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-bold">{selectedBot.name || selectedBot.businessProfile?.businessName}</h1>
-                    {getStatusBadge(selectedClient.status)}
+        {/* Main Content Area - Split pane: Dashboard Grid + Detail Panel */}
+        <div className="flex-1 flex overflow-hidden h-full">
+          {/* Dashboard Grid - Always visible with independent scroll */}
+          <main className={`flex-1 overflow-y-auto transition-all duration-300 h-full ${selectedBot ? 'lg:min-w-[50%] lg:max-w-[60%]' : 'w-full'}`}>
+            <div className="p-6">
+              {/* Dashboard Header */}
+              <div className="mb-8">
+                <h1 className="text-2xl font-bold">Dashboard Overview</h1>
+                <p className="text-muted-foreground mt-1">
+                  {searchQuery 
+                    ? `Showing ${filteredBots.length} of ${clientBots.length} bots matching "${searchQuery}"`
+                    : 'Select a chatbot to manage it, or view platform statistics below.'}
+                </p>
+              </div>
+
+              {/* Stats Overview - Shows filtered counts when search is active */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <Card className="hover-elevate">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Bot className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">{searchQuery ? filteredBots.length : clientBots.length}</p>
+                        <p className="text-sm text-muted-foreground">{searchQuery ? 'Matching' : 'Total Bots'}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="hover-elevate">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                        <Play className="h-5 w-5 text-green-500" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">
+                          {searchQuery 
+                            ? filteredBots.filter(b => clients.find(c => c.id === b.clientId)?.status === 'active').length
+                            : clients.filter(c => c.status === 'active').length}
+                        </p>
+                        <p className="text-sm text-muted-foreground">Active</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="hover-elevate">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                        <Eye className="h-5 w-5 text-blue-500" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">
+                          {searchQuery 
+                            ? filteredBots.filter(b => clients.find(c => c.id === b.clientId)?.status === 'demo').length
+                            : clients.filter(c => c.status === 'demo').length}
+                        </p>
+                        <p className="text-sm text-muted-foreground">Demo</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="hover-elevate">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                        <Pause className="h-5 w-5 text-amber-500" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">
+                          {searchQuery 
+                            ? filteredBots.filter(b => clients.find(c => c.id === b.clientId)?.status === 'paused').length
+                            : clients.filter(c => c.status === 'paused').length}
+                        </p>
+                        <p className="text-sm text-muted-foreground">Paused</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Bot Cards Grid */}
+              <h2 className="text-lg font-semibold mb-4">All Chatbots</h2>
+              <div className={`grid gap-4 ${selectedBot ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
+                {filteredBots.map(bot => {
+                  const client = clients.find(c => c.id === bot.clientId);
+                  const isSelected = selectedBotId === bot.botId;
+                  return (
+                    <Card 
+                      key={bot.botId}
+                      data-testid={`card-bot-${bot.botId}`}
+                      className={`hover-elevate cursor-pointer transition-all group ${
+                        isSelected ? 'ring-2 ring-primary shadow-lg' : ''
+                      }`}
+                      onClick={() => {
+                        setSelectedBotId(bot.botId);
+                        setActiveTab('overview');
+                      }}
+                    >
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-3">
+                            <div className={`h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                              isSelected ? 'bg-primary text-primary-foreground' : 'bg-primary/10'
+                            }`}>
+                              <Building2 className={`h-5 w-5 ${isSelected ? '' : 'text-primary'}`} />
+                            </div>
+                            <div className="min-w-0">
+                              <CardTitle className="text-sm truncate">
+                                {bot.name || bot.businessProfile?.businessName}
+                              </CardTitle>
+                              <CardDescription className="text-xs">
+                                {getBusinessTypeLabel(bot.businessProfile?.type)}
+                              </CardDescription>
+                            </div>
+                          </div>
+                          {client && getStatusBadge(client.status)}
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pb-4">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <MessageSquare className="h-3 w-3" />
+                            {bot.faqs?.length || 0} FAQs
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {bot.metadata?.createdAt || 'N/A'}
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+
+                {/* Add New Bot Card */}
+                <Card 
+                  data-testid="card-add-new-bot"
+                  className="border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 bg-transparent cursor-pointer transition-all group flex items-center justify-center min-h-[140px]"
+                  onClick={() => setShowCreateModal(true)}
+                >
+                  <div className="text-center p-4">
+                    <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center mx-auto mb-2 group-hover:bg-primary/10 transition-colors">
+                      <Plus className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    </div>
+                    <p className="font-medium text-sm group-hover:text-primary transition-colors">Add New Bot</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Create from template</p>
                   </div>
-                  <p className="text-muted-foreground mt-1">
-                    {selectedBot.description || `${getBusinessTypeLabel(selectedBot.businessProfile?.type)} chatbot`}
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Client: {selectedClient.name} • ID: {selectedBot.botId}
-                  </p>
+                </Card>
+              </div>
+            </div>
+          </main>
+
+          {/* Bot Details Panel - Inline split pane with independent scroll */}
+          {selectedBot && selectedClient && (
+            <aside className="lg:min-w-[40%] lg:max-w-[50%] border-l bg-card overflow-y-auto h-full">
+              <div className="p-6">
+                {/* Panel Header with Close */}
+                <div className="flex items-start justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <Building2 className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold">{selectedBot.name || selectedBot.businessProfile?.businessName}</h2>
+                      <p className="text-sm text-muted-foreground">
+                        {getBusinessTypeLabel(selectedBot.businessProfile?.type)} • {selectedBot.botId}
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => setSelectedBotId(null)}
+                    data-testid="button-close-detail"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
-                <div className="flex items-center gap-2">
+
+                {/* Status and Actions */}
+                <div className="flex items-center gap-2 mb-6 flex-wrap">
+                  {getStatusBadge(selectedClient.status)}
                   <Button
                     data-testid="button-preview-bot"
                     variant="outline"
@@ -389,7 +551,7 @@ export default function ControlCenter() {
                       status: value 
                     })}
                   >
-                    <SelectTrigger data-testid="select-status" className="w-32">
+                    <SelectTrigger data-testid="select-status" className="w-28">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -399,75 +561,72 @@ export default function ControlCenter() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Tabs */}
+                <Tabs value={activeTab} onValueChange={setActiveTab}>
+                  <TabsList className="mb-6 w-full justify-start flex-wrap h-auto gap-1">
+                    <TabsTrigger data-testid="tab-overview" value="overview" className="text-xs">
+                      <Eye className="h-4 w-4 mr-1" />
+                      Overview
+                    </TabsTrigger>
+                    <TabsTrigger data-testid="tab-settings" value="settings" className="text-xs">
+                      <Settings className="h-4 w-4 mr-1" />
+                      Settings
+                    </TabsTrigger>
+                    <TabsTrigger data-testid="tab-billing" value="billing" className="text-xs">
+                      <CreditCard className="h-4 w-4 mr-1" />
+                      Billing
+                    </TabsTrigger>
+                    <TabsTrigger data-testid="tab-analytics" value="analytics" className="text-xs">
+                      <BarChart3 className="h-4 w-4 mr-1" />
+                      Analytics
+                    </TabsTrigger>
+                    <TabsTrigger data-testid="tab-logs" value="logs" className="text-xs">
+                      <MessageSquare className="h-4 w-4 mr-1" />
+                      Logs
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="overview">
+                    <OverviewPanel bot={selectedBot} client={selectedClient} />
+                  </TabsContent>
+
+                  <TabsContent value="settings">
+                    <BotSettingsPanel bot={selectedBot} clientType={selectedClient.type} />
+                  </TabsContent>
+
+                  <TabsContent value="billing">
+                    <BillingPanel clientId={selectedClient.id} clientName={selectedClient.name} status={selectedClient.status} />
+                  </TabsContent>
+
+                  <TabsContent value="analytics">
+                    <AnalyticsPanel clientId={selectedClient.id} />
+                  </TabsContent>
+
+                  <TabsContent value="logs">
+                    <LogsPanel clientId={selectedClient.id} botId={selectedBot.botId} />
+                  </TabsContent>
+                </Tabs>
               </div>
-
-              {/* Tabs - Per PDF: Overview, Bot Settings, Billing, Analytics, Logs */}
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="mb-6">
-                  <TabsTrigger data-testid="tab-overview" value="overview">
-                    <Eye className="h-4 w-4 mr-2" />
-                    Overview
-                  </TabsTrigger>
-                  <TabsTrigger data-testid="tab-settings" value="settings">
-                    <Settings className="h-4 w-4 mr-2" />
-                    Bot Settings
-                  </TabsTrigger>
-                  <TabsTrigger data-testid="tab-billing" value="billing">
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Billing
-                  </TabsTrigger>
-                  <TabsTrigger data-testid="tab-analytics" value="analytics">
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    Analytics
-                  </TabsTrigger>
-                  <TabsTrigger data-testid="tab-logs" value="logs">
-                    <MessageSquare className="h-4 w-4 mr-2" />
-                    Logs
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="overview">
-                  <OverviewPanel bot={selectedBot} client={selectedClient} />
-                </TabsContent>
-
-                <TabsContent value="settings">
-                  <BotSettingsPanel bot={selectedBot} clientType={selectedClient.type} />
-                </TabsContent>
-
-                <TabsContent value="billing">
-                  <BillingPanel clientId={selectedClient.id} clientName={selectedClient.name} status={selectedClient.status} />
-                </TabsContent>
-
-                <TabsContent value="analytics">
-                  <AnalyticsPanel clientId={selectedClient.id} />
-                </TabsContent>
-
-                <TabsContent value="logs">
-                  <LogsPanel clientId={selectedClient.id} botId={selectedBot.botId} />
-                </TabsContent>
-              </Tabs>
-            </div>
-          ) : (
-            <div className="h-full flex items-center justify-center text-muted-foreground">
-              <div className="text-center">
-                <Bot className="h-16 w-16 mx-auto mb-4 opacity-30" />
-                <h2 className="text-xl font-medium mb-2">Select a Chatbot</h2>
-                <p className="text-sm">Choose a bot from the sidebar to view and edit its settings</p>
-                <p className="text-sm mt-1">Or create a new bot from a template</p>
-              </div>
-            </div>
+            </aside>
           )}
-        </main>
+        </div>
       </div>
 
       {/* Create from Template Modal */}
       <CreateFromTemplateModal
         open={showCreateModal}
-        onOpenChange={setShowCreateModal}
+        onOpenChange={(open) => {
+          setShowCreateModal(open);
+          // Only reset template when explicitly closing after success
+          // The modal handles its own state internally
+        }}
         template={selectedTemplate}
+        templates={templates}
+        onSelectTemplate={setSelectedTemplate}
         onSuccess={(botId) => {
           setShowCreateModal(false);
-          setSelectedTemplate(null);
+          setSelectedTemplate(null); // Only reset after successful creation
           setSelectedBotId(botId);
           queryClient.invalidateQueries({ queryKey: ["/api/super-admin/bots"] });
           queryClient.invalidateQueries({ queryKey: ["/api/super-admin/clients"] });
@@ -1457,16 +1616,21 @@ function LogsPanel({ clientId, botId }: { clientId: string; botId: string }) {
 function CreateFromTemplateModal({
   open,
   onOpenChange,
-  template,
+  template: initialTemplate,
+  templates,
+  onSelectTemplate,
   onSuccess,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   template: Template | null;
+  templates?: Template[];
+  onSelectTemplate?: (template: Template) => void;
   onSuccess: (botId: string) => void;
 }) {
   const { toast } = useToast();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0); // 0 = template selection, 1-3 = form steps
+  const [localTemplate, setLocalTemplate] = useState<Template | null>(null);
   const [formData, setFormData] = useState({
     clientId: '',
     clientName: '',
@@ -1489,9 +1653,15 @@ function CreateFromTemplateModal({
     billingPlan: 'monthly',
   });
 
+  // Track if this is the first open or a reopen to preserve progress
+  const [wasOpened, setWasOpened] = useState(false);
+  
+  // Initialize state only on first open, preserve progress on reopen
   useEffect(() => {
-    if (open) {
-      setStep(1);
+    if (open && !wasOpened) {
+      // First time opening: initialize with pre-selected template if provided
+      setLocalTemplate(initialTemplate);
+      setStep(initialTemplate ? 1 : 0);
       setFormData({
         clientId: '',
         clientName: '',
@@ -1513,8 +1683,40 @@ function CreateFromTemplateModal({
         serviceTier: 'standard',
         billingPlan: 'monthly',
       });
+      setWasOpened(true);
     }
-  }, [open]);
+  }, [open, wasOpened, initialTemplate]);
+  
+  // Reset wasOpened flag after success so next open is fresh
+  const resetWizard = useCallback(() => {
+    setWasOpened(false);
+    setLocalTemplate(null);
+    setStep(0);
+    setFormData({
+      clientId: '',
+      clientName: '',
+      businessName: '',
+      phone: '',
+      email: '',
+      website: '',
+      location: '',
+      address: '',
+      city: '',
+      state: '',
+      zip: '',
+      contactName: '',
+      contactEmail: '',
+      contactPhone: '',
+      hours: '',
+      services: '',
+      customFaq: { question: '', answer: '' },
+      serviceTier: 'standard',
+      billingPlan: 'monthly',
+    });
+  }, []);
+  
+  // Use local template for the wizard (doesn't reset on parent re-renders)
+  const template = localTemplate;
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
@@ -1556,6 +1758,7 @@ function CreateFromTemplateModal({
     },
     onSuccess: (data) => {
       toast({ title: "Bot Created", description: `Successfully created: ${formData.clientName}` });
+      resetWizard(); // Reset wizard state for next use
       onSuccess(data.botId || `${formData.clientId}_bot`);
       
       // PDF requirement: "Stripe link generated" - redirect to checkout if available
@@ -1594,7 +1797,19 @@ function CreateFromTemplateModal({
   };
 
   const handleBack = () => {
-    if (step > 1) setStep(step - 1);
+    if (step === 1 && templates && templates.length > 0) {
+      setStep(0); // Go back to template selection
+    } else if (step > 1) {
+      setStep(step - 1);
+    }
+  };
+
+  const handleSelectTemplate = (t: Template) => {
+    // When user selects template from the grid, update local state and advance to step 1
+    setLocalTemplate(t);
+    setStep(1);
+    // Also notify parent for any external tracking
+    onSelectTemplate?.(t);
   };
 
   const generateClientId = () => {
@@ -1605,278 +1820,318 @@ function CreateFromTemplateModal({
     setFormData({ ...formData, clientId: id });
   };
 
-  if (!template) return null;
+  // Show nothing if closed and no templates available
+  if (!open) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Create New Bot - Step {step} of 3</DialogTitle>
-          <DialogDescription>
-            {step === 1 && "Basic business information"}
-            {step === 2 && "Contact and location details"}
-            {step === 3 && "Service tier and billing"}
-          </DialogDescription>
-        </DialogHeader>
+        {step === 0 ? (
+          /* Template Selection Step */
+          <>
+            <DialogHeader>
+              <DialogTitle>Choose a Template</DialogTitle>
+              <DialogDescription>
+                Select a business type to start with pre-configured settings
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-3 mt-4 max-h-[400px] overflow-y-auto">
+              {templates?.map((t) => (
+                <Card
+                  key={t.botId}
+                  className="cursor-pointer hover-elevate transition-all"
+                  onClick={() => handleSelectTemplate(t)}
+                  data-testid={`template-select-${t.botId}`}
+                >
+                  <CardContent className="p-4 text-center">
+                    <Building2 className="h-8 w-8 mx-auto mb-2 text-primary" />
+                    <p className="font-medium text-sm">
+                      {t.metadata?.templateCategory || t.businessProfile?.type || t.name}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </>
+        ) : (
+          /* Form Steps */
+          <>
+            <DialogHeader>
+              <DialogTitle>
+                Create New Bot - Step {step} of 3
+                {template && (
+                  <Badge variant="outline" className="ml-2 text-xs">
+                    {template.metadata?.templateCategory || template.businessProfile?.type}
+                  </Badge>
+                )}
+              </DialogTitle>
+              <DialogDescription>
+                {step === 1 && "Basic business information"}
+                {step === 2 && "Contact and location details"}
+                {step === 3 && "Service tier and billing"}
+              </DialogDescription>
+            </DialogHeader>
 
-        {/* Progress Indicator */}
-        <div className="flex gap-2 mb-4">
-          {[1, 2, 3].map((s) => (
-            <div
-              key={s}
-              className={`h-2 flex-1 rounded-full ${s <= step ? 'bg-primary' : 'bg-muted'}`}
-            />
-          ))}
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Step 1: Basic Info */}
-          {step === 1 && (
-            <div className="space-y-4">
-              <div>
-                <Label>Business Name *</Label>
-                <Input
-                  data-testid="input-new-client-name"
-                  value={formData.clientName}
-                  onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
-                  placeholder="My Business Name"
+            {/* Progress Indicator */}
+            <div className="flex gap-2 mb-4">
+              {[1, 2, 3].map((s) => (
+                <div
+                  key={s}
+                  className={`h-2 flex-1 rounded-full ${s <= step ? 'bg-primary' : 'bg-muted'}`}
                 />
-              </div>
-              <div>
-                <Label>Client ID *</Label>
+              ))}
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Step 1: Basic Info */}
+              {step === 1 && (
+                <div className="space-y-4">
+                  <div>
+                    <Label>Business Name *</Label>
+                    <Input
+                      data-testid="input-new-client-name"
+                      value={formData.clientName}
+                      onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
+                      placeholder="My Business Name"
+                    />
+                  </div>
+                  <div>
+                    <Label>Client ID *</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        data-testid="input-new-client-id"
+                        value={formData.clientId}
+                        onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
+                        placeholder="my_business"
+                      />
+                      <Button type="button" variant="outline" onClick={generateClientId}>
+                        Generate
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Unique identifier (lowercase, underscores only)</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Business Phone</Label>
+                      <Input
+                        data-testid="input-new-phone"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        placeholder="(555) 123-4567"
+                      />
+                    </div>
+                    <div>
+                      <Label>Business Email</Label>
+                      <Input
+                        data-testid="input-new-email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        placeholder="contact@business.com"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Website</Label>
+                    <Input
+                      data-testid="input-new-website"
+                      value={formData.website}
+                      onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                      placeholder="https://mybusiness.com"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: Address & Contact */}
+              {step === 2 && (
+                <div className="space-y-4">
+                  <div>
+                    <Label>Street Address</Label>
+                    <Input
+                      data-testid="input-new-address"
+                      value={formData.address}
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      placeholder="123 Main Street"
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label>City</Label>
+                      <Input
+                        data-testid="input-new-city"
+                        value={formData.city}
+                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                        placeholder="City"
+                      />
+                    </div>
+                    <div>
+                      <Label>State</Label>
+                      <Input
+                        data-testid="input-new-state"
+                        value={formData.state}
+                        onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                        placeholder="FL"
+                      />
+                    </div>
+                    <div>
+                      <Label>ZIP</Label>
+                      <Input
+                        data-testid="input-new-zip"
+                        value={formData.zip}
+                        onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
+                        placeholder="34990"
+                      />
+                    </div>
+                  </div>
+                  <Separator />
+                  <p className="text-sm font-medium">Primary Contact</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                      <Label>Contact Name</Label>
+                      <Input
+                        data-testid="input-new-contact-name"
+                        value={formData.contactName}
+                        onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
+                        placeholder="John Smith"
+                      />
+                    </div>
+                    <div>
+                      <Label>Contact Email</Label>
+                      <Input
+                        data-testid="input-new-contact-email"
+                        value={formData.contactEmail}
+                        onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
+                        placeholder="john@business.com"
+                      />
+                    </div>
+                    <div>
+                      <Label>Contact Phone</Label>
+                      <Input
+                        data-testid="input-new-contact-phone"
+                        value={formData.contactPhone}
+                        onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
+                        placeholder="(555) 123-4567"
+                      />
+                    </div>
+                  </div>
+                  <Separator />
+                  <p className="text-sm font-medium">Business Details</p>
+                  <div>
+                    <Label>Business Hours</Label>
+                    <Textarea
+                      data-testid="input-new-hours"
+                      value={formData.hours}
+                      onChange={(e) => setFormData({ ...formData, hours: e.target.value })}
+                      placeholder="Monday-Friday: 9am-5pm&#10;Saturday: 10am-2pm&#10;Sunday: Closed"
+                      rows={3}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">One schedule per line</p>
+                  </div>
+                  <div>
+                    <Label>Services Offered</Label>
+                    <Textarea
+                      data-testid="input-new-services"
+                      value={formData.services}
+                      onChange={(e) => setFormData({ ...formData, services: e.target.value })}
+                      placeholder="Service 1, Service 2, Service 3"
+                      rows={2}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Comma-separated list</p>
+                  </div>
+                  <div>
+                    <Label>Custom FAQ (Optional)</Label>
+                    <Input
+                      data-testid="input-new-faq-q"
+                      value={formData.customFaq.question}
+                      onChange={(e) => setFormData({ ...formData, customFaq: { ...formData.customFaq, question: e.target.value } })}
+                      placeholder="Question"
+                      className="mb-2"
+                    />
+                    <Textarea
+                      data-testid="input-new-faq-a"
+                      value={formData.customFaq.answer}
+                      onChange={(e) => setFormData({ ...formData, customFaq: { ...formData.customFaq, answer: e.target.value } })}
+                      placeholder="Answer"
+                      rows={2}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Service & Billing */}
+              {step === 3 && (
+                <div className="space-y-4">
+                  <div>
+                    <Label>Service Tier</Label>
+                    <Select
+                      value={formData.serviceTier}
+                      onValueChange={(value) => setFormData({ ...formData, serviceTier: value })}
+                    >
+                      <SelectTrigger data-testid="select-service-tier">
+                        <SelectValue placeholder="Select tier" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="starter">Starter - Basic chatbot features</SelectItem>
+                        <SelectItem value="standard">Standard - Full features + analytics</SelectItem>
+                        <SelectItem value="premium">Premium - Everything + priority support</SelectItem>
+                        <SelectItem value="enterprise">Enterprise - Custom solutions</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Billing Plan</Label>
+                    <Select
+                      value={formData.billingPlan}
+                      onValueChange={(value) => setFormData({ ...formData, billingPlan: value })}
+                    >
+                      <SelectTrigger data-testid="select-billing-plan">
+                        <SelectValue placeholder="Select plan" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="monthly">Monthly - Billed each month</SelectItem>
+                        <SelectItem value="annual">Annual - 2 months free</SelectItem>
+                        <SelectItem value="trial">Free Trial - 14 days</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Card className="bg-muted/50">
+                    <CardContent className="pt-4">
+                      <p className="text-sm font-medium mb-2">Summary</p>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        <li>Business: {formData.clientName || '-'}</li>
+                        <li>Type: {template?.metadata?.templateCategory || template?.businessProfile?.type || 'Custom'}</li>
+                        <li>Tier: {formData.serviceTier}</li>
+                        <li>Billing: {formData.billingPlan}</li>
+                      </ul>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              <DialogFooter className="flex justify-between">
+                <div>
+                  {step > 1 && (
+                    <Button type="button" variant="outline" onClick={handleBack}>
+                      Back
+                    </Button>
+                  )}
+                </div>
                 <div className="flex gap-2">
-                  <Input
-                    data-testid="input-new-client-id"
-                    value={formData.clientId}
-                    onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
-                    placeholder="my_business"
-                  />
-                  <Button type="button" variant="outline" onClick={generateClientId}>
-                    Generate
+                  <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    data-testid="button-next-step"
+                    type="submit" 
+                    disabled={createMutation.isPending || !template}
+                  >
+                    {step < 3 ? 'Next' : (createMutation.isPending ? 'Creating...' : 'Create Bot')}
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Unique identifier (lowercase, underscores only)</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Business Phone</Label>
-                  <Input
-                    data-testid="input-new-phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="(555) 123-4567"
-                  />
-                </div>
-                <div>
-                  <Label>Business Email</Label>
-                  <Input
-                    data-testid="input-new-email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="contact@business.com"
-                  />
-                </div>
-              </div>
-              <div>
-                <Label>Website</Label>
-                <Input
-                  data-testid="input-new-website"
-                  value={formData.website}
-                  onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                  placeholder="https://mybusiness.com"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Address & Contact */}
-          {step === 2 && (
-            <div className="space-y-4">
-              <div>
-                <Label>Street Address</Label>
-                <Input
-                  data-testid="input-new-address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  placeholder="123 Main Street"
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label>City</Label>
-                  <Input
-                    data-testid="input-new-city"
-                    value={formData.city}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                    placeholder="City"
-                  />
-                </div>
-                <div>
-                  <Label>State</Label>
-                  <Input
-                    data-testid="input-new-state"
-                    value={formData.state}
-                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                    placeholder="FL"
-                  />
-                </div>
-                <div>
-                  <Label>ZIP</Label>
-                  <Input
-                    data-testid="input-new-zip"
-                    value={formData.zip}
-                    onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
-                    placeholder="34990"
-                  />
-                </div>
-              </div>
-              <Separator />
-              <p className="text-sm font-medium">Primary Contact</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <Label>Contact Name</Label>
-                  <Input
-                    data-testid="input-new-contact-name"
-                    value={formData.contactName}
-                    onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
-                    placeholder="John Smith"
-                  />
-                </div>
-                <div>
-                  <Label>Contact Email</Label>
-                  <Input
-                    data-testid="input-new-contact-email"
-                    value={formData.contactEmail}
-                    onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
-                    placeholder="john@business.com"
-                  />
-                </div>
-                <div>
-                  <Label>Contact Phone</Label>
-                  <Input
-                    data-testid="input-new-contact-phone"
-                    value={formData.contactPhone}
-                    onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
-                    placeholder="(555) 123-4567"
-                  />
-                </div>
-              </div>
-              <Separator />
-              <p className="text-sm font-medium">Business Details</p>
-              <div>
-                <Label>Business Hours</Label>
-                <Textarea
-                  data-testid="input-new-hours"
-                  value={formData.hours}
-                  onChange={(e) => setFormData({ ...formData, hours: e.target.value })}
-                  placeholder="Monday-Friday: 9am-5pm&#10;Saturday: 10am-2pm&#10;Sunday: Closed"
-                  rows={3}
-                />
-                <p className="text-xs text-muted-foreground mt-1">One schedule per line</p>
-              </div>
-              <div>
-                <Label>Services Offered</Label>
-                <Textarea
-                  data-testid="input-new-services"
-                  value={formData.services}
-                  onChange={(e) => setFormData({ ...formData, services: e.target.value })}
-                  placeholder="Service 1, Service 2, Service 3"
-                  rows={2}
-                />
-                <p className="text-xs text-muted-foreground mt-1">Comma-separated list</p>
-              </div>
-              <div>
-                <Label>Custom FAQ (Optional)</Label>
-                <Input
-                  data-testid="input-new-faq-q"
-                  value={formData.customFaq.question}
-                  onChange={(e) => setFormData({ ...formData, customFaq: { ...formData.customFaq, question: e.target.value } })}
-                  placeholder="Question"
-                  className="mb-2"
-                />
-                <Textarea
-                  data-testid="input-new-faq-a"
-                  value={formData.customFaq.answer}
-                  onChange={(e) => setFormData({ ...formData, customFaq: { ...formData.customFaq, answer: e.target.value } })}
-                  placeholder="Answer"
-                  rows={2}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Service & Billing */}
-          {step === 3 && (
-            <div className="space-y-4">
-              <div>
-                <Label>Service Tier</Label>
-                <Select
-                  value={formData.serviceTier}
-                  onValueChange={(value) => setFormData({ ...formData, serviceTier: value })}
-                >
-                  <SelectTrigger data-testid="select-service-tier">
-                    <SelectValue placeholder="Select tier" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="starter">Starter - Basic chatbot features</SelectItem>
-                    <SelectItem value="standard">Standard - Full features + analytics</SelectItem>
-                    <SelectItem value="premium">Premium - Everything + priority support</SelectItem>
-                    <SelectItem value="enterprise">Enterprise - Custom solutions</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Billing Plan</Label>
-                <Select
-                  value={formData.billingPlan}
-                  onValueChange={(value) => setFormData({ ...formData, billingPlan: value })}
-                >
-                  <SelectTrigger data-testid="select-billing-plan">
-                    <SelectValue placeholder="Select plan" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="monthly">Monthly - Billed each month</SelectItem>
-                    <SelectItem value="annual">Annual - 2 months free</SelectItem>
-                    <SelectItem value="trial">Free Trial - 14 days</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Card className="bg-muted/50">
-                <CardContent className="pt-4">
-                  <p className="text-sm font-medium mb-2">Summary</p>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>Business: {formData.clientName || '-'}</li>
-                    <li>Type: {template.metadata?.templateCategory || template.businessProfile?.type}</li>
-                    <li>Tier: {formData.serviceTier}</li>
-                    <li>Billing: {formData.billingPlan}</li>
-                  </ul>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          <DialogFooter className="flex justify-between">
-            <div>
-              {step > 1 && (
-                <Button type="button" variant="outline" onClick={handleBack}>
-                  Back
-                </Button>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button 
-                data-testid="button-next-step"
-                type="submit" 
-                disabled={createMutation.isPending}
-              >
-                {step < 3 ? 'Next' : (createMutation.isPending ? 'Creating...' : 'Create Bot')}
-              </Button>
-            </div>
-          </DialogFooter>
-        </form>
+              </DialogFooter>
+            </form>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
