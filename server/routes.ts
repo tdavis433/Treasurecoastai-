@@ -1722,8 +1722,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get workspace by slug
-  app.get("/api/workspaces/:slug", requireAuth, async (req, res) => {
+  // Get workspace by slug (super admin only until workspace membership is implemented)
+  app.get("/api/workspaces/:slug", requireSuperAdmin, async (req, res) => {
     try {
       const { slug } = req.params;
       const workspace = await getWorkspaceBySlug(slug);
@@ -1739,8 +1739,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get bots for a workspace
-  app.get("/api/workspaces/:workspaceId/bots", requireAuth, async (req, res) => {
+  // Get bots for a workspace (super admin only until workspace membership is implemented)
+  app.get("/api/workspaces/:workspaceId/bots", requireSuperAdmin, async (req, res) => {
     try {
       const { workspaceId } = req.params;
       const botConfigs = await getBotsByWorkspaceId(workspaceId);

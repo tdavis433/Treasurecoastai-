@@ -249,13 +249,21 @@ export async function getBotConfigAsync(clientId: string, botId: string): Promis
     return botConfigCache.get(cacheKey)!;
   }
   
+  // Try database first
   const dbConfig = await loadBotFromDatabase(botId);
   if (dbConfig) {
+    // SECURITY: Validate that the bot belongs to the requested clientId (workspace slug)
+    // The clientId in the URL must match the workspace slug in the database
+    if (dbConfig.clientId !== clientId) {
+      console.warn(`Security: Bot ${botId} requested with clientId ${clientId} but belongs to ${dbConfig.clientId}`);
+      return null; // Reject cross-tenant access
+    }
     botConfigCache.set(cacheKey, dbConfig);
     cacheTimestamp = Date.now();
     return dbConfig;
   }
   
+  // Fallback to JSON (already validates clientId in loadBotFromJson)
   const jsonConfig = loadBotFromJson(clientId, botId);
   if (jsonConfig) {
     botConfigCache.set(cacheKey, jsonConfig);
