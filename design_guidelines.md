@@ -1,156 +1,254 @@
 # Treasure Coast AI Platform - Design Guidelines
 
 ## Design Approach
-**Hybrid Reference-Based**: Modern B2B SaaS platforms (Linear, Vercel, Stripe Dashboard) with emphasis on data clarity, professional polish, and efficient workflows. Clean, sophisticated visual language that balances approachability with enterprise credibility.
+**Dark Neon-Glass SaaS**: Modern, sophisticated dark theme inspired by Linear, Vercel Dashboard, and premium SaaS platforms. Glass morphism effects, subtle neon accents, and crisp data visualization. This is the single source of truth for all admin surfaces.
 
 ## Core Design Principles
 - **Data Clarity**: Information hierarchy that makes complex analytics instantly scannable
 - **Professional Polish**: Refined details that build trust with business clients
 - **Efficient Workflows**: Reduce clicks, surface relevant actions contextually
 - **Scalable Design**: Consistent patterns that work from 5 to 500 chatbots
+- **Dark-First**: Optimized for extended use with reduced eye strain
 
 ## Brand Colors
-- **Ocean Blue** (#0A5CFF): Primary actions, CTAs, active states, links
-- **Aqua Teal** (#00C2B3): Secondary accents, progress indicators, success states
-- **Charcoal** (#1A1A1A): Primary text, headings
-- **Grays**: #F8F9FA (backgrounds), #E5E7EB (borders), #6B7280 (secondary text)
-- **Status Colors**: Green (#10B981) Active, Blue (#0A5CFF) Demo, Orange (#F59E0B) Demo-active, Red (#EF4444) On-Hold
-- **Shadows**: Subtle elevation using rgba(0,0,0,0.05) to rgba(0,0,0,0.12)
+
+### Primary Palette
+- **Dark Base** (#0B0E13): Primary background, page base
+- **Card Surface** (white/5%): Glass card backgrounds
+- **Borders** (white/10%): Subtle borders for glass effects
+- **Ocean Blue** (#0A5CFF / hsl(219, 100%, 58%)): Primary actions, CTAs, active states
+- **Cyan Accent** (#4FC3F7 / hsl(199, 92%, 64%)): Secondary accents, neon glow effects
+- **Teal** (#00C2B3 / hsl(174, 100%, 38%)): Success states, positive indicators
+
+### Text Hierarchy
+- **Primary Text** (white): Main headings, important content
+- **Secondary Text** (white/85%): Body content, descriptions
+- **Tertiary Text** (white/55%): Labels, muted content, placeholders
+- **Disabled** (white/30%): Inactive elements
+
+### Status Colors
+- **Active/Success**: Green (#10B981 / bg-green-500/20 + text-green-400 + border-green-500/30)
+- **Demo/Info**: Blue (#3B82F6 / bg-blue-500/20 + text-blue-400 + border-blue-500/30)
+- **Paused/Warning**: Amber (#F59E0B / bg-amber-500/20 + text-amber-400 + border-amber-500/30)
+- **Error/Danger**: Red (#EF4444 / bg-red-500/20 + text-red-400 + border-red-500/30)
+
+### Glow & Shadow
+- **Card Shadow**: 0px 4px 20px rgba(0,0,0,0.45)
+- **Glow (cyan)**: 0px 4px 30px rgba(79,195,247,0.15)
+- **Focus Ring**: Cyan ring with 2px offset
 
 ## Typography
-- **Font Family**: Inter (primary), SF Pro Display (fallback)
-- **Display**: 32px/36px bold for dashboard titles
-- **Headings**: 24px/28px semibold for section headers, 18px/24px medium for card titles
-- **Body**: 15px/22px regular for primary content, 14px/20px for secondary
-- **Labels**: 13px/18px medium for form labels, 12px/16px medium for badges
-- **Monospace**: JetBrains Mono 14px for API keys, code snippets
 
-## Layout System
-**8pt Grid**: All spacing uses multiples of 8px (Tailwind: 2, 3, 4, 6, 8, 12, 16, 20, 24)
-- **Page container**: max-w-7xl with px-6 lg:px-8
-- **Card padding**: p-6 standard, p-8 for prominent cards
-- **Section spacing**: space-y-8 between major sections, space-y-6 for card groups
-- **Component gaps**: gap-4 for form fields, gap-3 for button groups, gap-6 for grid cards
+### Font Stacks
+- **Primary**: Inter (weights: 400, 500, 600, 700)
+- **Mono**: JetBrains Mono (for code, IDs, logs)
+
+### Scale
+- **Display**: 24-32px / font-bold (page titles)
+- **Heading**: 18-20px / font-semibold (card titles, section headers)
+- **Body**: 14-15px / font-normal (content, descriptions)
+- **Small**: 12-13px / font-medium (labels, badges, metadata)
+- **Micro**: 11px / font-medium (timestamps, footnotes)
 
 ## Component Library
 
-### Navigation
-**Top Bar**: Full-width, white background, border-b, h-16
-- Logo left (40px height), navigation center (Dashboard, Chatbots, Clients, Analytics, Settings), user menu right (avatar + dropdown)
-- Active state: Ocean Blue text with 2px bottom border
+### GlassCard (Primary Container)
+Use `GlassCard` from `@/components/ui/glass-card.tsx` for all card containers.
 
-**Sidebar** (Dashboard pages): 240px fixed width, gray background (#F8F9FA)
-- Section headers (12px uppercase gray), nav items with icons (40px height)
-- Hover: light blue background, Active: Ocean Blue left border + background
+```tsx
+import { GlassCard, GlassCardHeader, GlassCardTitle, GlassCardDescription, GlassCardContent } from "@/components/ui/glass-card";
 
-### Dashboard Cards
-- White background, rounded-xl (12px), shadow-sm
-- Header: flex justify-between with title (18px semibold) and action button/dropdown
-- Content padding: p-6
-- Hover: shadow-md transition
-- Variants: Stats card (large number + label + trend), list card (scrollable), chart card
+<GlassCard hover glow>
+  <GlassCardHeader>
+    <GlassCardTitle>Card Title</GlassCardTitle>
+    <GlassCardDescription>Description text</GlassCardDescription>
+  </GlassCardHeader>
+  <GlassCardContent>
+    {/* Content */}
+  </GlassCardContent>
+</GlassCard>
+```
 
-### Data Tables
-- Sticky header row (gray background, 14px semibold text)
-- Row height: 56px with px-6 padding
-- Zebra striping: subtle alternating background (#FAFBFC)
-- Row hover: light blue highlight
-- Action column: right-aligned icon buttons (edit, delete, more)
-- Pagination: bottom-right, 10/25/50 per page options
+Properties:
+- `bg-white/5` base background
+- `border border-white/10` subtle glass edge
+- `rounded-2xl` large radius for modern feel
+- `backdrop-blur-md` glass effect
+- `hover`: adds hover state with increased opacity
+- `glow`: adds cyan glow on hover
 
-### Status Badges
-- Pill shape (rounded-full), px-3 py-1, 12px medium text
-- Active: Green background (#D1FAE5) + green text (#059669)
-- Demo: Blue background (#DBEAFE) + Ocean Blue text
-- Demo (active): Orange background (#FEF3C7) + orange text (#D97706)
-- On-Hold: Red background (#FEE2E2) + red text (#DC2626)
+### NeonBadge (Status Indicators)
+Status badges with neon glow effects.
 
-### Forms
-- Input fields: h-10, px-4, rounded-lg, border gray, focus ring Ocean Blue
-- Labels: 13px medium, mb-2, Charcoal
-- Textareas: min-h-24, resize-y
-- Select dropdowns: Chevron icon right
-- Toggle switches: Ocean Blue when active, gray when off
-- Primary button: Ocean Blue background, white text, h-10, px-6, rounded-lg, medium weight
-- Secondary button: White background, Ocean Blue border/text
-- Danger button: Red background for destructive actions
+```tsx
+<Badge className="bg-green-500/20 text-green-400 border border-green-500/30">ACTIVE</Badge>
+<Badge className="bg-blue-500/20 text-blue-400 border border-blue-500/30">DEMO</Badge>
+<Badge className="bg-amber-500/20 text-amber-400 border border-amber-500/30">PAUSED</Badge>
+<Badge className="bg-red-500/20 text-red-400 border border-red-500/30">ERROR</Badge>
+```
 
-### Analytics Components
-- Line/bar charts: Ocean Blue primary data, Aqua Teal secondary
-- Chart grid: subtle gray lines
-- Tooltips: White background, shadow-lg, rounded-lg, 13px text
-- Legend: horizontal below chart, 12px with colored dot indicators
-- Date range picker: Right-aligned, opens calendar dropdown
+### Glass Inputs
+Form inputs with glass aesthetic.
 
-### Chatbot Management Cards
-- Grid layout: 3 columns desktop (grid-cols-1 md:grid-cols-2 lg:grid-cols-3)
-- Card content: Chatbot name (16px semibold), status badge, stats row (messages/users), action buttons
-- Thumbnail: 48px square chatbot avatar/icon top-left
-- Footer: Last active timestamp (12px gray text)
+```tsx
+<input className="glass-input" />
+// Defined in index.css:
+// bg-white/5, border-white/10, text-white, placeholder:text-white/40
+// focus: border-cyan-400/50, ring-2 ring-cyan-400/20
+```
 
-### Modals & Overlays
-- Backdrop: rgba(0,0,0,0.4) with backdrop blur
-- Modal: max-w-2xl, rounded-2xl, white, shadow-2xl
-- Header: p-6 with title (20px semibold) and close button
-- Content: p-6, max-h-[70vh] overflow-y-auto
-- Footer: p-6 border-t, flex justify-end gap-3
+### Buttons on Dark Backgrounds
+
+Primary (Gradient):
+```tsx
+<Button className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white">
+```
+
+Outline (Glass):
+```tsx
+<Button variant="outline" className="border-white/10 text-white/85 hover:bg-white/5">
+```
+
+Ghost:
+```tsx
+<Button variant="ghost" className="text-white/85 hover:bg-white/10">
+```
+
+### Tabs (Dark Theme)
+```tsx
+<TabsList className="bg-white/5 border border-white/10 rounded-xl">
+  <TabsTrigger 
+    className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500/20 data-[state=active]:to-blue-500/20 
+               data-[state=active]:text-cyan-400 data-[state=active]:border data-[state=active]:border-cyan-400/30
+               data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white"
+  >
+    Tab Name
+  </TabsTrigger>
+</TabsList>
+```
+
+### Select Dropdowns
+```tsx
+<SelectTrigger className="bg-white/5 border-white/10 text-white">
+<SelectContent className="bg-[#0B0E13] border-white/10">
+  <SelectItem className="text-white hover:bg-white/10">
+```
+
+## Layout System
+
+### Page Structure
+```tsx
+<div className="min-h-screen bg-[#0B0E13]">
+  <header className="border-b border-white/10 bg-white/5 backdrop-blur-md h-14">
+    {/* Navigation */}
+  </header>
+  <main className="max-w-7xl mx-auto px-6 py-8">
+    {/* Content */}
+  </main>
+</div>
+```
+
+### Spacing (8pt Grid)
+- **Tight**: gap-2, p-2 (8px)
+- **Normal**: gap-4, p-4 (16px)
+- **Comfortable**: gap-6, p-6 (24px)
+- **Loose**: gap-8, p-8 (32px)
+
+### Grid Layouts
+- **Stats Cards**: grid-cols-2 md:grid-cols-4 gap-4
+- **Bot Cards**: grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4
+- **Form Fields**: grid-cols-1 md:grid-cols-2 gap-4
+
+## Loading States
+
+### Skeleton Loaders
+```tsx
+<div className="animate-pulse">
+  <div className="h-8 bg-white/10 rounded-lg w-32 mb-2" />
+  <div className="h-4 bg-white/10 rounded w-48" />
+</div>
+```
+
+### Inline Loading
+```tsx
+<div className="text-center py-8 text-white/55">
+  <div className="h-8 w-8 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin mx-auto mb-3" />
+  Loading...
+</div>
+```
+
+### Button Loading
+```tsx
+<Button disabled className="opacity-50">
+  {isPending ? 'Loading...' : 'Submit'}
+</Button>
+```
+
+## Error & Empty States
+
+### Error Messages
+```tsx
+<div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400">
+  <AlertTriangle className="h-4 w-4 inline mr-2" />
+  Error loading data. Please try again.
+</div>
+```
 
 ### Empty States
-- Centered content with illustration/icon (96px), heading (18px), description (14px gray)
-- Primary action button below
-- Used for: No chatbots created, no data in date range, no search results
+```tsx
+<div className="text-center py-12 text-white/40">
+  <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
+  <p className="font-medium">No bots found</p>
+  <p className="text-sm mt-1">Create your first chatbot to get started</p>
+  <Button className="mt-4">Create Bot</Button>
+</div>
+```
 
-## Page-Specific Layouts
+## Analytics Components
 
-### Dashboard Home
-- Hero stats row: 4 cards showing total chatbots, active conversations, monthly messages, clients
-- Charts section: 2-column grid (conversations over time, top performing chatbots)
-- Recent activity table below
+### Stat Cards
+```tsx
+<GlassCard>
+  <div className="p-4 text-center">
+    <div className="h-10 w-10 rounded-lg bg-cyan-400/10 flex items-center justify-center mx-auto mb-2">
+      <Icon className="h-5 w-5 text-cyan-400" />
+    </div>
+    <div className="text-2xl font-bold text-white">1,234</div>
+    <div className="text-xs text-white/55">Metric Label</div>
+  </div>
+</GlassCard>
+```
 
-### Chatbots List
-- Header: Title + "Create Chatbot" button (Ocean Blue)
-- Filter bar: Search input, status filter dropdown, sort dropdown
-- Grid of chatbot cards (3-col responsive)
-
-### Chatbot Detail
-- Header breadcrumb: Dashboard > Chatbots > [Name]
-- Tabbed interface: Overview, Analytics, Settings, Appearance, Integrations
-- Left content area (2/3 width), right sidebar (1/3) with quick stats and actions
-
-### Client Management
-- Table view with company name, contact, # chatbots, plan type, status, actions
-- Click row to expand inline details
-- Bulk action checkboxes for multi-select
-
-## Images
-**Hero Image**: Yes - Dashboard landing page features abstract tech/AI visualization
-- Location: Top of marketing/login pages, 60vh height
-- Style: Gradient mesh with Ocean Blue/Aqua Teal flowing shapes
-- Overlay: Semi-transparent gradient for text readability
-- CTA buttons on hero: Blurred background (backdrop-blur-sm) with white/10 background
-
-**Product Screenshots**: Use throughout marketing pages showing dashboard UI
-**Client Logos**: Gray-scale grid on "Trusted by" section
+### Charts
+- Primary data: Cyan (#4FC3F7)
+- Secondary data: Blue (#3B82F6)
+- Grid lines: white/10%
+- Axis labels: white/55%
+- Tooltips: bg-[#0B0E13] with white/10% border
 
 ## Mobile Optimization
-- Navigation: Hamburger menu replaces top nav below lg breakpoint
-- Sidebar: Slide-out drawer on mobile
+- Navigation: Hamburger menu below lg breakpoint
+- Sidebars: Slide-out drawer on mobile
 - Cards: Stack to single column (grid-cols-1)
-- Tables: Horizontal scroll wrapper with sticky first column
-- Stats: 2-column grid on mobile vs 4-column desktop
-- Form modals: Full-screen on mobile (rounded corners only on desktop)
+- Stat cards: 2-column grid on mobile
+- Tables: Horizontal scroll with sticky first column
 
 ## Accessibility
 - All interactive elements: min h-10 (40px) touch targets
-- Focus indicators: 2px Ocean Blue ring with offset
-- Color contrast: WCAG AA compliant throughout
-- Form validation: Error messages below fields in red with icon
+- Focus indicators: 2px cyan ring with offset
+- Color contrast: WCAG AA compliant
+- Form validation: Error messages below fields with icon
 - Loading states: Skeleton screens for card/table content
 
 ## Animation & Interaction
 - Page transitions: Fade-in 150ms
-- Card hover: shadow elevation 200ms ease
+- Card hover: shadow elevation + opacity change, 200ms ease
 - Button press: Slight scale down (0.98) on active
 - Modal appearance: Fade + slide-up 250ms
-- Chart animations: Stagger data points 50ms each
 - No distracting auto-play animations
+
+## Data Test IDs
+All interactive and display elements must include data-testid attributes:
+- Interactive: `{action}-{target}` (e.g., button-create-bot, input-email)
+- Display: `{type}-{content}` (e.g., stat-total-messages, badge-status-active)
+- Dynamic: `{type}-{description}-{id}` (e.g., card-bot-faith_house)

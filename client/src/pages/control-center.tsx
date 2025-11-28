@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard, GlassCardHeader, GlassCardTitle, GlassCardDescription, GlassCardContent } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -224,28 +224,31 @@ export default function ControlCenter() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      <div className="min-h-screen bg-[#0B0E13] flex items-center justify-center">
+        <div className="text-center">
+          <div className="h-8 w-8 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin mx-auto mb-3" />
+          <div className="text-white/55">Loading...</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden">
+    <div className="h-screen bg-[#0B0E13] text-white flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="h-14 border-b bg-card flex items-center justify-between px-6 flex-shrink-0">
+      <header className="h-14 border-b border-white/10 bg-white/5 backdrop-blur-md flex items-center justify-between px-6 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-            <Zap className="h-4 w-4 text-primary-foreground" />
+          <div className="h-8 w-8 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center">
+            <Zap className="h-4 w-4 text-white" />
           </div>
-          <span className="font-semibold text-lg">Treasure Coast AI – Control Center</span>
+          <span className="font-semibold text-lg text-white">Treasure Coast AI – Control Center</span>
         </div>
         <div className="flex items-center gap-4">
-          <Badge variant="outline" className="status-active">
+          <Badge className="bg-green-500/20 text-green-400 border border-green-500/30">
             All Systems Operational
           </Badge>
-          <span className="text-sm text-muted-foreground">{currentUser?.username}</span>
-          <Button data-testid="button-logout" variant="ghost" size="icon" onClick={handleLogout}>
+          <span className="text-sm text-white/55">{currentUser?.username}</span>
+          <Button data-testid="button-logout" variant="ghost" size="icon" onClick={handleLogout} className="text-white/85 hover:bg-white/10 hover:text-white">
             <LogOut className="h-4 w-4" />
           </Button>
         </div>
@@ -253,14 +256,14 @@ export default function ControlCenter() {
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Left Sidebar - Bot Navigation */}
-        <aside className="w-72 border-r bg-card flex flex-col flex-shrink-0">
-          <div className="p-4 border-b">
+        <aside className="w-72 border-r border-white/10 bg-white/5 flex flex-col flex-shrink-0">
+          <div className="p-4 border-b border-white/10">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
               <Input
                 data-testid="input-search-bots"
                 placeholder="Search bots..."
-                className="pl-9"
+                className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/40"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -269,11 +272,14 @@ export default function ControlCenter() {
 
           <ScrollArea className="flex-1">
             <div className="p-3">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide px-2 mb-2">
+              <p className="text-xs font-medium text-white/55 uppercase tracking-wide px-2 mb-2">
                 Chatbots ({filteredBots.length}{searchQuery ? ` of ${clientBots.length}` : ''})
               </p>
               {filteredBots.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No bots found</p>
+                <div className="text-center py-8">
+                  <Bot className="h-8 w-8 mx-auto mb-2 text-white/30" />
+                  <p className="text-sm text-white/40">No bots found</p>
+                </div>
               ) : (
                 filteredBots.map(bot => {
                   const client = clients.find(c => c.id === bot.clientId);
@@ -288,29 +294,29 @@ export default function ControlCenter() {
                       }}
                       className={`w-full text-left p-3 rounded-lg mb-1 transition-colors ${
                         isSelected 
-                          ? 'bg-primary/10 border border-primary/30' 
-                          : 'hover:bg-muted'
+                          ? 'bg-cyan-500/10 border border-cyan-400/30' 
+                          : 'hover:bg-white/10'
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <div className={`h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                          isSelected ? 'bg-primary/20' : 'bg-muted'
+                          isSelected ? 'bg-cyan-500/20' : 'bg-white/10'
                         }`}>
-                          <Building2 className={`h-4 w-4 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+                          <Building2 className={`h-4 w-4 ${isSelected ? 'text-cyan-400' : 'text-white/55'}`} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm truncate">
+                          <div className="font-medium text-sm truncate text-white">
                             {bot.name || bot.businessProfile?.businessName}
                           </div>
                           <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-xs text-muted-foreground truncate">
+                            <span className="text-xs text-white/55 truncate">
                               {getBusinessTypeLabel(bot.businessProfile?.type)}
                             </span>
                             {client && (
                               <span className={`text-xs px-1.5 py-0.5 rounded ${
-                                client.status === 'active' ? 'bg-green-500/20 text-green-500' :
-                                client.status === 'demo' ? 'bg-blue-500/20 text-blue-500' :
-                                'bg-amber-500/20 text-amber-500'
+                                client.status === 'active' ? 'bg-green-500/20 text-green-400' :
+                                client.status === 'demo' ? 'bg-blue-500/20 text-blue-400' :
+                                'bg-amber-500/20 text-amber-400'
                               }`}>
                                 {client.status}
                               </span>
@@ -325,14 +331,14 @@ export default function ControlCenter() {
             </div>
           </ScrollArea>
 
-          <Separator />
+          <Separator className="bg-white/10" />
 
           {/* Quick Actions */}
           <div className="p-3">
             <Button 
               data-testid="button-add-bot"
               variant="outline"
-              className="w-full justify-start"
+              className="w-full justify-start border-white/10 text-white/85 hover:bg-white/10 hover:text-white"
               onClick={() => setShowCreateModal(true)}
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -341,7 +347,7 @@ export default function ControlCenter() {
             <Button 
               data-testid="button-settings-legacy"
               variant="ghost" 
-              className="w-full justify-start mt-1"
+              className="w-full justify-start mt-1 text-white/55 hover:bg-white/10 hover:text-white"
               onClick={() => setLocation('/super-admin')}
             >
               <Settings className="h-4 w-4 mr-2" />
@@ -357,8 +363,8 @@ export default function ControlCenter() {
             <div className="p-6">
               {/* Dashboard Header */}
               <div className="mb-8">
-                <h1 className="text-2xl font-bold">Dashboard Overview</h1>
-                <p className="text-muted-foreground mt-1">
+                <h1 className="text-2xl font-bold text-white">Dashboard Overview</h1>
+                <p className="text-white/55 mt-1">
                   {searchQuery 
                     ? `Showing ${filteredBots.length} of ${clientBots.length} bots matching "${searchQuery}"`
                     : 'Select a chatbot to manage it, or view platform statistics below.'}
@@ -367,157 +373,161 @@ export default function ControlCenter() {
 
               {/* Stats Overview - Shows filtered counts when search is active */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                <Card className="hover-elevate">
-                  <CardContent className="pt-6">
+                <GlassCard hover>
+                  <GlassCardContent className="pt-6">
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Bot className="h-5 w-5 text-primary" />
+                      <div className="h-10 w-10 rounded-lg bg-cyan-400/10 flex items-center justify-center">
+                        <Bot className="h-5 w-5 text-cyan-400" />
                       </div>
                       <div>
-                        <p className="text-2xl font-bold">{searchQuery ? filteredBots.length : clientBots.length}</p>
-                        <p className="text-sm text-muted-foreground">{searchQuery ? 'Matching' : 'Total Bots'}</p>
+                        <p className="text-2xl font-bold text-white">{searchQuery ? filteredBots.length : clientBots.length}</p>
+                        <p className="text-sm text-white/55">{searchQuery ? 'Matching' : 'Total Bots'}</p>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-                <Card className="hover-elevate">
-                  <CardContent className="pt-6">
+                  </GlassCardContent>
+                </GlassCard>
+                <GlassCard hover>
+                  <GlassCardContent className="pt-6">
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-                        <Play className="h-5 w-5 text-green-500" />
+                        <Play className="h-5 w-5 text-green-400" />
                       </div>
                       <div>
-                        <p className="text-2xl font-bold">
+                        <p className="text-2xl font-bold text-white">
                           {searchQuery 
                             ? filteredBots.filter(b => clients.find(c => c.id === b.clientId)?.status === 'active').length
                             : clients.filter(c => c.status === 'active').length}
                         </p>
-                        <p className="text-sm text-muted-foreground">Active</p>
+                        <p className="text-sm text-white/55">Active</p>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-                <Card className="hover-elevate">
-                  <CardContent className="pt-6">
+                  </GlassCardContent>
+                </GlassCard>
+                <GlassCard hover>
+                  <GlassCardContent className="pt-6">
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                        <Eye className="h-5 w-5 text-blue-500" />
+                        <Eye className="h-5 w-5 text-blue-400" />
                       </div>
                       <div>
-                        <p className="text-2xl font-bold">
+                        <p className="text-2xl font-bold text-white">
                           {searchQuery 
                             ? filteredBots.filter(b => clients.find(c => c.id === b.clientId)?.status === 'demo').length
                             : clients.filter(c => c.status === 'demo').length}
                         </p>
-                        <p className="text-sm text-muted-foreground">Demo</p>
+                        <p className="text-sm text-white/55">Demo</p>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-                <Card className="hover-elevate">
-                  <CardContent className="pt-6">
+                  </GlassCardContent>
+                </GlassCard>
+                <GlassCard hover>
+                  <GlassCardContent className="pt-6">
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                        <Pause className="h-5 w-5 text-amber-500" />
+                        <Pause className="h-5 w-5 text-amber-400" />
                       </div>
                       <div>
-                        <p className="text-2xl font-bold">
+                        <p className="text-2xl font-bold text-white">
                           {searchQuery 
                             ? filteredBots.filter(b => clients.find(c => c.id === b.clientId)?.status === 'paused').length
                             : clients.filter(c => c.status === 'paused').length}
                         </p>
-                        <p className="text-sm text-muted-foreground">Paused</p>
+                        <p className="text-sm text-white/55">Paused</p>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </GlassCardContent>
+                </GlassCard>
               </div>
 
               {/* Bot Cards Grid */}
-              <h2 className="text-lg font-semibold mb-4">All Chatbots</h2>
+              <h2 className="text-lg font-semibold mb-4 text-white">All Chatbots</h2>
               <div className={`grid gap-4 ${selectedBot ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
                 {filteredBots.map(bot => {
                   const client = clients.find(c => c.id === bot.clientId);
                   const isSelected = selectedBotId === bot.botId;
                   return (
-                    <Card 
+                    <GlassCard 
                       key={bot.botId}
                       data-testid={`card-bot-${bot.botId}`}
-                      className={`hover-elevate cursor-pointer transition-all group ${
-                        isSelected ? 'ring-2 ring-primary shadow-lg' : ''
+                      hover
+                      className={`cursor-pointer transition-all ${
+                        isSelected ? 'ring-2 ring-cyan-400 shadow-[0px_4px_30px_rgba(79,195,247,0.15)]' : ''
                       }`}
-                      onClick={() => {
-                        setSelectedBotId(bot.botId);
-                        setActiveTab('overview');
-                      }}
                     >
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-3">
-                            <div className={`h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                              isSelected ? 'bg-primary text-primary-foreground' : 'bg-primary/10'
-                            }`}>
-                              <Building2 className={`h-5 w-5 ${isSelected ? '' : 'text-primary'}`} />
+                      <div 
+                        onClick={() => {
+                          setSelectedBotId(bot.botId);
+                          setActiveTab('overview');
+                        }}
+                      >
+                        <GlassCardHeader className="pb-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-3">
+                              <div className={`h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                isSelected ? 'bg-cyan-500 text-white' : 'bg-cyan-400/10'
+                              }`}>
+                                <Building2 className={`h-5 w-5 ${isSelected ? '' : 'text-cyan-400'}`} />
+                              </div>
+                              <div className="min-w-0">
+                                <GlassCardTitle className="text-sm truncate">
+                                  {bot.name || bot.businessProfile?.businessName}
+                                </GlassCardTitle>
+                                <GlassCardDescription className="text-xs">
+                                  {getBusinessTypeLabel(bot.businessProfile?.type)}
+                                </GlassCardDescription>
+                              </div>
                             </div>
-                            <div className="min-w-0">
-                              <CardTitle className="text-sm truncate">
-                                {bot.name || bot.businessProfile?.businessName}
-                              </CardTitle>
-                              <CardDescription className="text-xs">
-                                {getBusinessTypeLabel(bot.businessProfile?.type)}
-                              </CardDescription>
-                            </div>
+                            {client && getStatusBadge(client.status)}
                           </div>
-                          {client && getStatusBadge(client.status)}
-                        </div>
-                      </CardHeader>
-                      <CardContent className="pb-4">
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <MessageSquare className="h-3 w-3" />
-                            {bot.faqs?.length || 0} FAQs
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {bot.metadata?.createdAt || 'N/A'}
-                          </span>
-                        </div>
-                      </CardContent>
-                    </Card>
+                        </GlassCardHeader>
+                        <GlassCardContent className="pb-4">
+                          <div className="flex items-center justify-between text-xs text-white/55">
+                            <span className="flex items-center gap-1">
+                              <MessageSquare className="h-3 w-3" />
+                              {bot.faqs?.length || 0} FAQs
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {bot.metadata?.createdAt || 'N/A'}
+                            </span>
+                          </div>
+                        </GlassCardContent>
+                      </div>
+                    </GlassCard>
                   );
                 })}
 
                 {/* Add New Bot Card */}
-                <Card 
+                <div
                   data-testid="card-add-new-bot"
-                  className="border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 bg-transparent cursor-pointer transition-all group flex items-center justify-center min-h-[140px]"
+                  className="border-2 border-dashed border-white/20 hover:border-cyan-400/50 bg-transparent rounded-2xl cursor-pointer transition-all group flex items-center justify-center min-h-[140px]"
                   onClick={() => setShowCreateModal(true)}
                 >
                   <div className="text-center p-4">
-                    <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center mx-auto mb-2 group-hover:bg-primary/10 transition-colors">
-                      <Plus className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    <div className="h-10 w-10 rounded-lg bg-white/5 flex items-center justify-center mx-auto mb-2 group-hover:bg-cyan-400/10 transition-colors">
+                      <Plus className="h-5 w-5 text-white/55 group-hover:text-cyan-400 transition-colors" />
                     </div>
-                    <p className="font-medium text-sm group-hover:text-primary transition-colors">Add New Bot</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Create from template</p>
+                    <p className="font-medium text-sm text-white/85 group-hover:text-cyan-400 transition-colors">Add New Bot</p>
+                    <p className="text-xs text-white/40 mt-0.5">Create from template</p>
                   </div>
-                </Card>
+                </div>
               </div>
             </div>
           </main>
 
           {/* Bot Details Panel - Inline split pane with independent scroll */}
           {selectedBot && selectedClient && (
-            <aside className="lg:min-w-[40%] lg:max-w-[50%] border-l bg-card overflow-y-auto h-full">
+            <aside className="lg:min-w-[40%] lg:max-w-[50%] border-l border-white/10 bg-white/5 overflow-y-auto h-full">
               <div className="p-6">
                 {/* Panel Header with Close */}
                 <div className="flex items-start justify-between mb-6">
                   <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                      <Building2 className="h-6 w-6 text-primary" />
+                    <div className="h-12 w-12 rounded-xl bg-cyan-400/10 flex items-center justify-center">
+                      <Building2 className="h-6 w-6 text-cyan-400" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold">{selectedBot.name || selectedBot.businessProfile?.businessName}</h2>
-                      <p className="text-sm text-muted-foreground">
+                      <h2 className="text-xl font-bold text-white">{selectedBot.name || selectedBot.businessProfile?.businessName}</h2>
+                      <p className="text-sm text-white/55">
                         {getBusinessTypeLabel(selectedBot.businessProfile?.type)} • {selectedBot.botId}
                       </p>
                     </div>
@@ -527,6 +537,7 @@ export default function ControlCenter() {
                     size="icon"
                     onClick={() => setSelectedBotId(null)}
                     data-testid="button-close-detail"
+                    className="text-white/85 hover:bg-white/10 hover:text-white"
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -540,6 +551,7 @@ export default function ControlCenter() {
                     variant="outline"
                     size="sm"
                     onClick={() => window.open(`/demo/${selectedBot.botId}`, '_blank')}
+                    className="border-white/10 text-white/85 hover:bg-white/10 hover:text-white"
                   >
                     <Eye className="h-4 w-4 mr-2" />
                     Preview
@@ -551,41 +563,41 @@ export default function ControlCenter() {
                       status: value 
                     })}
                   >
-                    <SelectTrigger data-testid="select-status" className="w-28">
+                    <SelectTrigger data-testid="select-status" className="w-28 bg-white/5 border-white/10 text-white">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="paused">Paused</SelectItem>
-                      <SelectItem value="demo">Demo</SelectItem>
+                    <SelectContent className="bg-[#1a1d24] border-white/10">
+                      <SelectItem value="active" className="text-white hover:bg-white/10">Active</SelectItem>
+                      <SelectItem value="paused" className="text-white hover:bg-white/10">Paused</SelectItem>
+                      <SelectItem value="demo" className="text-white hover:bg-white/10">Demo</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {/* Tabs */}
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="mb-6 w-full justify-start flex-wrap h-auto gap-1">
-                    <TabsTrigger data-testid="tab-overview" value="overview" className="text-xs">
+                  <TabsList className="mb-6 w-full justify-start flex-wrap h-auto gap-1 bg-white/5 border border-white/10 rounded-xl p-1">
+                    <TabsTrigger data-testid="tab-overview" value="overview" className="text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/55">
                       <Eye className="h-4 w-4 mr-1" />
                       Overview
                     </TabsTrigger>
-                    <TabsTrigger data-testid="tab-settings" value="settings" className="text-xs">
+                    <TabsTrigger data-testid="tab-settings" value="settings" className="text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/55">
                       <Settings className="h-4 w-4 mr-1" />
                       Settings
                     </TabsTrigger>
-                    <TabsTrigger data-testid="tab-billing" value="billing" className="text-xs">
+                    <TabsTrigger data-testid="tab-billing" value="billing" className="text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/55">
                       <CreditCard className="h-4 w-4 mr-1" />
                       Billing
                     </TabsTrigger>
-                    <TabsTrigger data-testid="tab-analytics" value="analytics" className="text-xs">
+                    <TabsTrigger data-testid="tab-analytics" value="analytics" className="text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/55">
                       <BarChart3 className="h-4 w-4 mr-1" />
                       Analytics
                     </TabsTrigger>
-                    <TabsTrigger data-testid="tab-logs" value="logs" className="text-xs">
+                    <TabsTrigger data-testid="tab-logs" value="logs" className="text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/55">
                       <MessageSquare className="h-4 w-4 mr-1" />
                       Logs
                     </TabsTrigger>
-                    <TabsTrigger data-testid="tab-install" value="install" className="text-xs">
+                    <TabsTrigger data-testid="tab-install" value="install" className="text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/55">
                       <Code className="h-4 w-4 mr-1" />
                       Install
                     </TabsTrigger>
@@ -646,7 +658,7 @@ export default function ControlCenter() {
 
 // Overview Panel - Quick summary of bot and client
 function OverviewPanel({ bot, client }: { bot: BotConfig; client: Client }) {
-  const { data: analytics } = useQuery({
+  const { data: analytics, isLoading } = useQuery({
     queryKey: ["/api/client/analytics/summary", client.id],
     queryFn: async () => {
       const response = await fetch(`/api/client/analytics/summary?clientId=${client.id}`, { credentials: "include" });
@@ -655,117 +667,147 @@ function OverviewPanel({ bot, client }: { bot: BotConfig; client: Client }) {
     },
   });
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <GlassCard key={i}>
+              <div className="p-6 animate-pulse">
+                <div className="h-4 bg-white/10 rounded w-24 mb-2" />
+                <div className="h-8 bg-white/10 rounded w-16" />
+              </div>
+            </GlassCard>
+          ))}
+        </div>
+        <GlassCard>
+          <div className="p-6 animate-pulse">
+            <div className="h-5 bg-white/10 rounded w-32 mb-4" />
+            <div className="grid grid-cols-2 gap-4">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i}>
+                  <div className="h-3 bg-white/10 rounded w-20 mb-2" />
+                  <div className="h-4 bg-white/10 rounded w-28" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </GlassCard>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Messages (7d)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{analytics?.messagesLast7d || 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Conversations</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{analytics?.conversations || 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Leads (7d)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{analytics?.leadsLast7d || 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Bookings (7d)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{analytics?.bookingsLast7d || 0}</div>
-          </CardContent>
-        </Card>
+        <GlassCard>
+          <GlassCardHeader className="pb-2">
+            <GlassCardTitle className="text-sm font-medium text-white/55">Messages (7d)</GlassCardTitle>
+          </GlassCardHeader>
+          <GlassCardContent>
+            <div className="text-3xl font-bold text-white">{analytics?.messagesLast7d || 0}</div>
+          </GlassCardContent>
+        </GlassCard>
+        <GlassCard>
+          <GlassCardHeader className="pb-2">
+            <GlassCardTitle className="text-sm font-medium text-white/55">Conversations</GlassCardTitle>
+          </GlassCardHeader>
+          <GlassCardContent>
+            <div className="text-3xl font-bold text-white">{analytics?.conversations || 0}</div>
+          </GlassCardContent>
+        </GlassCard>
+        <GlassCard>
+          <GlassCardHeader className="pb-2">
+            <GlassCardTitle className="text-sm font-medium text-white/55">Leads (7d)</GlassCardTitle>
+          </GlassCardHeader>
+          <GlassCardContent>
+            <div className="text-3xl font-bold text-white">{analytics?.leadsLast7d || 0}</div>
+          </GlassCardContent>
+        </GlassCard>
+        <GlassCard>
+          <GlassCardHeader className="pb-2">
+            <GlassCardTitle className="text-sm font-medium text-white/55">Bookings (7d)</GlassCardTitle>
+          </GlassCardHeader>
+          <GlassCardContent>
+            <div className="text-3xl font-bold text-white">{analytics?.bookingsLast7d || 0}</div>
+          </GlassCardContent>
+        </GlassCard>
       </div>
 
       {/* Bot Info Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Bot Information</CardTitle>
-          <CardDescription>Quick overview of this chatbot</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle>Bot Information</GlassCardTitle>
+          <GlassCardDescription>Quick overview of this chatbot</GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label className="text-muted-foreground">Business Name</Label>
-              <p className="font-medium">{bot.businessProfile?.businessName || '-'}</p>
+              <Label className="text-white/55">Business Name</Label>
+              <p className="font-medium text-white">{bot.businessProfile?.businessName || '-'}</p>
             </div>
             <div>
-              <Label className="text-muted-foreground">Business Type</Label>
-              <p className="font-medium">{BUSINESS_TYPES.find(t => t.value === bot.businessProfile?.type)?.label || bot.businessProfile?.type || '-'}</p>
+              <Label className="text-white/55">Business Type</Label>
+              <p className="font-medium text-white">{BUSINESS_TYPES.find(t => t.value === bot.businessProfile?.type)?.label || bot.businessProfile?.type || '-'}</p>
             </div>
             <div>
-              <Label className="text-muted-foreground">Phone</Label>
-              <p className="font-medium">{bot.businessProfile?.phone || '-'}</p>
+              <Label className="text-white/55">Phone</Label>
+              <p className="font-medium text-white">{bot.businessProfile?.phone || '-'}</p>
             </div>
             <div>
-              <Label className="text-muted-foreground">Email</Label>
-              <p className="font-medium">{bot.businessProfile?.email || '-'}</p>
+              <Label className="text-white/55">Email</Label>
+              <p className="font-medium text-white">{bot.businessProfile?.email || '-'}</p>
             </div>
             <div>
-              <Label className="text-muted-foreground">Location</Label>
-              <p className="font-medium">{bot.businessProfile?.location || '-'}</p>
+              <Label className="text-white/55">Location</Label>
+              <p className="font-medium text-white">{bot.businessProfile?.location || '-'}</p>
             </div>
             <div>
-              <Label className="text-muted-foreground">Website</Label>
-              <p className="font-medium">{bot.businessProfile?.website || '-'}</p>
+              <Label className="text-white/55">Website</Label>
+              <p className="font-medium text-white">{bot.businessProfile?.website || '-'}</p>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
 
       {/* Services */}
       {bot.businessProfile?.services && bot.businessProfile.services.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Services</CardTitle>
-            <CardDescription>What this business offers</CardDescription>
-          </CardHeader>
-          <CardContent>
+        <GlassCard>
+          <GlassCardHeader>
+            <GlassCardTitle>Services</GlassCardTitle>
+            <GlassCardDescription>What this business offers</GlassCardDescription>
+          </GlassCardHeader>
+          <GlassCardContent>
             <div className="flex flex-wrap gap-2">
               {bot.businessProfile.services.map((service, i) => (
-                <Badge key={i} variant="secondary">{service}</Badge>
+                <Badge key={i} className="bg-cyan-400/10 text-cyan-400 border-cyan-400/30">{service}</Badge>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </GlassCardContent>
+        </GlassCard>
       )}
 
       {/* FAQs Count */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Knowledge Base</CardTitle>
-          <CardDescription>FAQs and training data</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle>Knowledge Base</GlassCardTitle>
+          <GlassCardDescription>FAQs and training data</GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent>
           <div className="flex items-center gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold">{bot.faqs?.length || 0}</div>
-              <div className="text-sm text-muted-foreground">FAQs</div>
+              <div className="text-2xl font-bold text-white">{bot.faqs?.length || 0}</div>
+              <div className="text-sm text-white/55">FAQs</div>
             </div>
-            <Separator orientation="vertical" className="h-12" />
+            <Separator orientation="vertical" className="h-12 bg-white/10" />
             <div className="text-center">
-              <div className="text-2xl font-bold">{bot.rules?.specialInstructions?.length || 0}</div>
-              <div className="text-sm text-muted-foreground">Special Instructions</div>
+              <div className="text-2xl font-bold text-white">{bot.rules?.specialInstructions?.length || 0}</div>
+              <div className="text-sm text-white/55">Special Instructions</div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
     </div>
   );
 }
@@ -814,57 +856,68 @@ function BillingPanel({ clientId, clientName, status }: { clientId: string; clie
   });
 
   if (isLoading) {
-    return <div className="text-center py-8 text-muted-foreground">Loading billing information...</div>;
+    return (
+      <div className="space-y-6">
+        {[1, 2, 3].map(i => (
+          <GlassCard key={i}>
+            <div className="p-6 animate-pulse">
+              <div className="h-5 bg-white/10 rounded w-32 mb-4" />
+              <div className="h-4 bg-white/10 rounded w-48" />
+            </div>
+          </GlassCard>
+        ))}
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
       {/* Current Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Subscription Status</CardTitle>
-          <CardDescription>Current billing status for {clientName}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle>Subscription Status</GlassCardTitle>
+          <GlassCardDescription>Current billing status for {clientName}</GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Current Status</p>
+              <p className="text-sm text-white/55">Current Status</p>
               <div className="flex items-center gap-2 mt-1">
-                {status === 'active' && <Badge className="bg-green-500/20 text-green-500 border-green-500/30">ACTIVE</Badge>}
-                {status === 'paused' && <Badge className="bg-red-500/20 text-red-500 border-red-500/30">PAUSED</Badge>}
-                {status === 'demo' && <Badge className="bg-blue-500/20 text-blue-500 border-blue-500/30">DEMO</Badge>}
+                {status === 'active' && <Badge className="bg-green-500/20 text-green-400 border border-green-500/30">ACTIVE</Badge>}
+                {status === 'paused' && <Badge className="bg-red-500/20 text-red-400 border border-red-500/30">PAUSED</Badge>}
+                {status === 'demo' && <Badge className="bg-blue-500/20 text-blue-400 border border-blue-500/30">DEMO</Badge>}
               </div>
             </div>
             {subscription?.plan && (
               <div className="text-right">
-                <p className="text-sm text-muted-foreground">Plan</p>
-                <p className="font-medium">{subscription.plan}</p>
+                <p className="text-sm text-white/55">Plan</p>
+                <p className="font-medium text-white">{subscription.plan}</p>
               </div>
             )}
           </div>
 
           {subscription?.currentPeriodEnd && (
             <div>
-              <p className="text-sm text-muted-foreground">Next Billing Date</p>
-              <p className="font-medium">{new Date(subscription.currentPeriodEnd).toLocaleDateString()}</p>
+              <p className="text-sm text-white/55">Next Billing Date</p>
+              <p className="font-medium text-white">{new Date(subscription.currentPeriodEnd).toLocaleDateString()}</p>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
 
       {/* Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Billing Actions</CardTitle>
-          <CardDescription>Manage subscription and payments</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle>Billing Actions</GlassCardTitle>
+          <GlassCardDescription>Manage subscription and payments</GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent className="space-y-3">
           {!subscription ? (
             <Button 
               data-testid="button-create-subscription"
               onClick={() => createCheckoutMutation.mutate()}
               disabled={createCheckoutMutation.isPending}
-              className="w-full"
+              className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
             >
               <CreditCard className="h-4 w-4 mr-2" />
               {createCheckoutMutation.isPending ? 'Creating...' : 'Set Up Subscription'}
@@ -875,28 +928,28 @@ function BillingPanel({ clientId, clientName, status }: { clientId: string; clie
               variant="outline"
               onClick={() => openPortalMutation.mutate()}
               disabled={openPortalMutation.isPending}
-              className="w-full"
+              className="w-full border-white/10 text-white/85 hover:bg-white/10 hover:text-white"
             >
               <ExternalLink className="h-4 w-4 mr-2" />
               {openPortalMutation.isPending ? 'Opening...' : 'Manage Billing in Stripe'}
             </Button>
           )}
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
 
       {/* Billing History Note */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Billing Notes</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="text-sm text-muted-foreground space-y-2">
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle>Billing Notes</GlassCardTitle>
+        </GlassCardHeader>
+        <GlassCardContent>
+          <ul className="text-sm text-white/55 space-y-2">
             <li>• Subscription status is synced automatically via Stripe webhooks</li>
             <li>• Failed payments will automatically pause the account</li>
             <li>• Use the Stripe portal to update payment methods or cancel</li>
           </ul>
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
     </div>
   );
 }
@@ -1050,12 +1103,12 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
       </div>
 
       {/* Basic Info */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Bot Information</CardTitle>
-          <CardDescription>Basic details about this chatbot</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="text-lg">Bot Information</GlassCardTitle>
+          <GlassCardDescription>Basic details about this chatbot</GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Bot Name</Label>
@@ -1100,19 +1153,19 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                 rows={2}
               />
             ) : (
-              <p className="text-sm mt-1">{formData.description || '-'}</p>
+              <p className="text-sm mt-1 text-white">{formData.description || '-'}</p>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
 
       {/* Business Profile */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Business Profile</CardTitle>
-          <CardDescription>Contact and location information</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="text-lg">Business Profile</GlassCardTitle>
+          <GlassCardDescription>Contact and location information</GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label className="flex items-center gap-2">
@@ -1218,19 +1271,19 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                 rows={2}
               />
             ) : (
-              <p className="text-sm mt-1">{formData.services || '-'}</p>
+              <p className="text-sm mt-1 text-white">{formData.services || '-'}</p>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
 
       {/* AI Settings */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">AI Behavior</CardTitle>
-          <CardDescription>Configure how your bot communicates</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="text-lg">AI Behavior</GlassCardTitle>
+          <GlassCardDescription>Configure how your bot communicates</GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent className="space-y-4">
           {/* Tone & Voice Controls */}
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -1256,7 +1309,7 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
               ) : (
                 <p className="text-sm mt-1">{TONE_OPTIONS.find(t => t.value === formData.tone)?.label || 'Professional'}</p>
               )}
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-white/40 mt-1">
                 {TONE_OPTIONS.find(t => t.value === formData.tone)?.description}
               </p>
             </div>
@@ -1293,21 +1346,21 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                 className="font-mono text-sm"
               />
             ) : (
-              <pre className="text-sm mt-1 whitespace-pre-wrap bg-muted p-3 rounded-lg max-h-48 overflow-auto">
+              <pre className="text-sm mt-1 whitespace-pre-wrap bg-white/5 p-3 rounded-lg max-h-48 overflow-auto text-white/85">
                 {formData.systemPrompt || 'No system prompt configured'}
               </pre>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
 
       {/* FAQs - Editable */}
-      <Card>
-        <CardHeader>
+      <GlassCard>
+        <GlassCardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-lg">FAQs ({faqs.length})</CardTitle>
-              <CardDescription>Common questions and answers</CardDescription>
+              <GlassCardTitle className="text-lg">FAQs ({faqs.length})</GlassCardTitle>
+              <GlassCardDescription>Common questions and answers</GlassCardDescription>
             </div>
             {isEditing && (
               <Button
@@ -1321,11 +1374,11 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
               </Button>
             )}
           </div>
-        </CardHeader>
-        <CardContent>
+        </GlassCardHeader>
+        <GlassCardContent>
           {/* Add New FAQ Form */}
           {showAddFaq && (
-            <div className="bg-muted p-4 rounded-lg mb-4 space-y-3">
+            <div className="bg-white/5 border border-white/10 p-4 rounded-lg mb-4 space-y-3">
               <div>
                 <Label>Question</Label>
                 <Input
@@ -1370,13 +1423,16 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
           )}
 
           {faqs.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No FAQs configured. {isEditing && 'Click "Add FAQ" to create one.'}
-            </p>
+            <div className="text-center py-6">
+              <FileText className="h-8 w-8 mx-auto mb-2 text-white/30" />
+              <p className="text-sm text-white/40">
+                No FAQs configured. {isEditing && 'Click "Add FAQ" to create one.'}
+              </p>
+            </div>
           ) : (
             <div className="space-y-3 max-h-80 overflow-auto">
               {faqs.map((faq, i) => (
-                <div key={i} className="bg-muted p-3 rounded-lg">
+                <div key={i} className="bg-white/5 border border-white/10 p-3 rounded-lg">
                   {editingFaqIndex === i && isEditing ? (
                     <div className="space-y-2">
                       <Input
@@ -1413,8 +1469,8 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                   ) : (
                     <div className="flex justify-between items-start gap-2">
                       <div className="flex-1">
-                        <p className="font-medium text-sm">{faq.question}</p>
-                        <p className="text-sm text-muted-foreground mt-1">{faq.answer}</p>
+                        <p className="font-medium text-sm text-white">{faq.question}</p>
+                        <p className="text-sm text-white/55 mt-1">{faq.answer}</p>
                       </div>
                       {isEditing && (
                         <Button
@@ -1432,80 +1488,80 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
 
       {/* Faith House Feature Gating - Only for sober_living clients */}
       {clientType === 'sober_living' && (
-        <Card className="border-primary/30 bg-primary/5">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-primary" />
+        <GlassCard className="border-cyan-400/30">
+          <GlassCardHeader>
+            <GlassCardTitle className="text-lg flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-cyan-400" />
               Faith House Features
-            </CardTitle>
-            <CardDescription>Special features for sober living facilities</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            </GlassCardTitle>
+            <GlassCardDescription>Special features for sober living facilities</GlassCardDescription>
+          </GlassCardHeader>
+          <GlassCardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Crisis Detection</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
+              <GlassCard>
+                <GlassCardHeader className="pb-2">
+                  <GlassCardTitle className="text-sm">Crisis Detection</GlassCardTitle>
+                </GlassCardHeader>
+                <GlassCardContent>
+                  <p className="text-sm text-white/55">
                     Automatic detection and response for crisis situations with 988 Suicide & Crisis Lifeline integration.
                   </p>
-                  <Badge className="mt-2 bg-green-500/20 text-green-500">Enabled</Badge>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Pre-Intake Forms</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
+                  <Badge className="mt-2 bg-green-500/20 text-green-400 border border-green-500/30">Enabled</Badge>
+                </GlassCardContent>
+              </GlassCard>
+              <GlassCard>
+                <GlassCardHeader className="pb-2">
+                  <GlassCardTitle className="text-sm">Pre-Intake Forms</GlassCardTitle>
+                </GlassCardHeader>
+                <GlassCardContent>
+                  <p className="text-sm text-white/55">
                     Collect sobriety status, support network, and timeline before booking tours.
                   </p>
-                  <Badge className="mt-2 bg-green-500/20 text-green-500">Enabled</Badge>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Appointment Booking</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
+                  <Badge className="mt-2 bg-green-500/20 text-green-400 border border-green-500/30">Enabled</Badge>
+                </GlassCardContent>
+              </GlassCard>
+              <GlassCard>
+                <GlassCardHeader className="pb-2">
+                  <GlassCardTitle className="text-sm">Appointment Booking</GlassCardTitle>
+                </GlassCardHeader>
+                <GlassCardContent>
+                  <p className="text-sm text-white/55">
                     Allow visitors to schedule tours and intake appointments directly through chat.
                   </p>
-                  <Badge className="mt-2 bg-green-500/20 text-green-500">Enabled</Badge>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Privacy Protection</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
+                  <Badge className="mt-2 bg-green-500/20 text-green-400 border border-green-500/30">Enabled</Badge>
+                </GlassCardContent>
+              </GlassCard>
+              <GlassCard>
+                <GlassCardHeader className="pb-2">
+                  <GlassCardTitle className="text-sm">Privacy Protection</GlassCardTitle>
+                </GlassCardHeader>
+                <GlassCardContent>
+                  <p className="text-sm text-white/55">
                     Automatic PII redaction from conversation logs and analytics.
                   </p>
-                  <Badge className="mt-2 bg-green-500/20 text-green-500">Enabled</Badge>
-                </CardContent>
-              </Card>
+                  <Badge className="mt-2 bg-green-500/20 text-green-400 border border-green-500/30">Enabled</Badge>
+                </GlassCardContent>
+              </GlassCard>
             </div>
 
             {/* Crisis Keywords */}
             {bot.rules?.crisisHandling?.onCrisisKeywords && bot.rules.crisisHandling.onCrisisKeywords.length > 0 && (
               <div>
-                <Label>Crisis Detection Keywords</Label>
+                <Label className="text-white/55">Crisis Detection Keywords</Label>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {bot.rules.crisisHandling.onCrisisKeywords.map((keyword, i) => (
-                    <Badge key={i} variant="outline" className="bg-red-500/10 text-red-500 border-red-500/30">{keyword}</Badge>
+                    <Badge key={i} className="bg-red-500/10 text-red-400 border border-red-500/30">{keyword}</Badge>
                   ))}
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </GlassCardContent>
+        </GlassCard>
       )}
     </div>
   );
@@ -1523,58 +1579,71 @@ function AnalyticsPanel({ clientId }: { clientId: string }) {
   });
 
   if (isLoading) {
-    return <div className="text-center py-8 text-muted-foreground">Loading analytics...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <GlassCard key={i}>
+              <div className="p-6 animate-pulse">
+                <div className="h-4 bg-white/10 rounded w-24 mb-2" />
+                <div className="h-6 bg-white/10 rounded w-16" />
+              </div>
+            </GlassCard>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Messages (7d)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics?.messagesLast7d || 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Conversations</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics?.conversations || 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Leads (7d)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics?.leadsLast7d || 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Bookings (7d)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics?.bookingsLast7d || 0}</div>
-          </CardContent>
-        </Card>
+        <GlassCard>
+          <GlassCardHeader className="pb-2">
+            <GlassCardTitle className="text-sm font-medium text-white/55">Messages (7d)</GlassCardTitle>
+          </GlassCardHeader>
+          <GlassCardContent>
+            <div className="text-2xl font-bold text-white">{analytics?.messagesLast7d || 0}</div>
+          </GlassCardContent>
+        </GlassCard>
+        <GlassCard>
+          <GlassCardHeader className="pb-2">
+            <GlassCardTitle className="text-sm font-medium text-white/55">Conversations</GlassCardTitle>
+          </GlassCardHeader>
+          <GlassCardContent>
+            <div className="text-2xl font-bold text-white">{analytics?.conversations || 0}</div>
+          </GlassCardContent>
+        </GlassCard>
+        <GlassCard>
+          <GlassCardHeader className="pb-2">
+            <GlassCardTitle className="text-sm font-medium text-white/55">Leads (7d)</GlassCardTitle>
+          </GlassCardHeader>
+          <GlassCardContent>
+            <div className="text-2xl font-bold text-white">{analytics?.leadsLast7d || 0}</div>
+          </GlassCardContent>
+        </GlassCard>
+        <GlassCard>
+          <GlassCardHeader className="pb-2">
+            <GlassCardTitle className="text-sm font-medium text-white/55">Bookings (7d)</GlassCardTitle>
+          </GlassCardHeader>
+          <GlassCardContent>
+            <div className="text-2xl font-bold text-white">{analytics?.bookingsLast7d || 0}</div>
+          </GlassCardContent>
+        </GlassCard>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Analytics Dashboard</CardTitle>
-          <CardDescription>View detailed analytics in the client dashboard</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button variant="outline" onClick={() => window.open(`/client/dashboard?clientId=${clientId}`, '_blank')}>
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle>Analytics Dashboard</GlassCardTitle>
+          <GlassCardDescription>View detailed analytics in the client dashboard</GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent>
+          <Button variant="outline" onClick={() => window.open(`/client/dashboard?clientId=${clientId}`, '_blank')} className="border-white/10 text-white/85 hover:bg-white/10 hover:text-white">
             <ExternalLink className="h-4 w-4 mr-2" />
             Open Full Analytics
           </Button>
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
     </div>
   );
 }
@@ -1591,32 +1660,46 @@ function LogsPanel({ clientId, botId }: { clientId: string; botId: string }) {
   });
 
   if (isLoading) {
-    return <div className="text-center py-8 text-muted-foreground">Loading logs...</div>;
+    return (
+      <GlassCard>
+        <div className="p-6 animate-pulse">
+          <div className="h-5 bg-white/10 rounded w-32 mb-4" />
+          <div className="space-y-2">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-12 bg-white/10 rounded" />
+            ))}
+          </div>
+        </div>
+      </GlassCard>
+    );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Conversation Logs</CardTitle>
-        <CardDescription>Recent conversation activity for {botId}</CardDescription>
-      </CardHeader>
-      <CardContent>
+    <GlassCard>
+      <GlassCardHeader>
+        <GlassCardTitle>Conversation Logs</GlassCardTitle>
+        <GlassCardDescription>Recent conversation activity for {botId}</GlassCardDescription>
+      </GlassCardHeader>
+      <GlassCardContent>
         {logs?.files && logs.files.length > 0 ? (
           <div className="space-y-2">
             {logs.files.map((file: string, i: number) => (
-              <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
-                <span className="font-mono text-sm">{file}</span>
-                <Button variant="ghost" size="sm">
+              <div key={i} className="flex items-center justify-between p-3 border border-white/10 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+                <span className="font-mono text-sm text-white/85">{file}</span>
+                <Button variant="ghost" size="sm" className="text-white/55 hover:text-white hover:bg-white/10">
                   <Eye className="h-4 w-4" />
                 </Button>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-muted-foreground text-center py-8">No log files found</p>
+          <div className="text-center py-8">
+            <MessageSquare className="h-8 w-8 mx-auto mb-2 text-white/30" />
+            <p className="text-white/40">No log files found</p>
+          </div>
         )}
-      </CardContent>
-    </Card>
+      </GlassCardContent>
+    </GlassCard>
   );
 }
 
@@ -1845,19 +1928,19 @@ function CreateFromTemplateModal({
             </DialogHeader>
             <div className="grid grid-cols-2 gap-3 mt-4 max-h-[400px] overflow-y-auto">
               {templates?.map((t) => (
-                <Card
+                <GlassCard
                   key={t.botId}
-                  className="cursor-pointer hover-elevate transition-all"
+                  className="cursor-pointer hover:bg-white/10 transition-all"
                   onClick={() => handleSelectTemplate(t)}
                   data-testid={`template-select-${t.botId}`}
                 >
-                  <CardContent className="p-4 text-center">
-                    <Building2 className="h-8 w-8 mx-auto mb-2 text-primary" />
-                    <p className="font-medium text-sm">
+                  <GlassCardContent className="p-4 text-center">
+                    <Building2 className="h-8 w-8 mx-auto mb-2 text-cyan-400" />
+                    <p className="font-medium text-sm text-white">
                       {t.metadata?.templateCategory || t.businessProfile?.type || t.name}
                     </p>
-                  </CardContent>
-                </Card>
+                  </GlassCardContent>
+                </GlassCard>
               ))}
             </div>
           </>
@@ -1885,7 +1968,7 @@ function CreateFromTemplateModal({
               {[1, 2, 3].map((s) => (
                 <div
                   key={s}
-                  className={`h-2 flex-1 rounded-full ${s <= step ? 'bg-primary' : 'bg-muted'}`}
+                  className={`h-2 flex-1 rounded-full ${s <= step ? 'bg-cyan-400' : 'bg-white/10'}`}
                 />
               ))}
             </div>
@@ -1916,7 +1999,7 @@ function CreateFromTemplateModal({
                         Generate
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">Unique identifier (lowercase, underscores only)</p>
+                    <p className="text-xs text-white/40 mt-1">Unique identifier (lowercase, underscores only)</p>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -2033,7 +2116,7 @@ function CreateFromTemplateModal({
                       placeholder="Monday-Friday: 9am-5pm&#10;Saturday: 10am-2pm&#10;Sunday: Closed"
                       rows={3}
                     />
-                    <p className="text-xs text-muted-foreground mt-1">One schedule per line</p>
+                    <p className="text-xs text-white/40 mt-1">One schedule per line</p>
                   </div>
                   <div>
                     <Label>Services Offered</Label>
@@ -2044,7 +2127,7 @@ function CreateFromTemplateModal({
                       placeholder="Service 1, Service 2, Service 3"
                       rows={2}
                     />
-                    <p className="text-xs text-muted-foreground mt-1">Comma-separated list</p>
+                    <p className="text-xs text-white/40 mt-1">Comma-separated list</p>
                   </div>
                   <div>
                     <Label>Custom FAQ (Optional)</Label>
@@ -2102,17 +2185,17 @@ function CreateFromTemplateModal({
                       </SelectContent>
                     </Select>
                   </div>
-                  <Card className="bg-muted/50">
-                    <CardContent className="pt-4">
-                      <p className="text-sm font-medium mb-2">Summary</p>
-                      <ul className="text-sm text-muted-foreground space-y-1">
+                  <GlassCard>
+                    <GlassCardContent className="pt-4">
+                      <p className="text-sm font-medium mb-2 text-white">Summary</p>
+                      <ul className="text-sm text-white/55 space-y-1">
                         <li>Business: {formData.clientName || '-'}</li>
                         <li>Type: {template?.metadata?.templateCategory || template?.businessProfile?.type || 'Custom'}</li>
                         <li>Tier: {formData.serviceTier}</li>
                         <li>Billing: {formData.billingPlan}</li>
                       </ul>
-                    </CardContent>
-                  </Card>
+                    </GlassCardContent>
+                  </GlassCard>
                 </div>
               )}
 
@@ -2175,17 +2258,17 @@ function InstallPanel({ bot, client }: { bot: BotConfig; client: Client }) {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="flex items-center gap-2">
             <Code className="h-5 w-5" />
             Widget Installation
-          </CardTitle>
-          <CardDescription>
+          </GlassCardTitle>
+          <GlassCardDescription>
             Add the chatbot to your website by copying this code snippet
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
+          </GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent className="space-y-6">
           {/* Customization Options */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
@@ -2259,20 +2342,20 @@ function InstallPanel({ bot, client }: { bot: BotConfig; client: Client }) {
               </Button>
             </div>
             <div className="relative">
-              <pre className="bg-muted p-4 rounded-md overflow-x-auto text-sm font-mono">
+              <pre className="bg-white/5 border border-white/10 p-4 rounded-md overflow-x-auto text-sm font-mono text-white/85">
                 <code data-testid="code-embed-snippet">{embedCode}</code>
               </pre>
             </div>
           </div>
 
-          <Separator />
+          <Separator className="bg-white/10" />
 
           {/* Instructions */}
           <div className="space-y-3">
-            <Label>Installation Steps</Label>
-            <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+            <Label className="text-white">Installation Steps</Label>
+            <ol className="list-decimal list-inside space-y-2 text-sm text-white/55">
               <li>Copy the embed code above</li>
-              <li>Paste it just before the closing <code className="bg-muted px-1 rounded">&lt;/body&gt;</code> tag on your website</li>
+              <li>Paste it just before the closing <code className="bg-white/10 px-1 rounded text-white/85">&lt;/body&gt;</code> tag on your website</li>
               <li>The chat widget will appear automatically in the selected position</li>
               <li>Visitors can click the bubble to start chatting with your AI assistant</li>
             </ol>
@@ -2297,37 +2380,37 @@ function InstallPanel({ bot, client }: { bot: BotConfig; client: Client }) {
               Test in Demo Mode
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
 
       {/* Widget Configuration Details */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Configuration Details</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="text-base">Configuration Details</GlassCardTitle>
+        </GlassCardHeader>
+        <GlassCardContent>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="text-muted-foreground">Client ID:</span>
-              <code className="ml-2 bg-muted px-2 py-1 rounded">{client.id}</code>
+              <span className="text-white/55">Client ID:</span>
+              <code className="ml-2 bg-white/10 px-2 py-1 rounded text-white/85">{client.id}</code>
             </div>
             <div>
-              <span className="text-muted-foreground">Bot ID:</span>
-              <code className="ml-2 bg-muted px-2 py-1 rounded">{bot.botId}</code>
+              <span className="text-white/55">Bot ID:</span>
+              <code className="ml-2 bg-white/10 px-2 py-1 rounded text-white/85">{bot.botId}</code>
             </div>
             <div>
-              <span className="text-muted-foreground">Business:</span>
-              <span className="ml-2">{bot.businessProfile?.businessName || client.name}</span>
+              <span className="text-white/55">Business:</span>
+              <span className="ml-2 text-white">{bot.businessProfile?.businessName || client.name}</span>
             </div>
             <div>
-              <span className="text-muted-foreground">Status:</span>
-              <Badge variant={client.status === 'active' ? 'default' : 'secondary'} className="ml-2">
+              <span className="text-white/55">Status:</span>
+              <Badge className={`ml-2 ${client.status === 'active' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-white/10 text-white/55 border border-white/20'}`}>
                 {client.status}
               </Badge>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
     </div>
   );
 }
