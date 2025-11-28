@@ -353,3 +353,44 @@ export const PLAN_TIERS = {
 } as const;
 
 export type PlanTier = keyof typeof PLAN_TIERS;
+
+// Leads table for capturing and managing leads from chat
+export const leads = pgTable("leads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  botId: varchar("bot_id").notNull(),
+  sessionId: varchar("session_id"),
+  
+  // Contact info
+  name: text("name"),
+  email: text("email"),
+  phone: text("phone"),
+  
+  // Lead details
+  source: text("source").notNull().default("chat"), // chat, widget, manual
+  status: text("status").notNull().default("new"), // new, contacted, qualified, converted, lost
+  priority: text("priority").notNull().default("medium"), // low, medium, high
+  
+  // Additional context
+  notes: text("notes"),
+  tags: json("tags").$type<string[]>().default([]),
+  metadata: json("metadata").$type<Record<string, any>>().default({}),
+  
+  // Chat context
+  conversationPreview: text("conversation_preview"),
+  messageCount: integer("message_count").default(0),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  lastContactedAt: timestamp("last_contacted_at"),
+});
+
+export const insertLeadSchema = createInsertSchema(leads).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertLead = z.infer<typeof insertLeadSchema>;
+export type Lead = typeof leads.$inferSelect;

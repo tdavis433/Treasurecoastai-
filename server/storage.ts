@@ -14,6 +14,8 @@ import {
   type InsertDailyAnalytics,
   type MonthlyUsage,
   type InsertMonthlyUsage,
+  type Lead,
+  type InsertLead,
   appointments,
   clientSettings,
   conversationAnalytics,
@@ -21,7 +23,8 @@ import {
   chatSessions,
   chatAnalyticsEvents,
   dailyAnalytics,
-  monthlyUsage
+  monthlyUsage,
+  leads
 } from "@shared/schema";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { neonConfig, Pool } from "@neondatabase/serverless";
@@ -88,6 +91,20 @@ export interface IStorage {
   getOrCreateMonthlyUsage(clientId: string, month: string): Promise<MonthlyUsage>;
   incrementMonthlyUsage(clientId: string, month: string, field: 'messages' | 'leads' | 'automations'): Promise<MonthlyUsage>;
   getMonthlyUsageHistory(clientId: string, months?: number): Promise<MonthlyUsage[]>;
+  
+  // Leads management
+  createLead(lead: InsertLead): Promise<Lead>;
+  getLeads(clientId: string, filters?: {
+    status?: string;
+    priority?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ leads: Lead[]; total: number }>;
+  getLeadById(id: string): Promise<Lead | undefined>;
+  updateLead(id: string, updates: Partial<Lead>): Promise<Lead>;
+  deleteLead(id: string): Promise<void>;
+  getLeadBySessionId(sessionId: string, clientId: string): Promise<Lead | undefined>;
 }
 
 export class DbStorage implements IStorage {
@@ -647,6 +664,110 @@ export class DbStorage implements IStorage {
       .limit(months);
     
     return results;
+  }
+
+  // Leads management
+  async createLead(lead: InsertLead): Promise<Lead> {
+    const [created] = await db
+      .insert(leads)
+      .values(lead)
+      .returning();
+    return created;
+  }
+
+  async getLeads(clientId: string, filters?: {
+    status?: string;
+    priority?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ leads: Lead[]; total: number }> {
+    const conditions = [eq(leads.clientId, clientId)];
+    
+    if (filters?.status) {
+      conditions.push(eq(leads.status, filters.status));
+    }
+    
+    if (filters?.priority) {
+      conditions.push(eq(leads.priority, filters.priority));
+    }
+    
+    if (filters?.search) {
+      const searchTerm = `%${filters.search}%`;
+      conditions.push(
+        or(
+          like(leads.name, searchTerm),
+          like(leads.email, searchTerm),
+          like(leads.phone, searchTerm)
+        )!
+      );
+    }
+    
+    const whereClause = and(...conditions);
+    
+    // Get total count
+    const countResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(leads)
+      .where(whereClause);
+    
+    const total = Number(countResult[0]?.count || 0);
+    
+    // Get paginated results
+    let query = db
+      .select()
+      .from(leads)
+      .where(whereClause)
+      .orderBy(desc(leads.createdAt));
+    
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as typeof query;
+    }
+    
+    if (filters?.offset) {
+      query = query.offset(filters.offset) as typeof query;
+    }
+    
+    const results = await query;
+    
+    return { leads: results, total };
+  }
+
+  async getLeadById(id: string): Promise<Lead | undefined> {
+    const [lead] = await db
+      .select()
+      .from(leads)
+      .where(eq(leads.id, id))
+      .limit(1);
+    return lead;
+  }
+
+  async updateLead(id: string, updates: Partial<Lead>): Promise<Lead> {
+    const [updated] = await db
+      .update(leads)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(leads.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteLead(id: string): Promise<void> {
+    await db.delete(leads).where(eq(leads.id, id));
+  }
+
+  async getLeadBySessionId(sessionId: string, clientId: string): Promise<Lead | undefined> {
+    const [lead] = await db
+      .select()
+      .from(leads)
+      .where(and(
+        eq(leads.sessionId, sessionId),
+        eq(leads.clientId, clientId)
+      ))
+      .limit(1);
+    return lead;
   }
 }
 

@@ -2672,6 +2672,125 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // =============================================
+  // CLIENT LEADS ENDPOINTS
+  // =============================================
+
+  // Get all leads for client
+  app.get("/api/client/leads", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      const { status, priority, search, limit, offset } = req.query;
+      
+      const result = await storage.getLeads(clientId, {
+        status: status as string | undefined,
+        priority: priority as string | undefined,
+        search: search as string | undefined,
+        limit: limit ? parseInt(limit as string) : 50,
+        offset: offset ? parseInt(offset as string) : 0,
+      });
+      
+      res.json({
+        clientId,
+        ...result,
+      });
+    } catch (error) {
+      console.error("Get client leads error:", error);
+      res.status(500).json({ error: "Failed to fetch leads" });
+    }
+  });
+
+  // Get single lead by ID
+  app.get("/api/client/leads/:id", requireClientAuth, async (req, res) => {
+    try {
+      const lead = await storage.getLeadById(req.params.id);
+      
+      if (!lead) {
+        return res.status(404).json({ error: "Lead not found" });
+      }
+      
+      // Verify the lead belongs to the client
+      const clientId = (req as any).effectiveClientId;
+      if (lead.clientId !== clientId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      res.json(lead);
+    } catch (error) {
+      console.error("Get lead error:", error);
+      res.status(500).json({ error: "Failed to fetch lead" });
+    }
+  });
+
+  // Create a new lead
+  app.post("/api/client/leads", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      const leadData = {
+        ...req.body,
+        clientId,
+        source: req.body.source || 'manual',
+      };
+      
+      const lead = await storage.createLead(leadData);
+      
+      // Increment monthly leads count
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      await storage.incrementMonthlyUsage(clientId, currentMonth, 'leads');
+      
+      res.status(201).json(lead);
+    } catch (error) {
+      console.error("Create lead error:", error);
+      res.status(500).json({ error: "Failed to create lead" });
+    }
+  });
+
+  // Update a lead
+  app.patch("/api/client/leads/:id", requireClientAuth, async (req, res) => {
+    try {
+      const lead = await storage.getLeadById(req.params.id);
+      
+      if (!lead) {
+        return res.status(404).json({ error: "Lead not found" });
+      }
+      
+      // Verify the lead belongs to the client
+      const clientId = (req as any).effectiveClientId;
+      if (lead.clientId !== clientId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const updated = await storage.updateLead(req.params.id, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Update lead error:", error);
+      res.status(500).json({ error: "Failed to update lead" });
+    }
+  });
+
+  // Delete a lead
+  app.delete("/api/client/leads/:id", requireClientAuth, async (req, res) => {
+    try {
+      const lead = await storage.getLeadById(req.params.id);
+      
+      if (!lead) {
+        return res.status(404).json({ error: "Lead not found" });
+      }
+      
+      // Verify the lead belongs to the client
+      const clientId = (req as any).effectiveClientId;
+      if (lead.clientId !== clientId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      await storage.deleteLead(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Delete lead error:", error);
+      res.status(500).json({ error: "Failed to delete lead" });
+    }
+  });
+
+  // =============================================
   // SUPER-ADMIN ANALYTICS OVERVIEW
   // =============================================
 
