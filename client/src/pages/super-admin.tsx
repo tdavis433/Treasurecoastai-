@@ -433,6 +433,27 @@ export default function SuperAdmin() {
     },
   });
 
+  const updateClientStatusMutation = useMutation({
+    mutationFn: async ({ clientId, status }: { clientId: string; status: string }) => {
+      const response = await apiRequest("PUT", `/api/super-admin/clients/${clientId}/status`, { status });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/clients"] });
+      toast({ 
+        title: "Status Updated", 
+        description: data.message || "Client status has been updated."
+      });
+    },
+    onError: () => {
+      toast({ 
+        title: "Error", 
+        description: "Failed to update client status.", 
+        variant: "destructive" 
+      });
+    },
+  });
+
   const testNotificationMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("POST", "/api/test-notification", {});
@@ -674,6 +695,99 @@ export default function SuperAdmin() {
               )) : (
                 <div className="col-span-full text-center py-8 text-white/50">
                   No bots created yet. Click "Create New Bot" to get started.
+                </div>
+              )}
+            </div>
+          </GlassCardContent>
+        </GlassCard>
+
+        {/* Client Management Section */}
+        <GlassCard>
+          <GlassCardHeader>
+            <GlassCardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-cyan-400" />
+              Client Management
+            </GlassCardTitle>
+            <GlassCardDescription>Manage client accounts and service status</GlassCardDescription>
+          </GlassCardHeader>
+          <GlassCardContent>
+            <div className="space-y-4">
+              {clients && clients.length > 0 ? clients.map(client => (
+                <div 
+                  key={client.id}
+                  className="p-4 rounded-xl bg-white/5 border border-white/10 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+                  data-testid={`client-row-${client.id}`}
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-medium text-white">{client.name}</h4>
+                      <NeonBadge 
+                        variant={
+                          client.status === 'active' ? 'success' : 
+                          client.status === 'paused' ? 'danger' : 
+                          'default'
+                        } 
+                        className="text-xs"
+                      >
+                        {client.status}
+                      </NeonBadge>
+                    </div>
+                    <div className="text-sm text-white/55">
+                      {client.bots?.length || 0} bot{(client.bots?.length || 0) !== 1 ? 's' : ''} configured
+                      {client.type && <span className="ml-2">| {client.type}</span>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Select
+                      value={client.status}
+                      onValueChange={(newStatus) => {
+                        updateClientStatusMutation.mutate({ 
+                          clientId: client.id, 
+                          status: newStatus 
+                        });
+                      }}
+                    >
+                      <SelectTrigger 
+                        className="w-[130px] bg-white/5 border-white/10 text-white"
+                        data-testid={`select-status-${client.id}`}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#0B0E13] border-white/10">
+                        <SelectItem value="active" className="text-white hover:bg-white/10">
+                          <span className="flex items-center gap-2">
+                            <span className="h-2 w-2 rounded-full bg-green-500" />
+                            Active
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="paused" className="text-white hover:bg-white/10">
+                          <span className="flex items-center gap-2">
+                            <span className="h-2 w-2 rounded-full bg-red-500" />
+                            Paused
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="demo" className="text-white hover:bg-white/10">
+                          <span className="flex items-center gap-2">
+                            <span className="h-2 w-2 rounded-full bg-blue-500" />
+                            Demo
+                          </span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setLocation(`/client/dashboard?clientId=${client.id}`)}
+                      className="text-cyan-400 border-cyan-400/30 hover:bg-cyan-400/10"
+                      data-testid={`button-view-client-${client.id}`}
+                    >
+                      View Dashboard
+                    </Button>
+                  </div>
+                </div>
+              )) : (
+                <div className="text-center py-8 text-white/50">
+                  No clients registered yet.
                 </div>
               )}
             </div>
