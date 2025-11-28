@@ -703,7 +703,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const actualSessionId = sessionId || `session_${Date.now()}`;
       
       // Categorize the message topic
-      const messageCategory = categorizeMessage(lastUserMessage?.content || "");
+      const messageCategory = categorizeMessageTopic(lastUserMessage?.content || "");
       
       // Track session analytics
       const existingSession = await storage.getChatSession(actualSessionId, clientId, botId);
@@ -867,8 +867,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Helper function to categorize messages by topic
-  function categorizeMessage(content: string): string {
+  // Helper function to categorize messages by topic for analytics
+  function categorizeMessageTopic(content: string): string {
     const lower = content.toLowerCase();
     
     if (/pric|cost|fee|pay|afford|money|\$/i.test(lower)) return 'pricing';
@@ -2090,6 +2090,151 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get client bot config error:", error);
       res.status(500).json({ error: "Failed to fetch bot configuration" });
+    }
+  });
+
+  // =============================================
+  // CLIENT ANALYTICS ENDPOINTS
+  // =============================================
+
+  // Get analytics summary for client's bot
+  app.get("/api/client/analytics/summary", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      const botId = req.query.botId as string | undefined;
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+      
+      const summary = await storage.getClientAnalyticsSummary(clientId, botId, startDate, endDate);
+      
+      res.json({
+        clientId,
+        botId: botId || 'all',
+        ...summary,
+      });
+    } catch (error) {
+      console.error("Get client analytics summary error:", error);
+      res.status(500).json({ error: "Failed to fetch analytics summary" });
+    }
+  });
+
+  // Get daily analytics trends for client
+  app.get("/api/client/analytics/trends", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      const botId = req.query.botId as string | undefined;
+      const days = parseInt(req.query.days as string) || 30;
+      
+      const trends = await storage.getClientDailyTrends(clientId, botId, days);
+      
+      // Fill in missing days with zeros
+      const now = new Date();
+      const filledTrends: any[] = [];
+      for (let i = days - 1; i >= 0; i--) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        
+        const existing = trends.find(t => t.date === dateStr);
+        if (existing) {
+          filledTrends.push(existing);
+        } else {
+          filledTrends.push({
+            date: dateStr,
+            clientId,
+            botId: botId || 'all',
+            totalConversations: 0,
+            totalMessages: 0,
+            userMessages: 0,
+            botMessages: 0,
+            avgResponseTimeMs: 0,
+            crisisEvents: 0,
+            appointmentRequests: 0,
+          });
+        }
+      }
+      
+      res.json({
+        clientId,
+        botId: botId || 'all',
+        days,
+        trends: filledTrends,
+      });
+    } catch (error) {
+      console.error("Get client analytics trends error:", error);
+      res.status(500).json({ error: "Failed to fetch analytics trends" });
+    }
+  });
+
+  // Get recent chat sessions for client
+  app.get("/api/client/analytics/sessions", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      const botId = req.query.botId as string | undefined;
+      const limit = parseInt(req.query.limit as string) || 50;
+      
+      const sessions = await storage.getClientRecentSessions(clientId, botId, limit);
+      
+      res.json({
+        clientId,
+        botId: botId || 'all',
+        sessions,
+        total: sessions.length,
+      });
+    } catch (error) {
+      console.error("Get client analytics sessions error:", error);
+      res.status(500).json({ error: "Failed to fetch chat sessions" });
+    }
+  });
+
+  // =============================================
+  // SUPER-ADMIN ANALYTICS OVERVIEW
+  // =============================================
+
+  // Get platform-wide analytics overview
+  app.get("/api/super-admin/analytics/overview", requireSuperAdmin, async (req, res) => {
+    try {
+      const days = parseInt(req.query.days as string) || 30;
+      const allBots = getAllBotConfigs();
+      
+      const overview: any[] = [];
+      
+      for (const bot of allBots) {
+        const summary = await storage.getClientAnalyticsSummary(bot.clientId, bot.botId);
+        overview.push({
+          clientId: bot.clientId,
+          botId: bot.botId,
+          businessName: bot.businessProfile?.businessName || bot.name,
+          businessType: bot.businessProfile?.type || 'general',
+          ...summary,
+        });
+      }
+      
+      // Calculate totals
+      const totals = overview.reduce((acc, curr) => ({
+        totalConversations: acc.totalConversations + curr.totalConversations,
+        totalMessages: acc.totalMessages + curr.totalMessages,
+        userMessages: acc.userMessages + curr.userMessages,
+        botMessages: acc.botMessages + curr.botMessages,
+        crisisEvents: acc.crisisEvents + curr.crisisEvents,
+        appointmentRequests: acc.appointmentRequests + curr.appointmentRequests,
+      }), {
+        totalConversations: 0,
+        totalMessages: 0,
+        userMessages: 0,
+        botMessages: 0,
+        crisisEvents: 0,
+        appointmentRequests: 0,
+      });
+      
+      res.json({
+        totals,
+        bots: overview,
+        totalBots: allBots.length,
+      });
+    } catch (error) {
+      console.error("Get super-admin analytics overview error:", error);
+      res.status(500).json({ error: "Failed to fetch analytics overview" });
     }
   });
 

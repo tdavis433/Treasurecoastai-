@@ -397,6 +397,7 @@ export class DbStorage implements IStorage {
     const existing = await this.getChatSession(session.sessionId, session.clientId, session.botId);
     
     if (existing) {
+      const topicsArray = Array.isArray(session.topics) ? session.topics : (existing.topics as string[] || []);
       const [updated] = await db
         .update(chatSessions)
         .set({
@@ -405,7 +406,7 @@ export class DbStorage implements IStorage {
           totalResponseTimeMs: session.totalResponseTimeMs ?? existing.totalResponseTimeMs,
           crisisDetected: session.crisisDetected ?? existing.crisisDetected,
           appointmentRequested: session.appointmentRequested ?? existing.appointmentRequested,
-          topics: session.topics ?? existing.topics,
+          topics: topicsArray as any,
           endedAt: session.endedAt ?? existing.endedAt,
         })
         .where(eq(chatSessions.id, existing.id))
@@ -413,9 +414,13 @@ export class DbStorage implements IStorage {
       return updated;
     }
     
+    const insertData = {
+      ...session,
+      topics: Array.isArray(session.topics) ? session.topics : [],
+    };
     const [created] = await db
       .insert(chatSessions)
-      .values(session)
+      .values(insertData as any)
       .returning();
     return created;
   }
