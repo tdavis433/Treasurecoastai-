@@ -683,6 +683,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Multi-tenant chat endpoint: POST /api/chat/:clientId/:botId
   app.post("/api/chat/:clientId/:botId", async (req, res) => {
+    const startTime = Date.now();
+    
     try {
       const { clientId, botId } = req.params;
       const { messages, sessionId, language = "en" } = req.body;
@@ -698,24 +700,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const lastUserMessage = messages[messages.length - 1];
+      const actualSessionId = sessionId || `session_${Date.now()}`;
+      
+      // Categorize the message topic
+      const messageCategory = categorizeMessage(lastUserMessage?.content || "");
+      
+      // Track session analytics
+      const existingSession = await storage.getChatSession(actualSessionId, clientId, botId);
+      const sessionData = {
+        sessionId: actualSessionId,
+        clientId,
+        botId,
+        startedAt: existingSession?.startedAt || new Date(),
+        userMessageCount: (existingSession?.userMessageCount || 0) + 1,
+        botMessageCount: existingSession?.botMessageCount || 0,
+        totalResponseTimeMs: existingSession?.totalResponseTimeMs || 0,
+        crisisDetected: existingSession?.crisisDetected || false,
+        appointmentRequested: existingSession?.appointmentRequested || false,
+        topics: [...(existingSession?.topics as string[] || [])],
+      };
+      
+      // Add topic if not already tracked
+      if (messageCategory && !sessionData.topics.includes(messageCategory)) {
+        sessionData.topics.push(messageCategory);
+      }
       
       // Check for crisis keywords using bot-specific configuration
       if (lastUserMessage?.role === "user" && detectCrisisInMessage(lastUserMessage.content, botConfig)) {
         const crisisReply = getBotCrisisResponse(botConfig);
+        const responseTime = Date.now() - startTime;
+        
+        // Update session with crisis flag
+        sessionData.crisisDetected = true;
+        sessionData.botMessageCount += 1;
+        sessionData.totalResponseTimeMs += responseTime;
+        
+        // Log analytics event for crisis
+        await storage.logAnalyticsEvent({
+          clientId,
+          botId,
+          sessionId: actualSessionId,
+          eventType: 'crisis',
+          actor: 'user',
+          messageContent: lastUserMessage.content,
+          category: 'crisis',
+          responseTimeMs: responseTime,
+          metadata: { language },
+        });
+        
+        await storage.createOrUpdateChatSession(sessionData);
+        
+        // Update daily analytics
+        await storage.updateOrCreateDailyAnalytics({
+          date: new Date().toISOString().split('T')[0],
+          clientId,
+          botId,
+          totalConversations: existingSession ? 0 : 1,
+          totalMessages: 2,
+          userMessages: 1,
+          botMessages: 1,
+          crisisEvents: 1,
+        });
         
         // Log to file
         logConversationToFile({
           timestamp: new Date().toISOString(),
           clientId,
           botId,
-          sessionId,
+          sessionId: actualSessionId,
           userMessage: lastUserMessage.content,
           botReply: crisisReply
         });
 
         return res.json({ 
           reply: crisisReply,
-          meta: { clientId, botId, crisis: true }
+          meta: { clientId, botId, crisis: true, sessionId: actualSessionId }
         });
       }
 
@@ -735,6 +794,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? "Estoy aquí para ayudar. ¿Cómo puedo asistirte hoy?"
         : "I'm here to help. How can I assist you today?";
       const reply = completion.choices[0]?.message?.content || defaultReply;
+      const responseTime = Date.now() - startTime;
+      
+      // Update session data
+      sessionData.botMessageCount += 1;
+      sessionData.totalResponseTimeMs += responseTime;
+      
+      // Check if message mentions appointment
+      const mentionsAppointment = /appointment|schedule|book|reserve|meeting/i.test(lastUserMessage?.content || "");
+      if (mentionsAppointment) {
+        sessionData.appointmentRequested = true;
+      }
+
+      // Log analytics events
+      if (lastUserMessage?.role === "user") {
+        await storage.logAnalyticsEvent({
+          clientId,
+          botId,
+          sessionId: actualSessionId,
+          eventType: 'message',
+          actor: 'user',
+          messageContent: lastUserMessage.content,
+          category: messageCategory,
+          metadata: { language },
+        });
+      }
+      
+      await storage.logAnalyticsEvent({
+        clientId,
+        botId,
+        sessionId: actualSessionId,
+        eventType: 'message',
+        actor: 'bot',
+        messageContent: reply,
+        responseTimeMs: responseTime,
+        metadata: { language },
+      });
+      
+      await storage.createOrUpdateChatSession(sessionData);
+      
+      // Update daily analytics
+      await storage.updateOrCreateDailyAnalytics({
+        date: new Date().toISOString().split('T')[0],
+        clientId,
+        botId,
+        totalConversations: existingSession ? 0 : 1,
+        totalMessages: 2,
+        userMessages: 1,
+        botMessages: 1,
+        appointmentRequests: mentionsAppointment ? 1 : 0,
+      });
 
       // Log conversation to file
       if (lastUserMessage?.role === "user") {
@@ -742,7 +851,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           timestamp: new Date().toISOString(),
           clientId,
           botId,
-          sessionId,
+          sessionId: actualSessionId,
           userMessage: lastUserMessage.content,
           botReply: reply
         });
@@ -750,13 +859,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ 
         reply,
-        meta: { clientId, botId }
+        meta: { clientId, botId, sessionId: actualSessionId, responseTimeMs: responseTime }
       });
     } catch (error) {
       console.error("Multi-tenant chat error:", error);
       res.status(500).json({ error: "Failed to process chat message" });
     }
   });
+  
+  // Helper function to categorize messages by topic
+  function categorizeMessage(content: string): string {
+    const lower = content.toLowerCase();
+    
+    if (/pric|cost|fee|pay|afford|money|\$/i.test(lower)) return 'pricing';
+    if (/hour|open|close|time|when|schedule/i.test(lower)) return 'hours';
+    if (/locat|address|where|direct|find/i.test(lower)) return 'location';
+    if (/service|offer|provide|do you|can you/i.test(lower)) return 'services';
+    if (/appointment|book|reserve|schedule|meet/i.test(lower)) return 'appointments';
+    if (/help|support|assist|question/i.test(lower)) return 'support';
+    if (/contact|call|email|phone|reach/i.test(lower)) return 'contact';
+    if (/thank|great|good|awesome/i.test(lower)) return 'feedback';
+    
+    return 'general';
+  }
 
   // =============================================
   // DEMO BOT ENDPOINTS
