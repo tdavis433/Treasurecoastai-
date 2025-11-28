@@ -1,5 +1,8 @@
 import { getStripeSync } from './stripeClient';
-import { updateClientStatus } from './botConfig';
+import * as botConfig from './botConfig';
+
+const ACTIVE_STATUSES = ['active', 'trialing', 'incomplete'];
+const PAUSED_STATUSES = ['canceled', 'unpaid', 'past_due', 'incomplete_expired'];
 
 export class WebhookHandlers {
   static async processWebhook(payload: Buffer, signature: string, uuid: string): Promise<void> {
@@ -11,6 +14,8 @@ export class WebhookHandlers {
         'FIX: Ensure webhook route is registered BEFORE app.use(express.json()).'
       );
     }
+
+    console.log(`Processing webhook with UUID: ${uuid}, payload size: ${payload.length} bytes`);
 
     const sync = await getStripeSync();
     
@@ -29,41 +34,65 @@ export class WebhookHandlers {
 
     switch (eventType) {
       case 'customer.subscription.deleted':
-      case 'customer.subscription.updated':
-        if (data?.status === 'canceled' || data?.status === 'unpaid' || data?.status === 'past_due') {
+        {
           const clientId = data?.metadata?.clientId;
           if (clientId) {
-            console.log(`Pausing client ${clientId} due to subscription status: ${data.status}`);
-            updateClientStatus(clientId, 'paused');
+            console.log(`Subscription deleted for client ${clientId}, pausing service`);
+            botConfig.updateClientStatus(clientId, 'paused');
           }
-        } else if (data?.status === 'active') {
+        }
+        break;
+
+      case 'customer.subscription.updated':
+        {
+          const subscriptionStatus = data?.status;
           const clientId = data?.metadata?.clientId;
-          if (clientId) {
-            console.log(`Activating client ${clientId} due to active subscription`);
-            updateClientStatus(clientId, 'active');
+          
+          if (!clientId) {
+            console.log(`No clientId in subscription metadata, skipping status update`);
+            break;
+          }
+
+          if (ACTIVE_STATUSES.includes(subscriptionStatus)) {
+            console.log(`Subscription ${subscriptionStatus} for client ${clientId}, keeping/setting active`);
+            botConfig.updateClientStatus(clientId, 'active');
+          } else if (PAUSED_STATUSES.includes(subscriptionStatus)) {
+            console.log(`Subscription ${subscriptionStatus} for client ${clientId}, pausing service`);
+            botConfig.updateClientStatus(clientId, 'paused');
+          } else {
+            console.log(`Subscription status ${subscriptionStatus} for client ${clientId}, no action taken`);
           }
         }
         break;
 
       case 'invoice.payment_failed':
-        const subscriptionId = data?.subscription;
-        const clientId = data?.subscription_details?.metadata?.clientId || data?.metadata?.clientId;
-        if (clientId) {
-          console.log(`Payment failed for client ${clientId}, pausing service`);
-          updateClientStatus(clientId, 'paused');
+        {
+          const clientId = data?.subscription_details?.metadata?.clientId || data?.metadata?.clientId;
+          if (clientId) {
+            console.log(`Payment failed for client ${clientId}, pausing service`);
+            botConfig.updateClientStatus(clientId, 'paused');
+          }
         }
         break;
 
       case 'invoice.payment_succeeded':
-        const paidClientId = data?.subscription_details?.metadata?.clientId || data?.metadata?.clientId;
-        if (paidClientId) {
-          console.log(`Payment succeeded for client ${paidClientId}, activating service`);
-          updateClientStatus(paidClientId, 'active');
+        {
+          const clientId = data?.subscription_details?.metadata?.clientId || data?.metadata?.clientId;
+          if (clientId) {
+            console.log(`Payment succeeded for client ${clientId}, activating service`);
+            botConfig.updateClientStatus(clientId, 'active');
+          }
         }
         break;
 
       case 'checkout.session.completed':
-        console.log('Checkout session completed:', data?.id);
+        {
+          const clientId = data?.metadata?.clientId;
+          if (clientId) {
+            console.log(`Checkout completed for client ${clientId}, activating service`);
+            botConfig.updateClientStatus(clientId, 'active');
+          }
+        }
         break;
 
       default:

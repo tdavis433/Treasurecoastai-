@@ -152,3 +152,15 @@ The system employs a React, TypeScript, Tailwind CSS, and shadcn/ui frontend wit
   - Super-admin Platform Analytics: Platform-wide overview with per-bot performance
   - Tenant-scoped APIs: `/api/client/analytics/summary`, `/api/client/analytics/trends`, `/api/client/analytics/sessions`
   - Platform-wide API: `/api/super-admin/analytics/overview`
+- **Client Status System:** Status management for tenant lifecycle
+  - Three statuses: Active (fully functional), Paused (chat disabled), Demo (showcase mode)
+  - Chat endpoint enforcement: Paused clients receive friendly "temporarily unavailable" message
+  - Status stored in clients.json alongside bot IDs and client metadata
+  - Super-admin UI controls for toggling client status
+- **Stripe Subscription Billing:** Full Stripe integration for subscription management
+  - Uses `stripe-replit-sync` package for managed webhooks and data synchronization
+  - Automatic webhook handling with UUID-based routing (registered before express.json middleware)
+  - Billing endpoints: `/api/stripe/products`, `/api/stripe/checkout`, `/api/stripe/subscription/:clientId`, `/api/stripe/portal`
+  - Customer portal integration for self-service subscription management
+  - Auto-deactivation on payment failure via webhook handlers (invoice.payment_failed, customer.subscription.deleted)
+  - Stripe schema stored in PostgreSQL with automatic migration on startup
