@@ -221,3 +221,74 @@ export const insertClientSchema = createInsertSchema(clients).omit({
 
 export type InsertClient = z.infer<typeof insertClientSchema>;
 export type Client = typeof clients.$inferSelect;
+
+// Analytics tables for multi-tenant tracking
+export const chatSessions = pgTable("chat_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull(),
+  clientId: varchar("client_id").notNull(),
+  botId: varchar("bot_id").notNull(),
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  endedAt: timestamp("ended_at"),
+  userMessageCount: integer("user_message_count").notNull().default(0),
+  botMessageCount: integer("bot_message_count").notNull().default(0),
+  totalResponseTimeMs: integer("total_response_time_ms").notNull().default(0),
+  crisisDetected: boolean("crisis_detected").notNull().default(false),
+  appointmentRequested: boolean("appointment_requested").notNull().default(false),
+  topics: json("topics").$type<string[]>().default([]),
+  metadata: json("metadata").$type<Record<string, any>>().default({}),
+});
+
+export const insertChatSessionSchema = createInsertSchema(chatSessions).omit({
+  id: true,
+});
+
+export type InsertChatSession = z.infer<typeof insertChatSessionSchema>;
+export type ChatSession = typeof chatSessions.$inferSelect;
+
+export const chatAnalyticsEvents = pgTable("chat_analytics_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  botId: varchar("bot_id").notNull(),
+  sessionId: varchar("session_id").notNull(),
+  eventType: text("event_type").notNull(), // 'message', 'crisis', 'appointment', 'error'
+  actor: text("actor").notNull(), // 'user' or 'bot'
+  messageContent: text("message_content"),
+  category: text("category"), // topic category
+  responseTimeMs: integer("response_time_ms"),
+  metadata: json("metadata").$type<Record<string, any>>().default({}),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertChatAnalyticsEventSchema = createInsertSchema(chatAnalyticsEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertChatAnalyticsEvent = z.infer<typeof insertChatAnalyticsEventSchema>;
+export type ChatAnalyticsEvent = typeof chatAnalyticsEvents.$inferSelect;
+
+export const dailyAnalytics = pgTable("daily_analytics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  date: text("date").notNull(), // YYYY-MM-DD format
+  clientId: varchar("client_id").notNull(),
+  botId: varchar("bot_id").notNull(),
+  totalConversations: integer("total_conversations").notNull().default(0),
+  totalMessages: integer("total_messages").notNull().default(0),
+  userMessages: integer("user_messages").notNull().default(0),
+  botMessages: integer("bot_messages").notNull().default(0),
+  avgResponseTimeMs: integer("avg_response_time_ms").notNull().default(0),
+  avgConversationLength: integer("avg_conversation_length").notNull().default(0),
+  crisisEvents: integer("crisis_events").notNull().default(0),
+  appointmentRequests: integer("appointment_requests").notNull().default(0),
+  topicBreakdown: json("topic_breakdown").$type<Record<string, number>>().default({}),
+  peakHour: integer("peak_hour"), // 0-23
+  uniqueUsers: integer("unique_users").notNull().default(0),
+});
+
+export const insertDailyAnalyticsSchema = createInsertSchema(dailyAnalytics).omit({
+  id: true,
+});
+
+export type InsertDailyAnalytics = z.infer<typeof insertDailyAnalyticsSchema>;
+export type DailyAnalytics = typeof dailyAnalytics.$inferSelect;

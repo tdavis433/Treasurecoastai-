@@ -6,10 +6,19 @@ import {
   type ConversationAnalytics,
   type InsertConversationAnalytics,
   type AdminUser,
+  type ChatSession,
+  type InsertChatSession,
+  type ChatAnalyticsEvent,
+  type InsertChatAnalyticsEvent,
+  type DailyAnalytics,
+  type InsertDailyAnalytics,
   appointments,
   clientSettings,
   conversationAnalytics,
-  adminUsers
+  adminUsers,
+  chatSessions,
+  chatAnalyticsEvents,
+  dailyAnalytics
 } from "@shared/schema";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { neonConfig, Pool } from "@neondatabase/serverless";
@@ -52,6 +61,25 @@ export interface IStorage {
   }>;
   
   findAdminByUsername(username: string): Promise<AdminUser | undefined>;
+  
+  // Multi-tenant chat analytics
+  createOrUpdateChatSession(session: InsertChatSession): Promise<ChatSession>;
+  getChatSession(sessionId: string, clientId: string, botId: string): Promise<ChatSession | undefined>;
+  updateChatSession(sessionId: string, clientId: string, botId: string, updates: Partial<ChatSession>): Promise<void>;
+  logAnalyticsEvent(event: InsertChatAnalyticsEvent): Promise<void>;
+  getClientAnalyticsSummary(clientId: string, botId?: string, startDate?: Date, endDate?: Date): Promise<{
+    totalConversations: number;
+    totalMessages: number;
+    userMessages: number;
+    botMessages: number;
+    avgResponseTimeMs: number;
+    crisisEvents: number;
+    appointmentRequests: number;
+    topicBreakdown: Record<string, number>;
+  }>;
+  getClientDailyTrends(clientId: string, botId?: string, days?: number): Promise<DailyAnalytics[]>;
+  getClientRecentSessions(clientId: string, botId?: string, limit?: number): Promise<ChatSession[]>;
+  updateOrCreateDailyAnalytics(analytics: InsertDailyAnalytics): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -362,6 +390,183 @@ export class DbStorage implements IStorage {
       .where(eq(adminUsers.username, username))
       .limit(1);
     return user;
+  }
+
+  // Multi-tenant chat analytics implementation
+  async createOrUpdateChatSession(session: InsertChatSession): Promise<ChatSession> {
+    const existing = await this.getChatSession(session.sessionId, session.clientId, session.botId);
+    
+    if (existing) {
+      const [updated] = await db
+        .update(chatSessions)
+        .set({
+          userMessageCount: session.userMessageCount ?? existing.userMessageCount,
+          botMessageCount: session.botMessageCount ?? existing.botMessageCount,
+          totalResponseTimeMs: session.totalResponseTimeMs ?? existing.totalResponseTimeMs,
+          crisisDetected: session.crisisDetected ?? existing.crisisDetected,
+          appointmentRequested: session.appointmentRequested ?? existing.appointmentRequested,
+          topics: session.topics ?? existing.topics,
+          endedAt: session.endedAt ?? existing.endedAt,
+        })
+        .where(eq(chatSessions.id, existing.id))
+        .returning();
+      return updated;
+    }
+    
+    const [created] = await db
+      .insert(chatSessions)
+      .values(session)
+      .returning();
+    return created;
+  }
+
+  async getChatSession(sessionId: string, clientId: string, botId: string): Promise<ChatSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(chatSessions)
+      .where(and(
+        eq(chatSessions.sessionId, sessionId),
+        eq(chatSessions.clientId, clientId),
+        eq(chatSessions.botId, botId)
+      ))
+      .limit(1);
+    return session;
+  }
+
+  async updateChatSession(sessionId: string, clientId: string, botId: string, updates: Partial<ChatSession>): Promise<void> {
+    await db
+      .update(chatSessions)
+      .set(updates)
+      .where(and(
+        eq(chatSessions.sessionId, sessionId),
+        eq(chatSessions.clientId, clientId),
+        eq(chatSessions.botId, botId)
+      ));
+  }
+
+  async logAnalyticsEvent(event: InsertChatAnalyticsEvent): Promise<void> {
+    await db.insert(chatAnalyticsEvents).values(event);
+  }
+
+  async getClientAnalyticsSummary(clientId: string, botId?: string, startDate?: Date, endDate?: Date): Promise<{
+    totalConversations: number;
+    totalMessages: number;
+    userMessages: number;
+    botMessages: number;
+    avgResponseTimeMs: number;
+    crisisEvents: number;
+    appointmentRequests: number;
+    topicBreakdown: Record<string, number>;
+  }> {
+    const conditions = [eq(chatSessions.clientId, clientId)];
+    if (botId) conditions.push(eq(chatSessions.botId, botId));
+    if (startDate) conditions.push(gte(chatSessions.startedAt, startDate));
+    if (endDate) conditions.push(lte(chatSessions.startedAt, endDate));
+
+    const sessions = await db
+      .select()
+      .from(chatSessions)
+      .where(and(...conditions));
+
+    const totalConversations = sessions.length;
+    let totalMessages = 0;
+    let userMessages = 0;
+    let botMessages = 0;
+    let totalResponseTime = 0;
+    let crisisEvents = 0;
+    let appointmentRequests = 0;
+    const topicCounts: Record<string, number> = {};
+
+    sessions.forEach(session => {
+      userMessages += session.userMessageCount;
+      botMessages += session.botMessageCount;
+      totalMessages += session.userMessageCount + session.botMessageCount;
+      totalResponseTime += session.totalResponseTimeMs;
+      if (session.crisisDetected) crisisEvents++;
+      if (session.appointmentRequested) appointmentRequests++;
+      
+      const topics = session.topics as string[] || [];
+      topics.forEach(topic => {
+        topicCounts[topic] = (topicCounts[topic] || 0) + 1;
+      });
+    });
+
+    const avgResponseTimeMs = totalConversations > 0 
+      ? Math.round(totalResponseTime / totalConversations) 
+      : 0;
+
+    return {
+      totalConversations,
+      totalMessages,
+      userMessages,
+      botMessages,
+      avgResponseTimeMs,
+      crisisEvents,
+      appointmentRequests,
+      topicBreakdown: topicCounts,
+    };
+  }
+
+  async getClientDailyTrends(clientId: string, botId?: string, days: number = 30): Promise<DailyAnalytics[]> {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    const startDateStr = startDate.toISOString().split('T')[0];
+
+    const conditions = [
+      eq(dailyAnalytics.clientId, clientId),
+      gte(dailyAnalytics.date, startDateStr)
+    ];
+    if (botId) conditions.push(eq(dailyAnalytics.botId, botId));
+
+    const results = await db
+      .select()
+      .from(dailyAnalytics)
+      .where(and(...conditions))
+      .orderBy(dailyAnalytics.date);
+
+    return results;
+  }
+
+  async getClientRecentSessions(clientId: string, botId?: string, limit: number = 50): Promise<ChatSession[]> {
+    const conditions = [eq(chatSessions.clientId, clientId)];
+    if (botId) conditions.push(eq(chatSessions.botId, botId));
+
+    const results = await db
+      .select()
+      .from(chatSessions)
+      .where(and(...conditions))
+      .orderBy(desc(chatSessions.startedAt))
+      .limit(limit);
+
+    return results;
+  }
+
+  async updateOrCreateDailyAnalytics(analytics: InsertDailyAnalytics): Promise<void> {
+    const existing = await db
+      .select()
+      .from(dailyAnalytics)
+      .where(and(
+        eq(dailyAnalytics.date, analytics.date),
+        eq(dailyAnalytics.clientId, analytics.clientId),
+        eq(dailyAnalytics.botId, analytics.botId)
+      ))
+      .limit(1);
+
+    if (existing.length > 0) {
+      await db
+        .update(dailyAnalytics)
+        .set({
+          totalConversations: (existing[0].totalConversations || 0) + (analytics.totalConversations || 0),
+          totalMessages: (existing[0].totalMessages || 0) + (analytics.totalMessages || 0),
+          userMessages: (existing[0].userMessages || 0) + (analytics.userMessages || 0),
+          botMessages: (existing[0].botMessages || 0) + (analytics.botMessages || 0),
+          crisisEvents: (existing[0].crisisEvents || 0) + (analytics.crisisEvents || 0),
+          appointmentRequests: (existing[0].appointmentRequests || 0) + (analytics.appointmentRequests || 0),
+        })
+        .where(eq(dailyAnalytics.id, existing[0].id));
+    } else {
+      await db.insert(dailyAnalytics).values(analytics);
+    }
   }
 }
 
