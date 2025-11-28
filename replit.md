@@ -1,7 +1,7 @@
 # Treasure Coast AI - Multi-Tenant Chatbot Platform
 
 ## Overview
-This project is a production-ready multi-tenant AI chatbot platform originally developed for The Faith House sober-living facility. As of November 2025, the system has been expanded to support multiple tenants with a JSON-based configuration approach (pre-database solution). The platform includes Faith House as a real tenant plus 5 demo bots showcasing different business types.
+This project is a multi-tenant AI chatbot platform designed to support various businesses with AI-powered conversational agents. Originally developed for a sober-living facility, it has expanded to a platform offering templated bots for diverse industries. The platform aims to provide customizable, AI-driven customer interaction solutions, complete with administrative tools, analytics, and robust security features, emphasizing privacy and data protection.
 
 ## User Preferences
 - **Current Mode:** Multi-tenant platform with JSON-based bot configurations
@@ -10,220 +10,50 @@ This project is a production-ready multi-tenant AI chatbot platform originally d
 - **Super-Admin Access:** Password-protected settings management for business configuration
 - Privacy-first approach with PII protection
 
-## Multi-Tenant Architecture
-
-### Bot Configuration System (/bots folder)
-Each bot has a dedicated JSON configuration file containing:
-- **Business Profile:** Name, type, location, hours, services
-- **System Prompt:** AI behavior instructions
-- **FAQs:** Question-answer pairs for common queries
-- **Safety Rules:** Crisis keywords, forbidden topics, redirect behaviors
-
-Bot Files:
-- `faith_house.json` - Real tenant (sober living)
-- `restaurant_demo.json` - Demo (restaurant)
-- `barber_demo.json` - Demo (barber/salon)
-- `homeservice_demo.json` - Demo (home services)
-- `autoservice_demo.json` - Demo (auto shop)
-- `gym_demo.json` - Demo (gym/fitness)
-- `realestate_demo.json` - Demo (real estate)
-- `medspa_demo.json` - Demo (med spa)
-- `tattoo_demo.json` - Demo (tattoo studio)
-
-### Client Management (/clients folder)
-- `clients.json` - Central registry of all clients
-- Each client has an id, name, status, and list of bot IDs
-
-### Conversation Logging (/logs folder)
-- Logs organized by clientId: `/logs/{clientId}/`
-- Daily log files: `{botId}-{YYYYMMDD}.log`
-- JSON Lines format for easy parsing
-
-## API Endpoints
-
-### Multi-Tenant Chat
-- `POST /api/chat/:clientId/:botId` - Send message to specific bot
-- Loads bot config dynamically
-- Applies bot-specific crisis detection
-- Logs conversations to file system
-
-### Demo Hub
-- `GET /api/demos` - List all available demo bots
-- `GET /api/demo/:botId` - Get specific bot config for UI
-
-### Platform Management
-- `GET /api/platform/clients` - List all clients with their bots
-- `GET /api/platform/bots/:clientId/:botId` - Get full bot config
-- `GET /api/platform/logs/:clientId` - Get conversation logs (authenticated)
-
-### Legacy Single-Tenant (Faith House)
-- `POST /api/chat` - Original chat endpoint (still works)
-- All existing appointment, admin, and settings endpoints
-
-## Frontend Routes
-
-### Demo Hub
-- `/demos` - Demo selector page showing all bots
-- `/demo/:botId` - Individual demo bot chat interface
-
-### Admin
-- `/admin/dashboard` - Appointment KPIs and overview
-- `/admin/appointments` - Appointment management
-- `/admin/analytics` - Chat analytics
-- `/admin/bot/:botId` - Per-bot dashboard with business-type-specific tabs
-- `/super-admin` - Super admin configuration (super_admin role only)
-
-### Control Center (Super Admin)
-- `/super-admin/control-center` - Unified platform management interface
-  - **Layout:** True split-pane with persistent dashboard grid + inline detail panel (no overlay)
-  - **Left Sidebar Navigation:**
-    - Search input for filtering bots (synced with grid and all counts)
-    - Bot list with name, business type, and status badge (shows "X of Y" when filtered)
-    - Selected bot highlighted with primary color
-    - Quick action buttons: Add New Bot, Legacy Admin
-  - **Main Content - Dashboard (always visible, shrinks when detail panel open):**
-    - Stats cards: Total Bots, Active, Demo, Paused counts
-    - Bot cards grid (responsive: adjusts columns when detail panel opens)
-    - Each card shows: business name, type, status badge, FAQs count, creation date
-    - Selected card highlighted with ring-2 and shadow-lg
-    - "Add New Bot" dashed card for quick creation
-  - **Bot Detail Panel (inline split-pane, no overlay):**
-    - Opens inline as right panel (lg:w-1/2 xl:w-2/5)
-    - Grid remains fully interactive - can select other bots without closing
-    - Bot header with icon, name, type, close button (X)
-    - Status badge and quick actions (Preview, Status selector)
-    - Tab navigation: Overview, Settings, Billing, Analytics, Logs
-  - **CreateFromTemplateModal:** 
-    - Local template state (localTemplate) prevents wizard reset on parent re-renders
-    - useEffect only depends on `open` for initialization
-    - Step 0: Template selection grid
-    - Steps 1-3: Business info, Contact/Location, Service tier/Billing
-
-### Client Dashboard
-- `/client/dashboard` - Client-facing dashboard for viewing business data
-  - Shows conversation statistics and message counts
-  - Lists appointments (for applicable business types)
-  - Displays business information and bot configuration
-  - Data is scoped to the logged-in client's business only
-
 ## System Architecture
-The system employs a React, TypeScript, Tailwind CSS, and shadcn/ui frontend with an Express and Node.js backend. PostgreSQL (Neon) is used for data persistence, and OpenAI provides AI capabilities via Replit AI Integrations, with TanStack Query for state management.
+The system utilizes a React, TypeScript, Tailwind CSS, and shadcn/ui frontend, with an Express and Node.js backend. Core architectural decisions include:
 
-**Key Features:**
-- **AI Chat:** OpenAI integration with advanced safety protocols.
-- **Multi-Tenant Support:** JSON-based bot configurations with file-based logging
-- **Demo Hub:** Showcase platform capabilities with 5 industry demos
-- **Enhanced Appointment Booking:** Supports multi-type appointments with contact preference tracking.
-- **Dual Notification System:** Email (Resend) and SMS (Twilio) for staff alerts.
-- **Pre-qualification Intake:** Captures sobriety status, support, and timeline before booking.
-- **Admin Dashboards:** Full suite of admin tools
-- **Secure Authentication:** Session-based with role-based access control
-- **Role-Based Access Control (RBAC):** Two roles implemented:
-  - `super_admin`: Full access including /super-admin and platform configuration
-  - `client_admin`: Access to dashboard, appointments, and analytics only
-- **Enhanced Analytics:** Category-based message classification with CSV export.
-- **Crisis Support:** Integration of resources like 988 and 1-800-662-HELP.
+### Multi-Tenant System
+- **Bot Configuration:** Each bot uses a dedicated JSON file (`/bots/{botId}.json`) for its business profile, AI system prompt, FAQs, and safety rules.
+- **Client Management:** A central `clients.json` manages client metadata and associated bot IDs.
+- **Conversation Logging:** File-based logging per client and bot (`/logs/{clientId}/{botId}-{YYYYMMDD}.log`) in JSON Lines format.
 
-**Database Schema (for Faith House tenant):**
-- `appointments`: Booking requests, status, contact preferences
-- `client_settings`: Customizable business settings
-- `conversation_analytics`: Chat metrics with PII-sanitized responses
-- `admin_users`: Admin authentication with roles
-- `chat_analytics_events`: Per-message analytics with topics, response times
-- `chat_sessions`: Aggregated session data with crisis flags, topics arrays
-- `daily_analytics`: Daily rollup for trends visualization
+### API Endpoints
+- **Chat:** `POST /api/chat/:clientId/:botId` for AI interaction.
+- **Platform Management:** Endpoints for listing clients, bots, and accessing logs.
+- **Demo Hub:** Endpoints to list and retrieve demo bot configurations.
+- **Admin & Client Dashboards:** Dedicated APIs for analytics, leads, inbox, and configuration management.
 
-**Privacy & Data Protection:**
-- **PII Sanitization:** Automatic redaction of phone numbers, emails, SSNs
-- **File-Based Logging:** Conversations logged separately by client
-- **Privacy UI Warnings:** Notifications in admin dashboards
+### Frontend
+- **Demo Hub (`/demos`):** Showcases available bot templates.
+- **Admin Interface (`/admin`, `/super-admin`):**
+    - **Control Center (`/super-admin/control-center`):** Unified bot management with split-pane layout, bot search, and detailed configuration tabs (Overview, Settings, Billing, Analytics, Logs).
+    - **Bot-Specific Dashboards (`/admin/bot/:botId`):** Tailored dashboards with industry-specific tabs.
+    - **Bot Creation Wizard:** 3-step process for creating new bots from templates or scratch.
+- **Client Dashboard (`/client/dashboard`):** Client-specific view of conversation statistics, appointments, and business info, with proper data scoping.
+- **Leads Module (`/client/leads`):** Manages lead generation and tracking.
+- **Inbox Module (`/client/inbox`):** Provides a conversation management interface for sessions.
+
+### Key Features
+- **AI Chat:** OpenAI integration with safety protocols.
+- **Appointment Booking:** Supports multi-type appointments with pre-qualification.
+- **Notification System:** Dual Email (Resend) and SMS (Twilio) alerts.
+- **Authentication & RBAC:** Session-based authentication with `super_admin` and `client_admin` roles.
+- **Analytics:** Multi-layer tracking for message events, sessions, and daily trends, with CSV export.
+- **Crisis Support:** Integration of crisis hotlines.
+- **Privacy & Data Protection:** PII sanitization, file-based logging, and privacy warnings.
+- **Stripe Integration:** Subscription billing, customer portal, and automatic deactivation on payment failure.
+- **Design System:** Dark Neon-Glass theme with consistent UI components.
+
+### Security & Middleware
+- **Production-Ready Stack:** Helmet.js, Stripe webhook handling, body parsers, CORS (widget routes), rate limiting, and session management.
+- **Rate Limiting:** Configured for general API, authentication, and chat endpoints.
+- **CORS:** Applied selectively to widget routes.
+- **CSP:** Strict Content Security Policy for production environments.
 
 ## External Dependencies
-- **OpenAI:** For AI chatbot capabilities and conversation summarization.
-- **Resend:** Email notification service (optional).
-- **Twilio:** SMS notification service (optional).
-- **PostgreSQL (Neon):** Database for Faith House tenant data.
-- **Replit AI Integrations:** OpenAI service integration.
-
-## Recent Changes (November 2025)
-- Implemented multi-tenant bot configuration system
-- Created 6 bot JSON configs (1 real tenant + 5 demos)
-- Added multi-tenant chat endpoint with crisis detection
-- Created Demo Hub UI for showcasing platform
-- Added file-based conversation logging
-- Added platform management API endpoints
-- **Individual Bot Editing:** Added per-bot dashboard at `/admin/bot/:botId`
-- **Business-Type Specific Dashboards:** Each bot type has custom tabs:
-  - Sober Living: Appointments, Pre-Intake, Crisis Handling
-  - Restaurant: Menu & Cuisine, Reservations
-  - Barber: Services & Pricing, Appointments
-  - Gym: Memberships, Classes & Amenities
-  - Home/Auto Services: Services & Pricing, Scheduling
-- **Super-Admin Bot Listing:** All bots now listed individually with Dashboard and Preview buttons
-- **Bot Config API:** Added GET/PUT `/api/super-admin/bots/:botId` for editing bot JSON configs
-- **Client Dashboard:** Added `/client/dashboard` for each business to view their own data
-  - Client users are linked to their business via clientId in admin_users table
-  - Shows conversation stats, appointments, and business info
-  - Data properly scoped to prevent cross-tenant data leakage
-  - Super admins can view any client's data via query param
-- **Client API Endpoints:** Added `/api/client/*` endpoints for client-scoped data access
-- **Create Bot Feature:** Added ability to create new bots from super-admin
-  - `/admin/bot/new` - Create bot page with template selection
-  - POST `/api/super-admin/bots` - Create new bot API
-  - Supports cloning from existing templates (inherits system prompt, FAQs, safety rules)
-  - Start from scratch option with default configurations
-  - Auto-generate IDs feature based on business name
-- **Comprehensive Analytics System:** Multi-layer analytics tracking for chatbot performance
-  - Per-message event tracking: Topics, response times, crisis detection, appointment requests
-  - Session-level aggregation: Total messages, topics arrays, crisis/appointment flags
-  - Daily rollups: Trends visualization for conversations, messages, events
-  - Client dashboard Analytics tab: Charts (line/pie), metrics cards, session history
-  - Super-admin Platform Analytics: Platform-wide overview with per-bot performance
-  - Tenant-scoped APIs: `/api/client/analytics/summary`, `/api/client/analytics/trends`, `/api/client/analytics/sessions`
-  - Platform-wide API: `/api/super-admin/analytics/overview`
-- **Client Status System:** Status management for tenant lifecycle
-  - Three statuses: Active (fully functional), Paused (chat disabled), Demo (showcase mode)
-  - Chat endpoint enforcement: Paused clients receive friendly "temporarily unavailable" message
-  - Status stored in clients.json alongside bot IDs and client metadata
-  - Super-admin UI controls for toggling client status
-- **Stripe Subscription Billing:** Full Stripe integration for subscription management
-  - Uses `stripe-replit-sync` package for managed webhooks and data synchronization
-  - Automatic webhook handling with UUID-based routing (registered before express.json middleware)
-  - Billing endpoints: `/api/stripe/products`, `/api/stripe/checkout`, `/api/stripe/subscription/:clientId`, `/api/stripe/portal`
-  - Customer portal integration for self-service subscription management
-  - Auto-deactivation on payment failure via webhook handlers (invoice.payment_failed, customer.subscription.deleted)
-  - Stripe schema stored in PostgreSQL with automatic migration on startup
-- **Bot-Centric Control Center:** Unified management interface at `/super-admin/control-center`
-  - Left sidebar lists all bots (not clients) with search and template selection
-  - 5-tab structure: Overview, Bot Settings, Billing, Analytics, Logs
-  - Bot Settings includes editable FAQ management (add/edit/delete)
-  - Tone/Voice controls with 5 options (Professional, Friendly, Casual, Compassionate, Informative)
-  - Response length selector (Brief, Medium, Detailed)
-  - 3-step onboarding wizard for creating new bots from templates:
-    - Step 1: Business basics (name, ID, phone, email, website)
-    - Step 2: Address and primary contact information
-    - Step 3: Service tier and billing plan selection
-- **9 Business Templates:** Complete template system for new client onboarding
-  - restaurant_demo, barber_demo, autoservice_demo, homeservice_demo, gym_demo
-  - realestate_demo, medspa_demo, tattoo_demo, soberliving_demo
-  - Each template includes business profile, system prompt, FAQs, and safety rules
-- **Leads Module:** Complete lead management system
-  - `/client/leads` - Lead list with search, status/priority filters
-  - Database table: leads (id, clientId, botId, sessionId, name, email, phone, source, status, priority, notes, tags, metadata)
-  - CRUD operations: Create, Read, Update, Delete leads
-  - Super-admin access with clientId query parameter
-  - Monthly usage tracking for lead capture limits
-  - API endpoints: GET/POST `/api/client/leads`, GET/PATCH/DELETE `/api/client/leads/:id`
-- **Inbox Module:** Conversation management interface
-  - `/client/inbox` - Two-panel layout for viewing conversations
-  - Session list with filtering (all, crisis detected, appointment requests)
-  - Message thread display with user/bot distinction
-  - Crisis and appointment badges on sessions
-  - Session metadata: message counts, timestamps, topics
-  - API endpoint: GET `/api/client/inbox/sessions/:sessionId`
-- **Dark Neon-Glass Theme:** Unified design system
-  - Background: `bg-[#0B0E13]`
-  - Text hierarchy: Primary (text-white), Secondary (text-white/85), Tertiary (text-white/55), Helper (text-white/40)
-  - Accent color: cyan-400
-  - GlassCard component for consistent panel styling
-  - Neon status badges with color-coded indicators
+- **OpenAI:** Provides AI chatbot capabilities and conversation summarization via Replit AI Integrations.
+- **PostgreSQL (Neon):** Primary database for data persistence (currently for Faith House tenant and Stripe schema).
+- **Resend:** Optional email notification service.
+- **Twilio:** Optional SMS notification service.
+- **Stripe:** For subscription billing and payment processing.
