@@ -36,6 +36,46 @@ export interface BotFaq {
   answer: string;
 }
 
+export interface AutomationRule {
+  id: string;
+  type: 'keyword_trigger' | 'office_hours' | 'lead_capture' | 'fallback';
+  enabled: boolean;
+  priority: number;
+  conditions: {
+    type: 'keyword' | 'phrase' | 'regex' | 'time_range' | 'day_of_week' | 'message_count';
+    value: string | string[] | number;
+    match?: 'exact' | 'contains' | 'starts_with' | 'ends_with';
+    caseSensitive?: boolean;
+  }[];
+  response?: string;
+  action?: {
+    type: 'respond' | 'capture_lead' | 'tag_session' | 'trigger_workflow' | 'redirect';
+    payload?: Record<string, unknown>;
+  };
+  metadata?: Record<string, unknown>;
+}
+
+export interface BotAutomationConfig {
+  automations?: AutomationRule[];
+  officeHours?: {
+    schedule: Record<string, { open: string; close: string } | null>;
+    timezone: string;
+    afterHoursMessage?: string;
+    enableAfterHoursMode?: boolean;
+  };
+  leadCapture?: {
+    enabled: boolean;
+    triggerKeywords?: string[];
+    captureFields?: string[];
+    successMessage?: string;
+  };
+  fallback?: {
+    enabled: boolean;
+    message?: string;
+    minConfidence?: number;
+  };
+}
+
 export interface BotConfig {
   clientId: string;
   botId: string;
@@ -45,6 +85,7 @@ export interface BotConfig {
   rules: BotRules;
   systemPrompt: string;
   faqs: BotFaq[];
+  automations?: BotAutomationConfig;
   metadata?: {
     isDemo: boolean;
     isTemplate?: boolean;

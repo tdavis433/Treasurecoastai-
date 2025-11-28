@@ -28,6 +28,12 @@ import {
   type BotConfig
 } from "./botConfig";
 import { logConversation as logConversationToFile, getConversationLogs, getLogStats } from "./conversationLogger";
+import { 
+  processAutomations, 
+  type BotAutomationConfig, 
+  type AutomationContext,
+  type AutomationResult
+} from "./automations";
 
 
 const loginSchema = z.object({
@@ -921,6 +927,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ 
           reply: crisisReply,
           meta: { clientId, botId, crisis: true, sessionId: actualSessionId }
+        });
+      }
+
+      // Process automations (keyword triggers, office hours, lead capture)
+      const automationContext: AutomationContext = {
+        clientId,
+        botId,
+        sessionId: actualSessionId,
+        message: lastUserMessage?.content || "",
+        messageCount: sessionData.userMessageCount,
+        language,
+        officeHours: botConfig.automations?.officeHours
+      };
+      
+      const automationResult = processAutomations(
+        automationContext, 
+        botConfig.automations as BotAutomationConfig
+      );
+      
+      // If automation triggered with a response and should not continue to AI
+      if (automationResult.triggered && automationResult.response && !automationResult.shouldContinue) {
+        const responseTime = Date.now() - startTime;
+        
+        // Update session data
+        sessionData.botMessageCount += 1;
+        sessionData.totalResponseTimeMs += responseTime;
+        
+        // Log automation-triggered response
+        await storage.logAnalyticsEvent({
+          clientId,
+          botId,
+          sessionId: actualSessionId,
+          eventType: 'automation',
+          actor: 'bot',
+          messageContent: automationResult.response,
+          responseTimeMs: responseTime,
+          metadata: { 
+            language,
+            automationRuleId: automationResult.ruleId,
+            automationType: automationResult.metadata?.type
+          } as Record<string, any>,
+        });
+        
+        await storage.createOrUpdateChatSession(sessionData);
+        
+        // Log to file
+        logConversationToFile({
+          timestamp: new Date().toISOString(),
+          clientId,
+          botId,
+          sessionId: actualSessionId,
+          userMessage: lastUserMessage?.content || "",
+          botReply: automationResult.response
+        });
+
+        return res.json({ 
+          reply: automationResult.response,
+          meta: { 
+            clientId, 
+            botId, 
+            sessionId: actualSessionId,
+            automation: true,
+            ruleId: automationResult.ruleId
+          }
+        });
+      }
+      
+      // Handle lead capture action (continue to AI but track the lead)
+      if (automationResult.action?.type === 'capture_lead' && automationResult.action.payload) {
+        await storage.logAnalyticsEvent({
+          clientId,
+          botId,
+          sessionId: actualSessionId,
+          eventType: 'lead_capture',
+          actor: 'system',
+          messageContent: lastUserMessage?.content || "",
+          metadata: { 
+            ...automationResult.action.payload,
+            language
+          },
         });
       }
 

@@ -97,6 +97,63 @@
       "answer": "For large parties or events, we recommend calling the restaurant to discuss availability, pricing, and any special arrangements."
     }
   ],
+  "automations": {
+    "officeHours": {
+      "schedule": {
+        "monday": { "open": "11:00", "close": "21:00" },
+        "tuesday": { "open": "11:00", "close": "21:00" },
+        "wednesday": { "open": "11:00", "close": "21:00" },
+        "thursday": { "open": "11:00", "close": "21:00" },
+        "friday": { "open": "11:00", "close": "22:00" },
+        "saturday": { "open": "11:00", "close": "22:00" },
+        "sunday": { "open": "11:00", "close": "20:00" }
+      },
+      "timezone": "America/New_York",
+      "afterHoursMessage": "Thanks for reaching out! We're currently closed but we'd love to help when we reopen. Our hours are Mon-Thu 11am-9pm, Fri-Sat 11am-10pm, and Sun 11am-8pm.",
+      "enableAfterHoursMode": false
+    },
+    "leadCapture": {
+      "enabled": true,
+      "triggerKeywords": ["reservation", "book", "party", "event", "catering", "contact me", "call me"],
+      "captureFields": ["name", "email", "phone"],
+      "successMessage": "Thank you! We've noted your interest and someone from our team will reach out soon."
+    },
+    "automations": [
+      {
+        "id": "hours_inquiry",
+        "type": "keyword_trigger",
+        "enabled": true,
+        "priority": 100,
+        "conditions": [
+          {
+            "type": "keyword",
+            "value": ["what time", "when do you open", "when do you close", "are you open", "hours"],
+            "match": "contains"
+          }
+        ],
+        "response": "We're open Mon-Thu 11am-9pm, Fri-Sat 11am-10pm, and Sun 11am-8pm. We look forward to seeing you!"
+      },
+      {
+        "id": "location_inquiry",
+        "type": "keyword_trigger",
+        "enabled": true,
+        "priority": 90,
+        "conditions": [
+          {
+            "type": "keyword",
+            "value": ["where are you", "address", "directions", "how do i get there", "location"],
+            "match": "contains"
+          }
+        ],
+        "response": "We're located on the Treasure Coast in Florida. For exact directions, please check Google Maps or your preferred navigation app with 'Coastal Breeze Grill'."
+      }
+    ],
+    "fallback": {
+      "enabled": false,
+      "message": "I'm not sure about that. Would you like me to have someone from our team call you back?",
+      "minConfidence": 0.3
+    }
+  },
   "metadata": {
     "isDemo": true,
     "isTemplate": true,
