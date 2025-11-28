@@ -1,0 +1,318 @@
+want you to perform a complete, file-by-file audit, analysis, and optimization of the entire project.
+Your job is to treat this codebase like your own company’s flagship SaaS product and upgrade it to professional, production-grade, scalable, multi-tenant quality.
+
+You must review EVERY SINGLE FILE in the entire repository and produce a detailed, structured report including:
+
+✅ 1. REQUIRED OUTPUT: FULL PROJECT-WIDE AUDIT
+
+For each file, directory, component, service, and API endpoint:
+
+A. Identify EVERYTHING that needs to be changed
+
+List:
+
+Bugs
+
+Broken logic
+
+Security risks
+
+Missing validation
+
+Duplicate code
+
+Misused patterns
+
+Dead/unreachable code
+
+Data inconsistencies
+
+Tenant-isolation risks
+
+DB schema flaws
+
+Unscalable patterns
+
+Missing typing
+
+Weak error handling
+
+Memory leaks
+
+Widget issues
+
+UI inconsistencies
+
+Naming problems
+
+Anything brittle, confusing, or unsafe
+
+B. Identify everything that needs to be removed
+
+List:
+
+Old logic
+
+Unused components
+
+Deprecated pages
+
+Unnecessary dependencies
+
+Debugging leftovers
+
+Logs that leak info
+
+Old versions of bots or demo logic
+
+Hardcoded values
+
+Secrets accidentally placed in code
+
+Unnecessary API routes
+
+C. Identify everything that must be added
+
+List very clearly the missing features, missing APIs, missing backend services, missing UI elements, etc.
+
+Focus especially on:
+
+Full multi-tenant isolation
+
+Workspace RBAC
+
+Complete control center (super admin)
+
+Plan-based usage enforcement
+
+Flow builder finalization
+
+Full lead management
+
+Live inbox stability
+
+Widget security
+
+Analytics completeness
+
+Billing/webhook logic
+
+Error boundaries
+
+Loading states
+
+Retry logic
+
+Logging infrastructure
+
+Missing test coverage
+
+Missing types and Zod validation everywhere
+
+D. Identify everything that must be improved or refactored
+
+Examples:
+
+Organize project into proper architecture
+
+Break down giant files into modules
+
+Clean up API routing structure
+
+Convert weak JS to strong TS
+
+Replace any brittle hacks with proper patterns
+
+Replace weak fetch usage with typed clients
+
+Standardize components
+
+Improve styling, spacing, responsiveness
+
+Improve the Chat Engine
+
+Improve Automations Engine
+
+Improve Flow State handling
+
+Improve DB schema relations
+
+Improve caching
+
+Improve prompt engineering
+
+Ensure every entity is fully CRUD-supported
+
+Ensure every entity is workspace-scoped
+
+✅ 2. REQUIRED OUTPUT: FIX PLAN
+
+After the audit, produce a step-by-step, file-by-file FIX PLAN including:
+
+Each fix required
+
+Exact files to update
+
+Exact methods/components to edit
+
+Exact new files or folders to add
+
+Recommended architecture changes
+
+Recommended migrations
+
+Recommended new DB tables or columns
+
+Recommended new API endpoints
+
+Recommended new UI components
+
+This fix plan must be:
+
+Fully actionable
+
+Precise
+
+Executable in order
+
+Zero guesswork
+
+I should be able to hand this plan to a developer and they can follow it line-by-line.
+
+✅ 3. REQUIRED OUTPUT: FINAL REWRITTEN CODE
+
+Once the audit and fix plan is complete and approved:
+
+Rewrite, refactor, or rebuild EVERY FILE that requires improvement.
+
+This includes:
+
+Pages
+
+Components
+
+Hooks
+
+Services
+
+API routes
+
+Models
+
+Prisma schema
+
+Utility scripts
+
+DB migrations
+
+Widget code
+
+Flow builder code
+
+Chat engine code
+
+Billing code
+
+Stripe webhooks
+
+Lead capture
+
+Analytics
+
+Permissions
+
+Everything
+
+All rewritten code must be:
+
+Clean
+
+Typed
+
+Documented
+
+Modular
+
+Scalable
+
+Multi-tenant safe
+
+Production-ready
+
+Following best practices
+
+✅ 4. PLATFORM GOALS (DO NOT IGNORE)
+
+The final product MUST become:
+
+A Premium SaaS Platform with:
+
+Multi-tenant workspaces
+
+Team member roles
+
+Super Admin control panel
+
+Full bot builder
+
+Automations system (V1 + V2 flows)
+
+Unified Control Center
+
+Real analytics
+
+Stripe billing + usage enforcement
+
+Clean architecture
+
+Dark neon-glass UI
+
+Fully embeddable widget
+
+Lead management
+
+Inbox with agent takeover
+
+GPT-powered chat engine
+
+Documented codebase
+
+🚨 5. IMPORTANT RULES
+
+You MUST:
+
+Analyze every file in the entire repo
+
+Provide improvements even if the file “looks fine”
+
+Explain why each change is needed
+
+Ensure tenant isolation is perfect
+
+Ensure flow builder is stable
+
+Ensure widget cannot be abused or tampered
+
+Ensure billing logic cannot be bypassed
+
+Ensure error handling is complete
+
+Ensure no untyped code remains
+
+Ensure no hardcoded test logic remains
+
+Ensure no placeholder UI remains
+
+Ensure everything is optimized for production
+
+🔥 BEGIN NOW
+
+Start by fully scanning the entire codebase and generating the FULL AUDIT REPORT.
+
+Do NOT rewrite code yet.
+Do NOT skip anything.
+Do NOT assume any file is “fine.”
+
+You must treat this like:
+
+“I am building a million-dollar SaaS platform and every single detail matters.”
