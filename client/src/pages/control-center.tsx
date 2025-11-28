@@ -13,12 +13,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
-  Building2, Users, FileText, Settings, BarChart3, MessageSquare, 
+  Bot, Users, FileText, Settings, BarChart3, MessageSquare, 
   Plus, Play, Pause, Eye, Edit2, Save, X, LogOut, Zap, 
   AlertTriangle, Phone, Mail, Globe, MapPin, Clock, Trash2,
-  ChevronRight, Search, CreditCard, ExternalLink
+  ChevronRight, Search, CreditCard, ExternalLink, Building2
 } from "lucide-react";
 
 interface Client {
@@ -27,7 +27,6 @@ interface Client {
   type?: string;
   status: 'active' | 'paused' | 'demo';
   bots: string[];
-  createdAt?: string;
 }
 
 interface BotConfig {
@@ -82,41 +81,33 @@ interface Template extends BotConfig {
   };
 }
 
-function formatHoursForDisplay(hours?: Record<string, string>): string {
-  if (!hours) return '';
-  return Object.entries(hours)
-    .map(([day, time]) => `${day.charAt(0).toUpperCase() + day.slice(1)}: ${time}`)
-    .join(', ');
-}
-
-function parseHoursFromString(hoursStr: string): Record<string, string> {
-  const result: Record<string, string> = {};
-  if (!hoursStr) return result;
-  const parts = hoursStr.split(',').map(s => s.trim());
-  for (const part of parts) {
-    const colonIdx = part.indexOf(':');
-    if (colonIdx > 0) {
-      const day = part.substring(0, colonIdx).trim().toLowerCase();
-      const time = part.substring(colonIdx + 1).trim();
-      if (day && time) result[day] = time;
-    }
-  }
-  return result;
-}
-
-interface AnalyticsSummary {
-  messagesLast7d: number;
-  leadsLast7d: number;
-  bookingsLast7d: number;
-  conversations: number;
-  crisisEvents: number;
-}
-
 interface AuthUser {
   id: string;
   username: string;
   role: 'super_admin' | 'client_admin';
   clientId?: string;
+}
+
+function formatHoursForDisplay(hours?: Record<string, string>): string {
+  if (!hours) return '';
+  return Object.entries(hours)
+    .map(([day, time]) => `${day.charAt(0).toUpperCase() + day.slice(1)}: ${time}`)
+    .join('\n');
+}
+
+function parseHoursFromString(hoursStr: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  if (!hoursStr) return result;
+  const lines = hoursStr.split('\n').map(s => s.trim()).filter(Boolean);
+  for (const line of lines) {
+    const colonIdx = line.indexOf(':');
+    if (colonIdx > 0) {
+      const day = line.substring(0, colonIdx).trim().toLowerCase();
+      const time = line.substring(colonIdx + 1).trim();
+      if (day && time) result[day] = time;
+    }
+  }
+  return result;
 }
 
 const BUSINESS_TYPES = [
@@ -128,22 +119,14 @@ const BUSINESS_TYPES = [
   { value: 'sober_living', label: 'Sober Living' },
 ];
 
-const TONE_OPTIONS = [
-  { value: 'friendly', label: 'Friendly & Casual' },
-  { value: 'professional', label: 'Professional & Concise' },
-  { value: 'supportive', label: 'Supportive & Reassuring' },
-  { value: 'energetic', label: 'High-Energy & Enthusiastic' },
-];
-
 export default function ControlCenter() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('settings');
 
   const { data: currentUser, isLoading: authLoading } = useQuery<AuthUser>({
     queryKey: ["/api/auth/me"],
@@ -168,39 +151,37 @@ export default function ControlCenter() {
     }
   }, [currentUser, authLoading, setLocation, toast]);
 
+  // Fetch ALL bots
+  const { data: allBots = [] } = useQuery<BotConfig[]>({
+    queryKey: ["/api/super-admin/bots"],
+    enabled: currentUser?.role === "super_admin",
+  });
+
+  // Fetch clients for reference
   const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ["/api/super-admin/clients"],
     enabled: currentUser?.role === "super_admin",
   });
 
+  // Fetch templates
   const { data: templates = [] } = useQuery<Template[]>({
     queryKey: ["/api/super-admin/templates"],
     enabled: currentUser?.role === "super_admin",
   });
 
-  const selectedClient = clients.find(c => c.id === selectedClientId);
+  // Filter out template bots - only show real client bots
+  const clientBots = allBots.filter(bot => !bot.metadata?.isTemplate);
 
-  const { data: clientBots = [] } = useQuery<BotConfig[]>({
-    queryKey: ["/api/super-admin/bots", { clientId: selectedClientId }],
-    queryFn: async () => {
-      const response = await fetch(`/api/super-admin/bots?clientId=${selectedClientId}`, { credentials: "include" });
-      if (!response.ok) throw new Error("Failed to fetch bots");
-      return response.json();
-    },
-    enabled: !!selectedClientId && currentUser?.role === "super_admin",
-  });
+  // Get selected bot
+  const selectedBot = clientBots.find(b => b.botId === selectedBotId);
+  const selectedClient = selectedBot ? clients.find(c => c.id === selectedBot.clientId) : null;
 
-  const selectedBot = clientBots.find(b => b.botId === selectedBotId) || clientBots[0];
-
-  const { data: analytics } = useQuery<AnalyticsSummary>({
-    queryKey: ["/api/super-admin/analytics", selectedClientId],
-    queryFn: async () => {
-      const response = await fetch(`/api/client/analytics/summary?clientId=${selectedClientId}`, { credentials: "include" });
-      if (!response.ok) throw new Error("Failed to fetch analytics");
-      return response.json();
-    },
-    enabled: !!selectedClientId && currentUser?.role === "super_admin",
-  });
+  // Filter bots by search
+  const filteredBots = clientBots.filter(bot => 
+    bot.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    bot.botId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    bot.businessProfile?.businessName?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ clientId, status }: { clientId: string; status: string }) => {
@@ -215,11 +196,6 @@ export default function ControlCenter() {
       toast({ title: "Error", description: "Failed to update status.", variant: "destructive" });
     },
   });
-
-  const filteredClients = clients.filter(c => 
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.id.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
@@ -239,6 +215,10 @@ export default function ControlCenter() {
     }
   };
 
+  const getBusinessTypeLabel = (type?: string) => {
+    return BUSINESS_TYPES.find(t => t.value === type)?.label || type || 'Unknown';
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -249,6 +229,7 @@ export default function ControlCenter() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* Header */}
       <header className="h-14 border-b bg-card flex items-center justify-between px-6">
         <div className="flex items-center gap-3">
           <Zap className="h-6 w-6 text-primary" />
@@ -266,14 +247,17 @@ export default function ControlCenter() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
+        {/* Left Sidebar - Bot List */}
         <aside className="w-72 border-r bg-card flex flex-col">
           <div className="p-4 border-b">
-            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">Clients</h3>
+            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">
+              Chatbots ({clientBots.length})
+            </h3>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                data-testid="input-search-clients"
-                placeholder="Search clients..."
+                data-testid="input-search-bots"
+                placeholder="Search bots..."
                 className="pl-9"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -283,39 +267,51 @@ export default function ControlCenter() {
 
           <ScrollArea className="flex-1">
             <div className="p-2">
-              {filteredClients.map(client => (
-                <button
-                  key={client.id}
-                  data-testid={`button-client-${client.id}`}
-                  onClick={() => {
-                    setSelectedClientId(client.id);
-                    setSelectedBotId(null);
-                    setActiveTab('overview');
-                  }}
-                  className={`w-full text-left p-3 rounded-lg mb-1 transition-colors ${
-                    selectedClientId === client.id 
-                      ? 'bg-primary/10 border border-primary/30' 
-                      : 'hover:bg-muted'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium truncate">{client.name}</span>
-                    {getStatusBadge(client.status)}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {client.type || 'No type'} • {client.bots?.length || 0} bot(s)
-                  </div>
-                </button>
-              ))}
+              {filteredBots.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No bots found</p>
+              ) : (
+                filteredBots.map(bot => {
+                  const client = clients.find(c => c.id === bot.clientId);
+                  return (
+                    <button
+                      key={bot.botId}
+                      data-testid={`button-bot-${bot.botId}`}
+                      onClick={() => {
+                        setSelectedBotId(bot.botId);
+                        setActiveTab('settings');
+                      }}
+                      className={`w-full text-left p-3 rounded-lg mb-1 transition-colors ${
+                        selectedBotId === bot.botId 
+                          ? 'bg-primary/10 border border-primary/30' 
+                          : 'hover:bg-muted'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Bot className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <span className="font-medium truncate">{bot.name || bot.businessProfile?.businessName}</span>
+                      </div>
+                      <div className="flex items-center justify-between mt-1.5">
+                        <span className="text-xs text-muted-foreground">
+                          {getBusinessTypeLabel(bot.businessProfile?.type)}
+                        </span>
+                        {client && getStatusBadge(client.status)}
+                      </div>
+                    </button>
+                  );
+                })
+              )}
             </div>
           </ScrollArea>
 
           <Separator />
 
+          {/* Templates Section */}
           <div className="p-4">
-            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">Templates</h3>
+            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">
+              Create New Bot
+            </h3>
             <div className="space-y-1">
-              {templates.map(template => (
+              {templates.slice(0, 4).map(template => (
                 <button
                   key={template.botId}
                   data-testid={`button-template-${template.botId}`}
@@ -325,55 +321,63 @@ export default function ControlCenter() {
                   }}
                   className="w-full text-left p-2 rounded-lg hover:bg-muted transition-colors flex items-center justify-between group"
                 >
-                  <span className="text-sm">{template.metadata.templateCategory || template.metadata.businessType}</span>
+                  <span className="text-sm">{template.metadata?.templateCategory || template.businessProfile?.type}</span>
                   <Plus className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </button>
               ))}
-              {templates.length === 0 && (
-                <p className="text-xs text-muted-foreground">No templates available</p>
+              {templates.length > 4 && (
+                <p className="text-xs text-muted-foreground text-center pt-1">
+                  +{templates.length - 4} more templates
+                </p>
               )}
             </div>
           </div>
 
           <Separator />
 
+          {/* System Links */}
           <div className="p-4">
-            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">System</h3>
-            <div className="space-y-1">
-              <Button 
-                data-testid="button-settings-legacy"
-                variant="ghost" 
-                size="sm" 
-                className="w-full justify-start"
-                onClick={() => setLocation('/super-admin')}
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                Legacy Settings
-              </Button>
-              <Button 
-                data-testid="button-stripe-portal"
-                variant="ghost" 
-                size="sm" 
-                className="w-full justify-start"
-              >
-                <CreditCard className="h-4 w-4 mr-2" />
-                Stripe Settings
-              </Button>
-            </div>
+            <Button 
+              data-testid="button-settings-legacy"
+              variant="ghost" 
+              size="sm" 
+              className="w-full justify-start"
+              onClick={() => setLocation('/super-admin')}
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Legacy Admin
+            </Button>
           </div>
         </aside>
 
+        {/* Main Content */}
         <main className="flex-1 overflow-auto">
-          {selectedClient ? (
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
+          {selectedBot && selectedClient ? (
+            <div className="p-6 max-w-5xl">
+              {/* Bot Header */}
+              <div className="flex items-start justify-between mb-6">
                 <div>
-                  <h1 className="text-2xl font-bold">{selectedClient.name}</h1>
-                  <p className="text-muted-foreground">
-                    {selectedClient.id} • {selectedClient.type || 'No type set'}
+                  <div className="flex items-center gap-3">
+                    <h1 className="text-2xl font-bold">{selectedBot.name || selectedBot.businessProfile?.businessName}</h1>
+                    {getStatusBadge(selectedClient.status)}
+                  </div>
+                  <p className="text-muted-foreground mt-1">
+                    {selectedBot.description || `${getBusinessTypeLabel(selectedBot.businessProfile?.type)} chatbot`}
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Client: {selectedClient.name} • ID: {selectedBot.botId}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Button
+                    data-testid="button-preview-bot"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(`/demo/${selectedBot.botId}`, '_blank')}
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
+                    Preview
+                  </Button>
                   <Select
                     value={selectedClient.status}
                     onValueChange={(value) => updateStatusMutation.mutate({ 
@@ -393,140 +397,59 @@ export default function ControlCenter() {
                 </div>
               </div>
 
+              {/* Tabs */}
               <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList className="mb-6">
-                  <TabsTrigger data-testid="tab-overview" value="overview">Overview</TabsTrigger>
-                  <TabsTrigger data-testid="tab-bot-settings" value="bot-settings">Bot Settings</TabsTrigger>
-                  <TabsTrigger data-testid="tab-subscription" value="subscription">Status & Subscription</TabsTrigger>
-                  <TabsTrigger data-testid="tab-analytics" value="analytics">Analytics</TabsTrigger>
-                  <TabsTrigger data-testid="tab-logs" value="logs">Logs</TabsTrigger>
+                  <TabsTrigger data-testid="tab-settings" value="settings">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Settings
+                  </TabsTrigger>
+                  <TabsTrigger data-testid="tab-analytics" value="analytics">
+                    <BarChart3 className="h-4 w-4 mr-2" />
+                    Analytics
+                  </TabsTrigger>
+                  <TabsTrigger data-testid="tab-logs" value="logs">
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Logs
+                  </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="overview">
-                  <OverviewTab 
-                    client={selectedClient} 
-                    bots={clientBots}
-                    analytics={analytics}
-                    onSelectBot={(botId) => {
-                      setSelectedBotId(botId);
-                      setActiveTab('bot-settings');
-                    }}
-                  />
-                </TabsContent>
-
-                <TabsContent value="bot-settings">
-                  <BotSettingsTab 
-                    client={selectedClient}
-                    bots={clientBots}
-                    selectedBotId={selectedBotId}
-                    onSelectBot={setSelectedBotId}
-                  />
-                </TabsContent>
-
-                <TabsContent value="subscription">
-                  <SubscriptionTab client={selectedClient} />
+                <TabsContent value="settings">
+                  <BotSettingsPanel bot={selectedBot} />
                 </TabsContent>
 
                 <TabsContent value="analytics">
-                  <AnalyticsTab clientId={selectedClient.id} />
+                  <AnalyticsPanel clientId={selectedClient.id} />
                 </TabsContent>
 
                 <TabsContent value="logs">
-                  <LogsTab clientId={selectedClient.id} />
+                  <LogsPanel clientId={selectedClient.id} botId={selectedBot.botId} />
                 </TabsContent>
               </Tabs>
             </div>
           ) : (
             <div className="h-full flex items-center justify-center text-muted-foreground">
               <div className="text-center">
-                <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Select a client from the sidebar to view details</p>
-                <p className="text-sm mt-2">Or use a template to create a new client</p>
+                <Bot className="h-16 w-16 mx-auto mb-4 opacity-30" />
+                <h2 className="text-xl font-medium mb-2">Select a Chatbot</h2>
+                <p className="text-sm">Choose a bot from the sidebar to view and edit its settings</p>
+                <p className="text-sm mt-1">Or create a new bot from a template</p>
               </div>
             </div>
           )}
         </main>
-
-        {selectedClient && (
-          <aside className="w-64 border-l bg-card p-4">
-            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-4">Quick Actions</h3>
-            <div className="space-y-2">
-              <Button 
-                data-testid="button-open-demo"
-                variant="outline" 
-                size="sm" 
-                className="w-full justify-start"
-                onClick={() => window.open(`/demo/${clientBots[0]?.botId || selectedClient.bots[0]}`, '_blank')}
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                Open Client Demo
-              </Button>
-              <Button 
-                data-testid="button-client-dashboard"
-                variant="outline" 
-                size="sm" 
-                className="w-full justify-start"
-                onClick={() => setLocation(`/client/dashboard?clientId=${selectedClient.id}`)}
-              >
-                <BarChart3 className="h-4 w-4 mr-2" />
-                Client Dashboard
-              </Button>
-              <Button 
-                data-testid="button-edit-bot"
-                variant="outline" 
-                size="sm" 
-                className="w-full justify-start"
-                onClick={() => setLocation(`/admin/bot/${clientBots[0]?.botId || selectedClient.bots[0]}`)}
-              >
-                <Edit2 className="h-4 w-4 mr-2" />
-                Advanced Bot Editor
-              </Button>
-            </div>
-
-            {selectedClient.type === 'sober_living' && (
-              <>
-                <Separator className="my-4" />
-                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-4">Faith House Features</h3>
-                <div className="space-y-2">
-                  <Button 
-                    data-testid="button-crisis-settings"
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full justify-start opacity-60"
-                    disabled
-                    title="Coming soon"
-                  >
-                    <AlertTriangle className="h-4 w-4 mr-2" />
-                    Crisis Settings
-                    <Badge variant="outline" className="ml-auto text-xs">Soon</Badge>
-                  </Button>
-                  <Button 
-                    data-testid="button-intake-settings"
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full justify-start opacity-60"
-                    disabled
-                    title="Coming soon"
-                  >
-                    <FileText className="h-4 w-4 mr-2" />
-                    Intake Settings
-                    <Badge variant="outline" className="ml-auto text-xs">Soon</Badge>
-                  </Button>
-                </div>
-              </>
-            )}
-          </aside>
-        )}
       </div>
 
-      <CreateClientFromTemplateModal
+      {/* Create from Template Modal */}
+      <CreateFromTemplateModal
         open={showCreateModal}
         onOpenChange={setShowCreateModal}
         template={selectedTemplate}
-        onSuccess={(newClientId) => {
+        onSuccess={(botId) => {
           setShowCreateModal(false);
           setSelectedTemplate(null);
-          setSelectedClientId(newClientId);
+          setSelectedBotId(botId);
+          queryClient.invalidateQueries({ queryKey: ["/api/super-admin/bots"] });
           queryClient.invalidateQueries({ queryKey: ["/api/super-admin/clients"] });
         }}
       />
@@ -534,20 +457,351 @@ export default function ControlCenter() {
   );
 }
 
-function OverviewTab({ 
-  client, 
-  bots, 
-  analytics,
-  onSelectBot 
-}: { 
-  client: Client; 
-  bots: BotConfig[];
-  analytics?: AnalyticsSummary;
-  onSelectBot: (botId: string) => void;
-}) {
+// Bot Settings Panel
+function BotSettingsPanel({ bot }: { bot: BotConfig }) {
+  const { toast } = useToast();
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    name: bot.name || '',
+    description: bot.description || '',
+    businessName: bot.businessProfile?.businessName || '',
+    type: bot.businessProfile?.type || '',
+    phone: bot.businessProfile?.phone || '',
+    email: bot.businessProfile?.email || '',
+    website: bot.businessProfile?.website || '',
+    location: bot.businessProfile?.location || '',
+    hours: formatHoursForDisplay(bot.businessProfile?.hours),
+    services: bot.businessProfile?.services?.join(', ') || '',
+    systemPrompt: bot.systemPrompt || '',
+  });
+
+  useEffect(() => {
+    setFormData({
+      name: bot.name || '',
+      description: bot.description || '',
+      businessName: bot.businessProfile?.businessName || '',
+      type: bot.businessProfile?.type || '',
+      phone: bot.businessProfile?.phone || '',
+      email: bot.businessProfile?.email || '',
+      website: bot.businessProfile?.website || '',
+      location: bot.businessProfile?.location || '',
+      hours: formatHoursForDisplay(bot.businessProfile?.hours),
+      services: bot.businessProfile?.services?.join(', ') || '',
+      systemPrompt: bot.systemPrompt || '',
+    });
+    setIsEditing(false);
+  }, [bot.botId]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const updatedBot = {
+        ...bot,
+        name: formData.name,
+        description: formData.description,
+        businessProfile: {
+          ...bot.businessProfile,
+          businessName: formData.businessName,
+          type: formData.type,
+          phone: formData.phone,
+          email: formData.email,
+          website: formData.website,
+          location: formData.location,
+          hours: parseHoursFromString(formData.hours),
+          services: formData.services.split(',').map(s => s.trim()).filter(Boolean),
+        },
+        systemPrompt: formData.systemPrompt,
+      };
+      const response = await apiRequest("PUT", `/api/super-admin/bots/${bot.botId}`, updatedBot);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Saved", description: "Bot settings have been updated." });
+      setIsEditing(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/bots"] });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to save settings.", variant: "destructive" });
+    },
+  });
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Action Bar */}
+      <div className="flex justify-end gap-2">
+        {isEditing ? (
+          <>
+            <Button 
+              data-testid="button-cancel-edit"
+              variant="outline" 
+              size="sm"
+              onClick={() => setIsEditing(false)}
+            >
+              <X className="h-4 w-4 mr-2" />
+              Cancel
+            </Button>
+            <Button 
+              data-testid="button-save-settings"
+              size="sm"
+              onClick={() => saveMutation.mutate()}
+              disabled={saveMutation.isPending}
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {saveMutation.isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </>
+        ) : (
+          <Button 
+            data-testid="button-edit-settings"
+            variant="outline" 
+            size="sm"
+            onClick={() => setIsEditing(true)}
+          >
+            <Edit2 className="h-4 w-4 mr-2" />
+            Edit Settings
+          </Button>
+        )}
+      </div>
+
+      {/* Basic Info */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Bot Information</CardTitle>
+          <CardDescription>Basic details about this chatbot</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Bot Name</Label>
+              {isEditing ? (
+                <Input
+                  data-testid="input-bot-name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
+              ) : (
+                <p className="text-sm mt-1">{formData.name || '-'}</p>
+              )}
+            </div>
+            <div>
+              <Label>Business Type</Label>
+              {isEditing ? (
+                <Select
+                  value={formData.type}
+                  onValueChange={(value) => setFormData({ ...formData, type: value })}
+                >
+                  <SelectTrigger data-testid="select-business-type">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BUSINESS_TYPES.map(type => (
+                      <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-sm mt-1">{BUSINESS_TYPES.find(t => t.value === formData.type)?.label || formData.type || '-'}</p>
+              )}
+            </div>
+          </div>
+          <div>
+            <Label>Description</Label>
+            {isEditing ? (
+              <Textarea
+                data-testid="input-description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={2}
+              />
+            ) : (
+              <p className="text-sm mt-1">{formData.description || '-'}</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Business Profile */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Business Profile</CardTitle>
+          <CardDescription>Contact and location information</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                Business Name
+              </Label>
+              {isEditing ? (
+                <Input
+                  data-testid="input-business-name"
+                  value={formData.businessName}
+                  onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
+                />
+              ) : (
+                <p className="text-sm mt-1">{formData.businessName || '-'}</p>
+              )}
+            </div>
+            <div>
+              <Label className="flex items-center gap-2">
+                <Phone className="h-4 w-4" />
+                Phone
+              </Label>
+              {isEditing ? (
+                <Input
+                  data-testid="input-phone"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                />
+              ) : (
+                <p className="text-sm mt-1">{formData.phone || '-'}</p>
+              )}
+            </div>
+            <div>
+              <Label className="flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                Email
+              </Label>
+              {isEditing ? (
+                <Input
+                  data-testid="input-email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
+              ) : (
+                <p className="text-sm mt-1">{formData.email || '-'}</p>
+              )}
+            </div>
+            <div>
+              <Label className="flex items-center gap-2">
+                <Globe className="h-4 w-4" />
+                Website
+              </Label>
+              {isEditing ? (
+                <Input
+                  data-testid="input-website"
+                  value={formData.website}
+                  onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                />
+              ) : (
+                <p className="text-sm mt-1">{formData.website || '-'}</p>
+              )}
+            </div>
+          </div>
+          <div>
+            <Label className="flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              Location
+            </Label>
+            {isEditing ? (
+              <Input
+                data-testid="input-location"
+                value={formData.location}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+              />
+            ) : (
+              <p className="text-sm mt-1">{formData.location || '-'}</p>
+            )}
+          </div>
+          <div>
+            <Label className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Business Hours
+            </Label>
+            {isEditing ? (
+              <Textarea
+                data-testid="input-hours"
+                value={formData.hours}
+                onChange={(e) => setFormData({ ...formData, hours: e.target.value })}
+                placeholder="Monday: 9am-5pm&#10;Tuesday: 9am-5pm&#10;..."
+                rows={4}
+              />
+            ) : (
+              <pre className="text-sm mt-1 whitespace-pre-wrap">{formData.hours || '-'}</pre>
+            )}
+          </div>
+          <div>
+            <Label>Services</Label>
+            {isEditing ? (
+              <Textarea
+                data-testid="input-services"
+                value={formData.services}
+                onChange={(e) => setFormData({ ...formData, services: e.target.value })}
+                placeholder="Service 1, Service 2, Service 3"
+                rows={2}
+              />
+            ) : (
+              <p className="text-sm mt-1">{formData.services || '-'}</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* AI Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">AI Behavior</CardTitle>
+          <CardDescription>System prompt that defines how the bot responds</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Label>System Prompt</Label>
+          {isEditing ? (
+            <Textarea
+              data-testid="input-system-prompt"
+              value={formData.systemPrompt}
+              onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
+              rows={8}
+              className="font-mono text-sm"
+            />
+          ) : (
+            <pre className="text-sm mt-1 whitespace-pre-wrap bg-muted p-3 rounded-lg max-h-48 overflow-auto">
+              {formData.systemPrompt || 'No system prompt configured'}
+            </pre>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* FAQs */}
+      {bot.faqs && bot.faqs.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">FAQs ({bot.faqs.length})</CardTitle>
+            <CardDescription>Common questions and answers</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3 max-h-64 overflow-auto">
+              {bot.faqs.map((faq, i) => (
+                <div key={i} className="bg-muted p-3 rounded-lg">
+                  <p className="font-medium text-sm">{faq.question}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{faq.answer}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// Analytics Panel
+function AnalyticsPanel({ clientId }: { clientId: string }) {
+  const { data: analytics, isLoading } = useQuery({
+    queryKey: ["/api/client/analytics/summary", clientId],
+    queryFn: async () => {
+      const response = await fetch(`/api/client/analytics/summary?clientId=${clientId}`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch analytics");
+      return response.json();
+    },
+  });
+
+  if (isLoading) {
+    return <div className="text-center py-8 text-muted-foreground">Loading analytics...</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Messages (7d)</CardTitle>
@@ -558,7 +812,15 @@ function OverviewTab({
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Leads Captured (7d)</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Conversations</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{analytics?.conversations || 0}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Leads (7d)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{analytics?.leadsLast7d || 0}</div>
@@ -566,7 +828,7 @@ function OverviewTab({
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Booking Requests (7d)</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Bookings (7d)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{analytics?.bookingsLast7d || 0}</div>
@@ -576,582 +838,23 @@ function OverviewTab({
 
       <Card>
         <CardHeader>
-          <CardTitle>Bots</CardTitle>
-          <CardDescription>All bots configured for this client</CardDescription>
+          <CardTitle>Analytics Dashboard</CardTitle>
+          <CardDescription>View detailed analytics in the client dashboard</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            {bots.map(bot => (
-              <div 
-                key={bot.botId}
-                className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
-              >
-                <div>
-                  <div className="font-medium">{bot.name || bot.botId}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {bot.businessProfile?.type} • {bot.businessProfile?.businessName || 'No business name'}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button 
-                    data-testid={`button-edit-bot-${bot.botId}`}
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => onSelectBot(bot.botId)}
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    data-testid={`button-preview-bot-${bot.botId}`}
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => window.open(`/demo/${bot.botId}`, '_blank')}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-            {bots.length === 0 && (
-              <p className="text-muted-foreground text-center py-4">No bots configured</p>
-            )}
-          </div>
+          <Button variant="outline" onClick={() => window.open(`/client/dashboard?clientId=${clientId}`, '_blank')}>
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Open Full Analytics
+          </Button>
         </CardContent>
       </Card>
     </div>
   );
 }
 
-interface FormDataType {
-  businessName: string;
-  type: string;
-  phone: string;
-  email: string;
-  website: string;
-  location: string;
-  hoursStr: string;
-}
-
-function BotSettingsTab({ 
-  client, 
-  bots, 
-  selectedBotId,
-  onSelectBot 
-}: { 
-  client: Client; 
-  bots: BotConfig[];
-  selectedBotId: string | null;
-  onSelectBot: (botId: string) => void;
-}) {
-  const { toast } = useToast();
-  const bot = bots.find(b => b.botId === selectedBotId) || bots[0];
-  
-  const [formData, setFormData] = useState<FormDataType>({
-    businessName: '',
-    type: '',
-    phone: '',
-    email: '',
-    website: '',
-    location: '',
-    hoursStr: '',
-  });
-  const [faqs, setFaqs] = useState<Array<{ question: string; answer: string }>>([]);
-  const [services, setServices] = useState<string[]>([]);
-  const [newService, setNewService] = useState('');
-  const [newFaq, setNewFaq] = useState({ question: '', answer: '' });
-
-  useEffect(() => {
-    if (bot) {
-      const bp = bot.businessProfile || {};
-      setFormData({
-        businessName: bp.businessName || '',
-        type: bp.type || '',
-        phone: bp.phone || '',
-        email: bp.email || '',
-        website: bp.website || '',
-        location: bp.location || '',
-        hoursStr: formatHoursForDisplay(bp.hours),
-      });
-      setFaqs(bot.faqs || []);
-      setServices(bp.services || []);
-    }
-  }, [bot]);
-
-  const updateBotMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const response = await apiRequest("PUT", `/api/super-admin/bots/${bot.botId}`, data);
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/bots"] });
-      toast({ title: "Bot Updated", description: "Bot settings have been saved." });
-    },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to update bot settings.", variant: "destructive" });
-    },
-  });
-
-  const handleSave = () => {
-    updateBotMutation.mutate({
-      businessProfile: {
-        businessName: formData.businessName,
-        type: formData.type,
-        phone: formData.phone,
-        email: formData.email,
-        website: formData.website,
-        location: formData.location,
-        hours: parseHoursFromString(formData.hoursStr),
-        services,
-      },
-      faqs,
-    });
-  };
-
-  const addService = () => {
-    if (newService.trim()) {
-      setServices([...services, newService.trim()]);
-      setNewService('');
-    }
-  };
-
-  const removeService = (index: number) => {
-    setServices(services.filter((_, i) => i !== index));
-  };
-
-  const addFaq = () => {
-    if (newFaq.question.trim() && newFaq.answer.trim()) {
-      setFaqs([...faqs, newFaq]);
-      setNewFaq({ question: '', answer: '' });
-    }
-  };
-
-  const removeFaq = (index: number) => {
-    setFaqs(faqs.filter((_, i) => i !== index));
-  };
-
-  if (!bot) {
-    return <p className="text-muted-foreground">No bot selected</p>;
-  }
-
-  return (
-    <div className="space-y-6">
-      {bots.length > 1 && (
-        <div className="flex items-center gap-2">
-          <Label>Select Bot:</Label>
-          <Select value={bot.botId} onValueChange={onSelectBot}>
-            <SelectTrigger data-testid="select-bot" className="w-64">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {bots.map(b => (
-                <SelectItem key={b.botId} value={b.botId}>
-                  {b.name || b.botId}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Basic Information</CardTitle>
-          <CardDescription>Core business details</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="businessName">Business Name</Label>
-              <Input
-                id="businessName"
-                data-testid="input-business-name"
-                value={formData.businessName}
-                onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="type">Business Type</Label>
-              <Select 
-                value={formData.type || 'restaurant'} 
-                onValueChange={(value) => setFormData({ ...formData, type: value })}
-              >
-                <SelectTrigger data-testid="select-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {BUSINESS_TYPES.map(opt => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone</Label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="phone"
-                  data-testid="input-phone"
-                  className="pl-9"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  data-testid="input-email"
-                  className="pl-9"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="website">Website</Label>
-              <div className="relative">
-                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="website"
-                  data-testid="input-website"
-                  className="pl-9"
-                  value={formData.website}
-                  onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="location">Location</Label>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="location"
-                  data-testid="input-location"
-                  className="pl-9"
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="hours">Hours (e.g., Monday: 9am-5pm, Tuesday: 9am-5pm)</Label>
-            <div className="relative">
-              <Clock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Textarea
-                id="hours"
-                data-testid="input-hours"
-                className="pl-9"
-                value={formData.hoursStr}
-                onChange={(e) => setFormData({ ...formData, hoursStr: e.target.value })}
-                rows={2}
-                placeholder="e.g., Monday: 9am-5pm, Tuesday: 9am-5pm"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Services</CardTitle>
-          <CardDescription>List of services offered</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <Input
-              data-testid="input-new-service"
-              placeholder="Add a service..."
-              value={newService}
-              onChange={(e) => setNewService(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addService()}
-            />
-            <Button data-testid="button-add-service" onClick={addService} size="sm">
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {services.map((service, index) => (
-              <Badge key={index} variant="secondary" className="pr-1">
-                {service}
-                <button 
-                  data-testid={`button-remove-service-${index}`}
-                  onClick={() => removeService(index)}
-                  className="ml-2 hover:text-destructive"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>FAQs</CardTitle>
-          <CardDescription>Frequently asked questions for the bot to reference</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-3 border rounded-lg p-4">
-            <Input
-              data-testid="input-new-faq-question"
-              placeholder="Question..."
-              value={newFaq.question}
-              onChange={(e) => setNewFaq({ ...newFaq, question: e.target.value })}
-            />
-            <Textarea
-              data-testid="input-new-faq-answer"
-              placeholder="Answer..."
-              value={newFaq.answer}
-              onChange={(e) => setNewFaq({ ...newFaq, answer: e.target.value })}
-              rows={2}
-            />
-            <Button data-testid="button-add-faq" onClick={addFaq} size="sm">
-              <Plus className="h-4 w-4 mr-2" /> Add FAQ
-            </Button>
-          </div>
-
-          <div className="space-y-3">
-            {faqs.map((faq, index) => (
-              <div key={index} className="border rounded-lg p-4">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <p className="font-medium">{faq.question}</p>
-                    <p className="text-sm text-muted-foreground mt-1">{faq.answer}</p>
-                  </div>
-                  <Button 
-                    data-testid={`button-remove-faq-${index}`}
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => removeFaq(index)}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="flex justify-end">
-        <Button 
-          data-testid="button-save-bot-settings"
-          onClick={handleSave}
-          disabled={updateBotMutation.isPending}
-        >
-          <Save className="h-4 w-4 mr-2" />
-          {updateBotMutation.isPending ? 'Saving...' : 'Save Changes'}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function SubscriptionTab({ client }: { client: Client }) {
-  const { toast } = useToast();
-
-  const { data: subscriptionData } = useQuery({
-    queryKey: ["/api/stripe/subscription", client.id],
-    queryFn: async () => {
-      const response = await fetch(`/api/stripe/subscription/${client.id}`, { credentials: "include" });
-      if (!response.ok) throw new Error("Failed to fetch subscription");
-      return response.json();
-    },
-  });
-
-  const createCheckoutMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/stripe/checkout", {
-        clientId: client.id,
-        priceId: 'default', 
-        businessName: client.name,
-      });
-      return response.json();
-    },
-    onSuccess: (data) => {
-      if (data.url) {
-        window.location.href = data.url;
-      }
-    },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to create checkout session.", variant: "destructive" });
-    },
-  });
-
-  const openPortalMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/stripe/portal", { clientId: client.id });
-      return response.json();
-    },
-    onSuccess: (data) => {
-      if (data.url) {
-        window.open(data.url, '_blank');
-      }
-    },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to open billing portal.", variant: "destructive" });
-    },
-  });
-
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Client Status</CardTitle>
-          <CardDescription>Current status and subscription information</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-4">
-            <span className="text-muted-foreground">Current Status:</span>
-            <Badge 
-              className={
-                client.status === 'active' ? 'bg-green-500/20 text-green-400' :
-                client.status === 'paused' ? 'bg-red-500/20 text-red-400' :
-                'bg-blue-500/20 text-blue-400'
-              }
-            >
-              {client.status.toUpperCase()}
-            </Badge>
-          </div>
-
-          {subscriptionData?.hasActiveSubscription ? (
-            <div className="space-y-4">
-              <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
-                <div className="flex items-center gap-2 text-green-500">
-                  <Zap className="h-5 w-5" />
-                  <span className="font-medium">Active Subscription</span>
-                </div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Subscription ID: {subscriptionData.subscription?.id}
-                </p>
-              </div>
-              <Button 
-                data-testid="button-manage-billing"
-                variant="outline" 
-                onClick={() => openPortalMutation.mutate()}
-                disabled={openPortalMutation.isPending}
-              >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Manage Billing
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="text-muted-foreground">No active subscription</p>
-              </div>
-              <Button 
-                data-testid="button-start-subscription"
-                onClick={() => createCheckoutMutation.mutate()}
-                disabled={createCheckoutMutation.isPending}
-              >
-                <CreditCard className="h-4 w-4 mr-2" />
-                Start Subscription
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function AnalyticsTab({ clientId }: { clientId: string }) {
-  const { data: trends } = useQuery({
-    queryKey: ["/api/client/analytics/trends", clientId],
-    queryFn: async () => {
-      const response = await fetch(`/api/client/analytics/trends?clientId=${clientId}&days=30`, { credentials: "include" });
-      if (!response.ok) throw new Error("Failed to fetch trends");
-      return response.json();
-    },
-  });
-
-  const { data: summary } = useQuery<AnalyticsSummary>({
-    queryKey: ["/api/client/analytics/summary", clientId],
-    queryFn: async () => {
-      const response = await fetch(`/api/client/analytics/summary?clientId=${clientId}`, { credentials: "include" });
-      if (!response.ok) throw new Error("Failed to fetch summary");
-      return response.json();
-    },
-  });
-
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Conversations</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{summary?.conversations || 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Messages (7d)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{summary?.messagesLast7d || 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Leads (7d)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{summary?.leadsLast7d || 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Crisis Events</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{summary?.crisisEvents || 0}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Message Trend (30 days)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {trends?.trends && trends.trends.length > 0 ? (
-            <div className="h-48 flex items-end gap-1">
-              {trends.trends.slice(-30).map((day: any, i: number) => (
-                <div 
-                  key={i}
-                  className="flex-1 bg-primary/80 rounded-t"
-                  style={{ height: `${Math.max(4, (day.messages / Math.max(...trends.trends.map((t: any) => t.messages), 1)) * 100)}%` }}
-                  title={`${day.date}: ${day.messages} messages`}
-                />
-              ))}
-            </div>
-          ) : (
-            <p className="text-muted-foreground text-center py-8">No trend data available</p>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function LogsTab({ clientId }: { clientId: string }) {
-  const { data: logs } = useQuery({
+// Logs Panel
+function LogsPanel({ clientId, botId }: { clientId: string; botId: string }) {
+  const { data: logs, isLoading } = useQuery({
     queryKey: ["/api/platform/logs", clientId],
     queryFn: async () => {
       const response = await fetch(`/api/platform/logs/${clientId}`, { credentials: "include" });
@@ -1160,35 +863,38 @@ function LogsTab({ clientId }: { clientId: string }) {
     },
   });
 
+  if (isLoading) {
+    return <div className="text-center py-8 text-muted-foreground">Loading logs...</div>;
+  }
+
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Conversation Logs</CardTitle>
-          <CardDescription>Recent conversation activity</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {logs?.files && logs.files.length > 0 ? (
-            <div className="space-y-2">
-              {logs.files.map((file: string, i: number) => (
-                <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
-                  <span className="font-mono text-sm">{file}</span>
-                  <Button variant="ghost" size="sm">
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-muted-foreground text-center py-8">No log files found</p>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Conversation Logs</CardTitle>
+        <CardDescription>Recent conversation activity for {botId}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {logs?.files && logs.files.length > 0 ? (
+          <div className="space-y-2">
+            {logs.files.map((file: string, i: number) => (
+              <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
+                <span className="font-mono text-sm">{file}</span>
+                <Button variant="ghost" size="sm">
+                  <Eye className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-center py-8">No log files found</p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
-function CreateClientFromTemplateModal({
+// Create from Template Modal
+function CreateFromTemplateModal({
   open,
   onOpenChange,
   template,
@@ -1197,13 +903,13 @@ function CreateClientFromTemplateModal({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   template: Template | null;
-  onSuccess: (clientId: string) => void;
+  onSuccess: (botId: string) => void;
 }) {
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     clientId: '',
     clientName: '',
-    type: '',
+    businessName: '',
     phone: '',
     email: '',
     website: '',
@@ -1211,13 +917,18 @@ function CreateClientFromTemplateModal({
   });
 
   useEffect(() => {
-    if (template) {
-      setFormData(prev => ({
-        ...prev,
-        type: template.metadata?.templateCategory || template.businessProfile?.type || '',
-      }));
+    if (open) {
+      setFormData({
+        clientId: '',
+        clientName: '',
+        businessName: '',
+        phone: '',
+        email: '',
+        website: '',
+        location: '',
+      });
     }
-  }, [template]);
+  }, [open]);
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
@@ -1225,10 +936,10 @@ function CreateClientFromTemplateModal({
         templateBotId: template?.botId,
         clientId: data.clientId,
         clientName: data.clientName,
-        type: data.type,
+        type: template?.businessProfile?.type || template?.metadata?.templateCategory,
         businessProfile: {
-          businessName: data.clientName,
-          type: data.type,
+          businessName: data.businessName || data.clientName,
+          type: template?.businessProfile?.type || template?.metadata?.templateCategory,
           phone: data.phone,
           email: data.email,
           website: data.website,
@@ -1238,13 +949,13 @@ function CreateClientFromTemplateModal({
       return response.json();
     },
     onSuccess: (data) => {
-      toast({ title: "Client Created", description: `Successfully created client: ${formData.clientName}` });
-      onSuccess(data.clientId || formData.clientId);
+      toast({ title: "Bot Created", description: `Successfully created: ${formData.clientName}` });
+      onSuccess(data.botId || `${formData.clientId}_bot`);
     },
     onError: (error: any) => {
       toast({ 
         title: "Error", 
-        description: error.message || "Failed to create client.", 
+        description: error.message || "Failed to create bot.", 
         variant: "destructive" 
       });
     },
@@ -1273,115 +984,79 @@ function CreateClientFromTemplateModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Create New Client from Template</DialogTitle>
+          <DialogTitle>Create New Bot</DialogTitle>
           <DialogDescription>
-            Creating from: {template.metadata.templateCategory || template.metadata.businessType} template
+            Create a new {template.metadata?.templateCategory || template.businessProfile?.type} chatbot from template
           </DialogDescription>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="clientName">Client Name *</Label>
+            <div className="col-span-2">
+              <Label>Business Name *</Label>
               <Input
-                id="clientName"
-                data-testid="input-modal-client-name"
+                data-testid="input-new-client-name"
                 value={formData.clientName}
                 onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
-                placeholder="Blue Harbor Grill"
+                placeholder="My Business Name"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="clientId">Client ID *</Label>
+            <div className="col-span-2">
+              <Label>Client ID *</Label>
               <div className="flex gap-2">
                 <Input
-                  id="clientId"
-                  data-testid="input-modal-client-id"
+                  data-testid="input-new-client-id"
                   value={formData.clientId}
                   onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
-                  placeholder="blue_harbor_grill"
+                  placeholder="my_business"
                 />
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm"
-                  onClick={generateClientId}
-                >
-                  Auto
+                <Button type="button" variant="outline" onClick={generateClientId}>
+                  Generate
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground mt-1">Unique identifier (lowercase, underscores only)</p>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="type">Business Type</Label>
-            <Select 
-              value={formData.type} 
-              onValueChange={(value) => setFormData({ ...formData, type: value })}
-            >
-              <SelectTrigger data-testid="select-modal-type">
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                {BUSINESS_TYPES.map(type => (
-                  <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <Separator />
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone</Label>
+            <div>
+              <Label>Phone</Label>
               <Input
-                id="phone"
-                data-testid="input-modal-phone"
+                data-testid="input-new-phone"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                placeholder="(555) 123-4567"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+            <div>
+              <Label>Email</Label>
               <Input
-                id="email"
-                data-testid="input-modal-email"
+                data-testid="input-new-email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="contact@business.com"
               />
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="website">Website</Label>
+            <div>
+              <Label>Website</Label>
               <Input
-                id="website"
-                data-testid="input-modal-website"
+                data-testid="input-new-website"
                 value={formData.website}
                 onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                placeholder="https://mybusiness.com"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="location">Location</Label>
+            <div>
+              <Label>Location</Label>
               <Input
-                id="location"
-                data-testid="input-modal-location"
+                data-testid="input-new-location"
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                placeholder="123 Main St, City"
               />
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="hours">Hours</Label>
-            <Textarea
-              id="hours"
-              data-testid="input-modal-hours"
-              value={formData.hours}
-              onChange={(e) => setFormData({ ...formData, hours: e.target.value })}
-              rows={2}
-              placeholder="Mon-Fri: 9am-5pm"
-            />
           </div>
 
           <DialogFooter>
@@ -1389,11 +1064,11 @@ function CreateClientFromTemplateModal({
               Cancel
             </Button>
             <Button 
+              data-testid="button-create-client"
               type="submit" 
-              data-testid="button-modal-create"
               disabled={createMutation.isPending}
             >
-              {createMutation.isPending ? 'Creating...' : 'Create Client'}
+              {createMutation.isPending ? 'Creating...' : 'Create Bot'}
             </Button>
           </DialogFooter>
         </form>
