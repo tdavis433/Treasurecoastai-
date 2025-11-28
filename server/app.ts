@@ -31,6 +31,9 @@ export function log(message: string, source = "express") {
 
 export const app = express();
 
+// Trust proxy for rate limiting to work correctly behind reverse proxies
+app.set('trust proxy', 1);
+
 // Security: Helmet for secure HTTP headers
 app.use(helmet({
   contentSecurityPolicy: {
