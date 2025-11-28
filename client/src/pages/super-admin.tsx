@@ -584,15 +584,24 @@ export default function SuperAdmin() {
         </div>
 
         {/* All Chatbots - Individual Listing */}
-        {allBots && allBots.length > 0 && (
-          <GlassCard>
-            <GlassCardHeader>
+        <GlassCard>
+          <GlassCardHeader className="flex flex-row items-start justify-between gap-4">
+            <div>
               <GlassCardTitle>All Chatbots</GlassCardTitle>
               <GlassCardDescription>Select a bot to edit or view its dashboard</GlassCardDescription>
-            </GlassCardHeader>
-            <GlassCardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {allBots.map(bot => (
+            </div>
+            <Button
+              onClick={() => setLocation("/admin/bot/new")}
+              className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white"
+              data-testid="button-create-bot"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create New Bot
+            </Button>
+          </GlassCardHeader>
+          <GlassCardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {allBots && allBots.length > 0 ? allBots.map(bot => (
                   <div 
                     key={bot.botId}
                     className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3 hover:border-cyan-400/30 transition-colors"
@@ -633,11 +642,14 @@ export default function SuperAdmin() {
                       </Button>
                     </div>
                   </div>
-                ))}
-              </div>
-            </GlassCardContent>
-          </GlassCard>
-        )}
+              )) : (
+                <div className="col-span-full text-center py-8 text-white/50">
+                  No bots created yet. Click "Create New Bot" to get started.
+                </div>
+              )}
+            </div>
+          </GlassCardContent>
+        </GlassCard>
 
         <Tabs defaultValue="general" className="space-y-6">
           {/* Tabs Navigation */}

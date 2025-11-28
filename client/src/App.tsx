@@ -10,6 +10,7 @@ import AdminAnalytics from "@/pages/admin-analytics";
 import SuperAdmin from "@/pages/super-admin";
 import BotDashboard from "@/pages/bot-dashboard";
 import ClientDashboard from "@/pages/client-dashboard";
+import CreateBot from "@/pages/create-bot";
 import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
 import DemosPage from "@/pages/demos";
@@ -32,6 +33,7 @@ function Router() {
       <Route path="/client/dashboard" component={ClientDashboard} />
       <Route path="/login" component={Login} />
       <Route path="/super-admin" component={SuperAdmin} />
+      <Route path="/admin/bot/new" component={CreateBot} />
       <Route component={NotFound} />
     </Switch>
   );

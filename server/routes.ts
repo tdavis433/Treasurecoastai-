@@ -5,6 +5,8 @@ import { insertAppointmentSchema, insertClientSettingsSchema, adminUsers, type A
 import OpenAI from "openai";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import path from "path";
+import fs from "fs";
 import { eq } from "drizzle-orm";
 import {
   getBotConfig,
@@ -1340,6 +1342,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Update bot config error:", error);
       res.status(500).json({ error: "Failed to update bot config" });
+    }
+  });
+
+  // Create a new bot
+  app.post("/api/super-admin/bots", requireSuperAdmin, (req, res) => {
+    try {
+      const { 
+        botId, 
+        clientId, 
+        name, 
+        description, 
+        businessProfile, 
+        systemPrompt, 
+        faqs, 
+        rules,
+        templateBotId 
+      } = req.body;
+      
+      // Validate required fields
+      if (!botId || !clientId || !name) {
+        return res.status(400).json({ error: "botId, clientId, and name are required" });
+      }
+      
+      // Check if botId already exists
+      const existingBot = getBotConfigByBotId(botId);
+      if (existingBot) {
+        return res.status(409).json({ error: `Bot with ID '${botId}' already exists` });
+      }
+      
+      // If cloning from a template, get the template config
+      let newConfig: BotConfig;
+      
+      if (templateBotId) {
+        const templateConfig = getBotConfigByBotId(templateBotId);
+        if (!templateConfig) {
+          return res.status(404).json({ error: `Template bot not found: ${templateBotId}` });
+        }
+        
+        // Clone template - merge businessProfile, inherit systemPrompt/FAQs/rules unless explicitly provided
+        const mergedBusinessProfile = {
+          ...templateConfig.businessProfile,
+          ...businessProfile,
+          businessName: businessProfile?.businessName || name || templateConfig.businessProfile?.businessName,
+          hours: businessProfile?.hours || templateConfig.businessProfile?.hours,
+          services: businessProfile?.services?.length > 0 ? businessProfile.services : templateConfig.businessProfile?.services,
+        };
+        
+        newConfig = {
+          ...templateConfig,
+          botId,
+          clientId,
+          name: name || templateConfig.name,
+          description: description || `AI assistant based on ${templateConfig.name}`,
+          businessProfile: mergedBusinessProfile,
+          systemPrompt: systemPrompt || templateConfig.systemPrompt,
+          faqs: faqs || templateConfig.faqs,
+          rules: rules || templateConfig.rules,
+        };
+      } else {
+        // Create from scratch with provided values
+        const defaultBusinessProfile = {
+          businessName: name,
+          type: businessProfile?.type || "general",
+          location: businessProfile?.location || "",
+          phone: businessProfile?.phone || "",
+          email: businessProfile?.email || "",
+          website: businessProfile?.website || "",
+          hours: businessProfile?.hours || { officeHours: "Mon-Fri 9am-5pm" },
+          services: businessProfile?.services || [],
+        };
+        
+        const defaultRules = {
+          allowedTopics: ["general information", "services", "pricing", "contact methods", "hours of operation"],
+          forbiddenTopics: ["medical advice", "legal advice", "financial advice"],
+          crisisHandling: {
+            onCrisisKeywords: ["emergency", "help me", "urgent"],
+            responseTemplate: "If this is an emergency, please call 911 or your local emergency services immediately."
+          }
+        };
+        
+        const defaultSystemPrompt = `You are a helpful assistant for ${name}. Provide clear, friendly information about the business, its services, and how customers can get in touch. Be professional and helpful.`;
+        
+        newConfig = {
+          botId,
+          clientId,
+          name,
+          description: description || `AI assistant for ${name}`,
+          businessProfile: { ...defaultBusinessProfile, ...businessProfile },
+          systemPrompt: systemPrompt || defaultSystemPrompt,
+          faqs: faqs || [],
+          rules: rules || defaultRules,
+        };
+      }
+      
+      // Save the new bot config
+      const success = saveBotConfig(botId, newConfig);
+      
+      if (success) {
+        // Create log directory for the new client
+        const logDir = path.join(process.cwd(), 'logs', clientId);
+        if (!fs.existsSync(logDir)) {
+          fs.mkdirSync(logDir, { recursive: true });
+        }
+        
+        res.status(201).json({ success: true, config: newConfig });
+      } else {
+        res.status(500).json({ error: "Failed to save bot config" });
+      }
+    } catch (error) {
+      console.error("Create bot error:", error);
+      res.status(500).json({ error: "Failed to create bot" });
     }
   });
 

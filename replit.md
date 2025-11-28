@@ -135,3 +135,9 @@ The system employs a React, TypeScript, Tailwind CSS, and shadcn/ui frontend wit
   - Data properly scoped to prevent cross-tenant data leakage
   - Super admins can view any client's data via query param
 - **Client API Endpoints:** Added `/api/client/*` endpoints for client-scoped data access
+- **Create Bot Feature:** Added ability to create new bots from super-admin
+  - `/admin/bot/new` - Create bot page with template selection
+  - POST `/api/super-admin/bots` - Create new bot API
+  - Supports cloning from existing templates (inherits system prompt, FAQs, safety rules)
+  - Start from scratch option with default configurations
+  - Auto-generate IDs feature based on business name
