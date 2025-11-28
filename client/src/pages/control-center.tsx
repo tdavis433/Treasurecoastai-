@@ -313,31 +313,28 @@ export default function ControlCenter() {
           <Separator />
 
           {/* Templates Section */}
-          <div className="p-4">
+          <div className="p-4 pb-2">
             <h3 className="font-semibold text-base text-muted-foreground uppercase tracking-wide mb-3">
               Create New Bot
             </h3>
-            <div className="space-y-1">
-              {templates.slice(0, 4).map(template => (
-                <button
-                  key={template.botId}
-                  data-testid={`button-template-${template.botId}`}
-                  onClick={() => {
-                    setSelectedTemplate(template);
-                    setShowCreateModal(true);
-                  }}
-                  className="w-full text-left p-3 rounded-lg hover:bg-muted transition-colors flex items-center justify-between group"
-                >
-                  <span className="text-base">{template.metadata?.templateCategory || template.businessProfile?.type}</span>
-                  <Plus className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </button>
-              ))}
-              {templates.length > 4 && (
-                <p className="text-sm text-muted-foreground text-center pt-2">
-                  +{templates.length - 4} more templates
-                </p>
-              )}
-            </div>
+            <ScrollArea className="h-[280px]">
+              <div className="space-y-1 pr-3">
+                {templates.map(template => (
+                  <button
+                    key={template.botId}
+                    data-testid={`button-template-${template.botId}`}
+                    onClick={() => {
+                      setSelectedTemplate(template);
+                      setShowCreateModal(true);
+                    }}
+                    className="w-full text-left p-3 rounded-lg hover:bg-muted transition-colors flex items-center justify-between group"
+                  >
+                    <span className="text-base">{template.metadata?.templateCategory || template.businessProfile?.type}</span>
+                    <Plus className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                ))}
+              </div>
+            </ScrollArea>
           </div>
 
           <Separator />
