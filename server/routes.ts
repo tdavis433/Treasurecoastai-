@@ -605,8 +605,54 @@ ${preIntakeInfo}
   }
 }
 
+async function initStripe() {
+  const databaseUrl = process.env.DATABASE_URL;
+
+  if (!databaseUrl) {
+    console.log('Stripe: DATABASE_URL not set, skipping Stripe initialization');
+    return;
+  }
+
+  try {
+    console.log('Initializing Stripe schema...');
+    const { runMigrations } = await import('stripe-replit-sync');
+    await runMigrations({ 
+      databaseUrl,
+      schema: 'stripe'
+    });
+    console.log('Stripe schema ready');
+
+    const { getStripeSync } = await import('./stripeClient');
+    const stripeSync = await getStripeSync();
+
+    console.log('Setting up managed webhook...');
+    const webhookBaseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
+    const { webhook, uuid } = await stripeSync.findOrCreateManagedWebhook(
+      `${webhookBaseUrl}/api/stripe/webhook`,
+      {
+        enabled_events: ['*'],
+        description: 'Managed webhook for Stripe sync',
+      }
+    );
+    console.log(`Stripe webhook configured: ${webhook.url} (UUID: ${uuid})`);
+
+    console.log('Syncing Stripe data in background...');
+    stripeSync.syncBackfill()
+      .then(() => {
+        console.log('Stripe data synced');
+      })
+      .catch((err: Error) => {
+        console.error('Error syncing Stripe data:', err);
+      });
+  } catch (error) {
+    console.error('Failed to initialize Stripe:', error);
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   await ensureAdminUserExists();
+  
+  initStripe().catch(console.error);
   
   app.post("/api/chat", async (req, res) => {
     try {
@@ -2289,6 +2335,155 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get super-admin analytics overview error:", error);
       res.status(500).json({ error: "Failed to fetch analytics overview" });
+    }
+  });
+
+  // =============================================
+  // STRIPE BILLING ENDPOINTS
+  // =============================================
+
+  // Get Stripe publishable key
+  app.get("/api/stripe/publishable-key", async (req, res) => {
+    try {
+      const { getStripePublishableKey } = await import('./stripeClient');
+      const key = await getStripePublishableKey();
+      res.json({ publishableKey: key });
+    } catch (error) {
+      console.error("Get Stripe publishable key error:", error);
+      res.status(500).json({ error: "Stripe not configured" });
+    }
+  });
+
+  // List available products and prices for subscription
+  app.get("/api/stripe/products", async (req, res) => {
+    try {
+      const { stripeService } = await import('./stripeService');
+      const rows = await stripeService.listProductsWithPrices();
+
+      const productsMap = new Map();
+      for (const row of rows as any[]) {
+        if (!productsMap.has(row.product_id)) {
+          productsMap.set(row.product_id, {
+            id: row.product_id,
+            name: row.product_name,
+            description: row.product_description,
+            active: row.product_active,
+            metadata: row.product_metadata,
+            prices: []
+          });
+        }
+        if (row.price_id) {
+          productsMap.get(row.product_id).prices.push({
+            id: row.price_id,
+            unit_amount: row.unit_amount,
+            currency: row.currency,
+            recurring: row.recurring,
+            active: row.price_active,
+            metadata: row.price_metadata,
+          });
+        }
+      }
+
+      res.json({ products: Array.from(productsMap.values()) });
+    } catch (error) {
+      console.error("List Stripe products error:", error);
+      res.status(500).json({ error: "Failed to list products" });
+    }
+  });
+
+  // Create checkout session for client subscription
+  app.post("/api/stripe/checkout", requireSuperAdmin, async (req, res) => {
+    try {
+      const { clientId, priceId, email, businessName } = req.body;
+
+      if (!clientId || !priceId) {
+        return res.status(400).json({ error: "clientId and priceId are required" });
+      }
+
+      const { stripeService } = await import('./stripeService');
+      
+      let customer = await stripeService.getCustomerByClientId(clientId);
+      let customerId: string;
+      
+      if (!customer) {
+        const newCustomer = await stripeService.createCustomer(
+          email || `${clientId}@treasurecoast.ai`,
+          clientId,
+          businessName || clientId
+        );
+        customerId = newCustomer.id;
+      } else {
+        customerId = (customer as any).id;
+      }
+
+      const protocol = req.headers['x-forwarded-proto'] || 'https';
+      const host = req.headers.host;
+      const baseUrl = `${protocol}://${host}`;
+
+      const session = await stripeService.createCheckoutSession(
+        customerId,
+        priceId,
+        clientId,
+        `${baseUrl}/super-admin?checkout=success&clientId=${clientId}`,
+        `${baseUrl}/super-admin?checkout=canceled&clientId=${clientId}`
+      );
+
+      res.json({ url: session.url, sessionId: session.id });
+    } catch (error) {
+      console.error("Create checkout session error:", error);
+      res.status(500).json({ error: "Failed to create checkout session" });
+    }
+  });
+
+  // Get client subscription status
+  app.get("/api/stripe/subscription/:clientId", requireSuperAdmin, async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      const { stripeService } = await import('./stripeService');
+      
+      const subscription = await stripeService.getSubscriptionByClientId(clientId);
+      const customer = await stripeService.getCustomerByClientId(clientId);
+      
+      res.json({ 
+        subscription: subscription || null,
+        customer: customer || null,
+        hasActiveSubscription: !!subscription 
+      });
+    } catch (error) {
+      console.error("Get subscription error:", error);
+      res.status(500).json({ error: "Failed to get subscription" });
+    }
+  });
+
+  // Create customer portal session for managing subscription
+  app.post("/api/stripe/portal", requireSuperAdmin, async (req, res) => {
+    try {
+      const { clientId } = req.body;
+
+      if (!clientId) {
+        return res.status(400).json({ error: "clientId is required" });
+      }
+
+      const { stripeService } = await import('./stripeService');
+      const customer = await stripeService.getCustomerByClientId(clientId);
+      
+      if (!customer) {
+        return res.status(404).json({ error: "No Stripe customer found for this client" });
+      }
+
+      const protocol = req.headers['x-forwarded-proto'] || 'https';
+      const host = req.headers.host;
+      const returnUrl = `${protocol}://${host}/super-admin`;
+
+      const session = await stripeService.createCustomerPortalSession(
+        (customer as any).id,
+        returnUrl
+      );
+
+      res.json({ url: session.url });
+    } catch (error) {
+      console.error("Create portal session error:", error);
+      res.status(500).json({ error: "Failed to create portal session" });
     }
   });
 
