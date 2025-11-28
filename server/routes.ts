@@ -34,6 +34,14 @@ import {
   type AutomationContext,
   type AutomationResult
 } from "./automations";
+import {
+  checkMessageLimit,
+  incrementMessageCount,
+  incrementLeadCount,
+  incrementAutomationCount,
+  checkAutomationEnabled,
+  getUsageSummary
+} from "./planLimits";
 
 
 const loginSchema = z.object({
@@ -851,6 +859,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Check plan limits before processing
+      const limitCheck = await checkMessageLimit(clientId);
+      if (!limitCheck.allowed) {
+        return res.status(429).json({
+          error: "Usage limit reached",
+          message: limitCheck.reason,
+          usage: limitCheck.usage
+        });
+      }
+
       const lastUserMessage = messages[messages.length - 1];
       const actualSessionId = sessionId || `session_${Date.now()}`;
       
@@ -972,6 +990,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         await storage.createOrUpdateChatSession(sessionData);
         
+        // Increment usage counters
+        await incrementMessageCount(clientId);
+        await incrementAutomationCount(clientId);
+        
         // Log to file
         logConversationToFile({
           timestamp: new Date().toISOString(),
@@ -1008,6 +1030,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             language
           },
         });
+        
+        // Increment lead counter
+        await incrementLeadCount(clientId);
       }
 
       // Build system prompt from bot config
@@ -1064,6 +1089,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       await storage.createOrUpdateChatSession(sessionData);
+      
+      // Increment usage counter
+      await incrementMessageCount(clientId);
       
       // Update daily analytics
       await storage.updateOrCreateDailyAnalytics({
@@ -2624,6 +2652,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get client analytics sessions error:", error);
       res.status(500).json({ error: "Failed to fetch chat sessions" });
+    }
+  });
+
+  // Get client usage summary (plan limits and current usage)
+  app.get("/api/client/usage", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      const usageSummary = await getUsageSummary(clientId);
+      
+      res.json({
+        clientId,
+        ...usageSummary,
+      });
+    } catch (error) {
+      console.error("Get client usage error:", error);
+      res.status(500).json({ error: "Failed to fetch usage summary" });
     }
   });
 

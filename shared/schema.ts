@@ -292,3 +292,64 @@ export const insertDailyAnalyticsSchema = createInsertSchema(dailyAnalytics).omi
 
 export type InsertDailyAnalytics = z.infer<typeof insertDailyAnalyticsSchema>;
 export type DailyAnalytics = typeof dailyAnalytics.$inferSelect;
+
+// Monthly usage tracking for plan limits
+export const monthlyUsage = pgTable("monthly_usage", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  month: text("month").notNull(), // YYYY-MM format
+  messagesUsed: integer("messages_used").notNull().default(0),
+  leadsCapture: integer("leads_captured").notNull().default(0),
+  automationsTriggered: integer("automations_triggered").notNull().default(0),
+  lastUpdated: timestamp("last_updated").defaultNow().notNull(),
+});
+
+export const insertMonthlyUsageSchema = createInsertSchema(monthlyUsage).omit({
+  id: true,
+  lastUpdated: true,
+});
+
+export type InsertMonthlyUsage = z.infer<typeof insertMonthlyUsageSchema>;
+export type MonthlyUsage = typeof monthlyUsage.$inferSelect;
+
+// Plan tier definitions
+export const PLAN_TIERS = {
+  free: {
+    name: 'Free',
+    messagesPerMonth: 100,
+    leadsPerMonth: 10,
+    automationsEnabled: false,
+    widgetEnabled: true,
+    analyticsRetentionDays: 7,
+    price: 0,
+  },
+  starter: {
+    name: 'Starter',
+    messagesPerMonth: 1000,
+    leadsPerMonth: 50,
+    automationsEnabled: true,
+    widgetEnabled: true,
+    analyticsRetentionDays: 30,
+    price: 29,
+  },
+  pro: {
+    name: 'Pro',
+    messagesPerMonth: 10000,
+    leadsPerMonth: 500,
+    automationsEnabled: true,
+    widgetEnabled: true,
+    analyticsRetentionDays: 90,
+    price: 99,
+  },
+  enterprise: {
+    name: 'Enterprise',
+    messagesPerMonth: -1, // Unlimited
+    leadsPerMonth: -1,
+    automationsEnabled: true,
+    widgetEnabled: true,
+    analyticsRetentionDays: 365,
+    price: 299,
+  },
+} as const;
+
+export type PlanTier = keyof typeof PLAN_TIERS;

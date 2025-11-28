@@ -12,13 +12,16 @@ import {
   type InsertChatAnalyticsEvent,
   type DailyAnalytics,
   type InsertDailyAnalytics,
+  type MonthlyUsage,
+  type InsertMonthlyUsage,
   appointments,
   clientSettings,
   conversationAnalytics,
   adminUsers,
   chatSessions,
   chatAnalyticsEvents,
-  dailyAnalytics
+  dailyAnalytics,
+  monthlyUsage
 } from "@shared/schema";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { neonConfig, Pool } from "@neondatabase/serverless";
@@ -80,6 +83,11 @@ export interface IStorage {
   getClientDailyTrends(clientId: string, botId?: string, days?: number): Promise<DailyAnalytics[]>;
   getClientRecentSessions(clientId: string, botId?: string, limit?: number): Promise<ChatSession[]>;
   updateOrCreateDailyAnalytics(analytics: InsertDailyAnalytics): Promise<void>;
+  
+  // Monthly usage tracking for plan limits
+  getOrCreateMonthlyUsage(clientId: string, month: string): Promise<MonthlyUsage>;
+  incrementMonthlyUsage(clientId: string, month: string, field: 'messages' | 'leads' | 'automations'): Promise<MonthlyUsage>;
+  getMonthlyUsageHistory(clientId: string, months?: number): Promise<MonthlyUsage[]>;
 }
 
 export class DbStorage implements IStorage {
@@ -572,6 +580,73 @@ export class DbStorage implements IStorage {
     } else {
       await db.insert(dailyAnalytics).values(analytics);
     }
+  }
+
+  async getOrCreateMonthlyUsage(clientId: string, month: string): Promise<MonthlyUsage> {
+    const [existing] = await db
+      .select()
+      .from(monthlyUsage)
+      .where(and(
+        eq(monthlyUsage.clientId, clientId),
+        eq(monthlyUsage.month, month)
+      ))
+      .limit(1);
+    
+    if (existing) {
+      return existing;
+    }
+    
+    const [created] = await db
+      .insert(monthlyUsage)
+      .values({
+        clientId,
+        month,
+        messagesUsed: 0,
+        leadsCapture: 0,
+        automationsTriggered: 0,
+      })
+      .returning();
+    
+    return created;
+  }
+
+  async incrementMonthlyUsage(
+    clientId: string, 
+    month: string, 
+    field: 'messages' | 'leads' | 'automations'
+  ): Promise<MonthlyUsage> {
+    const usage = await this.getOrCreateMonthlyUsage(clientId, month);
+    
+    const updates: Partial<MonthlyUsage> = {
+      lastUpdated: new Date(),
+    };
+    
+    if (field === 'messages') {
+      updates.messagesUsed = usage.messagesUsed + 1;
+    } else if (field === 'leads') {
+      updates.leadsCapture = usage.leadsCapture + 1;
+    } else if (field === 'automations') {
+      updates.automationsTriggered = usage.automationsTriggered + 1;
+    }
+    
+    const [updated] = await db
+      .update(monthlyUsage)
+      .set(updates)
+      .where(eq(monthlyUsage.id, usage.id))
+      .returning();
+    
+    return updated;
+  }
+
+  async getMonthlyUsageHistory(clientId: string, months: number = 6): Promise<MonthlyUsage[]> {
+    const results = await db
+      .select()
+      .from(monthlyUsage)
+      .where(eq(monthlyUsage.clientId, clientId))
+      .orderBy(desc(monthlyUsage.month))
+      .limit(months);
+    
+    return results;
   }
 }
 
