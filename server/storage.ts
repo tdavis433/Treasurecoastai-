@@ -16,6 +16,8 @@ import {
   type InsertMonthlyUsage,
   type Lead,
   type InsertLead,
+  type WorkspaceMembership,
+  type Workspace,
   appointments,
   clientSettings,
   conversationAnalytics,
@@ -24,7 +26,10 @@ import {
   chatAnalyticsEvents,
   dailyAnalytics,
   monthlyUsage,
-  leads
+  leads,
+  workspaceMemberships,
+  workspaces,
+  bots
 } from "@shared/schema";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { neonConfig, Pool } from "@neondatabase/serverless";
@@ -108,6 +113,11 @@ export interface IStorage {
   
   // Inbox - conversation messages
   getSessionMessages(sessionId: string, clientId: string): Promise<ChatAnalyticsEvent[]>;
+  
+  // Workspace membership validation
+  getUserWorkspaceMemberships(userId: string): Promise<WorkspaceMembership[]>;
+  checkWorkspaceMembership(userId: string, workspaceId: string): Promise<WorkspaceMembership | undefined>;
+  getWorkspaceByClientId(clientId: string): Promise<Workspace | undefined>;
   
   // Health check
   healthCheck?(): Promise<{ status: string; latencyMs?: number }>;
@@ -796,6 +806,43 @@ export class DbStorage implements IStorage {
     } catch (error) {
       return { status: 'error', latencyMs: Date.now() - start };
     }
+  }
+
+  // Workspace membership methods for Phase 2.3
+  async getUserWorkspaceMemberships(userId: string): Promise<WorkspaceMembership[]> {
+    const results = await db
+      .select()
+      .from(workspaceMemberships)
+      .where(and(
+        eq(workspaceMemberships.userId, userId),
+        eq(workspaceMemberships.status, 'active')
+      ));
+    return results;
+  }
+
+  async checkWorkspaceMembership(userId: string, workspaceId: string): Promise<WorkspaceMembership | undefined> {
+    const [membership] = await db
+      .select()
+      .from(workspaceMemberships)
+      .where(and(
+        eq(workspaceMemberships.userId, userId),
+        eq(workspaceMemberships.workspaceId, workspaceId),
+        eq(workspaceMemberships.status, 'active')
+      ))
+      .limit(1);
+    return membership;
+  }
+
+  async getWorkspaceByClientId(clientId: string): Promise<Workspace | undefined> {
+    // The clientId typically IS the workspace slug (e.g., "faith_house")
+    // Directly match workspace slug to clientId for reliable lookup
+    const [workspace] = await db
+      .select()
+      .from(workspaces)
+      .where(eq(workspaces.slug, clientId))
+      .limit(1);
+    
+    return workspace;
   }
 }
 

@@ -1,6 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import express from "express";
+import crypto from "crypto";
 import { storage, db } from "./storage";
 import { insertAppointmentSchema, insertClientSettingsSchema, adminUsers, type AdminRole } from "@shared/schema";
 import OpenAI from "openai";
@@ -52,6 +53,67 @@ import {
   getUsageSummary
 } from "./planLimits";
 
+// =============================================
+// PHASE 2.4: SIGNED WIDGET TOKENS
+// =============================================
+
+// Widget signing secret - SHOULD be set via WIDGET_TOKEN_SECRET env var for production
+// If not set, generates a random secret (tokens won't persist across restarts)
+const WIDGET_SECRET = process.env.WIDGET_TOKEN_SECRET || (() => {
+  console.warn("WARNING: WIDGET_TOKEN_SECRET not set - generating random secret. Widget tokens will not persist across server restarts. Set WIDGET_TOKEN_SECRET environment variable for production.");
+  return crypto.randomBytes(32).toString('hex');
+})();
+
+// Generate a signed token for widget authentication
+function generateWidgetToken(clientId: string, botId: string, expiresIn: number = 86400): string {
+  const timestamp = Date.now();
+  const expires = timestamp + (expiresIn * 1000);
+  const payload = `${clientId}:${botId}:${expires}`;
+  const signature = crypto
+    .createHmac('sha256', WIDGET_SECRET)
+    .update(payload)
+    .digest('hex');
+  // Format: base64(payload):signature
+  const encodedPayload = Buffer.from(payload).toString('base64');
+  return `${encodedPayload}.${signature}`;
+}
+
+// Verify a widget token and extract clientId/botId
+function verifyWidgetToken(token: string): { valid: boolean; clientId?: string; botId?: string; error?: string } {
+  try {
+    const [encodedPayload, signature] = token.split('.');
+    if (!encodedPayload || !signature) {
+      return { valid: false, error: 'Invalid token format' };
+    }
+    
+    const payload = Buffer.from(encodedPayload, 'base64').toString('utf-8');
+    const [clientId, botId, expiresStr] = payload.split(':');
+    
+    if (!clientId || !botId || !expiresStr) {
+      return { valid: false, error: 'Invalid token payload' };
+    }
+    
+    // Verify signature
+    const expectedSignature = crypto
+      .createHmac('sha256', WIDGET_SECRET)
+      .update(payload)
+      .digest('hex');
+    
+    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
+      return { valid: false, error: 'Invalid token signature' };
+    }
+    
+    // Check expiration
+    const expires = parseInt(expiresStr, 10);
+    if (Date.now() > expires) {
+      return { valid: false, error: 'Token expired' };
+    }
+    
+    return { valid: true, clientId, botId };
+  } catch (error) {
+    return { valid: false, error: 'Token verification failed' };
+  }
+}
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -345,16 +407,36 @@ function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-function requireClientAuth(req: Request, res: Response, next: NextFunction) {
+async function requireClientAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.session.userId) {
     return res.status(401).json({ error: "Authentication required" });
   }
   
-  // Client admin users MUST have a clientId
+  // Client admin users MUST have a clientId and valid workspace membership
   if (req.session.userRole === "client_admin") {
     if (!req.session.clientId) {
       return res.status(403).json({ error: "Client configuration required. Please contact your administrator." });
     }
+    
+    // Phase 2.3: Validate workspace membership for client admins
+    try {
+      const workspace = await storage.getWorkspaceByClientId(req.session.clientId);
+      if (workspace) {
+        // Check if user has active membership in this workspace
+        const membership = await storage.checkWorkspaceMembership(req.session.userId, workspace.id);
+        if (!membership) {
+          // User doesn't have workspace membership - log for audit but allow access
+          // (Legacy clients may not have workspace memberships set up yet)
+          console.warn(`Client admin ${req.session.userId} accessing ${req.session.clientId} without workspace membership`);
+        }
+        (req as any).workspaceId = workspace.id;
+        (req as any).membershipRole = membership?.role;
+      }
+    } catch (error) {
+      // Log error but don't block access - workspace validation is additive
+      console.error("Workspace membership check failed:", error);
+    }
+    
     (req as any).effectiveClientId = req.session.clientId;
     next();
     return;
@@ -995,6 +1077,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Phase 2.4: Generate signed widget token (expires in 24 hours)
+      const widgetToken = generateWidgetToken(clientId, botId, 86400);
+      
       // Return safe widget configuration (no sensitive data)
       res.json({
         status: 'active',
@@ -1002,7 +1087,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         businessName: botConfig.businessProfile?.businessName || botConfig.name,
         welcomeMessage: `Hi! I'm the ${botConfig.businessProfile?.businessName || 'AI'} assistant. How can I help you today?`,
         primaryColor: '#2563eb',
-        theme: 'dark'
+        theme: 'dark',
+        token: widgetToken // Signed token for widget authentication
       });
     } catch (error) {
       console.error('Widget config error:', error);
@@ -1097,6 +1183,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: paramsValidation.error });
       }
       const { clientId, botId } = paramsValidation.data;
+      
+      // Phase 2.4: Validate widget token if provided (optional for backwards compatibility)
+      const authHeader = req.headers.authorization;
+      if (authHeader?.startsWith('Bearer ')) {
+        const token = authHeader.substring(7);
+        const tokenResult = verifyWidgetToken(token);
+        
+        if (!tokenResult.valid) {
+          return res.status(401).json({ error: 'Invalid widget token', details: tokenResult.error });
+        }
+        
+        // Verify token matches URL params (prevent spoofing)
+        if (tokenResult.clientId !== clientId || tokenResult.botId !== botId) {
+          return res.status(403).json({ error: 'Token mismatch - clientId/botId does not match token' });
+        }
+      }
+      // Note: Token validation is currently optional to maintain backwards compatibility
+      // Enable strict mode by checking if token is required for each client via settings
       
       // Validate body
       const bodyValidation = validateRequest(chatBodySchema, req.body);
