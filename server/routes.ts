@@ -51,49 +51,59 @@ const loginSchema = z.object({
 
 async function ensureAdminUserExists() {
   try {
-    // Create super_admin (owner) account
-    const existingAdmin = await storage.findAdminByUsername("admin");
+    // Get credentials from environment variables (secure approach)
+    const adminUsername = process.env.DEFAULT_ADMIN_USERNAME || "admin";
+    const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD;
+    const staffUsername = process.env.DEFAULT_STAFF_USERNAME || "staff";
+    const staffPassword = process.env.DEFAULT_STAFF_PASSWORD;
+
+    // Create super_admin (owner) account only if password is set via env
+    const existingAdmin = await storage.findAdminByUsername(adminUsername);
     
-    if (!existingAdmin) {
-      console.log("Creating default super admin user...");
-      const passwordHash = await bcrypt.hash("admin123", 10);
+    if (!existingAdmin && adminPassword) {
+      console.log("Creating default super admin user from environment variables...");
+      const passwordHash = await bcrypt.hash(adminPassword, 10);
       
       await db.insert(adminUsers).values({
-        username: "admin",
+        username: adminUsername,
         passwordHash: passwordHash,
         role: "super_admin",
       });
       
       console.log("Default super admin user created successfully");
-    } else if (existingAdmin.role !== "super_admin") {
+    } else if (!adminPassword && !existingAdmin) {
+      console.warn("WARNING: No DEFAULT_ADMIN_PASSWORD set. Skipping admin user creation. Set this environment variable to create the initial admin account.");
+    } else if (existingAdmin && existingAdmin.role !== "super_admin") {
       console.log("Migrating existing admin to super_admin role...");
       await db.update(adminUsers)
         .set({ role: "super_admin" })
-        .where(eq(adminUsers.username, "admin"));
+        .where(eq(adminUsers.username, adminUsername));
       console.log("Admin user migrated to super_admin role");
     }
 
-    // Create client_admin (staff) account for Faith House
-    const existingStaff = await storage.findAdminByUsername("staff");
+    // Create client_admin (staff) account for Faith House only if password is set via env
+    const existingStaff = await storage.findAdminByUsername(staffUsername);
     
-    if (!existingStaff) {
-      console.log("Creating default client admin (staff) user for Faith House...");
-      const staffPasswordHash = await bcrypt.hash("staff123", 10);
+    if (!existingStaff && staffPassword) {
+      console.log("Creating default client admin (staff) user for Faith House from environment variables...");
+      const staffPasswordHash = await bcrypt.hash(staffPassword, 10);
       
       await db.insert(adminUsers).values({
-        username: "staff",
+        username: staffUsername,
         passwordHash: staffPasswordHash,
         role: "client_admin",
         clientId: "faith_house",
       });
       
       console.log("Default client admin (staff) user created successfully for Faith House");
-    } else if (!existingStaff.clientId) {
+    } else if (!staffPassword && !existingStaff) {
+      console.warn("WARNING: No DEFAULT_STAFF_PASSWORD set. Skipping staff user creation. Set this environment variable to create the initial staff account.");
+    } else if (existingStaff && !existingStaff.clientId) {
       // Update existing staff user to have Faith House clientId
       console.log("Updating staff user with Faith House clientId...");
       await db.update(adminUsers)
         .set({ clientId: "faith_house" })
-        .where(eq(adminUsers.username, "staff"));
+        .where(eq(adminUsers.username, staffUsername));
       console.log("Staff user updated with Faith House clientId");
     }
   } catch (error) {

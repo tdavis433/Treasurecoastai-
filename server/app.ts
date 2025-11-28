@@ -9,6 +9,9 @@ import express, {
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { Pool } from "@neondatabase/serverless";
+import helmet from "helmet";
+import cors from "cors";
+import rateLimit from "express-rate-limit";
 
 import { registerRoutes } from "./routes";
 
@@ -27,6 +30,71 @@ export function log(message: string, source = "express") {
 }
 
 export const app = express();
+
+// Security: Helmet for secure HTTP headers
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "https://api.openai.com", "https://api.stripe.com"],
+      frameSrc: ["'self'", "https://js.stripe.com"],
+    },
+  },
+  crossOriginEmbedderPolicy: false, // Allow widget embedding
+}));
+
+// Security: CORS for widget embeds on third-party sites
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    
+    // In production, you could validate against registered client domains
+    // For now, allow all origins for widget functionality
+    callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+};
+app.use('/api/chat/:clientId/:botId', cors(corsOptions));
+app.use('/widget', cors(corsOptions));
+app.use('/api/demos', cors(corsOptions));
+app.use('/api/demo', cors(corsOptions));
+
+// Security: Rate limiting to prevent abuse
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per window
+  message: { error: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // Limit each IP to 10 login attempts per window
+  message: { error: 'Too many login attempts, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const chatLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 30, // Limit each IP to 30 chat messages per minute
+  message: { error: 'Too many messages, please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply rate limiting to specific routes
+app.use('/api/auth/login', authLimiter);
+app.use('/api/chat', chatLimiter);
+app.use('/api/', apiLimiter);
 
 declare module 'http' {
   interface IncomingMessage {
