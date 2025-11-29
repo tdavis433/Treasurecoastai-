@@ -1892,16 +1892,22 @@ These suggestions should be relevant to what was just discussed and help guide t
         sessionId,
         clientId,
         botId,
-        content: `🔔 Human handoff requested\nReason: ${reason || 'User clicked "Talk to a person"'}\nContact: ${contactInfo?.email || contactInfo?.phone || 'Not provided'}\n\nRecent conversation:\n${lastMessages}`,
-        createdBy: 'system'
+        content: `Human handoff requested\nReason: ${reason || 'User clicked "Talk to a person"'}\nContact: ${contactInfo?.email || contactInfo?.phone || 'Not provided'}\n\nRecent conversation:\n${lastMessages}`,
+        authorId: 'system',
+        authorName: 'System',
+        isPinned: true
       });
 
       // Get business contact info to show user
       const businessPhone = botConfig.businessProfile?.phone || null;
       const businessEmail = botConfig.businessProfile?.email || null;
 
+      // Generate a ticket ID for tracking
+      const ticketId = `HO-${Date.now().toString(36).toUpperCase()}`;
+
       res.json({
         success: true,
+        ticketId,
         message: language === 'es' 
           ? 'Su solicitud ha sido recibida. Nuestro equipo se pondrá en contacto pronto.'
           : 'Your request has been received. Our team will reach out to you soon.',
