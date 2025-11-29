@@ -4166,6 +4166,193 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // =============================================
+  // CLIENT ACCOUNT SETTINGS ENDPOINTS
+  // =============================================
+
+  // Zod schemas for account settings
+  const passwordChangeSchema = z.object({
+    currentPassword: z.string().min(1, "Current password is required"),
+    newPassword: z.string().min(8, "New password must be at least 8 characters"),
+  });
+
+  const notificationUpdateSchema = z.object({
+    notificationEmail: z.string().email().nullable().optional(),
+    notificationPhone: z.string().nullable().optional(),
+    enableEmailNotifications: z.boolean().optional(),
+    enableSmsNotifications: z.boolean().optional(),
+    notificationSettings: z.object({
+      staffEmails: z.array(z.string().email()).optional(),
+      staffPhones: z.array(z.string()).optional(),
+      staffChannelPreference: z.enum(['email_only', 'sms_only', 'email_and_sms']).optional(),
+      eventToggles: z.object({
+        newAppointmentEmail: z.boolean().optional(),
+        newAppointmentSms: z.boolean().optional(),
+        newPreIntakeEmail: z.boolean().optional(),
+        sameDayReminder: z.boolean().optional(),
+      }).optional(),
+    }).optional(),
+  });
+
+  // Change password (self-service)
+  app.post("/api/client/account/password", requireClientAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId;
+      
+      // Validate request body
+      const bodyValidation = validateRequest(passwordChangeSchema, req.body);
+      if (!bodyValidation.success) {
+        return res.status(400).json({ error: bodyValidation.error });
+      }
+      
+      const { currentPassword, newPassword } = bodyValidation.data;
+
+      // Get current user
+      const [user] = await db.select().from(adminUsers).where(eq(adminUsers.id, userId!)).limit(1);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Verify current password
+      const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!isValid) {
+        return res.status(401).json({ error: "Current password is incorrect" });
+      }
+
+      // Hash and update new password
+      const newPasswordHash = await bcrypt.hash(newPassword, 10);
+      await db.update(adminUsers)
+        .set({ passwordHash: newPasswordHash })
+        .where(eq(adminUsers.id, userId!));
+
+      res.json({ success: true, message: "Password updated successfully" });
+    } catch (error) {
+      console.error("Change password error:", error);
+      res.status(500).json({ error: "Failed to change password" });
+    }
+  });
+
+  // Get notification preferences
+  app.get("/api/client/notifications", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+
+      const [settings] = await db.select().from(clientSettings).where(eq(clientSettings.clientId, clientId)).limit(1);
+      if (!settings) {
+        return res.json({
+          clientId,
+          notificationEmail: null,
+          notificationPhone: null,
+          enableEmailNotifications: false,
+          enableSmsNotifications: false,
+          notificationSettings: {
+            staffEmails: [],
+            staffPhones: [],
+            staffChannelPreference: 'email_only',
+            eventToggles: {
+              newAppointmentEmail: true,
+              newAppointmentSms: false,
+              newPreIntakeEmail: false,
+              sameDayReminder: false,
+            },
+          },
+        });
+      }
+
+      res.json({
+        clientId,
+        notificationEmail: settings.notificationEmail,
+        notificationPhone: settings.notificationPhone,
+        enableEmailNotifications: settings.enableEmailNotifications,
+        enableSmsNotifications: settings.enableSmsNotifications,
+        notificationSettings: settings.notificationSettings,
+      });
+    } catch (error) {
+      console.error("Get notification preferences error:", error);
+      res.status(500).json({ error: "Failed to fetch notification preferences" });
+    }
+  });
+
+  // Update notification preferences
+  app.patch("/api/client/notifications", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      
+      // Validate request body
+      const bodyValidation = validateRequest(notificationUpdateSchema, req.body);
+      if (!bodyValidation.success) {
+        return res.status(400).json({ error: bodyValidation.error });
+      }
+      
+      const { 
+        notificationEmail, 
+        notificationPhone, 
+        enableEmailNotifications, 
+        enableSmsNotifications,
+        notificationSettings
+      } = bodyValidation.data;
+
+      // First get existing settings to merge with
+      const [existingSettings] = await db.select().from(clientSettings).where(eq(clientSettings.clientId, clientId)).limit(1);
+      if (!existingSettings) {
+        return res.status(404).json({ error: "Client settings not found" });
+      }
+
+      const updateData: Record<string, any> = {};
+
+      if (notificationEmail !== undefined) updateData.notificationEmail = notificationEmail;
+      if (notificationPhone !== undefined) updateData.notificationPhone = notificationPhone;
+      if (enableEmailNotifications !== undefined) updateData.enableEmailNotifications = enableEmailNotifications;
+      if (enableSmsNotifications !== undefined) updateData.enableSmsNotifications = enableSmsNotifications;
+      
+      // Merge notificationSettings to preserve existing values
+      if (notificationSettings !== undefined) {
+        const existingNotifSettings = existingSettings.notificationSettings || {
+          staffEmails: [],
+          staffPhones: [],
+          staffChannelPreference: 'email_only',
+          eventToggles: {
+            newAppointmentEmail: true,
+            newAppointmentSms: false,
+            newPreIntakeEmail: false,
+            sameDayReminder: false,
+          },
+        };
+        
+        updateData.notificationSettings = {
+          ...existingNotifSettings,
+          ...notificationSettings,
+          eventToggles: notificationSettings.eventToggles 
+            ? { ...existingNotifSettings.eventToggles, ...notificationSettings.eventToggles }
+            : existingNotifSettings.eventToggles,
+        };
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ error: "No valid fields to update" });
+      }
+
+      updateData.updatedAt = new Date();
+
+      const [updated] = await db.update(clientSettings)
+        .set(updateData)
+        .where(eq(clientSettings.clientId, clientId))
+        .returning();
+
+      res.json({
+        success: true,
+        notificationEmail: updated.notificationEmail,
+        notificationPhone: updated.notificationPhone,
+        enableEmailNotifications: updated.enableEmailNotifications,
+        enableSmsNotifications: updated.enableSmsNotifications,
+        notificationSettings: updated.notificationSettings,
+      });
+    } catch (error) {
+      console.error("Update notification preferences error:", error);
+      res.status(500).json({ error: "Failed to update notification preferences" });
+    }
+  });
+
+  // =============================================
   // CLIENT LEADS ENDPOINTS
   // =============================================
 

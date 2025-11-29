@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin-layout";
 import { FuturisticStatCard } from "@/components/ui/futuristic-stat-card";
@@ -6,6 +7,17 @@ import { NeonBadge, StatusBadge } from "@/components/ui/neon-badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { 
   MessageSquare, 
   Calendar, 
@@ -20,12 +32,17 @@ import {
   FileText,
   Headphones,
   Mail,
-  Zap
+  Zap,
+  Key,
+  Bell,
+  Shield,
+  Settings,
+  Check
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   AreaChart, 
   Area, 
@@ -90,6 +107,25 @@ interface BillingInfo {
   planName: string;
 }
 
+interface NotificationPreferences {
+  clientId: string;
+  notificationEmail: string | null;
+  notificationPhone: string | null;
+  enableEmailNotifications: boolean;
+  enableSmsNotifications: boolean;
+  notificationSettings: {
+    staffEmails: string[];
+    staffPhones: string[];
+    staffChannelPreference: 'email_only' | 'sms_only' | 'email_and_sms';
+    eventToggles: {
+      newAppointmentEmail: boolean;
+      newAppointmentSms: boolean;
+      newPreIntakeEmail: boolean;
+      sameDayReminder: boolean;
+    };
+  };
+}
+
 const categoryLabels: Record<string, string> = {
   pricing: "Pricing Questions",
   availability: "Availability",
@@ -104,6 +140,11 @@ const categoryLabels: Record<string, string> = {
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const { data: summary, isLoading: summaryLoading} = useQuery<AnalyticsSummary>({
     queryKey: ["/api/analytics/summary"],
@@ -157,6 +198,75 @@ export default function AdminDashboard() {
       });
     },
   });
+
+  const { data: notificationsData, isLoading: notificationsLoading } = useQuery<NotificationPreferences>({
+    queryKey: ["/api/client/notifications"],
+  });
+
+  const passwordMutation = useMutation({
+    mutationFn: async (data: { currentPassword: string; newPassword: string }) => {
+      const response = await apiRequest("POST", "/api/client/account/password", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Password Updated",
+        description: "Your password has been changed successfully.",
+      });
+      setPasswordDialogOpen(false);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to change password.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const notificationsMutation = useMutation({
+    mutationFn: async (data: Partial<NotificationPreferences>) => {
+      const response = await apiRequest("PATCH", "/api/client/notifications", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Settings Updated",
+        description: "Notification preferences saved.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/client/notifications"] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update notification preferences.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handlePasswordChange = () => {
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "New passwords do not match.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (newPassword.length < 8) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 8 characters.",
+        variant: "destructive",
+      });
+      return;
+    }
+    passwordMutation.mutate({ currentPassword, newPassword });
+  };
 
   if (summaryLoading || appointmentsLoading) {
     return (
@@ -552,6 +662,158 @@ export default function AdminDashboard() {
                   <p className="text-xs text-white/50">Available Mon-Fri 9am-5pm</p>
                 </div>
               </button>
+            </GlassCardContent>
+          </GlassCard>
+        </div>
+
+        {/* Account Settings Section */}
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Security - Password Change */}
+          <GlassCard data-testid="card-security">
+            <GlassCardHeader>
+              <GlassCardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-purple-400" />
+                Security
+              </GlassCardTitle>
+              <GlassCardDescription>
+                Account security settings
+              </GlassCardDescription>
+            </GlassCardHeader>
+            <GlassCardContent className="space-y-4">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
+                <div className="flex items-center gap-3">
+                  <Key className="h-5 w-5 text-white/60" />
+                  <div>
+                    <p className="text-sm font-medium text-white/90">Password</p>
+                    <p className="text-xs text-white/50">Last changed: Never</p>
+                  </div>
+                </div>
+                <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="bg-white/5 border-white/10 text-white/80 hover:bg-white/10"
+                      data-testid="button-change-password"
+                    >
+                      Change
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="bg-gray-900 border-white/10">
+                    <DialogHeader>
+                      <DialogTitle className="text-white">Change Password</DialogTitle>
+                      <DialogDescription className="text-white/60">
+                        Enter your current password and choose a new one.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="current-password" className="text-white/80">Current Password</Label>
+                        <Input
+                          id="current-password"
+                          type="password"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          className="bg-white/5 border-white/10 text-white"
+                          data-testid="input-current-password"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="new-password" className="text-white/80">New Password</Label>
+                        <Input
+                          id="new-password"
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="bg-white/5 border-white/10 text-white"
+                          data-testid="input-new-password"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="confirm-password" className="text-white/80">Confirm New Password</Label>
+                        <Input
+                          id="confirm-password"
+                          type="password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          className="bg-white/5 border-white/10 text-white"
+                          data-testid="input-confirm-password"
+                        />
+                      </div>
+                      <Button
+                        onClick={handlePasswordChange}
+                        disabled={passwordMutation.isPending || !currentPassword || !newPassword || !confirmPassword}
+                        className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                        data-testid="button-submit-password"
+                      >
+                        {passwordMutation.isPending ? 'Updating...' : 'Update Password'}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </GlassCardContent>
+          </GlassCard>
+
+          {/* Notification Preferences */}
+          <GlassCard data-testid="card-notifications">
+            <GlassCardHeader>
+              <GlassCardTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5 text-amber-400" />
+                Notifications
+              </GlassCardTitle>
+              <GlassCardDescription>
+                Configure alert preferences
+              </GlassCardDescription>
+            </GlassCardHeader>
+            <GlassCardContent className="space-y-4">
+              {notificationsLoading ? (
+                <div className="space-y-4">
+                  <div className="h-12 bg-white/10 rounded-lg animate-pulse w-full" />
+                  <div className="h-12 bg-white/10 rounded-lg animate-pulse w-full" />
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
+                    <div className="flex items-center gap-3">
+                      <Mail className="h-5 w-5 text-white/60" />
+                      <div>
+                        <p className="text-sm font-medium text-white/90">Email Notifications</p>
+                        <p className="text-xs text-white/50">Receive alerts via email</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={notificationsData?.enableEmailNotifications ?? false}
+                      onCheckedChange={(checked) => 
+                        notificationsMutation.mutate({ enableEmailNotifications: checked })
+                      }
+                      data-testid="switch-email-notifications"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
+                    <div className="flex items-center gap-3">
+                      <MessageSquare className="h-5 w-5 text-white/60" />
+                      <div>
+                        <p className="text-sm font-medium text-white/90">SMS Notifications</p>
+                        <p className="text-xs text-white/50">Receive alerts via text</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={notificationsData?.enableSmsNotifications ?? false}
+                      onCheckedChange={(checked) => 
+                        notificationsMutation.mutate({ enableSmsNotifications: checked })
+                      }
+                      data-testid="switch-sms-notifications"
+                    />
+                  </div>
+                  {(notificationsData?.enableEmailNotifications || notificationsData?.enableSmsNotifications) && (
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                      <Check className="h-4 w-4 text-emerald-400" />
+                      <span className="text-xs text-emerald-400">Notifications enabled</span>
+                    </div>
+                  )}
+                </>
+              )}
             </GlassCardContent>
           </GlassCard>
         </div>
