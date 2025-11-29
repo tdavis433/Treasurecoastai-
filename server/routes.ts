@@ -4100,6 +4100,72 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // =============================================
+  // CLIENT BILLING ENDPOINTS
+  // =============================================
+
+  // Get client subscription info
+  app.get("/api/client/billing", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      
+      const { stripeService } = await import('./stripeService');
+      const subscription = await stripeService.getSubscriptionByClientId(clientId);
+      const customer = await stripeService.getCustomerByClientId(clientId);
+      
+      // Get client info for plan name
+      const client = await storage.getClientById(clientId);
+      
+      res.json({
+        clientId,
+        hasSubscription: !!subscription,
+        subscription: subscription ? {
+          id: (subscription as any).id,
+          status: (subscription as any).status,
+          currentPeriodEnd: (subscription as any).currentPeriodEnd,
+          cancelAtPeriodEnd: (subscription as any).cancelAtPeriodEnd,
+        } : null,
+        customer: customer ? {
+          id: (customer as any).id,
+          email: (customer as any).email,
+        } : null,
+        plan: client?.plan || 'starter',
+        planName: client?.plan === 'pro' ? 'Pro Plan' : client?.plan === 'enterprise' ? 'Enterprise Plan' : 'Starter Plan',
+      });
+    } catch (error) {
+      console.error("Get client billing error:", error);
+      res.status(500).json({ error: "Failed to fetch billing info" });
+    }
+  });
+
+  // Create customer portal session for client
+  app.post("/api/client/billing/portal", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      
+      const { stripeService } = await import('./stripeService');
+      const customer = await stripeService.getCustomerByClientId(clientId);
+      
+      if (!customer) {
+        return res.status(404).json({ error: "No billing account found. Please contact support." });
+      }
+
+      const protocol = req.headers['x-forwarded-proto'] || 'https';
+      const host = req.headers.host;
+      const returnUrl = `${protocol}://${host}/client/dashboard`;
+
+      const session = await stripeService.createCustomerPortalSession(
+        (customer as any).id,
+        returnUrl
+      );
+
+      res.json({ url: session.url });
+    } catch (error) {
+      console.error("Create client portal session error:", error);
+      res.status(500).json({ error: "Failed to open billing portal" });
+    }
+  });
+
+  // =============================================
   // CLIENT LEADS ENDPOINTS
   // =============================================
 
