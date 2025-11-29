@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useLocation, useSearch } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -12,11 +12,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 import {
   Users, Plus, Search, Phone, Mail, MessageSquare,
   Calendar, Tag, ChevronRight, ArrowLeft, Edit2, Trash2,
-  Save, X, Filter, User, Clock, Star, Building2, RefreshCw
+  Save, X, Filter, User, Clock, Star, Building2, RefreshCw,
+  CheckSquare, Square
 } from "lucide-react";
 
 interface Lead {
@@ -74,6 +76,8 @@ export default function LeadsPage() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
+  const [bulkActionStatus, setBulkActionStatus] = useState<string>("");
 
   // Get clientId from URL query params (for super_admin) or from profile (for client_admin)
   const urlClientId = useMemo(() => {
@@ -161,6 +165,68 @@ export default function LeadsPage() {
     },
   });
 
+  const bulkActionMutation = useMutation({
+    mutationFn: async (data: { leadIds: string[]; action: 'update_status' | 'delete'; status?: string; priority?: string }) => {
+      const url = buildQueryUrl("/api/client/leads/bulk");
+      return apiRequest("POST", url, data);
+    },
+    onSuccess: (result: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/client/leads"] });
+      setSelectedLeadIds(new Set());
+      setBulkActionStatus("");
+      if (result.errorCount > 0) {
+        toast({ 
+          title: `Processed ${result.successCount} leads with ${result.errorCount} errors`,
+          variant: "destructive"
+        });
+      } else {
+        toast({ title: `Successfully processed ${result.successCount} leads` });
+      }
+    },
+    onError: () => {
+      toast({ title: "Failed to perform bulk action", variant: "destructive" });
+    },
+  });
+
+  const toggleLeadSelection = useCallback((leadId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedLeadIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(leadId)) {
+        newSet.delete(leadId);
+      } else {
+        newSet.add(leadId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const toggleAllLeads = useCallback(() => {
+    if (selectedLeadIds.size === leads.length) {
+      setSelectedLeadIds(new Set());
+    } else {
+      setSelectedLeadIds(new Set(leads.map(l => l.id)));
+    }
+  }, [leads, selectedLeadIds.size]);
+
+  const handleBulkStatusUpdate = () => {
+    if (!bulkActionStatus || selectedLeadIds.size === 0) return;
+    bulkActionMutation.mutate({
+      leadIds: Array.from(selectedLeadIds),
+      action: 'update_status',
+      status: bulkActionStatus
+    });
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedLeadIds.size === 0) return;
+    if (!confirm(`Are you sure you want to delete ${selectedLeadIds.size} leads? This cannot be undone.`)) return;
+    bulkActionMutation.mutate({
+      leadIds: Array.from(selectedLeadIds),
+      action: 'delete'
+    });
+  };
+
   const getStatusBadge = (status: string) => {
     const option = STATUS_OPTIONS.find(o => o.value === status);
     return option ? (
@@ -236,7 +302,7 @@ export default function LeadsPage() {
                 data-testid="input-search-leads"
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2 items-center">
               <Select value={statusFilter || "all"} onValueChange={(v) => setStatusFilter(v === "all" ? "" : v)}>
                 <SelectTrigger className="w-[160px] bg-white/5 border-white/10 text-white" data-testid="select-status-filter">
                   <Filter className="h-4 w-4 mr-2 text-white/55" />
@@ -265,7 +331,74 @@ export default function LeadsPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {leads.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleAllLeads}
+                  className="ml-auto bg-white/5 border-white/10 text-white/85 hover:bg-white/10"
+                  data-testid="button-select-all"
+                >
+                  {selectedLeadIds.size === leads.length ? (
+                    <><CheckSquare className="h-4 w-4 mr-2" />Deselect All</>
+                  ) : (
+                    <><Square className="h-4 w-4 mr-2" />Select All ({leads.length})</>
+                  )}
+                </Button>
+              )}
             </div>
+            
+            {selectedLeadIds.size > 0 && (
+              <div className="flex flex-wrap items-center gap-2 p-3 bg-cyan-500/10 border border-cyan-400/30 rounded-lg">
+                <span className="text-cyan-400 font-medium text-sm">
+                  {selectedLeadIds.size} lead{selectedLeadIds.size !== 1 ? 's' : ''} selected
+                </span>
+                <div className="flex items-center gap-2 ml-auto">
+                  <Select value={bulkActionStatus || "select"} onValueChange={setBulkActionStatus}>
+                    <SelectTrigger className="w-[140px] h-8 bg-white/5 border-white/10 text-white text-sm" data-testid="select-bulk-status">
+                      <SelectValue placeholder="Set Status" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#1a1f2e] border-white/10">
+                      <SelectItem value="select" className="text-white/55">Set Status...</SelectItem>
+                      {STATUS_OPTIONS.map(opt => (
+                        <SelectItem key={opt.value} value={opt.value} className="text-white/85">
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="sm"
+                    onClick={handleBulkStatusUpdate}
+                    disabled={!bulkActionStatus || bulkActionStatus === "select" || bulkActionMutation.isPending}
+                    className="bg-cyan-500 hover:bg-cyan-600 text-white h-8"
+                    data-testid="button-bulk-update"
+                  >
+                    Update
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleBulkDelete}
+                    disabled={bulkActionMutation.isPending}
+                    className="text-red-400 hover:bg-red-500/10 h-8"
+                    data-testid="button-bulk-delete"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Delete
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedLeadIds(new Set())}
+                    className="text-white/55 hover:bg-white/10 h-8"
+                    data-testid="button-clear-selection"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
           <ScrollArea className="flex-1">
@@ -292,61 +425,78 @@ export default function LeadsPage() {
                 </div>
               ) : (
                 leads.map((lead) => (
-                  <button
+                  <div
                     key={lead.id}
-                    onClick={() => setSelectedLead(lead)}
-                    className={`w-full text-left p-4 rounded-xl border transition-colors ${
+                    className={`flex items-start gap-3 p-4 rounded-xl border transition-colors ${
                       selectedLead?.id === lead.id
                         ? 'bg-cyan-500/10 border-cyan-400/30'
+                        : selectedLeadIds.has(lead.id)
+                        ? 'bg-cyan-500/5 border-cyan-400/20'
                         : 'bg-white/5 border-white/10 hover:bg-white/10'
                     }`}
-                    data-testid={`button-lead-${lead.id}`}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                          selectedLead?.id === lead.id ? 'bg-cyan-500/20' : 'bg-white/10'
-                        }`}>
-                          <User className={`h-5 w-5 ${
-                            selectedLead?.id === lead.id ? 'text-cyan-400' : 'text-white/55'
-                          }`} />
-                        </div>
-                        <div>
-                          <div className="font-medium text-white">
-                            {lead.name || 'Unknown'}
-                          </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            {lead.email && (
-                              <span className="text-xs text-white/55 flex items-center gap-1">
-                                <Mail className="h-3 w-3" />
-                                {lead.email}
-                              </span>
-                            )}
-                            {lead.phone && (
-                              <span className="text-xs text-white/55 flex items-center gap-1">
-                                <Phone className="h-3 w-3" />
-                                {lead.phone}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-2">
-                        {getStatusBadge(lead.status)}
-                        <span className="text-xs text-white/40">
-                          {format(new Date(lead.createdAt), 'MMM d, h:mm a')}
-                        </span>
-                      </div>
+                    <div 
+                      className="pt-1 flex-shrink-0"
+                      onClick={(e) => toggleLeadSelection(lead.id, e)}
+                    >
+                      <Checkbox
+                        checked={selectedLeadIds.has(lead.id)}
+                        onCheckedChange={() => toggleLeadSelection(lead.id)}
+                        className="border-white/30 data-[state=checked]:bg-cyan-500 data-[state=checked]:border-cyan-500"
+                        data-testid={`checkbox-lead-${lead.id}`}
+                      />
                     </div>
-                    {lead.conversationPreview && (
-                      <div className="mt-3 p-2 bg-white/5 rounded-lg">
-                        <p className="text-xs text-white/55 line-clamp-2">
-                          <MessageSquare className="h-3 w-3 inline mr-1" />
-                          {lead.conversationPreview}
-                        </p>
+                    <button
+                      onClick={() => setSelectedLead(lead)}
+                      className="flex-1 text-left"
+                      data-testid={`button-lead-${lead.id}`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                            selectedLead?.id === lead.id ? 'bg-cyan-500/20' : 'bg-white/10'
+                          }`}>
+                            <User className={`h-5 w-5 ${
+                              selectedLead?.id === lead.id ? 'text-cyan-400' : 'text-white/55'
+                            }`} />
+                          </div>
+                          <div>
+                            <div className="font-medium text-white">
+                              {lead.name || 'Unknown'}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              {lead.email && (
+                                <span className="text-xs text-white/55 flex items-center gap-1">
+                                  <Mail className="h-3 w-3" />
+                                  {lead.email}
+                                </span>
+                              )}
+                              {lead.phone && (
+                                <span className="text-xs text-white/55 flex items-center gap-1">
+                                  <Phone className="h-3 w-3" />
+                                  {lead.phone}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                          {getStatusBadge(lead.status)}
+                          <span className="text-xs text-white/40">
+                            {format(new Date(lead.createdAt), 'MMM d, h:mm a')}
+                          </span>
+                        </div>
                       </div>
-                    )}
-                  </button>
+                      {lead.conversationPreview && (
+                        <div className="mt-3 p-2 bg-white/5 rounded-lg">
+                          <p className="text-xs text-white/55 line-clamp-2">
+                            <MessageSquare className="h-3 w-3 inline mr-1" />
+                            {lead.conversationPreview}
+                          </p>
+                        </div>
+                      )}
+                    </button>
+                  </div>
                 ))
               )}
             </div>

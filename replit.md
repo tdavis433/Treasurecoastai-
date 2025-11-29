@@ -16,7 +16,12 @@ This project is a multi-tenant AI chatbot platform designed to support various b
 - **Phase 3 (Bot Wizard):** COMPLETE - 5-step wizard at /admin/bot/wizard
 - **Phase 4 (Automations V2):** COMPLETE - Database-backed automation workflows with trigger types (keyword, schedule, inactivity, message_count, lead_captured, appointment_booked), conditions/actions, run logging, Admin UI at /admin/bot/:botId/automations
 - **Phase 5 (Widget Improvements):** COMPLETE - widget_settings table, full widget customization (theme modes: light/dark/auto, colors, position, avatar, auto-open, notification sounds, accessibility), Admin UI at /admin/bot/:botId/widget-settings with live preview
-- **Phases 6-10:** Pending
+- **Phase 6 (Analytics/Leads/Inbox):** IN PROGRESS
+  - 6.1 Enhanced Analytics: COMPLETE - Date range filtering, bot selector, CSV export buttons
+  - 6.2 CSV Export Endpoints: COMPLETE - Server-side endpoints for analytics, leads, and sessions export
+  - 6.3 Auto-Lead Capture: COMPLETE - extractContactInfo() and autoCaptureLead() functions detect email/phone in chat messages and auto-create leads
+  - 6.4 Bulk Lead Actions: COMPLETE - Bulk status update, bulk delete endpoint (POST /api/client/leads/bulk), multi-select UI with checkboxes
+- **Phases 7-10:** Pending
 
 ## System Architecture
 The system utilizes a React, TypeScript, Tailwind CSS, and shadcn/ui frontend, with an Express and Node.js backend. Core architectural decisions include:

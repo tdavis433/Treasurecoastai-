@@ -1,10 +1,24 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState, useMemo } from "react";
 import { AdminLayout } from "@/components/admin-layout";
 import { FuturisticStatCard } from "@/components/ui/futuristic-stat-card";
 import { GlassCard, GlassCardHeader, GlassCardTitle, GlassCardDescription, GlassCardContent } from "@/components/ui/glass-card";
 import { NeonBadge } from "@/components/ui/neon-badge";
-import { MessageSquare, Calendar, TrendingUp, AlertCircle, Clock, Tag, Shield, Activity, BarChart, Phone, Sparkles } from "lucide-react";
-import { format } from "date-fns";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { 
+  MessageSquare, Calendar, TrendingUp, AlertCircle, Clock, Tag, Shield, 
+  Activity, BarChart, Phone, Sparkles, Download, Filter, RefreshCw, Bot
+} from "lucide-react";
+import { format, subDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
 
 interface AnalyticsSummary {
@@ -43,9 +57,81 @@ interface Analytics {
   createdAt: string;
 }
 
+interface BotInfo {
+  botId: string;
+  name: string;
+  description: string;
+  isActive: boolean;
+}
+
+type DatePreset = 'today' | 'yesterday' | 'last7days' | 'last30days' | 'thisMonth' | 'lastMonth' | 'custom';
+
+const DATE_PRESETS: { value: DatePreset; label: string }[] = [
+  { value: 'today', label: 'Today' },
+  { value: 'yesterday', label: 'Yesterday' },
+  { value: 'last7days', label: 'Last 7 Days' },
+  { value: 'last30days', label: 'Last 30 Days' },
+  { value: 'thisMonth', label: 'This Month' },
+  { value: 'lastMonth', label: 'Last Month' },
+  { value: 'custom', label: 'Custom Range' },
+];
+
+function getDateRange(preset: DatePreset): { startDate: string; endDate: string } {
+  const today = new Date();
+  const formatDate = (d: Date) => format(d, 'yyyy-MM-dd');
+  
+  switch (preset) {
+    case 'today':
+      return { startDate: formatDate(today), endDate: formatDate(today) };
+    case 'yesterday':
+      const yesterday = subDays(today, 1);
+      return { startDate: formatDate(yesterday), endDate: formatDate(yesterday) };
+    case 'last7days':
+      return { startDate: formatDate(subDays(today, 6)), endDate: formatDate(today) };
+    case 'last30days':
+      return { startDate: formatDate(subDays(today, 29)), endDate: formatDate(today) };
+    case 'thisMonth':
+      return { startDate: formatDate(startOfMonth(today)), endDate: formatDate(endOfMonth(today)) };
+    case 'lastMonth':
+      const lastMonth = subMonths(today, 1);
+      return { startDate: formatDate(startOfMonth(lastMonth)), endDate: formatDate(endOfMonth(lastMonth)) };
+    default:
+      return { startDate: formatDate(subDays(today, 29)), endDate: formatDate(today) };
+  }
+}
+
 export default function AdminAnalytics() {
-  const { data: summary, isLoading: loadingSummary } = useQuery<AnalyticsSummary>({
-    queryKey: ["/api/analytics/summary"],
+  const [datePreset, setDatePreset] = useState<DatePreset>('last30days');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  const [selectedBotId, setSelectedBotId] = useState<string>('all');
+
+  const { startDate, endDate } = useMemo(() => {
+    if (datePreset === 'custom' && customStartDate && customEndDate) {
+      return { startDate: customStartDate, endDate: customEndDate };
+    }
+    return getDateRange(datePreset);
+  }, [datePreset, customStartDate, customEndDate]);
+
+  const buildQueryUrl = (base: string, params: Record<string, string | undefined>) => {
+    const queryParams: string[] = [];
+    Object.entries(params).forEach(([key, value]) => {
+      if (value && value !== 'all') {
+        queryParams.push(`${key}=${encodeURIComponent(value)}`);
+      }
+    });
+    return queryParams.length > 0 ? `${base}?${queryParams.join('&')}` : base;
+  };
+
+  const summaryQueryUrl = buildQueryUrl("/api/analytics/summary", { startDate, endDate });
+
+  const { data: summary, isLoading: loadingSummary, refetch: refetchSummary } = useQuery<AnalyticsSummary>({
+    queryKey: ["/api/analytics/summary", startDate, endDate],
+    queryFn: async () => {
+      const res = await fetch(summaryQueryUrl, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch analytics summary');
+      return res.json();
+    },
   });
 
   const { data: appointmentsResponse, isLoading: loadingAppointments } = useQuery<AppointmentsResponse>({
@@ -56,8 +142,22 @@ export default function AdminAnalytics() {
     queryKey: ["/api/analytics"],
   });
 
-  const appointments = appointmentsResponse?.appointments || [];
-  const totalMessages = analyticsData.length;
+  const appointments = useMemo(() => {
+    const allAppointments = appointmentsResponse?.appointments || [];
+    return allAppointments.filter(apt => {
+      const aptDate = format(new Date(apt.createdAt), 'yyyy-MM-dd');
+      return aptDate >= startDate && aptDate <= endDate;
+    });
+  }, [appointmentsResponse, startDate, endDate]);
+
+  const filteredAnalytics = useMemo(() => {
+    return analyticsData.filter(item => {
+      const itemDate = format(new Date(item.createdAt), 'yyyy-MM-dd');
+      return itemDate >= startDate && itemDate <= endDate;
+    });
+  }, [analyticsData, startDate, endDate]);
+
+  const totalMessages = filteredAnalytics.length;
 
   const statusCounts = appointments.reduce(
     (acc, apt) => {
@@ -86,7 +186,7 @@ export default function AdminAnalytics() {
     {} as Record<string, number>
   );
 
-  const hourlyData = analyticsData.reduce((acc, item) => {
+  const hourlyData = filteredAnalytics.reduce((acc, item) => {
     const hour = new Date(item.createdAt).getHours();
     acc[hour] = (acc[hour] || 0) + 1;
     return acc;
@@ -102,7 +202,7 @@ export default function AdminAnalytics() {
     : "N/A";
 
   const questionThemes: { theme: string; count: number }[] = [];
-  const assistantMessages = analyticsData.filter((a) => a.role === "assistant" && a.content);
+  const assistantMessages = filteredAnalytics.filter((a) => a.role === "assistant" && a.content);
 
   const themeKeywords = {
     pricing: ["cost", "price", "fee", "payment", "afford", "expensive", "cheap"],
@@ -139,6 +239,35 @@ export default function AdminAnalytics() {
     ? Object.entries(summary.categoryCounts).sort((a, b) => b[1] - a[1])
     : [];
 
+  const handleExportCSV = () => {
+    if (!summary?.dailyActivity) return;
+
+    const headers = ['Date', 'Conversations', 'Appointments'];
+    const rows = summary.dailyActivity.map(day => [
+      day.date,
+      day.conversations.toString(),
+      day.appointments.toString()
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `analytics_${startDate}_to_${endDate}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleRefresh = () => {
+    refetchSummary();
+  };
+
   const isLoading = loadingSummary || loadingAppointments || loadingAnalytics;
 
   if (isLoading) {
@@ -157,14 +286,96 @@ export default function AdminAnalytics() {
   return (
     <AdminLayout>
       <div className="space-y-8">
-        {/* Page Header */}
-        <div>
-          <h2 className="text-3xl font-bold text-white" data-testid="text-analytics-title">
-            Analytics
-          </h2>
-          <p className="text-white/55 mt-1">
-            Track chatbot performance and visitor engagement
-          </p>
+        {/* Page Header with Filters */}
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h2 className="text-3xl font-bold text-white" data-testid="text-analytics-title">
+              Analytics
+            </h2>
+            <p className="text-white/55 mt-1">
+              Track chatbot performance and visitor engagement
+            </p>
+          </div>
+
+          {/* Filter Controls */}
+          <div className="flex flex-wrap items-end gap-3">
+            {/* Date Preset Selector */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-white/55">Date Range</Label>
+              <Select value={datePreset} onValueChange={(v) => setDatePreset(v as DatePreset)}>
+                <SelectTrigger className="w-[140px] bg-white/5 border-white/10" data-testid="select-date-preset">
+                  <SelectValue placeholder="Select range" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DATE_PRESETS.map(preset => (
+                    <SelectItem key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Custom Date Inputs */}
+            {datePreset === 'custom' && (
+              <>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-white/55">Start Date</Label>
+                  <Input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="w-[140px] bg-white/5 border-white/10"
+                    data-testid="input-start-date"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-white/55">End Date</Label>
+                  <Input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="w-[140px] bg-white/5 border-white/10"
+                    data-testid="input-end-date"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                className="gap-2"
+                data-testid="button-refresh"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refresh
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportCSV}
+                disabled={!summary?.dailyActivity?.length}
+                className="gap-2"
+                data-testid="button-export-csv"
+              >
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Date Range Display */}
+        <div className="flex items-center gap-2 text-sm text-white/55">
+          <Calendar className="h-4 w-4" />
+          <span>
+            Showing data from <span className="text-cyan-400 font-medium">{format(new Date(startDate), 'MMM d, yyyy')}</span> to{' '}
+            <span className="text-cyan-400 font-medium">{format(new Date(endDate), 'MMM d, yyyy')}</span>
+          </span>
         </div>
 
         {/* Privacy Notice */}
@@ -213,12 +424,14 @@ export default function AdminAnalytics() {
         {/* Activity Chart */}
         <GlassCard data-testid="card-activity-chart">
           <GlassCardHeader>
-            <div className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-cyan-400" />
-              <GlassCardTitle>Activity Over Time</GlassCardTitle>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Activity className="h-5 w-5 text-cyan-400" />
+                <GlassCardTitle>Activity Over Time</GlassCardTitle>
+              </div>
             </div>
             <GlassCardDescription>
-              Conversations and appointments over the last 30 days
+              Conversations and appointments for the selected date range
             </GlassCardDescription>
           </GlassCardHeader>
           <GlassCardContent>
@@ -226,7 +439,7 @@ export default function AdminAnalytics() {
               <div className="h-80 chart-container p-4 rounded-xl">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart
-                    data={summary.dailyActivity.slice(-30)}
+                    data={summary.dailyActivity}
                     margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                   >
                     <defs>
@@ -300,8 +513,8 @@ export default function AdminAnalytics() {
               <div className="h-80 flex items-center justify-center bg-white/5 rounded-xl border border-white/10">
                 <div className="text-center space-y-2">
                   <Sparkles className="h-8 w-8 text-cyan-400/50 mx-auto" />
-                  <p className="text-sm text-white/55">No activity data available yet</p>
-                  <p className="text-xs text-white/40">Chart will appear once conversations start</p>
+                  <p className="text-sm text-white/55">No activity data available for this date range</p>
+                  <p className="text-xs text-white/40">Try selecting a different date range</p>
                 </div>
               </div>
             )}

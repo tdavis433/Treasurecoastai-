@@ -1536,6 +1536,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Auto-capture leads from qualifying chat sessions
+      const contactInfo = extractContactInfo(messages);
+      const conversationPreview = lastUserMessage?.content?.slice(0, 200) || '';
+      
+      // Run lead capture asynchronously to not slow down chat response
+      autoCaptureLead(
+        clientId,
+        botId,
+        actualSessionId,
+        contactInfo,
+        conversationPreview,
+        sessionData.appointmentRequested || false
+      ).catch(err => console.error('[Auto-Lead] Background capture failed:', err));
+
       res.json({ 
         reply,
         meta: { clientId, botId, sessionId: actualSessionId, responseTimeMs: responseTime }
@@ -1560,6 +1574,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (/thank|great|good|awesome/i.test(lower)) return 'feedback';
     
     return 'general';
+  }
+
+  // Helper function to extract contact info from messages for auto-lead capture
+  interface ExtractedContactInfo {
+    email: string | null;
+    phone: string | null;
+    name: string | null;
+  }
+
+  function extractContactInfo(messages: Array<{ role: string; content: string }>): ExtractedContactInfo {
+    const result: ExtractedContactInfo = { email: null, phone: null, name: null };
+    
+    // Combine all user messages
+    const userText = messages
+      .filter(m => m.role === 'user')
+      .map(m => m.content)
+      .join(' ');
+    
+    // Email pattern
+    const emailMatch = userText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+    if (emailMatch) {
+      result.email = emailMatch[0].toLowerCase();
+    }
+    
+    // Phone pattern (various formats)
+    const phoneMatch = userText.match(/(?:\+1[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}/);
+    if (phoneMatch) {
+      // Clean up phone number
+      result.phone = phoneMatch[0].replace(/[^\d+]/g, '');
+    }
+    
+    // Try to extract name patterns like "my name is X", "I'm X", "I am X", "this is X"
+    const namePatterns = [
+      /(?:my name is|i'm|i am|this is|call me)\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)/i,
+      /^([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)\s+(?:here|speaking)/i,
+    ];
+    
+    for (const pattern of namePatterns) {
+      const nameMatch = userText.match(pattern);
+      if (nameMatch && nameMatch[1]) {
+        result.name = nameMatch[1].trim();
+        break;
+      }
+    }
+    
+    return result;
+  }
+
+  // Auto-create or update lead from chat session
+  async function autoCaptureLead(
+    clientId: string,
+    botId: string,
+    sessionId: string,
+    contactInfo: ExtractedContactInfo,
+    conversationPreview: string,
+    appointmentRequested: boolean
+  ): Promise<void> {
+    try {
+      // Check if we have any qualifying info
+      if (!contactInfo.email && !contactInfo.phone && !appointmentRequested) {
+        return; // No qualifying info to create lead
+      }
+      
+      // Check if lead already exists for this session or email/phone
+      // SECURITY: Always scope by clientId to prevent cross-tenant data access
+      const existingLeads = await storage.getLeads(clientId, { limit: 100 });
+      
+      // Look for existing lead by session, email, or phone - ONLY within this client's leads
+      const existingLead = existingLeads.leads.find(lead => 
+        // SECURITY: Double-check clientId matches to enforce tenant isolation
+        lead.clientId === clientId && (
+          lead.sessionId === sessionId ||
+          (contactInfo.email && lead.email === contactInfo.email) ||
+          (contactInfo.phone && lead.phone === contactInfo.phone)
+        )
+      );
+      
+      if (existingLead) {
+        // SECURITY: Verify lead belongs to this client before updating
+        if (existingLead.clientId !== clientId) {
+          console.error(`[Auto-Lead] Security: Attempted to update lead ${existingLead.id} belonging to different client`);
+          return;
+        }
+        
+        // Update existing lead with new info
+        const updates: Partial<typeof existingLead> = {
+          sessionId, // Link to latest session
+          conversationPreview,
+        };
+        
+        if (contactInfo.name && !existingLead.name) updates.name = contactInfo.name;
+        if (contactInfo.email && !existingLead.email) updates.email = contactInfo.email;
+        if (contactInfo.phone && !existingLead.phone) updates.phone = contactInfo.phone;
+        
+        // Bump priority if appointment requested
+        if (appointmentRequested && existingLead.priority !== 'high') {
+          updates.priority = 'high';
+        }
+        
+        await storage.updateLead(existingLead.id, updates);
+        console.log(`[Auto-Lead] Updated existing lead ${existingLead.id} for session ${sessionId}`);
+      } else {
+        // Create new lead - always use the provided clientId/botId
+        const newLead = await storage.createLead({
+          clientId,
+          botId,
+          sessionId,
+          name: contactInfo.name,
+          email: contactInfo.email,
+          phone: contactInfo.phone,
+          source: 'chat',
+          status: 'new',
+          priority: appointmentRequested ? 'high' : 'medium',
+          notes: null,
+          tags: appointmentRequested ? ['appointment_request'] : [],
+          metadata: {},
+          conversationPreview,
+          messageCount: null,
+          lastContactedAt: null,
+        });
+        
+        console.log(`[Auto-Lead] Created new lead ${newLead.id} for session ${sessionId}`);
+        
+        // Increment lead counter
+        await incrementLeadCount(clientId);
+      }
+    } catch (error) {
+      // Don't fail the chat request if lead capture fails
+      console.error('[Auto-Lead] Error capturing lead:', error);
+    }
   }
 
   // =============================================
@@ -1921,6 +2065,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get analytics summary error:", error);
       res.status(500).json({ error: "Failed to fetch analytics summary" });
+    }
+  });
+
+  // CSV Export endpoint for analytics
+  app.get("/api/analytics/export", requireAuth, async (req, res) => {
+    try {
+      const queryValidation = validateRequest(analyticsDateRangeQuerySchema, req.query);
+      if (!queryValidation.success) {
+        return res.status(400).json({ error: queryValidation.error });
+      }
+      
+      const { startDate, endDate } = queryValidation.data;
+      const start = startDate ? new Date(startDate) : undefined;
+      const end = endDate ? new Date(endDate) : undefined;
+      
+      const summary = await storage.getAnalyticsSummary(start, end);
+      
+      // Build CSV content
+      const headers = ['Date', 'Conversations', 'Appointments'];
+      const rows = summary.dailyActivity.map(day => [
+        day.date,
+        day.conversations.toString(),
+        day.appointments.toString()
+      ]);
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.join(','))
+      ].join('\n');
+
+      // Add summary row
+      const summaryRow = `\n\nSummary\nTotal Conversations,${summary.totalConversations}\nTotal Appointments,${summary.totalAppointments}\nConversion Rate,${summary.conversionRate.toFixed(1)}%\nCrisis Redirects,${summary.crisisRedirects}`;
+
+      const fileName = `analytics_${startDate || 'all'}_to_${endDate || 'now'}.csv`;
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.send(csvContent + summaryRow);
+    } catch (error) {
+      console.error("Export analytics error:", error);
+      res.status(500).json({ error: "Failed to export analytics" });
     }
   });
 
@@ -3209,6 +3394,131 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // =============================================
+  // CLIENT ANALYTICS EXPORT ENDPOINTS
+  // =============================================
+
+  // Export client analytics trends to CSV
+  app.get("/api/client/analytics/export", requireClientAuth, async (req, res) => {
+    try {
+      const queryValidation = validateRequest(analyticsTrendsQuerySchema, req.query);
+      if (!queryValidation.success) {
+        return res.status(400).json({ error: queryValidation.error });
+      }
+      
+      const clientId = (req as any).effectiveClientId;
+      const { botId, days } = queryValidation.data;
+      
+      const trends = await storage.getClientDailyTrends(clientId, botId, days);
+      const summary = await storage.getClientAnalyticsSummary(clientId, botId);
+      
+      // Build CSV content
+      const headers = ['Date', 'Conversations', 'Messages', 'User Messages', 'Bot Messages', 'Crisis Events', 'Appointments'];
+      const rows = trends.map(day => [
+        day.date,
+        day.totalConversations.toString(),
+        day.totalMessages.toString(),
+        day.userMessages.toString(),
+        day.botMessages.toString(),
+        day.crisisEvents.toString(),
+        day.appointmentRequests.toString()
+      ]);
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.join(','))
+      ].join('\n');
+
+      // Add summary
+      const summarySection = `\n\nSummary\nTotal Conversations,${summary.totalConversations}\nTotal Messages,${summary.totalMessages}\nUser Messages,${summary.userMessages}\nBot Messages,${summary.botMessages}\nAvg Response Time (ms),${summary.avgResponseTimeMs}\nCrisis Events,${summary.crisisEvents}\nAppointment Requests,${summary.appointmentRequests}`;
+
+      const fileName = `analytics_${clientId}_last${days}days.csv`;
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.send(csvContent + summarySection);
+    } catch (error) {
+      console.error("Export client analytics error:", error);
+      res.status(500).json({ error: "Failed to export analytics" });
+    }
+  });
+
+  // Export leads to CSV
+  app.get("/api/client/leads/export", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      const { leads } = await storage.getLeads(clientId, { limit: 10000 });
+      
+      // Build CSV content
+      const headers = ['Name', 'Email', 'Phone', 'Status', 'Priority', 'Source', 'Created At', 'Last Contacted'];
+      const rows = leads.map(lead => [
+        `"${(lead.name || '').replace(/"/g, '""')}"`,
+        lead.email || '',
+        lead.phone || '',
+        lead.status,
+        lead.priority,
+        lead.source,
+        lead.createdAt ? new Date(lead.createdAt).toISOString() : '',
+        lead.lastContactedAt ? new Date(lead.lastContactedAt).toISOString() : ''
+      ]);
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.join(','))
+      ].join('\n');
+
+      const fileName = `leads_${clientId}_${new Date().toISOString().split('T')[0]}.csv`;
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.send(csvContent);
+    } catch (error) {
+      console.error("Export leads error:", error);
+      res.status(500).json({ error: "Failed to export leads" });
+    }
+  });
+
+  // Export sessions to CSV
+  app.get("/api/client/analytics/sessions/export", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      const queryValidation = validateRequest(analyticsSessionsQuerySchema, req.query);
+      if (!queryValidation.success) {
+        return res.status(400).json({ error: queryValidation.error });
+      }
+      
+      const { botId, limit } = queryValidation.data;
+      const sessions = await storage.getClientRecentSessions(clientId, botId, limit);
+      
+      // Build CSV content
+      const headers = ['Session ID', 'Bot ID', 'Started At', 'User Messages', 'Bot Messages', 'Crisis Detected', 'Appointment Requested', 'Topics'];
+      const rows = sessions.map(session => [
+        session.sessionId,
+        session.botId,
+        session.startedAt ? new Date(session.startedAt).toISOString() : '',
+        session.userMessageCount.toString(),
+        session.botMessageCount.toString(),
+        session.crisisDetected ? 'Yes' : 'No',
+        session.appointmentRequested ? 'Yes' : 'No',
+        `"${(session.topics as string[] || []).join(', ')}"`
+      ]);
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.join(','))
+      ].join('\n');
+
+      const fileName = `sessions_${clientId}_${new Date().toISOString().split('T')[0]}.csv`;
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.send(csvContent);
+    } catch (error) {
+      console.error("Export sessions error:", error);
+      res.status(500).json({ error: "Failed to export sessions" });
+    }
+  });
+
+  // =============================================
   // CLIENT INBOX ENDPOINTS
   // =============================================
 
@@ -3401,6 +3711,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Delete lead error:", error);
       res.status(500).json({ error: "Failed to delete lead" });
+    }
+  });
+
+  // =============================================
+  // BULK LEAD ACTIONS
+  // =============================================
+
+  const bulkLeadActionSchema = z.object({
+    leadIds: z.array(z.string()).min(1, "At least one lead ID required"),
+    action: z.enum(['update_status', 'delete']),
+    status: z.string().optional(),
+    priority: z.string().optional(),
+  });
+
+  // Bulk update leads
+  app.post("/api/client/leads/bulk", requireClientAuth, async (req, res) => {
+    try {
+      const bodyValidation = validateRequest(bulkLeadActionSchema, req.body);
+      if (!bodyValidation.success) {
+        return res.status(400).json({ error: bodyValidation.error });
+      }
+      
+      const { leadIds, action, status, priority } = bodyValidation.data;
+      const clientId = (req as any).effectiveClientId;
+      
+      // SECURITY: Pre-validate ALL leads belong to this client before processing any
+      const validationErrors: string[] = [];
+      const validatedLeads: Array<{ id: string }> = [];
+      
+      for (const leadId of leadIds) {
+        const lead = await storage.getLeadById(leadId);
+        
+        if (!lead) {
+          validationErrors.push(`Lead ${leadId} not found`);
+          continue;
+        }
+        
+        // SECURITY: Strict client authorization check
+        if (lead.clientId !== clientId) {
+          console.error(`[Bulk-Lead] Security: Client ${clientId} attempted to access lead ${leadId} belonging to ${lead.clientId}`);
+          return res.status(403).json({ 
+            error: "Access denied: One or more leads do not belong to your account",
+            success: false,
+            successCount: 0,
+            errorCount: leadIds.length
+          });
+        }
+        
+        validatedLeads.push({ id: leadId });
+      }
+      
+      // If any leads not found, report but continue with valid ones
+      if (validationErrors.length > 0 && validatedLeads.length === 0) {
+        return res.status(404).json({
+          error: "No valid leads found",
+          success: false,
+          successCount: 0,
+          errorCount: validationErrors.length,
+          errors: validationErrors.slice(0, 10)
+        });
+      }
+      
+      // Process validated leads
+      let successCount = 0;
+      let errorCount = validationErrors.length;
+      const errors: string[] = [...validationErrors];
+      
+      for (const lead of validatedLeads) {
+        try {
+          if (action === 'delete') {
+            await storage.deleteLead(lead.id);
+          } else if (action === 'update_status') {
+            const updates: any = {};
+            if (status) updates.status = status;
+            if (priority) updates.priority = priority;
+            await storage.updateLead(lead.id, updates);
+          }
+          
+          successCount++;
+        } catch (err) {
+          errorCount++;
+          errors.push(`Failed to process lead ${lead.id}`);
+        }
+      }
+      
+      res.json({
+        success: errorCount === 0,
+        successCount,
+        errorCount,
+        errors: errors.slice(0, 10), // Limit error messages
+      });
+    } catch (error) {
+      console.error("Bulk lead action error:", error);
+      res.status(500).json({ error: "Failed to perform bulk action" });
     }
   });
 
