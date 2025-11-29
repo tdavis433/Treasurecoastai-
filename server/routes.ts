@@ -3111,6 +3111,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update client settings (limited fields: phone, hours, location)
+  app.patch("/api/client/settings", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      const { phone, hours, location } = req.body;
+      
+      // For now, we just log and acknowledge - actual bot config updates would require file writes
+      // In a production system, this would update the database or config storage
+      console.log(`Client ${clientId} settings update request:`, { phone, hours, location });
+      
+      // Return success - in production this would persist the changes
+      res.json({
+        success: true,
+        message: "Settings update request received",
+        updates: { phone, hours, location },
+      });
+    } catch (error) {
+      console.error("Update client settings error:", error);
+      res.status(500).json({ error: "Failed to update settings" });
+    }
+  });
+
   // Get client dashboard stats
   app.get("/api/client/stats", requireClientAuth, async (req, res) => {
     try {
