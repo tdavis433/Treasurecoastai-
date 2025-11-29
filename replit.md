@@ -15,7 +15,8 @@ This project is a multi-tenant AI chatbot platform designed to support various b
 - **Phase 2 (API & Security):** COMPLETE - Zod validation on all major routes, workspace membership validation, HMAC-signed widget tokens
 - **Phase 3 (Bot Wizard):** COMPLETE - 5-step wizard at /admin/bot/wizard
 - **Phase 4 (Automations V2):** COMPLETE - Database-backed automation workflows with trigger types (keyword, schedule, inactivity, message_count, lead_captured, appointment_booked), conditions/actions, run logging, Admin UI at /admin/bot/:botId/automations
-- **Phases 5-10:** Pending
+- **Phase 5 (Widget Improvements):** COMPLETE - widget_settings table, full widget customization (theme modes: light/dark/auto, colors, position, avatar, auto-open, notification sounds, accessibility), Admin UI at /admin/bot/:botId/widget-settings with live preview
+- **Phases 6-10:** Pending
 
 ## System Architecture
 The system utilizes a React, TypeScript, Tailwind CSS, and shadcn/ui frontend, with an Express and Node.js backend. Core architectural decisions include:
