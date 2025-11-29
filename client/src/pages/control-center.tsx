@@ -1907,31 +1907,29 @@ function CreateFromTemplateModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg bg-[#1a1f2e] border-white/10 text-white">
         {step === 0 ? (
           /* Template Selection Step */
           <>
             <DialogHeader>
-              <DialogTitle>Choose a Template</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-white">Choose a Template</DialogTitle>
+              <DialogDescription className="text-white/60">
                 Select a business type to start with pre-configured settings
               </DialogDescription>
             </DialogHeader>
             <div className="grid grid-cols-2 gap-3 mt-4 max-h-[400px] overflow-y-auto">
               {templates?.map((t) => (
-                <GlassCard
+                <div
                   key={t.botId}
-                  className="cursor-pointer hover:bg-white/10 transition-all"
+                  className="cursor-pointer bg-white/5 border border-white/10 rounded-lg p-4 text-center hover:bg-white/10 transition-all"
                   onClick={() => handleSelectTemplate(t)}
                   data-testid={`template-select-${t.botId}`}
                 >
-                  <GlassCardContent className="p-4 text-center">
-                    <Building2 className="h-8 w-8 mx-auto mb-2 text-cyan-400" />
-                    <p className="font-medium text-sm text-white">
-                      {t.metadata?.templateCategory || t.businessProfile?.type || t.name}
-                    </p>
-                  </GlassCardContent>
-                </GlassCard>
+                  <Building2 className="h-8 w-8 mx-auto mb-2 text-cyan-400" />
+                  <p className="font-medium text-sm text-white capitalize">
+                    {(t.metadata?.templateCategory || t.businessProfile?.type || t.name || '').replace(/_/g, ' ')}
+                  </p>
+                </div>
               ))}
             </div>
           </>
@@ -1939,15 +1937,15 @@ function CreateFromTemplateModal({
           /* Form Steps */
           <>
             <DialogHeader>
-              <DialogTitle>
+              <DialogTitle className="text-white">
                 Create New Bot - Step {step} of 3
                 {template && (
-                  <Badge variant="outline" className="ml-2 text-xs">
-                    {template.metadata?.templateCategory || template.businessProfile?.type}
+                  <Badge variant="outline" className="ml-2 text-xs border-white/20 text-white/80">
+                    {(template.metadata?.templateCategory || template.businessProfile?.type || '').replace(/_/g, ' ')}
                   </Badge>
                 )}
               </DialogTitle>
-              <DialogDescription>
+              <DialogDescription className="text-white/60">
                 {step === 1 && "Basic business information"}
                 {step === 2 && "Contact and location details"}
                 {step === 3 && "Service tier and billing"}
@@ -1969,24 +1967,26 @@ function CreateFromTemplateModal({
               {step === 1 && (
                 <div className="space-y-4">
                   <div>
-                    <Label>Business Name *</Label>
+                    <Label className="text-white/80">Business Name *</Label>
                     <Input
                       data-testid="input-new-client-name"
                       value={formData.clientName}
                       onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
                       placeholder="My Business Name"
+                      className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
                     />
                   </div>
                   <div>
-                    <Label>Client ID *</Label>
+                    <Label className="text-white/80">Client ID *</Label>
                     <div className="flex gap-2">
                       <Input
                         data-testid="input-new-client-id"
                         value={formData.clientId}
                         onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
                         placeholder="my_business"
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
                       />
-                      <Button type="button" variant="outline" onClick={generateClientId}>
+                      <Button type="button" variant="outline" onClick={generateClientId} className="border-white/20 text-white hover:bg-white/10">
                         Generate
                       </Button>
                     </div>
@@ -1994,31 +1994,34 @@ function CreateFromTemplateModal({
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label>Business Phone</Label>
+                      <Label className="text-white/80">Business Phone</Label>
                       <Input
                         data-testid="input-new-phone"
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                         placeholder="(555) 123-4567"
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
                       />
                     </div>
                     <div>
-                      <Label>Business Email</Label>
+                      <Label className="text-white/80">Business Email</Label>
                       <Input
                         data-testid="input-new-email"
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         placeholder="contact@business.com"
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
                       />
                     </div>
                   </div>
                   <div>
-                    <Label>Website</Label>
+                    <Label className="text-white/80">Website</Label>
                     <Input
                       data-testid="input-new-website"
                       value={formData.website}
                       onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                       placeholder="https://mybusiness.com"
+                      className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
                     />
                   </div>
                 </div>
@@ -2028,106 +2031,115 @@ function CreateFromTemplateModal({
               {step === 2 && (
                 <div className="space-y-4">
                   <div>
-                    <Label>Street Address</Label>
+                    <Label className="text-white/80">Street Address</Label>
                     <Input
                       data-testid="input-new-address"
                       value={formData.address}
                       onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                       placeholder="123 Main Street"
+                      className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
                     />
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <Label>City</Label>
+                      <Label className="text-white/80">City</Label>
                       <Input
                         data-testid="input-new-city"
                         value={formData.city}
                         onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                         placeholder="City"
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
                       />
                     </div>
                     <div>
-                      <Label>State</Label>
+                      <Label className="text-white/80">State</Label>
                       <Input
                         data-testid="input-new-state"
                         value={formData.state}
                         onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                         placeholder="FL"
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
                       />
                     </div>
                     <div>
-                      <Label>ZIP</Label>
+                      <Label className="text-white/80">ZIP</Label>
                       <Input
                         data-testid="input-new-zip"
                         value={formData.zip}
                         onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
                         placeholder="34990"
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
                       />
                     </div>
                   </div>
-                  <Separator />
-                  <p className="text-sm font-medium">Primary Contact</p>
+                  <Separator className="bg-white/10" />
+                  <p className="text-sm font-medium text-white/80">Primary Contact</p>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="col-span-2">
-                      <Label>Contact Name</Label>
+                      <Label className="text-white/80">Contact Name</Label>
                       <Input
                         data-testid="input-new-contact-name"
                         value={formData.contactName}
                         onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
                         placeholder="John Smith"
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
                       />
                     </div>
                     <div>
-                      <Label>Contact Email</Label>
+                      <Label className="text-white/80">Contact Email</Label>
                       <Input
                         data-testid="input-new-contact-email"
                         value={formData.contactEmail}
                         onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
                         placeholder="john@business.com"
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
                       />
                     </div>
                     <div>
-                      <Label>Contact Phone</Label>
+                      <Label className="text-white/80">Contact Phone</Label>
                       <Input
                         data-testid="input-new-contact-phone"
                         value={formData.contactPhone}
                         onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
                         placeholder="(555) 123-4567"
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
                       />
                     </div>
                   </div>
-                  <Separator />
-                  <p className="text-sm font-medium">Business Details</p>
+                  <Separator className="bg-white/10" />
+                  <p className="text-sm font-medium text-white/80">Business Details</p>
                   <div>
-                    <Label>Business Hours</Label>
+                    <Label className="text-white/80">Business Hours</Label>
                     <Textarea
                       data-testid="input-new-hours"
                       value={formData.hours}
                       onChange={(e) => setFormData({ ...formData, hours: e.target.value })}
                       placeholder="Monday-Friday: 9am-5pm&#10;Saturday: 10am-2pm&#10;Sunday: Closed"
                       rows={3}
+                      className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
                     />
                     <p className="text-xs text-white/40 mt-1">One schedule per line</p>
                   </div>
                   <div>
-                    <Label>Services Offered</Label>
+                    <Label className="text-white/80">Services Offered</Label>
                     <Textarea
                       data-testid="input-new-services"
                       value={formData.services}
                       onChange={(e) => setFormData({ ...formData, services: e.target.value })}
                       placeholder="Service 1, Service 2, Service 3"
                       rows={2}
+                      className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
                     />
                     <p className="text-xs text-white/40 mt-1">Comma-separated list</p>
                   </div>
                   <div>
-                    <Label>Custom FAQ (Optional)</Label>
+                    <Label className="text-white/80">Custom FAQ (Optional)</Label>
                     <Input
                       data-testid="input-new-faq-q"
                       value={formData.customFaq.question}
                       onChange={(e) => setFormData({ ...formData, customFaq: { ...formData.customFaq, question: e.target.value } })}
                       placeholder="Question"
-                      className="mb-2"
+                      className="mb-2 bg-white/5 border-white/10 text-white placeholder:text-white/40"
                     />
                     <Textarea
                       data-testid="input-new-faq-a"
@@ -2135,6 +2147,7 @@ function CreateFromTemplateModal({
                       onChange={(e) => setFormData({ ...formData, customFaq: { ...formData.customFaq, answer: e.target.value } })}
                       placeholder="Answer"
                       rows={2}
+                      className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
                     />
                   </div>
                 </div>
@@ -2144,68 +2157,67 @@ function CreateFromTemplateModal({
               {step === 3 && (
                 <div className="space-y-4">
                   <div>
-                    <Label>Service Tier</Label>
+                    <Label className="text-white/80">Service Tier</Label>
                     <Select
                       value={formData.serviceTier}
                       onValueChange={(value) => setFormData({ ...formData, serviceTier: value })}
                     >
-                      <SelectTrigger data-testid="select-service-tier">
+                      <SelectTrigger data-testid="select-service-tier" className="bg-white/5 border-white/10 text-white">
                         <SelectValue placeholder="Select tier" />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="starter">Starter - Basic chatbot features</SelectItem>
-                        <SelectItem value="standard">Standard - Full features + analytics</SelectItem>
-                        <SelectItem value="premium">Premium - Everything + priority support</SelectItem>
-                        <SelectItem value="enterprise">Enterprise - Custom solutions</SelectItem>
+                      <SelectContent className="bg-[#1a1f2e] border-white/10">
+                        <SelectItem value="starter" className="text-white focus:bg-white/10 focus:text-white">Starter - Basic chatbot features</SelectItem>
+                        <SelectItem value="standard" className="text-white focus:bg-white/10 focus:text-white">Standard - Full features + analytics</SelectItem>
+                        <SelectItem value="premium" className="text-white focus:bg-white/10 focus:text-white">Premium - Everything + priority support</SelectItem>
+                        <SelectItem value="enterprise" className="text-white focus:bg-white/10 focus:text-white">Enterprise - Custom solutions</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <Label>Billing Plan</Label>
+                    <Label className="text-white/80">Billing Plan</Label>
                     <Select
                       value={formData.billingPlan}
                       onValueChange={(value) => setFormData({ ...formData, billingPlan: value })}
                     >
-                      <SelectTrigger data-testid="select-billing-plan">
+                      <SelectTrigger data-testid="select-billing-plan" className="bg-white/5 border-white/10 text-white">
                         <SelectValue placeholder="Select plan" />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="monthly">Monthly - Billed each month</SelectItem>
-                        <SelectItem value="annual">Annual - 2 months free</SelectItem>
-                        <SelectItem value="trial">Free Trial - 14 days</SelectItem>
+                      <SelectContent className="bg-[#1a1f2e] border-white/10">
+                        <SelectItem value="monthly" className="text-white focus:bg-white/10 focus:text-white">Monthly - Billed each month</SelectItem>
+                        <SelectItem value="annual" className="text-white focus:bg-white/10 focus:text-white">Annual - 2 months free</SelectItem>
+                        <SelectItem value="trial" className="text-white focus:bg-white/10 focus:text-white">Free Trial - 14 days</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                  <GlassCard>
-                    <GlassCardContent className="pt-4">
-                      <p className="text-sm font-medium mb-2 text-white">Summary</p>
-                      <ul className="text-sm text-white/55 space-y-1">
-                        <li>Business: {formData.clientName || '-'}</li>
-                        <li>Type: {template?.metadata?.templateCategory || template?.businessProfile?.type || 'Custom'}</li>
-                        <li>Tier: {formData.serviceTier}</li>
-                        <li>Billing: {formData.billingPlan}</li>
-                      </ul>
-                    </GlassCardContent>
-                  </GlassCard>
+                  <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                    <p className="text-sm font-medium mb-2 text-white">Summary</p>
+                    <ul className="text-sm text-white/55 space-y-1">
+                      <li>Business: {formData.clientName || '-'}</li>
+                      <li>Type: {(template?.metadata?.templateCategory || template?.businessProfile?.type || 'Custom').replace(/_/g, ' ')}</li>
+                      <li>Tier: {formData.serviceTier}</li>
+                      <li>Billing: {formData.billingPlan}</li>
+                    </ul>
+                  </div>
                 </div>
               )}
 
               <DialogFooter className="flex justify-between">
                 <div>
                   {step > 1 && (
-                    <Button type="button" variant="outline" onClick={handleBack}>
+                    <Button type="button" variant="outline" onClick={handleBack} className="border-white/20 text-white hover:bg-white/10">
                       Back
                     </Button>
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                  <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-white/20 text-white hover:bg-white/10">
                     Cancel
                   </Button>
                   <Button 
                     data-testid="button-next-step"
                     type="submit" 
                     disabled={createMutation.isPending || !template}
+                    className="bg-cyan-500 text-white hover:bg-cyan-600"
                   >
                     {step < 3 ? 'Next' : (createMutation.isPending ? 'Creating...' : 'Create Bot')}
                   </Button>
