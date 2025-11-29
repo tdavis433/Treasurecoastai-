@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import express from "express";
 import crypto from "crypto";
 import { storage, db } from "./storage";
-import { insertAppointmentSchema, insertClientSettingsSchema, adminUsers, type AdminRole } from "@shared/schema";
+import { insertAppointmentSchema, insertClientSettingsSchema, adminUsers, type AdminRole, bots, botSettings, leads, appointments, clientSettings } from "@shared/schema";
 import OpenAI from "openai";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -4112,6 +4112,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Create system log error:", error);
       res.status(500).json({ error: "Failed to create system log" });
+    }
+  });
+
+  // =============================================
+  // SUPER-ADMIN: USER MANAGEMENT
+  // =============================================
+
+  // List all admin users
+  app.get("/api/super-admin/users", requireSuperAdmin, async (req, res) => {
+    try {
+      const users = await db.select({
+        id: adminUsers.id,
+        username: adminUsers.username,
+        role: adminUsers.role,
+        clientId: adminUsers.clientId,
+        createdAt: adminUsers.createdAt,
+      }).from(adminUsers).orderBy(adminUsers.username);
+      res.json(users);
+    } catch (error) {
+      console.error("Get admin users error:", error);
+      res.status(500).json({ error: "Failed to fetch admin users" });
+    }
+  });
+
+  // =============================================
+  // SUPER-ADMIN: DELETE BOT
+  // =============================================
+
+  // Delete a bot and its associated client
+  app.delete("/api/super-admin/bots/:botId", requireSuperAdmin, async (req, res) => {
+    try {
+      const { botId } = req.params;
+      
+      // Find the bot config to get clientId
+      const botConfig = getAllBotConfigs().find(b => b.botId === botId);
+      if (!botConfig) {
+        return res.status(404).json({ error: "Bot not found" });
+      }
+      
+      // Delete from database if exists
+      const existingBot = await storage.getBotByBotId(botId);
+      if (existingBot) {
+        // Delete bot settings first
+        await db.delete(botSettings).where(eq(botSettings.botId, existingBot.id));
+        // Delete bot
+        await db.delete(bots).where(eq(bots.id, existingBot.id));
+      }
+      
+      // Delete related data directly from database
+      await db.delete(leads).where(eq(leads.clientId, botConfig.clientId));
+      await db.delete(appointments).where(eq(appointments.clientId, botConfig.clientId));
+      await db.delete(clientSettings).where(eq(clientSettings.clientId, botConfig.clientId));
+      
+      // Log the deletion
+      await storage.createSystemLog({
+        level: 'info',
+        source: 'super-admin',
+        message: `Bot deleted: ${botId} (client: ${botConfig.clientId})`,
+        clientId: botConfig.clientId,
+      });
+      
+      res.json({ success: true, message: `Bot ${botId} deleted successfully` });
+    } catch (error) {
+      console.error("Delete bot error:", error);
+      res.status(500).json({ error: "Failed to delete bot" });
     }
   });
 

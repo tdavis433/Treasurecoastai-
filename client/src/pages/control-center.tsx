@@ -19,8 +19,12 @@ import {
   Plus, Play, Pause, Eye, Edit2, Save, X, LogOut, Zap, 
   AlertTriangle, Phone, Mail, Globe, MapPin, Clock, Trash2,
   ChevronRight, Search, CreditCard, ExternalLink, Building2, Code, Copy, Check,
-  TrendingUp, Users2, AlertCircle, Activity, RefreshCw, Download, Layers
+  TrendingUp, Users2, AlertCircle, Activity, RefreshCw, Download, Layers,
+  Shield, FileWarning, CheckCircle2, XCircle, Filter, Calendar, UserPlus,
+  MoreVertical, Workflow, Palette, ChevronDown
 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 interface Client {
@@ -132,7 +136,11 @@ export default function ControlCenter() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
-  const [dashboardSection, setDashboardSection] = useState<'overview' | 'workspaces' | 'analytics'>('overview');
+  const [dashboardSection, setDashboardSection] = useState<'overview' | 'workspaces' | 'analytics' | 'logs' | 'users'>('overview');
+  const [logFilters, setLogFilters] = useState({ level: '', source: '', isResolved: '' });
+  const [analyticsRange, setAnalyticsRange] = useState<number>(7);
+  const [selectedBots, setSelectedBots] = useState<Set<string>>(new Set());
+  const [workspaceSearch, setWorkspaceSearch] = useState('');
 
   const { data: currentUser, isLoading: authLoading } = useQuery<AuthUser>({
     queryKey: ["/api/auth/me"],
@@ -188,7 +196,12 @@ export default function ControlCenter() {
     dailyTrends: Array<{ date: string; conversations: number; leads: number; appointments: number }>;
     dateRange: { start: string; end: string; days: number };
   }>({
-    queryKey: ["/api/super-admin/analytics/global", { days: 7 }],
+    queryKey: ["/api/super-admin/analytics/global", { days: analyticsRange }],
+    queryFn: async () => {
+      const response = await fetch(`/api/super-admin/analytics/global?days=${analyticsRange}`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch analytics");
+      return response.json();
+    },
     enabled: currentUser?.role === "super_admin",
     refetchInterval: 60000,
   });
@@ -222,6 +235,52 @@ export default function ControlCenter() {
     enabled: currentUser?.role === "super_admin",
   });
 
+  // System Logs
+  const { data: systemLogs, isLoading: logsLoading, refetch: refetchLogs } = useQuery<{
+    logs: Array<{
+      id: string;
+      level: string;
+      source: string;
+      message: string;
+      metadata?: any;
+      stack?: string;
+      workspaceId?: string;
+      clientId?: string;
+      isResolved: boolean;
+      resolvedAt?: string;
+      resolvedBy?: string;
+      resolutionNotes?: string;
+      createdAt: string;
+    }>;
+    total: number;
+    unresolved: number;
+  }>({
+    queryKey: ["/api/super-admin/system/logs", logFilters],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (logFilters.level) params.append('level', logFilters.level);
+      if (logFilters.source) params.append('source', logFilters.source);
+      if (logFilters.isResolved) params.append('isResolved', logFilters.isResolved);
+      params.append('limit', '50');
+      const response = await fetch(`/api/super-admin/system/logs?${params}`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch logs");
+      return response.json();
+    },
+    enabled: currentUser?.role === "super_admin" && dashboardSection === 'logs',
+  });
+
+  // Admin Users
+  const { data: adminUsers, isLoading: usersLoading } = useQuery<Array<{
+    id: number;
+    username: string;
+    role: string;
+    clientId?: string;
+    createdAt?: string;
+  }>>({
+    queryKey: ["/api/super-admin/users"],
+    enabled: currentUser?.role === "super_admin" && dashboardSection === 'users',
+  });
+
   // Filter out template bots - only show real client bots
   const clientBots = allBots.filter(bot => !bot.metadata?.isTemplate);
 
@@ -247,6 +306,60 @@ export default function ControlCenter() {
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to update status.", variant: "destructive" });
+    },
+  });
+
+  // Resolve system log mutation
+  const resolveLogMutation = useMutation({
+    mutationFn: async ({ logId, notes }: { logId: string; notes?: string }) => {
+      const response = await apiRequest("POST", `/api/super-admin/system/logs/${logId}/resolve`, { notes });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/system/logs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/system/status"] });
+      toast({ title: "Log Resolved", description: "The log entry has been marked as resolved." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to resolve log.", variant: "destructive" });
+    },
+  });
+
+  // Delete bot mutation
+  const deleteBotMutation = useMutation({
+    mutationFn: async (botId: string) => {
+      const response = await apiRequest("DELETE", `/api/super-admin/bots/${botId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/bots"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/clients"] });
+      setSelectedBotId(null);
+      toast({ title: "Bot Deleted", description: "The chatbot has been permanently deleted." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete bot.", variant: "destructive" });
+    },
+  });
+
+  // Bulk status update mutation
+  const bulkStatusMutation = useMutation({
+    mutationFn: async ({ botIds, status }: { botIds: string[]; status: string }) => {
+      const promises = botIds.map(async (botId) => {
+        const bot = clientBots.find(b => b.botId === botId);
+        if (bot) {
+          return apiRequest("PUT", `/api/super-admin/clients/${bot.clientId}/status`, { status });
+        }
+      });
+      await Promise.all(promises);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/clients"] });
+      setSelectedBots(new Set());
+      toast({ title: "Bulk Update Complete", description: "Selected bots have been updated." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update some bots.", variant: "destructive" });
     },
   });
 
@@ -454,6 +567,26 @@ export default function ControlCenter() {
                   <TrendingUp className="h-4 w-4 mr-2" />
                   Analytics
                 </Button>
+                <Button
+                  data-testid="button-section-logs"
+                  variant={dashboardSection === 'logs' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setDashboardSection('logs')}
+                  className={dashboardSection === 'logs' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-400/30' : 'border-white/10 text-white/85 hover:bg-white/10'}
+                >
+                  <FileWarning className="h-4 w-4 mr-2" />
+                  Logs {systemStatus?.errorCount ? `(${systemStatus.errorCount})` : ''}
+                </Button>
+                <Button
+                  data-testid="button-section-users"
+                  variant={dashboardSection === 'users' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setDashboardSection('users')}
+                  className={dashboardSection === 'users' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-400/30' : 'border-white/10 text-white/85 hover:bg-white/10'}
+                >
+                  <Shield className="h-4 w-4 mr-2" />
+                  Users
+                </Button>
                 <div className="flex-1" />
                 <Button
                   data-testid="button-refresh-data"
@@ -618,14 +751,55 @@ export default function ControlCenter() {
 
               {dashboardSection === 'workspaces' && (
                 <div className="space-y-6">
-                  <h2 className="text-lg font-semibold text-white">All Workspaces</h2>
+                  {/* Workspaces Header with Search and Export */}
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <h2 className="text-lg font-semibold text-white">All Workspaces</h2>
+                    <div className="flex items-center gap-2">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/40" />
+                        <Input
+                          data-testid="input-workspace-search"
+                          placeholder="Search workspaces..."
+                          value={workspaceSearch}
+                          onChange={(e) => setWorkspaceSearch(e.target.value)}
+                          className="pl-9 w-56 bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                        />
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const csv = `Name,Slug,Status,Plan,Bots,Conversations,Last Active\n${
+                            (workspacesData?.workspaces || []).map(w => 
+                              `"${w.name}",${w.slug},${w.status},${w.plan},${w.botsCount},${w.totalConversations},${w.lastActive || 'Never'}`
+                            ).join('\n')
+                          }`;
+                          const blob = new Blob([csv], { type: 'text/csv' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `workspaces-${new Date().toISOString().split('T')[0]}.csv`;
+                          a.click();
+                          toast({ title: "Export Complete", description: "Workspaces data exported to CSV." });
+                        }}
+                        className="border-white/10 text-white/85 hover:bg-white/10"
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Export
+                      </Button>
+                    </div>
+                  </div>
                   {workspacesLoading ? (
                     <div className="flex items-center justify-center py-12">
                       <div className="h-8 w-8 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                      {workspacesData?.workspaces.map(workspace => (
+                      {workspacesData?.workspaces.filter(workspace =>
+                        !workspaceSearch || 
+                        workspace.name.toLowerCase().includes(workspaceSearch.toLowerCase()) ||
+                        workspace.slug.toLowerCase().includes(workspaceSearch.toLowerCase())
+                      ).map(workspace => (
                         <GlassCard key={workspace.id} hover data-testid={`card-workspace-${workspace.slug}`}>
                           <GlassCardHeader className="pb-3">
                             <div className="flex items-start justify-between">
@@ -669,6 +843,47 @@ export default function ControlCenter() {
 
               {dashboardSection === 'analytics' && (
                 <div className="space-y-6">
+                  {/* Analytics Header with Date Range */}
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-white">Global Analytics</h2>
+                    <div className="flex items-center gap-2">
+                      <div className="flex rounded-lg bg-white/5 border border-white/10 p-0.5">
+                        {[7, 14, 30, 90].map((days) => (
+                          <Button
+                            key={days}
+                            variant="ghost"
+                            size="sm"
+                            data-testid={`button-range-${days}d`}
+                            onClick={() => setAnalyticsRange(days)}
+                            className={`text-xs px-3 ${analyticsRange === days ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/55 hover:text-white hover:bg-white/10'}`}
+                          >
+                            {days}d
+                          </Button>
+                        ))}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const csv = `Date,Conversations,Leads,Appointments\n${
+                            (globalAnalytics?.dailyTrends || []).map(t => `${t.date},${t.conversations},${t.leads},${t.appointments}`).join('\n')
+                          }`;
+                          const blob = new Blob([csv], { type: 'text/csv' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `analytics-${new Date().toISOString().split('T')[0]}.csv`;
+                          a.click();
+                          toast({ title: "Export Complete", description: "Analytics data exported to CSV." });
+                        }}
+                        className="border-white/10 text-white/85 hover:bg-white/10"
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Export CSV
+                      </Button>
+                    </div>
+                  </div>
+
                   {/* Global Stats Cards */}
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <GlassCard>
@@ -679,7 +894,7 @@ export default function ControlCenter() {
                           </div>
                           <div>
                             <p className="text-2xl font-bold text-white">{globalAnalytics?.summary?.totalConversations || 0}</p>
-                            <p className="text-sm text-white/55">Conversations (7d)</p>
+                            <p className="text-sm text-white/55">Conversations ({analyticsRange}d)</p>
                           </div>
                         </div>
                       </GlassCardContent>
@@ -728,7 +943,7 @@ export default function ControlCenter() {
                   {/* Trends Chart */}
                   <GlassCard>
                     <GlassCardHeader>
-                      <GlassCardTitle>Platform Activity (Last 7 Days)</GlassCardTitle>
+                      <GlassCardTitle>Platform Activity (Last {analyticsRange} Days)</GlassCardTitle>
                       <GlassCardDescription>Conversations, leads, and appointments across all bots</GlassCardDescription>
                     </GlassCardHeader>
                     <GlassCardContent>
@@ -756,6 +971,223 @@ export default function ControlCenter() {
                       )}
                     </GlassCardContent>
                   </GlassCard>
+                </div>
+              )}
+
+              {/* System Logs Section */}
+              {dashboardSection === 'logs' && (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-white">System Logs</h2>
+                    <div className="flex items-center gap-2">
+                      <Select value={logFilters.level} onValueChange={(v) => setLogFilters({...logFilters, level: v})}>
+                        <SelectTrigger className="w-32 bg-white/5 border-white/10 text-white text-sm">
+                          <SelectValue placeholder="All Levels" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#1a1d24] border-white/10">
+                          <SelectItem value="" className="text-white">All Levels</SelectItem>
+                          <SelectItem value="debug" className="text-white">Debug</SelectItem>
+                          <SelectItem value="info" className="text-white">Info</SelectItem>
+                          <SelectItem value="warn" className="text-white">Warning</SelectItem>
+                          <SelectItem value="error" className="text-white">Error</SelectItem>
+                          <SelectItem value="critical" className="text-white">Critical</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={logFilters.isResolved} onValueChange={(v) => setLogFilters({...logFilters, isResolved: v})}>
+                        <SelectTrigger className="w-32 bg-white/5 border-white/10 text-white text-sm">
+                          <SelectValue placeholder="All Status" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#1a1d24] border-white/10">
+                          <SelectItem value="" className="text-white">All Status</SelectItem>
+                          <SelectItem value="false" className="text-white">Unresolved</SelectItem>
+                          <SelectItem value="true" className="text-white">Resolved</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button variant="ghost" size="icon" onClick={() => refetchLogs()} className="text-white/55 hover:text-white hover:bg-white/10">
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Stats Summary */}
+                  <div className="grid grid-cols-3 gap-4">
+                    <GlassCard>
+                      <GlassCardContent className="pt-4 pb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                            <FileText className="h-4 w-4 text-blue-400" />
+                          </div>
+                          <div>
+                            <p className="text-xl font-bold text-white">{systemLogs?.total || 0}</p>
+                            <p className="text-xs text-white/55">Total Logs</p>
+                          </div>
+                        </div>
+                      </GlassCardContent>
+                    </GlassCard>
+                    <GlassCard>
+                      <GlassCardContent className="pt-4 pb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                            <AlertTriangle className="h-4 w-4 text-amber-400" />
+                          </div>
+                          <div>
+                            <p className="text-xl font-bold text-white">{systemLogs?.unresolved || 0}</p>
+                            <p className="text-xs text-white/55">Unresolved</p>
+                          </div>
+                        </div>
+                      </GlassCardContent>
+                    </GlassCard>
+                    <GlassCard>
+                      <GlassCardContent className="pt-4 pb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                            <CheckCircle2 className="h-4 w-4 text-green-400" />
+                          </div>
+                          <div>
+                            <p className="text-xl font-bold text-white">{(systemLogs?.total || 0) - (systemLogs?.unresolved || 0)}</p>
+                            <p className="text-xs text-white/55">Resolved</p>
+                          </div>
+                        </div>
+                      </GlassCardContent>
+                    </GlassCard>
+                  </div>
+
+                  {/* Logs List */}
+                  {logsLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="h-8 w-8 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
+                    </div>
+                  ) : !systemLogs?.logs?.length ? (
+                    <GlassCard>
+                      <GlassCardContent className="py-12 text-center">
+                        <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-green-400/50" />
+                        <p className="text-white/55">No logs found matching your filters</p>
+                      </GlassCardContent>
+                    </GlassCard>
+                  ) : (
+                    <div className="space-y-2">
+                      {systemLogs.logs.map((log) => (
+                        <GlassCard key={log.id} className={log.isResolved ? 'opacity-60' : ''}>
+                          <GlassCardContent className="py-3">
+                            <div className="flex items-start gap-3">
+                              <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                log.level === 'error' || log.level === 'critical' ? 'bg-red-500/10' :
+                                log.level === 'warn' ? 'bg-amber-500/10' :
+                                log.level === 'info' ? 'bg-blue-500/10' : 'bg-white/10'
+                              }`}>
+                                {log.level === 'error' || log.level === 'critical' ? <XCircle className="h-4 w-4 text-red-400" /> :
+                                 log.level === 'warn' ? <AlertTriangle className="h-4 w-4 text-amber-400" /> :
+                                 <FileText className="h-4 w-4 text-blue-400" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Badge className={`text-xs ${
+                                    log.level === 'error' || log.level === 'critical' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                                    log.level === 'warn' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
+                                    'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                                  }`}>{log.level.toUpperCase()}</Badge>
+                                  <span className="text-xs text-white/40">{log.source}</span>
+                                  <span className="text-xs text-white/40">•</span>
+                                  <span className="text-xs text-white/40">{new Date(log.createdAt).toLocaleString()}</span>
+                                  {log.isResolved && <Badge className="text-xs bg-green-500/20 text-green-400 border-green-500/30">Resolved</Badge>}
+                                </div>
+                                <p className="text-sm text-white break-words">{log.message}</p>
+                                {log.stack && (
+                                  <pre className="mt-2 text-xs text-white/40 bg-black/20 p-2 rounded overflow-x-auto max-h-24">{log.stack}</pre>
+                                )}
+                                {log.isResolved && log.resolutionNotes && (
+                                  <p className="mt-2 text-xs text-green-400/70">Resolution: {log.resolutionNotes}</p>
+                                )}
+                              </div>
+                              {!log.isResolved && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => resolveLogMutation.mutate({ logId: log.id })}
+                                  disabled={resolveLogMutation.isPending}
+                                  className="text-green-400 hover:bg-green-500/10"
+                                >
+                                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                                  Resolve
+                                </Button>
+                              )}
+                            </div>
+                          </GlassCardContent>
+                        </GlassCard>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Users Section */}
+              {dashboardSection === 'users' && (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-white">Admin Users</h2>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="border-white/10 text-white/85 hover:bg-white/10"
+                      onClick={() => toast({ title: "Coming Soon", description: "User creation will be available soon." })}
+                    >
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Add User
+                    </Button>
+                  </div>
+
+                  {usersLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="h-8 w-8 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
+                    </div>
+                  ) : !adminUsers?.length ? (
+                    <GlassCard>
+                      <GlassCardContent className="py-12 text-center">
+                        <Shield className="h-12 w-12 mx-auto mb-3 text-white/30" />
+                        <p className="text-white/55">No admin users found</p>
+                      </GlassCardContent>
+                    </GlassCard>
+                  ) : (
+                    <div className="grid gap-4">
+                      {adminUsers.map((user) => (
+                        <GlassCard key={user.id}>
+                          <GlassCardContent className="py-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
+                                  user.role === 'super_admin' ? 'bg-purple-500/10' : 'bg-cyan-500/10'
+                                }`}>
+                                  <Shield className={`h-5 w-5 ${user.role === 'super_admin' ? 'text-purple-400' : 'text-cyan-400'}`} />
+                                </div>
+                                <div>
+                                  <p className="font-medium text-white">{user.username}</p>
+                                  <div className="flex items-center gap-2">
+                                    <Badge className={user.role === 'super_admin' ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'}>
+                                      {user.role === 'super_admin' ? 'Super Admin' : 'Client Admin'}
+                                    </Badge>
+                                    {user.clientId && <span className="text-xs text-white/40">Client: {user.clientId}</span>}
+                                  </div>
+                                </div>
+                              </div>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="text-white/55 hover:text-white hover:bg-white/10">
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="bg-[#1a1d24] border-white/10">
+                                  <DropdownMenuItem className="text-white hover:bg-white/10">Edit User</DropdownMenuItem>
+                                  <DropdownMenuItem className="text-white hover:bg-white/10">Reset Password</DropdownMenuItem>
+                                  <DropdownMenuSeparator className="bg-white/10" />
+                                  <DropdownMenuItem className="text-red-400 hover:bg-red-500/10">Delete User</DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </GlassCardContent>
+                        </GlassCard>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -818,6 +1250,37 @@ export default function ControlCenter() {
                       <SelectItem value="demo" className="text-white hover:bg-white/10">Demo</SelectItem>
                     </SelectContent>
                   </Select>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        data-testid="button-delete-bot"
+                        variant="outline"
+                        size="sm"
+                        className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="bg-[#1a1d24] border-white/10">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="text-white">Delete Bot Permanently?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-white/55">
+                          This action cannot be undone. This will permanently delete the bot "{selectedBot.name}", 
+                          all associated leads, appointments, and conversation history.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel className="bg-white/5 border-white/10 text-white hover:bg-white/10">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => deleteBotMutation.mutate(selectedBot.botId)}
+                          className="bg-red-500 text-white hover:bg-red-600"
+                        >
+                          {deleteBotMutation.isPending ? 'Deleting...' : 'Delete Forever'}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
 
                 {/* Tabs */}
@@ -843,6 +1306,14 @@ export default function ControlCenter() {
                       <MessageSquare className="h-4 w-4 mr-1" />
                       Logs
                     </TabsTrigger>
+                    <TabsTrigger data-testid="tab-automations" value="automations" className="text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/55">
+                      <Workflow className="h-4 w-4 mr-1" />
+                      Automations
+                    </TabsTrigger>
+                    <TabsTrigger data-testid="tab-widget" value="widget" className="text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/55">
+                      <Palette className="h-4 w-4 mr-1" />
+                      Widget
+                    </TabsTrigger>
                     <TabsTrigger data-testid="tab-install" value="install" className="text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/55">
                       <Code className="h-4 w-4 mr-1" />
                       Install
@@ -867,6 +1338,14 @@ export default function ControlCenter() {
 
                   <TabsContent value="logs">
                     <LogsPanel clientId={selectedClient.id} botId={selectedBot.botId} />
+                  </TabsContent>
+
+                  <TabsContent value="automations">
+                    <AutomationsPanel botId={selectedBot.botId} clientId={selectedClient.id} />
+                  </TabsContent>
+
+                  <TabsContent value="widget">
+                    <WidgetSettingsPanel botId={selectedBot.botId} clientId={selectedClient.id} />
                   </TabsContent>
 
                   <TabsContent value="install">
@@ -1890,6 +2369,235 @@ function AnalyticsPanel({ clientId }: { clientId: string }) {
           </Button>
         </GlassCardContent>
       </GlassCard>
+    </div>
+  );
+}
+
+// Automations Panel - Quick access to bot automations
+function AutomationsPanel({ botId, clientId }: { botId: string; clientId: string }) {
+  const [, setLocation] = useLocation();
+  
+  // Get the bot's database ID first
+  const { data: botData } = useQuery<{ id: number }>({
+    queryKey: ["/api/bots", botId],
+    queryFn: async () => {
+      const response = await fetch(`/api/bots/${botId}`, { credentials: "include" });
+      if (!response.ok) throw new Error("Bot not found");
+      return response.json();
+    },
+  });
+
+  // Fetch automations for this bot
+  const { data: automations, isLoading } = useQuery<Array<{
+    id: number;
+    name: string;
+    isEnabled: boolean;
+    triggerType: string;
+    runCount: number;
+    lastRunAt?: string;
+  }>>({
+    queryKey: ["/api/automations", botData?.id],
+    queryFn: async () => {
+      if (!botData?.id) return [];
+      const response = await fetch(`/api/automations?botId=${botData.id}`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch automations");
+      return response.json();
+    },
+    enabled: !!botData?.id,
+  });
+
+  const getTriggerLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      keyword: 'Keyword Match',
+      schedule: 'Scheduled',
+      inactivity: 'Inactivity',
+      message_count: 'Message Count',
+      lead_captured: 'Lead Captured',
+      appointment_booked: 'Appointment Booked',
+    };
+    return labels[type] || type;
+  };
+
+  if (isLoading) {
+    return (
+      <GlassCard>
+        <div className="p-6 animate-pulse">
+          <div className="h-5 bg-white/10 rounded w-32 mb-4" />
+          <div className="space-y-2">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-12 bg-white/10 rounded" />
+            ))}
+          </div>
+        </div>
+      </GlassCard>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle>Automation Workflows</GlassCardTitle>
+          <GlassCardDescription>Configure automated responses and actions</GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent>
+          {automations && automations.length > 0 ? (
+            <div className="space-y-3">
+              {automations.map((automation) => (
+                <div key={automation.id} className="flex items-center justify-between p-3 border border-white/10 rounded-lg bg-white/5">
+                  <div className="flex items-center gap-3">
+                    <div className={`h-2 w-2 rounded-full ${automation.isEnabled ? 'bg-green-400' : 'bg-white/30'}`} />
+                    <div>
+                      <p className="font-medium text-white">{automation.name}</p>
+                      <div className="flex items-center gap-2 text-xs text-white/55">
+                        <Badge className="text-xs bg-white/10 text-white/70 border-white/20">{getTriggerLabel(automation.triggerType)}</Badge>
+                        <span>{automation.runCount} runs</span>
+                      </div>
+                    </div>
+                  </div>
+                  <Badge className={automation.isEnabled ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-white/10 text-white/50 border-white/20'}>
+                    {automation.isEnabled ? 'Active' : 'Paused'}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Workflow className="h-8 w-8 mx-auto mb-2 text-white/30" />
+              <p className="text-white/40">No automations configured</p>
+            </div>
+          )}
+        </GlassCardContent>
+      </GlassCard>
+
+      <Button 
+        variant="outline" 
+        onClick={() => botData?.id && setLocation(`/admin/bot/${botData.id}/automations`)}
+        className="w-full border-white/10 text-white/85 hover:bg-white/10 hover:text-white"
+        disabled={!botData?.id}
+      >
+        <Workflow className="h-4 w-4 mr-2" />
+        Open Automations Manager
+        <ExternalLink className="h-4 w-4 ml-2" />
+      </Button>
+    </div>
+  );
+}
+
+// Widget Settings Panel - Quick access to widget customization
+function WidgetSettingsPanel({ botId, clientId }: { botId: string; clientId: string }) {
+  const [, setLocation] = useLocation();
+  
+  // Get the bot's database ID first
+  const { data: botData } = useQuery<{ id: number }>({
+    queryKey: ["/api/bots", botId],
+    queryFn: async () => {
+      const response = await fetch(`/api/bots/${botId}`, { credentials: "include" });
+      if (!response.ok) throw new Error("Bot not found");
+      return response.json();
+    },
+  });
+
+  // Fetch widget settings for this bot
+  const { data: widgetSettings, isLoading } = useQuery<{
+    themeMode: string;
+    primaryColor: string;
+    position: string;
+    bubbleSize: string;
+    soundEnabled: boolean;
+    autoOpenDelay?: number;
+  }>({
+    queryKey: ["/api/widget-settings", botData?.id],
+    queryFn: async () => {
+      if (!botData?.id) return null;
+      const response = await fetch(`/api/widget-settings/${botData.id}`, { credentials: "include" });
+      if (!response.ok) {
+        if (response.status === 404) return null;
+        throw new Error("Failed to fetch widget settings");
+      }
+      return response.json();
+    },
+    enabled: !!botData?.id,
+  });
+
+  if (isLoading) {
+    return (
+      <GlassCard>
+        <div className="p-6 animate-pulse">
+          <div className="h-5 bg-white/10 rounded w-32 mb-4" />
+          <div className="space-y-2">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-12 bg-white/10 rounded" />
+            ))}
+          </div>
+        </div>
+      </GlassCard>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle>Widget Appearance</GlassCardTitle>
+          <GlassCardDescription>Customize how the chat widget looks and behaves</GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent>
+          {widgetSettings ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 border border-white/10 rounded-lg bg-white/5">
+                  <p className="text-xs text-white/55 mb-1">Theme</p>
+                  <p className="font-medium text-white capitalize">{widgetSettings.themeMode || 'Auto'}</p>
+                </div>
+                <div className="p-3 border border-white/10 rounded-lg bg-white/5">
+                  <p className="text-xs text-white/55 mb-1">Position</p>
+                  <p className="font-medium text-white capitalize">{widgetSettings.position?.replace('-', ' ') || 'Bottom Right'}</p>
+                </div>
+                <div className="p-3 border border-white/10 rounded-lg bg-white/5">
+                  <p className="text-xs text-white/55 mb-1">Bubble Size</p>
+                  <p className="font-medium text-white capitalize">{widgetSettings.bubbleSize || 'Medium'}</p>
+                </div>
+                <div className="p-3 border border-white/10 rounded-lg bg-white/5">
+                  <p className="text-xs text-white/55 mb-1">Primary Color</p>
+                  <div className="flex items-center gap-2">
+                    <div className="h-4 w-4 rounded-full border border-white/20" style={{ backgroundColor: widgetSettings.primaryColor || '#4FC3F7' }} />
+                    <span className="font-medium text-white">{widgetSettings.primaryColor || '#4FC3F7'}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 text-sm text-white/70">
+                <div className="flex items-center gap-2">
+                  <div className={`h-2 w-2 rounded-full ${widgetSettings.soundEnabled ? 'bg-green-400' : 'bg-white/30'}`} />
+                  Sound {widgetSettings.soundEnabled ? 'On' : 'Off'}
+                </div>
+                {widgetSettings.autoOpenDelay && (
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-3 w-3" />
+                    Auto-open after {widgetSettings.autoOpenDelay}s
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Palette className="h-8 w-8 mx-auto mb-2 text-white/30" />
+              <p className="text-white/40">Using default widget settings</p>
+            </div>
+          )}
+        </GlassCardContent>
+      </GlassCard>
+
+      <Button 
+        variant="outline" 
+        onClick={() => botData?.id && setLocation(`/admin/bot/${botData.id}/widget-settings`)}
+        className="w-full border-white/10 text-white/85 hover:bg-white/10 hover:text-white"
+        disabled={!botData?.id}
+      >
+        <Palette className="h-4 w-4 mr-2" />
+        Open Widget Customizer
+        <ExternalLink className="h-4 w-4 ml-2" />
+      </Button>
     </div>
   );
 }
