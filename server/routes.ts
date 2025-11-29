@@ -4136,6 +4136,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create new admin user
+  app.post("/api/super-admin/users", requireSuperAdmin, async (req, res) => {
+    try {
+      const { username, password, role, clientId } = req.body;
+      
+      if (!username || !password || !role) {
+        return res.status(400).json({ error: "Username, password, and role are required" });
+      }
+      
+      if (!['super_admin', 'client_admin'].includes(role)) {
+        return res.status(400).json({ error: "Role must be 'super_admin' or 'client_admin'" });
+      }
+      
+      // Check if username already exists
+      const existing = await db.select().from(adminUsers).where(eq(adminUsers.username, username)).limit(1);
+      if (existing.length > 0) {
+        return res.status(409).json({ error: "Username already exists" });
+      }
+      
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+      
+      // Create user
+      const [newUser] = await db.insert(adminUsers).values({
+        id: crypto.randomUUID(),
+        username,
+        password: hashedPassword,
+        role,
+        clientId: role === 'client_admin' ? clientId : null,
+      }).returning({
+        id: adminUsers.id,
+        username: adminUsers.username,
+        role: adminUsers.role,
+        clientId: adminUsers.clientId,
+        createdAt: adminUsers.createdAt,
+      });
+      
+      // Log the creation
+      await storage.createSystemLog({
+        level: 'info',
+        source: 'super-admin',
+        message: `New admin user created: ${username} (${role})`,
+      });
+      
+      res.status(201).json(newUser);
+    } catch (error) {
+      console.error("Create admin user error:", error);
+      res.status(500).json({ error: "Failed to create admin user" });
+    }
+  });
+
+  // Update admin user
+  app.patch("/api/super-admin/users/:id", requireSuperAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { role, clientId, password } = req.body;
+      
+      // Find the user
+      const existing = await db.select().from(adminUsers).where(eq(adminUsers.id, id)).limit(1);
+      if (existing.length === 0) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      const updateData: Record<string, any> = {};
+      
+      if (role && ['super_admin', 'client_admin'].includes(role)) {
+        updateData.role = role;
+        updateData.clientId = role === 'client_admin' ? (clientId || existing[0].clientId) : null;
+      }
+      
+      if (password) {
+        updateData.password = await bcrypt.hash(password, 10);
+      }
+      
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ error: "No valid fields to update" });
+      }
+      
+      const [updated] = await db.update(adminUsers)
+        .set(updateData)
+        .where(eq(adminUsers.id, id))
+        .returning({
+          id: adminUsers.id,
+          username: adminUsers.username,
+          role: adminUsers.role,
+          clientId: adminUsers.clientId,
+          createdAt: adminUsers.createdAt,
+        });
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Update admin user error:", error);
+      res.status(500).json({ error: "Failed to update admin user" });
+    }
+  });
+
+  // Delete admin user
+  app.delete("/api/super-admin/users/:id", requireSuperAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const currentUser = req.user as any;
+      
+      // Prevent self-deletion
+      if (currentUser.id === id) {
+        return res.status(400).json({ error: "Cannot delete your own account" });
+      }
+      
+      // Find the user
+      const existing = await db.select().from(adminUsers).where(eq(adminUsers.id, id)).limit(1);
+      if (existing.length === 0) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      const username = existing[0].username;
+      
+      // Delete the user
+      await db.delete(adminUsers).where(eq(adminUsers.id, id));
+      
+      // Log the deletion
+      await storage.createSystemLog({
+        level: 'info',
+        source: 'super-admin',
+        message: `Admin user deleted: ${username}`,
+      });
+      
+      res.json({ success: true, message: `User ${username} deleted successfully` });
+    } catch (error) {
+      console.error("Delete admin user error:", error);
+      res.status(500).json({ error: "Failed to delete admin user" });
+    }
+  });
+
   // =============================================
   // SUPER-ADMIN: DELETE BOT
   // =============================================

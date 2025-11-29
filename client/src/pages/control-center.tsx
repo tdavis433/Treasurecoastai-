@@ -362,8 +362,8 @@ export default function ControlCenter() {
       const response = await apiRequest("PATCH", `/api/super-admin/workspaces/${slug}/status`, { status });
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/workspaces"] });
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ["/api/super-admin/workspaces"] });
       toast({ title: "Workspace Updated", description: "Workspace status has been updated." });
     },
     onError: () => {
