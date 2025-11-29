@@ -364,7 +364,7 @@ export default function ClientDashboard() {
   const botId = profile?.botId || stats?.botId || '';
 
   const sidebarStyle = {
-    "--sidebar-width": "16rem",
+    "--sidebar-width": "18rem",
     "--sidebar-width-icon": "3rem",
   };
 
@@ -1427,40 +1427,46 @@ export default function ClientDashboard() {
   return (
     <SidebarProvider style={sidebarStyle as React.CSSProperties}>
       <div className="flex h-screen w-full bg-[#0B0E13]">
-        <Sidebar className="border-r border-white/10 bg-white/5">
-          <SidebarHeader className="p-4 border-b border-white/10">
+        <Sidebar className="border-r border-white/10 bg-[#0d1117]">
+          <SidebarHeader className="p-4 border-b border-white/10 bg-white/5">
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center">
-                <Bot className="h-4 w-4 text-white" />
+              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                <Bot className="h-5 w-5 text-white" />
               </div>
               <div className="flex-1 min-w-0">
                 <h2 className="text-sm font-semibold text-white truncate" data-testid="text-sidebar-business-name">
                   {businessName}
                 </h2>
-                <Badge className="bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-xs" data-testid="badge-sidebar-business-type">
+                <Badge className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-400 border border-cyan-400/30 text-xs" data-testid="badge-sidebar-business-type">
                   {businessType}
                 </Badge>
               </div>
             </div>
           </SidebarHeader>
 
-          <SidebarContent className="p-2">
+          <SidebarContent className="p-3 bg-[#0d1117]">
             <SidebarGroup>
-              <SidebarGroupLabel className="text-white/40 text-xs font-medium px-2 mb-2">
+              <SidebarGroupLabel className="text-white/50 text-xs font-semibold uppercase tracking-wider px-3 mb-3">
                 Navigation
               </SidebarGroupLabel>
               <SidebarGroupContent>
-                <SidebarMenu>
+                <SidebarMenu className="space-y-1">
                   {SIDEBAR_ITEMS.map((item) => (
                     <SidebarMenuItem key={item.id}>
                       <SidebarMenuButton
                         isActive={activeSection === item.id}
                         onClick={() => setActiveSection(item.id)}
-                        className="text-white/70 hover:text-white hover:bg-white/10 data-[active=true]:bg-gradient-to-r data-[active=true]:from-cyan-500/20 data-[active=true]:to-blue-500/20 data-[active=true]:text-cyan-400 data-[active=true]:border data-[active=true]:border-cyan-400/30"
+                        className={`
+                          transition-all duration-200 rounded-lg
+                          ${activeSection === item.id 
+                            ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-400/40 shadow-sm shadow-cyan-500/10' 
+                            : 'text-white/70 hover:text-white hover:bg-white/10 border border-transparent'
+                          }
+                        `}
                         data-testid={`sidebar-item-${item.id}`}
                       >
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.label}</span>
+                        <item.icon className={`h-4 w-4 ${activeSection === item.id ? 'text-cyan-400' : ''}`} />
+                        <span className="font-medium">{item.label}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}
