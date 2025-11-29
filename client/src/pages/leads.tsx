@@ -188,6 +188,8 @@ export default function LeadsPage() {
     },
   });
 
+  const leads = leadsData?.leads || [];
+
   const toggleLeadSelection = useCallback((leadId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setSelectedLeadIds(prev => {
@@ -247,8 +249,6 @@ export default function LeadsPage() {
       <Badge className="bg-white/10 text-white/55 border border-white/20">{priority}</Badge>
     );
   };
-
-  const leads = leadsData?.leads || [];
 
   return (
     <div className="min-h-screen bg-[#0B0E13] text-white flex flex-col">

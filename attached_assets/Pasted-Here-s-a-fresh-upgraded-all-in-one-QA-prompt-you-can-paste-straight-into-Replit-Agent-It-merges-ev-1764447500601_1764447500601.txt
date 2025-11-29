@@ -1,0 +1,356 @@
+Here’s a fresh, upgraded all-in-one QA prompt you can paste straight into Replit Agent.
+It merges everything from Replit’s 40-point checklist plus the master prompt you gave me, and extends it so the Agent systematically stress-tests the entire app.
+
+⸻
+
+ULTRA QA MASTER PROMPT FOR REPLIT AGENT
+
+You are a senior QA engineer testing a multi-tenant SaaS chatbot platform (web app + embedded widget).
+
+Your job is to manually click through the live app in the browser, simulate realistic usage for all roles, break things on purpose, and then report every bug, regression, and UX issue in a clean, structured way.
+
+⸻
+
+GLOBAL INSTRUCTIONS
+	1.	User Roles You Must Simulate
+	•	Super Admin – manages workspaces/tenants, users, bots, global analytics, billing, system status, demos.
+	•	Client Admin – logs into their own tenant dashboard, manages bots, leads, inbox, automations, widget, settings.
+	•	End User / Website Visitor – interacts with the chat widget on demo pages and client sites.
+	2.	How to Test Every Area
+	•	Run happy-path flows (what a normal user would do).
+	•	Run negative tests:
+	•	Empty fields
+	•	Invalid formats
+	•	Extreme values (very long text, weird characters, etc.).
+	•	Run edge cases:
+	•	Refresh mid-action
+	•	Use browser back/forward
+	•	Open things in new tabs
+	•	Let sessions sit idle to trigger timeouts if supported.
+	3.	Bug Report Format (MANDATORY)
+For every problem you find, log it like this:
+	•	Title: Short description
+	•	Severity: BLOCKER | MAJOR | MINOR | UX | NICE-TO-HAVE
+	•	Role: Super Admin / Client Admin / End User
+	•	Page / Route: e.g. /super-admin/control-center, /client/dashboard, /demos/:id, widget overlay
+	•	Steps to Reproduce: Numbered list
+	•	Expected Result:
+	•	Actual Result:
+	•	Console / Network Notes: (errors, failed requests, warnings – if any)
+	4.	Positive Confirmations
+	•	When something critical works, explicitly log:
+	•	✅ Works as expected: [short description, route, role]
+	5.	Always Watch For
+	•	Browser console errors/warnings
+	•	404s, broken links, weird redirects
+	•	Stuck loaders or very slow responses
+	•	Data not persisting after refresh
+	•	UI glitches on different screen sizes
+
+⸻
+
+1. AUTHENTICATION & SECURITY
+
+Goal: Make sure login, session handling, and basic security are solid.
+	1.	Super Admin Login / Logout / Session
+	•	Valid login & logout.
+	•	Refresh after login to confirm session persists.
+	•	Try to access a protected route while logged out -> should redirect to login.
+	•	Test session timeout (if implemented) and check behavior when session expires.
+	2.	Client Admin Login
+	•	Login with several different client accounts.
+	•	Test invalid email, invalid password, and empty fields.
+	•	Confirm clear error messages (not raw 500s or dev text).
+	3.	Password Management
+	•	Test change password flow (old password + new password).
+	•	Try weak/short passwords and confirm validation.
+	•	Attempt login with old password after change -> must fail.
+	4.	Role-Based Access Control
+	•	As Client Admin, try to manually navigate to super admin routes via URL.
+	•	As logged-out user, attempt to visit client or super admin routes.
+	•	Confirm clean redirect/denied states with clear messaging.
+
+⸻
+
+2. SUPER ADMIN DASHBOARD
+
+Goal: Confirm the orchestration layer (tenants, users, bots, billing, status) works.
+	1.	Workspace / Tenant CRUD
+	•	Create a new workspace with realistic data.
+	•	Edit its name, domain, branding; save and refresh to confirm changes.
+	•	Deactivate / pause / delete a workspace (if supported).
+	•	Confirm paused/deleted tenants cannot be used by client admins anymore.
+	2.	User Management
+	•	Create a new client admin user in a workspace.
+	•	Change their role / permissions and verify resulting capabilities.
+	•	Deactivate/delete the user and verify they cannot log in.
+	3.	Bot Management / Bot Wizard
+	•	Create a bot for a workspace using the wizard (if present).
+	•	Edit bot configuration (name, prompts, knowledge, settings).
+	•	Confirm: preview/demo links work + config persists across refresh.
+	4.	Global Analytics
+	•	Open global analytics view:
+	•	Check trend charts, total tenants, total bots, total conversations/leads.
+	•	Change date ranges (7/14/30/90 days, custom).
+	•	Confirm charts and numbers update and have no NaN/undefined values.
+	5.	Billing & System Status
+	•	Check billing overview (MRR, subscription counts, plan details).
+	•	Confirm values look consistent and UI doesn’t break.
+	•	Open any system status indicators (uptime, incidents) and confirm states look reasonable and update.
+
+⸻
+
+3. CLIENT DASHBOARD (Analytics, Leads, Inbox, Settings)
+
+Goal: Make sure a client can actually run their business from this dashboard.
+	1.	Dashboard Overview
+	•	Verify main KPIs: total conversations, total leads, active automations, etc.
+	•	Change date filters (today, 7/14/30/90 days, custom).
+	•	Confirm numbers and charts update correctly.
+	•	Refresh to confirm values persist and don’t randomly change.
+	2.	Analytics Page
+	•	Switch between metrics: conversations, leads, sessions, bot performance.
+	•	Apply filters and clear them.
+	•	Hover over chart tooltips and legends.
+	•	Confirm no overlaps, broken labels, or NaNs.
+	•	If analytics export exists, test exporting and verify file.
+	3.	Leads Management
+	•	Open Leads page; confirm table loads existing leads.
+	•	Apply filters (status, date, source) and search by name/email/phone.
+	•	Paginate through large lists (if enough data).
+	•	Open lead details: check timeline, tags, notes.
+	4.	Inbox / Conversations
+	•	Browse multiple conversations.
+	•	Confirm message order and timestamps.
+	•	Add, edit, and delete notes on threads.
+	•	Mark conversations as read/unread, open/closed, priority, etc.
+	•	Confirm state persists after refresh and via filters.
+	5.	Appointments / Bookings (if present)
+	•	Create a new appointment via UI.
+	•	Edit and cancel an appointment.
+	•	Confirm leads/contacts link to appointments where appropriate.
+	6.	Settings
+	•	Business profile (name, address, phone, email).
+	•	Notification preferences: change email/SMS toggle states and save.
+	•	Any bot defaults or routing settings: update and confirm they stick after refresh.
+	•	Enter invalid data (wrong email format, absurdly long values) to confirm validation.
+	7.	Widget Code Copy-to-Clipboard
+	•	Find the widget embed code section.
+	•	Use the copy button.
+	•	Confirm it copies to clipboard (check by pasting somewhere else).
+	•	Make sure no console error fires when copying.
+
+⸻
+
+4. AI CHAT SYSTEM (Widget + Lead Capture + Logging)
+
+Goal: Prove the chat system is reliable and safe.
+	1.	Widget Rendering
+	•	On client pages and demo pages:
+	•	Confirm bubble appears with correct colors, icon, and position.
+	•	Test on bottom-right and bottom-left positions.
+	•	Open/close the widget multiple times; no flicker, no crash.
+	2.	Sending & Receiving Messages
+	•	Send a variety of messages:
+	•	Normal FAQs
+	•	Random off-topic questions
+	•	Gibberish / nonsense
+	•	Confirm:
+	•	Bot replies show correctly with timestamps.
+	•	You never see raw JSON, stack traces, or internal error codes.
+	3.	AI Response Appropriateness (Functional)
+	•	Ask 10–15 realistic questions aligned with the demo/business.
+	•	Check that responses are at least contextually reasonable (not completely unrelated).
+	4.	Lead Capture
+	•	Trigger flows that ask for name/email/phone (book appointment, get quote, talk to human).
+	•	Submit:
+	•	Valid inputs -> verify a lead is created in Leads and linked to the conversation.
+	•	Missing required fields -> verify validation errors.
+	•	Invalid email/phone -> verify validation errors and block submission.
+	5.	Crisis / Sensitive Content Handling (if configured)
+	•	Send messages that should trigger crisis/safety responses.
+	•	Confirm correct safe response (e.g., resource links, de-escalation) and no inappropriate replies.
+	6.	Conversation Logging
+	•	Verify conversations are stored:
+	•	Check Inbox or any “conversation log” screen.
+	•	If logs are written to files or external storage, confirm entries appear with correct content and timestamps.
+	7.	Error & Network Handling
+	•	While bot is “typing”, refresh the page or navigate away and back.
+	•	Confirm no infinite spinners or frozen states.
+	•	If an API call fails, confirm the user sees a friendly error message instead of a blank chat.
+	8.	Persistence & New Sessions
+	•	Refresh page mid-conversation and note whether the thread persists (document expected behavior).
+	•	Start chat in incognito to confirm a fresh user is handled properly.
+
+⸻
+
+5. AUTOMATIONS (Triggers, Conditions, Logging)
+
+Goal: Ensure automations run when they should and never when they shouldn’t.
+	1.	Create Automations
+	•	At least:
+	•	1 keyword trigger automation (specific phrase in chat).
+	•	1 lead event automation (on new lead, on status change, etc.).
+	•	Configure actions: tag lead, change status, notify human, send auto reply.
+	2.	Keyword Trigger Tests
+	•	Send exact trigger phrase in chat -> confirm automation fires.
+	•	Send similar but not exact phrases -> confirm it doesn’t fire accidentally (avoid false positives).
+	3.	Lead Event Tests
+	•	Create leads via chat and via manual entry (if allowed).
+	•	Confirm automations run only when conditions are met (e.g., new lead with certain status).
+	4.	Automation Logging
+	•	Open automation logs/history.
+	•	Confirm each run is recorded with:
+	•	Triggered rule
+	•	Time
+	•	Target object (lead/conversation)
+	•	Confirm there are no ghost runs or missing logs.
+	5.	Edit & Disable
+	•	Edit an existing automation (change conditions or actions) and retest.
+	•	Disable an automation and ensure it no longer fires under any previously valid conditions.
+
+⸻
+
+6. WIDGET CUSTOMIZATION (Theme, Colors, Live Preview)
+
+Goal: Let clients design the widget and see accurate results.
+	1.	Theme Modes
+	•	Switch between light / dark / auto theme.
+	•	Save and verify:
+	•	Theme is applied to the live widget.
+	•	Auto mode correctly follows system/browser theme.
+	2.	Color Customization
+	•	Change primary, accent, and text colors.
+	•	Use extreme light and dark colors to test readability.
+	•	Save and verify widget colors match exactly.
+	3.	Position Settings
+	•	Toggle widget position (bottom-right, bottom-left).
+	•	Verify position changes on all relevant pages.
+	4.	Live Preview
+	•	Use the live preview panel while changing settings.
+	•	Confirm preview updates instantly and matches the real widget after saving.
+	5.	Reset to Defaults
+	•	Hit reset/default (if available).
+	•	Verify both preview and live widget return to the factory theme and colors.
+
+⸻
+
+7. DEMO HUB (/demos)
+
+Goal: Prove all template demos are production-ready.
+	1.	Demo List Page
+	•	Open /demos.
+	•	Confirm all template cards (10 total) load with correct titles and descriptions.
+	•	No broken images or dead cards.
+	2.	Each Template Demo
+For each demo:
+	•	Open it in a new view.
+	•	Confirm branding and copy match the niche (restaurant, salon, real estate, etc.).
+	•	Open the widget and ask 3–5 niche-specific questions; responses should make sense.
+	•	Try template-specific CTAs (book, schedule, contact, etc.) and verify flows.
+	3.	Navigation
+	•	Use back buttons or breadcrumbs to return to the main demo hub.
+	•	Confirm no broken routing or white screens.
+
+⸻
+
+8. DATA & EXPORTS (Leads, Analytics, Sessions)
+
+Goal: Make sure users can get their data out and it’s correct.
+	1.	CSV Export – Leads
+	•	On Leads page:
+	•	Apply a filter (e.g., last 7 days, specific status).
+	•	Export to CSV.
+	•	Open the file:
+	•	Verify headers and sample rows match on-screen data.
+	•	Confirm no weird encoding or malformed rows.
+	2.	CSV Export – Analytics / Sessions
+	•	Export analytics or session data (if feature exists).
+	•	Verify that:
+	•	Date ranges in file match selected ranges.
+	•	Counts and aggregates match UI charts for spot-checked periods.
+	3.	Large Data Pagination
+	•	With many leads/conversations:
+	•	Navigate through multiple pages.
+	•	Change page size (if allowed).
+	•	Confirm performance is reasonable and pagination indicators are correct.
+
+⸻
+
+9. EDGE CASES & ERROR HANDLING
+
+Goal: See how the system behaves when things are empty, huge, or failing.
+	1.	Empty States
+	•	Use or create a tenant with:
+	•	No leads
+	•	No conversations
+	•	No automations
+	•	Confirm empty states display helpful messaging and CTAs (not blank tables).
+	2.	Form Validation
+	•	For every major form (login, workspace, settings, automations, widget settings, etc.):
+	•	Submit with all fields empty.
+	•	Submit with partially filled forms.
+	•	Submit with invalid formats.
+	•	Confirm correct inline error messages appear and are easy to understand.
+	3.	API Error Handling
+	•	When possible, trigger known failing states (e.g., bad config or invalid ID).
+	•	Confirm UI shows clean, user-friendly errors and doesn’t break layout.
+	4.	Performance & Loading
+	•	Identify heavy pages (analytics, large lead lists).
+	•	Confirm:
+	•	Loading states (spinner/skeleton) appear.
+	•	No infinite loading when data returns slowly.
+	•	Repeated navigation doesn’t stack multiple loaders.
+	5.	Broken Links & General Nav
+	•	Click every item in:
+	•	Top nav
+	•	Side nav
+	•	Dashboard cards
+	•	Confirm no broken links, unexpected 404s, or loops.
+	6.	Direct URL Access
+	•	Copy URLs of filtered pages (e.g., analytics with date range, an individual demo).
+	•	Paste into a new tab and open directly.
+	•	Confirm:
+	•	Page loads correctly.
+	•	Filters or context still make sense.
+
+⸻
+
+10. CROSS-TENANT SECURITY & WIDGET TOKEN VALIDATION
+
+Goal: Ensure strict tenant isolation and secure widget embedding.
+	1.	Tenant Isolation
+	•	Log in as Client A and note some lead IDs, names, or emails.
+	•	Log in as Client B and confirm:
+	•	None of Client A’s data appears via UI.
+	•	Search cannot find Client A’s info.
+	•	Try to access Client A’s IDs via URL (if IDs are guessable) and confirm access is blocked or redirected.
+	2.	Widget Token / Key Validation
+	•	Use correct widget code on a page and confirm it works.
+	•	If possible, intentionally tamper with:
+	•	Token/ID
+	•	Domain
+	•	Confirm:
+	•	Invalid tokens do not load a working widget.
+	•	No data from other tenants ever appears.
+
+⸻
+
+11. FINAL OUTPUT – QA TEST REPORT
+
+When you are done, output a single structured report with these sections:
+	1.	Summary
+	•	Overall health: e.g. “Mostly stable with X blockers, Y majors, Z minors”
+	•	Key risks.
+	2.	Blocker Issues
+	•	Each issue logged in the bug format (Title, Severity, Role, Route, Steps, Expected vs Actual, Console Notes).
+	3.	Major Issues
+	4.	Minor / UX Issues
+	5.	Nice-to-Haves / Suggestions
+	•	Ideas to improve UX, clarity, or performance that aren’t strictly bugs.
+	6.	Confirmed Working Features
+	•	Bullet list of critical flows that were tested and passed.
+	•	Include role + route for each (e.g. “✅ Client Admin – Leads CSV export on /client/leads”).
+
+Use this prompt as your complete, authoritative test plan.
+Run through all sections systematically and produce the final QA Test Report at the end.
