@@ -280,6 +280,23 @@ export default function ControlCenter() {
     queryKey: ["/api/super-admin/users"],
     enabled: currentUser?.role === "super_admin" && dashboardSection === 'users',
   });
+  
+  // Recent Activity Feed
+  const { data: recentActivity, isLoading: activityLoading } = useQuery<{
+    activities: Array<{
+      type: 'conversation' | 'lead' | 'session';
+      clientId: string;
+      botId: string;
+      botName: string;
+      details: any;
+      timestamp: string;
+    }>;
+    total: number;
+  }>({
+    queryKey: ["/api/super-admin/analytics/recent-activity"],
+    enabled: currentUser?.role === "super_admin" && dashboardSection === 'analytics',
+    refetchInterval: 30000,
+  });
 
   // Filter out template bots - only show real client bots
   const clientBots = allBots.filter(bot => !bot.metadata?.isTemplate);
@@ -337,8 +354,20 @@ export default function ControlCenter() {
       setSelectedBotId(null);
       toast({ title: "Bot Deleted", description: "The chatbot has been permanently deleted." });
     },
+  });
+  
+  // Update workspace status
+  const updateWorkspaceStatusMutation = useMutation({
+    mutationFn: async ({ slug, status }: { slug: string; status: string }) => {
+      const response = await apiRequest("PATCH", `/api/super-admin/workspaces/${slug}/status`, { status });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/workspaces"] });
+      toast({ title: "Workspace Updated", description: "Workspace status has been updated." });
+    },
     onError: () => {
-      toast({ title: "Error", description: "Failed to delete bot.", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to update workspace status.", variant: "destructive" });
     },
   });
 
@@ -673,12 +702,69 @@ export default function ControlCenter() {
                 </GlassCard>
               </div>
 
-              {/* Bot Cards Grid */}
-              <h2 className="text-lg font-semibold mb-4 text-white">All Chatbots</h2>
+              {/* Bot Cards Grid with Bulk Actions */}
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-white">All Chatbots</h2>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      if (selectedBots.size === filteredBots.length) {
+                        setSelectedBots(new Set());
+                      } else {
+                        setSelectedBots(new Set(filteredBots.map(b => b.botId)));
+                      }
+                    }}
+                    className="text-white/55 hover:text-white hover:bg-white/10"
+                  >
+                    {selectedBots.size === filteredBots.length && filteredBots.length > 0 ? 'Deselect All' : 'Select All'}
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Bulk Actions Toolbar - appears when bots are selected */}
+              {selectedBots.size > 0 && (
+                <div className="flex items-center gap-3 mb-4 p-3 rounded-lg bg-cyan-500/10 border border-cyan-400/30">
+                  <span className="text-sm text-white font-medium">{selectedBots.size} bot{selectedBots.size > 1 ? 's' : ''} selected</span>
+                  <div className="flex items-center gap-2 ml-auto">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => bulkStatusMutation.mutate({ botIds: Array.from(selectedBots), status: 'active' })}
+                      disabled={bulkStatusMutation.isPending}
+                      className="border-green-500/30 text-green-400 hover:bg-green-500/10"
+                    >
+                      <Check className="h-3 w-3 mr-1" />
+                      Activate
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => bulkStatusMutation.mutate({ botIds: Array.from(selectedBots), status: 'paused' })}
+                      disabled={bulkStatusMutation.isPending}
+                      className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+                    >
+                      <Pause className="h-3 w-3 mr-1" />
+                      Pause
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedBots(new Set())}
+                      className="text-white/55 hover:text-white"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
               <div className={`grid gap-4 ${selectedBot ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
                 {filteredBots.map(bot => {
                   const client = clients.find(c => c.id === bot.clientId);
                   const isSelected = selectedBotId === bot.botId;
+                  const isChecked = selectedBots.has(bot.botId);
                   return (
                     <GlassCard 
                       key={bot.botId}
@@ -686,46 +772,79 @@ export default function ControlCenter() {
                       hover
                       className={`cursor-pointer transition-all ${
                         isSelected ? 'ring-2 ring-cyan-400 shadow-[0px_4px_30px_rgba(79,195,247,0.15)]' : ''
-                      }`}
+                      } ${isChecked ? 'bg-cyan-500/5' : ''}`}
                     >
-                      <div 
-                        onClick={() => {
-                          setSelectedBotId(bot.botId);
-                          setActiveTab('overview');
-                        }}
-                      >
-                        <GlassCardHeader className="pb-3">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-3">
-                              <div className={`h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                                isSelected ? 'bg-cyan-500 text-white' : 'bg-cyan-400/10'
-                              }`}>
-                                <Building2 className={`h-5 w-5 ${isSelected ? '' : 'text-cyan-400'}`} />
+                      <div className="relative">
+                        {/* Checkbox for bulk selection */}
+                        <div 
+                          className="absolute top-3 left-3 z-10"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const newSet = new Set(selectedBots);
+                            if (isChecked) {
+                              newSet.delete(bot.botId);
+                            } else {
+                              newSet.add(bot.botId);
+                            }
+                            setSelectedBots(newSet);
+                          }}
+                        >
+                          <div className={`h-5 w-5 rounded border-2 flex items-center justify-center transition-colors ${
+                            isChecked ? 'bg-cyan-500 border-cyan-500' : 'border-white/30 hover:border-white/50'
+                          }`}>
+                            {isChecked && <Check className="h-3 w-3 text-white" />}
+                          </div>
+                        </div>
+                        <div 
+                          onClick={() => {
+                            setSelectedBotId(bot.botId);
+                            setActiveTab('overview');
+                          }}
+                        >
+                          <GlassCardHeader className="pb-3 pl-10">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-3">
+                                <div className={`h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                  isSelected ? 'bg-cyan-500 text-white' : 'bg-cyan-400/10'
+                                }`}>
+                                  <Building2 className={`h-5 w-5 ${isSelected ? '' : 'text-cyan-400'}`} />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <GlassCardTitle className="text-sm leading-tight break-words">
+                                    {bot.name || bot.businessProfile?.businessName}
+                                  </GlassCardTitle>
+                                  <GlassCardDescription className="text-xs">
+                                    {getBusinessTypeLabel(bot.businessProfile?.type)}
+                                  </GlassCardDescription>
+                                </div>
                               </div>
-                              <div className="min-w-0 flex-1">
-                                <GlassCardTitle className="text-sm leading-tight break-words">
-                                  {bot.name || bot.businessProfile?.businessName}
-                                </GlassCardTitle>
-                                <GlassCardDescription className="text-xs">
-                                  {getBusinessTypeLabel(bot.businessProfile?.type)}
-                                </GlassCardDescription>
-                              </div>
+                              {client && getStatusBadge(client.status)}
                             </div>
-                            {client && getStatusBadge(client.status)}
-                          </div>
-                        </GlassCardHeader>
-                        <GlassCardContent className="pb-4">
-                          <div className="flex items-center justify-between text-xs text-white/55">
-                            <span className="flex items-center gap-1">
-                              <MessageSquare className="h-3 w-3" />
-                              {bot.faqs?.length || 0} FAQs
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {bot.metadata?.createdAt || 'N/A'}
-                            </span>
-                          </div>
-                        </GlassCardContent>
+                          </GlassCardHeader>
+                          <GlassCardContent className="pb-4 space-y-2">
+                            <div className="flex items-center justify-between text-xs text-white/55">
+                              <span className="flex items-center gap-1">
+                                <MessageSquare className="h-3 w-3" />
+                                {bot.faqs?.length || 0} FAQs
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {bot.metadata?.createdAt ? new Date(bot.metadata.createdAt).toLocaleDateString() : 'N/A'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {bot.metadata?.isDemo && (
+                                <Badge variant="outline" className="text-[10px] h-5 border-blue-500/30 text-blue-400 bg-blue-500/10">Demo</Badge>
+                              )}
+                              {bot.businessProfile?.email && (
+                                <Badge variant="outline" className="text-[10px] h-5 border-white/10 text-white/40">Email Set</Badge>
+                              )}
+                              {bot.businessProfile?.phone && (
+                                <Badge variant="outline" className="text-[10px] h-5 border-white/10 text-white/40">Phone Set</Badge>
+                              )}
+                            </div>
+                          </GlassCardContent>
+                        </div>
                       </div>
                     </GlassCard>
                   );
@@ -802,16 +921,33 @@ export default function ControlCenter() {
                       ).map(workspace => (
                         <GlassCard key={workspace.id} hover data-testid={`card-workspace-${workspace.slug}`}>
                           <GlassCardHeader className="pb-3">
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <GlassCardTitle className="text-sm">{workspace.name}</GlassCardTitle>
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <GlassCardTitle className="text-sm truncate">{workspace.name}</GlassCardTitle>
                                 <GlassCardDescription className="text-xs">{workspace.slug}</GlassCardDescription>
                               </div>
-                              <Badge className={
-                                workspace.status === 'active' ? "bg-green-500/20 text-green-400 border-green-500/30" :
-                                workspace.status === 'suspended' ? "bg-red-500/20 text-red-400 border-red-500/30" :
-                                "bg-amber-500/20 text-amber-400 border-amber-500/30"
-                              }>{workspace.status}</Badge>
+                              <Select
+                                value={workspace.status}
+                                onValueChange={(value) => updateWorkspaceStatusMutation.mutate({ slug: workspace.slug, status: value })}
+                              >
+                                <SelectTrigger 
+                                  data-testid={`select-workspace-status-${workspace.slug}`}
+                                  className={`w-[110px] h-7 text-xs ${
+                                    workspace.status === 'active' ? "bg-green-500/20 text-green-400 border-green-500/30" :
+                                    workspace.status === 'suspended' ? "bg-red-500/20 text-red-400 border-red-500/30" :
+                                    workspace.status === 'cancelled' ? "bg-gray-500/20 text-gray-400 border-gray-500/30" :
+                                    "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                                  }`}
+                                >
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="active">Active</SelectItem>
+                                  <SelectItem value="paused">Paused</SelectItem>
+                                  <SelectItem value="suspended">Suspended</SelectItem>
+                                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
                           </GlassCardHeader>
                           <GlassCardContent className="pb-4">
@@ -967,6 +1103,78 @@ export default function ControlCenter() {
                               <Line type="monotone" dataKey="appointments" stroke="#F59E0B" strokeWidth={2} dot={false} name="Appointments" />
                             </LineChart>
                           </ResponsiveContainer>
+                        </div>
+                      )}
+                    </GlassCardContent>
+                  </GlassCard>
+                  
+                  {/* Recent Activity Feed */}
+                  <GlassCard>
+                    <GlassCardHeader>
+                      <GlassCardTitle>Recent Activity</GlassCardTitle>
+                      <GlassCardDescription>Latest leads and sessions across all bots</GlassCardDescription>
+                    </GlassCardHeader>
+                    <GlassCardContent>
+                      {activityLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="h-8 w-8 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
+                        </div>
+                      ) : (recentActivity?.activities || []).length === 0 ? (
+                        <div className="text-center py-8 text-white/55">
+                          <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                          <p>No recent activity</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2 max-h-80 overflow-y-auto">
+                          {(recentActivity?.activities || []).slice(0, 15).map((activity, idx) => (
+                            <div 
+                              key={`${activity.type}-${idx}`}
+                              className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/8 transition-colors"
+                              data-testid={`activity-item-${idx}`}
+                            >
+                              <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${
+                                activity.type === 'lead' ? 'bg-green-500/20' : 'bg-cyan-500/20'
+                              }`}>
+                                {activity.type === 'lead' ? (
+                                  <Users className="h-4 w-4 text-green-400" />
+                                ) : (
+                                  <MessageSquare className="h-4 w-4 text-cyan-400" />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium text-white truncate">
+                                    {activity.type === 'lead' 
+                                      ? `New Lead: ${activity.details?.name || 'Anonymous'}`
+                                      : `Chat Session (${activity.details?.messageCount || 0} msgs)`
+                                    }
+                                  </span>
+                                  <Badge variant="outline" className="shrink-0 text-xs border-white/10 text-white/55">
+                                    {activity.botName}
+                                  </Badge>
+                                </div>
+                                <p className="text-xs text-white/40 truncate">
+                                  {activity.type === 'lead' && activity.details?.email && (
+                                    <span>{activity.details.email}</span>
+                                  )}
+                                  {activity.type === 'session' && activity.details?.topics?.length > 0 && (
+                                    <span>Topics: {activity.details.topics.slice(0, 2).join(', ')}</span>
+                                  )}
+                                  {activity.type === 'session' && (!activity.details?.topics || activity.details.topics.length === 0) && (
+                                    <span>Session ID: {activity.details?.sessionId?.substring(0, 8)}...</span>
+                                  )}
+                                </p>
+                              </div>
+                              <div className="text-xs text-white/40 shrink-0">
+                                {new Date(activity.timestamp).toLocaleString('en-US', { 
+                                  month: 'short', 
+                                  day: 'numeric', 
+                                  hour: '2-digit', 
+                                  minute: '2-digit' 
+                                })}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </GlassCardContent>

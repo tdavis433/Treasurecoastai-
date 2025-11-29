@@ -4268,6 +4268,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch global analytics" });
     }
   });
+  
+  // Get recent activity across all bots
+  app.get("/api/super-admin/analytics/recent-activity", requireSuperAdmin, async (req, res) => {
+    try {
+      const { limit: limitParam } = req.query;
+      const limit = limitParam ? parseInt(String(limitParam), 10) : 20;
+      
+      const allBots = getAllBotConfigs();
+      const activities: Array<{
+        type: 'conversation' | 'lead' | 'session';
+        clientId: string;
+        botId: string;
+        botName: string;
+        details: any;
+        timestamp: Date;
+      }> = [];
+      
+      // Get recent leads and sessions from all bots
+      for (const bot of allBots) {
+        // Get recent leads
+        const { leads } = await storage.getLeads(bot.clientId, { limit: 10 });
+        leads.forEach(lead => {
+          activities.push({
+            type: 'lead',
+            clientId: bot.clientId,
+            botId: bot.botId,
+            botName: bot.name || bot.botId,
+            details: {
+              id: lead.id,
+              name: lead.name || 'Anonymous',
+              email: lead.email,
+              phone: lead.phone,
+              source: lead.source,
+              status: lead.status,
+            },
+            timestamp: lead.createdAt,
+          });
+        });
+        
+        // Get recent sessions
+        const sessions = await storage.getClientRecentSessions(bot.clientId, bot.botId, 10);
+        sessions.forEach(session => {
+          activities.push({
+            type: 'session',
+            clientId: bot.clientId,
+            botId: bot.botId,
+            botName: bot.name || bot.botId,
+            details: {
+              sessionId: session.sessionId,
+              messageCount: session.userMessageCount + session.botMessageCount,
+              topics: session.topics || [],
+            },
+            timestamp: session.startedAt,
+          });
+        });
+      }
+      
+      // Sort by timestamp descending and limit
+      activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      const recentActivities = activities.slice(0, limit);
+      
+      res.json({
+        activities: recentActivities,
+        total: recentActivities.length,
+      });
+    } catch (error) {
+      console.error("Get recent activity error:", error);
+      res.status(500).json({ error: "Failed to fetch recent activity" });
+    }
+  });
 
   // =============================================
   // SUPER-ADMIN: WORKSPACES MANAGEMENT
