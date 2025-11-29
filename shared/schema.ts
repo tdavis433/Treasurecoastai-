@@ -913,3 +913,84 @@ export const insertWidgetSettingsSchema = createInsertSchema(widgetSettings).omi
 
 export type InsertWidgetSettings = z.infer<typeof insertWidgetSettingsSchema>;
 export type WidgetSettings = typeof widgetSettings.$inferSelect;
+
+// =============================================
+// PHASE 6: CONVERSATION NOTES & SESSION STATES
+// =============================================
+
+// Conversation notes - Internal notes on chat sessions for agent collaboration
+export const conversationNotes = pgTable("conversation_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull(),
+  clientId: varchar("client_id").notNull(),
+  botId: varchar("bot_id").notNull(),
+  
+  // Note content
+  content: text("content").notNull(),
+  
+  // Author tracking
+  authorId: varchar("author_id").notNull(), // User ID who created the note
+  authorName: varchar("author_name"), // Display name for convenience
+  
+  // Metadata
+  isPinned: boolean("is_pinned").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  sessionIdIdx: index("conversation_notes_session_id_idx").on(table.sessionId),
+  clientIdIdx: index("conversation_notes_client_id_idx").on(table.clientId),
+  botIdIdx: index("conversation_notes_bot_id_idx").on(table.botId),
+  authorIdIdx: index("conversation_notes_author_id_idx").on(table.authorId),
+}));
+
+export const insertConversationNoteSchema = createInsertSchema(conversationNotes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertConversationNote = z.infer<typeof insertConversationNoteSchema>;
+export type ConversationNote = typeof conversationNotes.$inferSelect;
+
+// Session states - Track read/unread status and workflow state for inbox
+export const sessionStates = pgTable("session_states", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().unique(),
+  clientId: varchar("client_id").notNull(),
+  botId: varchar("bot_id").notNull(),
+  
+  // Status tracking
+  status: text("status").notNull().default("open"), // open, in_progress, resolved, closed
+  isRead: boolean("is_read").notNull().default(false),
+  readAt: timestamp("read_at"),
+  readByUserId: varchar("read_by_user_id"),
+  
+  // Assignment
+  assignedToUserId: varchar("assigned_to_user_id"),
+  assignedAt: timestamp("assigned_at"),
+  
+  // Priority and tags
+  priority: text("priority").default("normal"), // low, normal, high, urgent
+  tags: text("tags").array().default(sql`ARRAY[]::text[]`),
+  
+  // Metadata
+  lastActivityAt: timestamp("last_activity_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  sessionIdIdx: index("session_states_session_id_idx").on(table.sessionId),
+  clientIdIdx: index("session_states_client_id_idx").on(table.clientId),
+  botIdIdx: index("session_states_bot_id_idx").on(table.botId),
+  statusIdx: index("session_states_status_idx").on(table.status),
+  isReadIdx: index("session_states_is_read_idx").on(table.isRead),
+  assignedToIdx: index("session_states_assigned_to_idx").on(table.assignedToUserId),
+}));
+
+export const insertSessionStateSchema = createInsertSchema(sessionStates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSessionState = z.infer<typeof insertSessionStateSchema>;
+export type SessionState = typeof sessionStates.$inferSelect;

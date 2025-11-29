@@ -3542,6 +3542,163 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // =============================================
+  // CONVERSATION NOTES ENDPOINTS
+  // =============================================
+
+  const createNoteSchema = z.object({
+    sessionId: z.string().min(1),
+    botId: z.string().min(1),
+    content: z.string().min(1),
+    isPinned: z.boolean().optional(),
+  });
+
+  // Get notes for a session
+  app.get("/api/client/inbox/sessions/:sessionId/notes", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      const { sessionId } = req.params;
+      
+      const notes = await storage.getConversationNotes(sessionId, clientId);
+      res.json({ notes });
+    } catch (error) {
+      console.error("Get notes error:", error);
+      res.status(500).json({ error: "Failed to fetch notes" });
+    }
+  });
+
+  // Create a note
+  app.post("/api/client/inbox/sessions/:sessionId/notes", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      const { sessionId } = req.params;
+      const user = (req as any).user;
+      
+      const bodyValidation = validateRequest(createNoteSchema, { ...req.body, sessionId });
+      if (!bodyValidation.success) {
+        return res.status(400).json({ error: bodyValidation.error });
+      }
+      
+      const note = await storage.createConversationNote({
+        sessionId,
+        clientId,
+        botId: bodyValidation.data.botId,
+        content: bodyValidation.data.content,
+        authorId: user?.id || 'unknown',
+        authorName: user?.username || 'Unknown User',
+        isPinned: bodyValidation.data.isPinned || false,
+      });
+      
+      res.status(201).json(note);
+    } catch (error) {
+      console.error("Create note error:", error);
+      res.status(500).json({ error: "Failed to create note" });
+    }
+  });
+
+  // Update a note
+  app.patch("/api/client/inbox/notes/:noteId", requireClientAuth, async (req, res) => {
+    try {
+      const { noteId } = req.params;
+      const { content, isPinned } = req.body;
+      
+      const updates: any = {};
+      if (content !== undefined) updates.content = content;
+      if (isPinned !== undefined) updates.isPinned = isPinned;
+      
+      const note = await storage.updateConversationNote(noteId, updates);
+      res.json(note);
+    } catch (error) {
+      console.error("Update note error:", error);
+      res.status(500).json({ error: "Failed to update note" });
+    }
+  });
+
+  // Delete a note
+  app.delete("/api/client/inbox/notes/:noteId", requireClientAuth, async (req, res) => {
+    try {
+      await storage.deleteConversationNote(req.params.noteId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Delete note error:", error);
+      res.status(500).json({ error: "Failed to delete note" });
+    }
+  });
+
+  // =============================================
+  // SESSION STATE ENDPOINTS
+  // =============================================
+
+  // Get or create session state
+  app.get("/api/client/inbox/sessions/:sessionId/state", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      const { sessionId } = req.params;
+      const { botId } = req.query;
+      
+      const state = await storage.getOrCreateSessionState(
+        sessionId, 
+        clientId, 
+        (botId as string) || 'unknown'
+      );
+      res.json(state);
+    } catch (error) {
+      console.error("Get session state error:", error);
+      res.status(500).json({ error: "Failed to fetch session state" });
+    }
+  });
+
+  // Update session state (mark as read, change status, etc.)
+  app.patch("/api/client/inbox/sessions/:sessionId/state", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      const { sessionId } = req.params;
+      const user = (req as any).user;
+      const { status, isRead, priority, assignedToUserId, tags } = req.body;
+      
+      const updates: any = {};
+      if (status !== undefined) updates.status = status;
+      if (isRead !== undefined) {
+        updates.isRead = isRead;
+        if (isRead) {
+          updates.readAt = new Date();
+          updates.readByUserId = user?.id;
+        }
+      }
+      if (priority !== undefined) updates.priority = priority;
+      if (assignedToUserId !== undefined) {
+        updates.assignedToUserId = assignedToUserId;
+        updates.assignedAt = new Date();
+      }
+      if (tags !== undefined) updates.tags = tags;
+      
+      const state = await storage.updateSessionState(sessionId, updates);
+      res.json(state);
+    } catch (error) {
+      console.error("Update session state error:", error);
+      res.status(500).json({ error: "Failed to update session state" });
+    }
+  });
+
+  // Get all session states for filtering
+  app.get("/api/client/inbox/states", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      const { status, isRead, assignedToUserId } = req.query;
+      
+      const states = await storage.getSessionStates(clientId, {
+        status: status as string | undefined,
+        isRead: isRead === 'true' ? true : isRead === 'false' ? false : undefined,
+        assignedToUserId: assignedToUserId as string | undefined,
+      });
+      
+      res.json({ states });
+    } catch (error) {
+      console.error("Get session states error:", error);
+      res.status(500).json({ error: "Failed to fetch session states" });
+    }
+  });
+
   // Get client usage summary (plan limits and current usage)
   app.get("/api/client/usage", requireClientAuth, async (req, res) => {
     try {

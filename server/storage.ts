@@ -25,6 +25,10 @@ import {
   type InsertAutomationRun,
   type WidgetSettings,
   type InsertWidgetSettings,
+  type ConversationNote,
+  type InsertConversationNote,
+  type SessionState,
+  type InsertSessionState,
   appointments,
   clientSettings,
   conversationAnalytics,
@@ -39,7 +43,9 @@ import {
   bots,
   automationWorkflows,
   automationRuns,
-  widgetSettings
+  widgetSettings,
+  conversationNotes,
+  sessionStates
 } from "@shared/schema";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { neonConfig, Pool } from "@neondatabase/serverless";
@@ -128,6 +134,21 @@ export interface IStorage {
   getUserWorkspaceMemberships(userId: string): Promise<WorkspaceMembership[]>;
   checkWorkspaceMembership(userId: string, workspaceId: string): Promise<WorkspaceMembership | undefined>;
   getWorkspaceByClientId(clientId: string): Promise<Workspace | undefined>;
+  
+  // Conversation notes
+  createConversationNote(note: InsertConversationNote): Promise<ConversationNote>;
+  getConversationNotes(sessionId: string, clientId: string): Promise<ConversationNote[]>;
+  updateConversationNote(id: string, updates: Partial<ConversationNote>): Promise<ConversationNote>;
+  deleteConversationNote(id: string): Promise<void>;
+  
+  // Session states
+  getOrCreateSessionState(sessionId: string, clientId: string, botId: string): Promise<SessionState>;
+  updateSessionState(sessionId: string, updates: Partial<SessionState>): Promise<SessionState>;
+  getSessionStates(clientId: string, filters?: {
+    status?: string;
+    isRead?: boolean;
+    assignedToUserId?: string;
+  }): Promise<SessionState[]>;
   
   // Health check
   healthCheck?(): Promise<{ status: string; latencyMs?: number }>;
@@ -1082,6 +1103,111 @@ export class DbStorage implements IStorage {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
+  }
+
+  // =============================================
+  // CONVERSATION NOTES
+  // =============================================
+
+  async createConversationNote(note: InsertConversationNote): Promise<ConversationNote> {
+    const result = await db
+      .insert(conversationNotes)
+      .values(note as any)
+      .returning();
+    return result[0];
+  }
+
+  async getConversationNotes(sessionId: string, clientId: string): Promise<ConversationNote[]> {
+    return db
+      .select()
+      .from(conversationNotes)
+      .where(and(
+        eq(conversationNotes.sessionId, sessionId),
+        eq(conversationNotes.clientId, clientId)
+      ))
+      .orderBy(desc(conversationNotes.createdAt));
+  }
+
+  async updateConversationNote(id: string, updates: Partial<ConversationNote>): Promise<ConversationNote> {
+    const updateData = { ...updates, updatedAt: new Date() };
+    const result = await db
+      .update(conversationNotes)
+      .set(updateData as any)
+      .where(eq(conversationNotes.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteConversationNote(id: string): Promise<void> {
+    await db
+      .delete(conversationNotes)
+      .where(eq(conversationNotes.id, id));
+  }
+
+  // =============================================
+  // SESSION STATES
+  // =============================================
+
+  async getOrCreateSessionState(sessionId: string, clientId: string, botId: string): Promise<SessionState> {
+    // Try to find existing
+    const existing = await db
+      .select()
+      .from(sessionStates)
+      .where(eq(sessionStates.sessionId, sessionId))
+      .limit(1);
+    
+    if (existing.length > 0) return existing[0];
+    
+    // Create new
+    const result = await db
+      .insert(sessionStates)
+      .values({
+        sessionId,
+        clientId,
+        botId,
+        status: 'open',
+        isRead: false,
+        priority: 'normal',
+        tags: [],
+      } as any)
+      .returning();
+    return result[0];
+  }
+
+  async updateSessionState(sessionId: string, updates: Partial<SessionState>): Promise<SessionState> {
+    const updateData = { ...updates, updatedAt: new Date() };
+    const result = await db
+      .update(sessionStates)
+      .set(updateData as any)
+      .where(eq(sessionStates.sessionId, sessionId))
+      .returning();
+    return result[0];
+  }
+
+  async getSessionStates(clientId: string, filters?: {
+    status?: string;
+    isRead?: boolean;
+    assignedToUserId?: string;
+  }): Promise<SessionState[]> {
+    const conditions = [eq(sessionStates.clientId, clientId)];
+    
+    if (filters?.status) {
+      conditions.push(eq(sessionStates.status, filters.status));
+    }
+    
+    if (filters?.isRead !== undefined) {
+      conditions.push(eq(sessionStates.isRead, filters.isRead));
+    }
+    
+    if (filters?.assignedToUserId) {
+      conditions.push(eq(sessionStates.assignedToUserId, filters.assignedToUserId));
+    }
+    
+    return db
+      .select()
+      .from(sessionStates)
+      .where(and(...conditions))
+      .orderBy(desc(sessionStates.lastActivityAt));
   }
 }
 

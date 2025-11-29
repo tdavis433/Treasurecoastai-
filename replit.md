@@ -21,6 +21,7 @@ This project is a multi-tenant AI chatbot platform designed to support various b
   - 6.2 CSV Export Endpoints: COMPLETE - Server-side endpoints for analytics, leads, and sessions export
   - 6.3 Auto-Lead Capture: COMPLETE - extractContactInfo() and autoCaptureLead() functions detect email/phone in chat messages and auto-create leads
   - 6.4 Bulk Lead Actions: COMPLETE - Bulk status update, bulk delete endpoint (POST /api/client/leads/bulk), multi-select UI with checkboxes
+  - 6.5 Conversation Notes & Session States: COMPLETE - conversation_notes and session_states database tables, CRUD API endpoints, Inbox UI with notes panel (add/delete notes), session state controls (read/unread toggle, status dropdown, priority selector), tabbed interface for messages/notes
 - **Phases 7-10:** Pending
 
 ## System Architecture
