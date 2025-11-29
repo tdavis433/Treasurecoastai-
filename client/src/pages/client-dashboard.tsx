@@ -19,8 +19,10 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarHeader,
+  SidebarFooter,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { Separator } from "@/components/ui/separator";
 import {
   MessageSquare,
   Calendar,
@@ -48,6 +50,9 @@ import {
   Download,
   ExternalLink,
   Save,
+  LogOut,
+  HelpCircle,
+  Headphones,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useLocation } from "wouter";
@@ -282,6 +287,24 @@ export default function ClientDashboard() {
     queryKey: ["/api/client/usage"],
   });
 
+  const { data: leadsData } = useQuery<{
+    clientId: string;
+    leads: any[];
+    total: number;
+  }>({
+    queryKey: ["/api/client/leads"],
+  });
+
+  const { data: inboxStatesData } = useQuery<{
+    clientId: string;
+    states: { sessionId: string; isRead: boolean; status: string }[];
+  }>({
+    queryKey: ["/api/client/inbox/states"],
+  });
+
+  const newLeadsCount = leadsData?.leads?.filter((lead: any) => lead.status === 'new').length || 0;
+  const unreadInboxCount = inboxStatesData?.states?.filter(state => !state.isRead).length || 0;
+
   const updateSettingsMutation = useMutation({
     mutationFn: async (data: { phone?: string; hours?: string; location?: string }) => {
       const response = await apiRequest("PATCH", "/api/client/settings", data);
@@ -344,6 +367,20 @@ export default function ClientDashboard() {
       location: profile?.businessInfo?.location || ''
     });
     setEditingSettings(true);
+  };
+
+  const handleLogout = async () => {
+    try {
+      const response = await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+      if (response.ok) {
+        queryClient.clear();
+        setLocation("/login");
+      } else {
+        toast({ title: "Error", description: "Failed to logout. Please try again.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Network error during logout.", variant: "destructive" });
+    }
   };
 
   if (profileLoading) {
@@ -1451,29 +1488,59 @@ export default function ClientDashboard() {
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu className="space-y-1">
-                  {SIDEBAR_ITEMS.map((item) => (
-                    <SidebarMenuItem key={item.id}>
-                      <SidebarMenuButton
-                        isActive={activeSection === item.id}
-                        onClick={() => setActiveSection(item.id)}
-                        className={`
-                          transition-all duration-200 rounded-lg
-                          ${activeSection === item.id 
-                            ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-400/40 shadow-sm shadow-cyan-500/10' 
-                            : 'text-white/70 hover:text-white hover:bg-white/10 border border-transparent'
-                          }
-                        `}
-                        data-testid={`sidebar-item-${item.id}`}
-                      >
-                        <item.icon className={`h-4 w-4 ${activeSection === item.id ? 'text-cyan-400' : ''}`} />
-                        <span className="font-medium">{item.label}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
+                  {SIDEBAR_ITEMS.map((item) => {
+                    const badgeCount = item.id === 'leads' ? newLeadsCount : 
+                                       item.id === 'inbox' ? unreadInboxCount : 0;
+                    return (
+                      <SidebarMenuItem key={item.id}>
+                        <SidebarMenuButton
+                          isActive={activeSection === item.id}
+                          onClick={() => setActiveSection(item.id)}
+                          className={`
+                            transition-all duration-200 rounded-lg
+                            ${activeSection === item.id 
+                              ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-400/40 shadow-sm shadow-cyan-500/10' 
+                              : 'text-white/70 hover:text-white hover:bg-white/10 border border-transparent'
+                            }
+                          `}
+                          data-testid={`sidebar-item-${item.id}`}
+                        >
+                          <item.icon className={`h-4 w-4 ${activeSection === item.id ? 'text-cyan-400' : ''}`} />
+                          <span className="font-medium flex-1">{item.label}</span>
+                          {badgeCount > 0 && (
+                            <Badge 
+                              className="bg-cyan-500/20 text-cyan-400 border border-cyan-400/30 text-xs px-1.5 py-0 min-w-[20px] h-5 flex items-center justify-center"
+                              data-testid={`badge-${item.id}-count`}
+                            >
+                              {badgeCount > 99 ? '99+' : badgeCount}
+                            </Badge>
+                          )}
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>
+
+          <SidebarFooter className="p-3 border-t border-white/10 bg-[#0d1117]">
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-white/60 hover:text-white hover:bg-white/10"
+              onClick={() => window.open('mailto:support@treasurecoastai.com', '_blank')}
+              data-testid="button-get-help"
+            >
+              <Headphones className="h-4 w-4 mr-2" />
+              Get Help
+            </Button>
+            <div className="px-3 py-2 text-xs text-white/40">
+              <div className="flex items-center gap-1">
+                <HelpCircle className="h-3 w-3" />
+                <span>Need assistance? Contact support.</span>
+              </div>
+            </div>
+          </SidebarFooter>
         </Sidebar>
 
         <div className="flex-1 flex flex-col overflow-hidden">
@@ -1484,7 +1551,7 @@ export default function ClientDashboard() {
                 {SIDEBAR_ITEMS.find(item => item.id === activeSection)?.label || 'Dashboard'}
               </h1>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <Button
                 variant="outline"
                 size="sm"
@@ -1507,6 +1574,19 @@ export default function ClientDashboard() {
                   Preview Bot
                 </Button>
               )}
+              <Separator orientation="vertical" className="h-6 bg-white/10" />
+              <span className="text-sm text-white/55" data-testid="text-username">
+                {profile?.user?.username || 'User'}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleLogout}
+                className="text-white/70 hover:text-white hover:bg-white/10"
+                data-testid="button-logout"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
             </div>
           </header>
 
