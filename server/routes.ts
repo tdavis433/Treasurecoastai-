@@ -339,7 +339,7 @@ async function ensureAdminUserExists() {
     const staffUsername = process.env.DEFAULT_STAFF_USERNAME || "staff";
     const staffPassword = process.env.DEFAULT_STAFF_PASSWORD;
 
-    // Create super_admin (owner) account only if password is set via env
+    // Create or update super_admin (owner) account if password is set via env
     const existingAdmin = await storage.findAdminByUsername(adminUsername);
     
     if (!existingAdmin && adminPassword) {
@@ -353,14 +353,16 @@ async function ensureAdminUserExists() {
       });
       
       console.log("Default super admin user created successfully");
+    } else if (existingAdmin && adminPassword) {
+      // Update password if admin exists and password is set (allows password resets)
+      console.log("Updating super admin password from environment variables...");
+      const passwordHash = await bcrypt.hash(adminPassword, 10);
+      await db.update(adminUsers)
+        .set({ passwordHash: passwordHash, role: "super_admin" })
+        .where(eq(adminUsers.username, adminUsername));
+      console.log("Super admin password updated successfully");
     } else if (!adminPassword && !existingAdmin) {
       console.warn("WARNING: No DEFAULT_ADMIN_PASSWORD set. Skipping admin user creation. Set this environment variable to create the initial admin account.");
-    } else if (existingAdmin && existingAdmin.role !== "super_admin") {
-      console.log("Migrating existing admin to super_admin role...");
-      await db.update(adminUsers)
-        .set({ role: "super_admin" })
-        .where(eq(adminUsers.username, adminUsername));
-      console.log("Admin user migrated to super_admin role");
     }
 
     // Create client_admin (staff) account for Faith House only if password is set via env
