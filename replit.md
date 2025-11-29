@@ -13,7 +13,7 @@ This project is a multi-tenant AI chatbot platform designed to support various b
 ## Current Build Progress (10-Phase Roadmap)
 - **Phase 1 (Database Foundation):** COMPLETE - 5 new tables (workspaces, workspace_memberships, bots, bot_settings, bot_templates)
 - **Phase 2 (API & Security):** COMPLETE - Zod validation on all major routes, workspace membership validation, HMAC-signed widget tokens
-- **Phase 3 (Bot Wizard):** COMPLETE - 5-step wizard at /admin/bot/wizard
+- **Phase 3 (Bot Wizard):** COMPLETE - 5-step wizard at /admin/bot/wizard, createBotConfig function for new bot file creation, template lookup from database bot_templates table
 - **Phase 4 (Automations V2):** COMPLETE - Database-backed automation workflows with trigger types (keyword, schedule, inactivity, message_count, lead_captured, appointment_booked), conditions/actions, run logging, Admin UI at /admin/bot/:botId/automations
 - **Phase 5 (Widget Improvements):** COMPLETE - widget_settings table, full widget customization (theme modes: light/dark/auto, colors, position, avatar, auto-open, notification sounds, accessibility), Admin UI at /admin/bot/:botId/widget-settings with live preview
 - **Phase 6 (Analytics/Leads/Inbox):** COMPLETE
