@@ -21,6 +21,9 @@ import {
   getTemplateById,
   getWorkspaces,
   getWorkspaceBySlug,
+  createWorkspace,
+  updateWorkspace,
+  deleteWorkspace,
   getBotsByWorkspaceId,
   getClients,
   getClientById,
@@ -4615,6 +4618,143 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Update workspace status error:", error);
       res.status(500).json({ error: "Failed to update workspace status" });
+    }
+  });
+
+  // Create new workspace
+  app.post("/api/super-admin/workspaces", requireSuperAdmin, async (req, res) => {
+    try {
+      const { name, slug, ownerId, plan, settings } = req.body;
+      
+      // Validate required fields
+      if (!name || !slug || !ownerId) {
+        return res.status(400).json({ error: "name, slug, and ownerId are required" });
+      }
+      
+      // Validate slug format (alphanumeric and underscores only)
+      if (!/^[a-z0-9_]+$/.test(slug)) {
+        return res.status(400).json({ error: "Slug must be lowercase alphanumeric with underscores only" });
+      }
+      
+      // Check if slug already exists
+      const existing = await getWorkspaceBySlug(slug);
+      if (existing) {
+        return res.status(409).json({ error: `Workspace with slug '${slug}' already exists` });
+      }
+      
+      // Validate owner exists
+      const [owner] = await db.select().from(adminUsers).where(eq(adminUsers.id, ownerId)).limit(1);
+      if (!owner) {
+        return res.status(400).json({ error: "Invalid ownerId - user not found" });
+      }
+      
+      const workspace = await createWorkspace({
+        name,
+        slug,
+        ownerId,
+        plan: plan || 'starter',
+        settings: settings || {},
+      });
+      
+      // Log this action
+      await storage.createSystemLog({
+        level: 'info',
+        source: 'super-admin',
+        message: `Workspace ${slug} created`,
+        workspaceId: workspace.id,
+        details: { name, plan: plan || 'starter', ownerId },
+      });
+      
+      res.status(201).json(workspace);
+    } catch (error) {
+      console.error("Create workspace error:", error);
+      res.status(500).json({ error: "Failed to create workspace" });
+    }
+  });
+
+  // Update workspace (name, plan, settings, owner)
+  app.patch("/api/super-admin/workspaces/:slug", requireSuperAdmin, async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const { name, ownerId, plan, settings } = req.body;
+      
+      const existing = await getWorkspaceBySlug(slug);
+      if (!existing) {
+        return res.status(404).json({ error: "Workspace not found" });
+      }
+      
+      // Validate owner if provided
+      if (ownerId) {
+        const [owner] = await db.select().from(adminUsers).where(eq(adminUsers.id, ownerId)).limit(1);
+        if (!owner) {
+          return res.status(400).json({ error: "Invalid ownerId - user not found" });
+        }
+      }
+      
+      const workspace = await updateWorkspace(slug, { name, ownerId, plan, settings });
+      
+      // Log this action
+      await storage.createSystemLog({
+        level: 'info',
+        source: 'super-admin',
+        message: `Workspace ${slug} updated`,
+        workspaceId: workspace.id,
+        details: { name, plan, ownerId },
+      });
+      
+      res.json(workspace);
+    } catch (error) {
+      console.error("Update workspace error:", error);
+      res.status(500).json({ error: "Failed to update workspace" });
+    }
+  });
+
+  // Delete workspace
+  app.delete("/api/super-admin/workspaces/:slug", requireSuperAdmin, async (req, res) => {
+    try {
+      const { slug } = req.params;
+      
+      const existing = await getWorkspaceBySlug(slug);
+      if (!existing) {
+        return res.status(404).json({ error: "Workspace not found" });
+      }
+      
+      // Get bots associated with this workspace to cascade delete
+      const allBots = getAllBotConfigs();
+      const workspaceBots = allBots.filter(b => b.clientId === slug);
+      
+      // Delete associated bots (from file system and database)
+      for (const bot of workspaceBots) {
+        try {
+          // Delete from database
+          await db.delete(bots).where(eq(bots.botId, bot.botId));
+          await db.delete(botSettings).where(eq(botSettings.botId, bot.botId));
+          
+          // Delete config file if exists
+          const configPath = path.join(process.cwd(), 'data', 'bot-configs', `${bot.botId}.json`);
+          if (fs.existsSync(configPath)) {
+            fs.unlinkSync(configPath);
+          }
+        } catch (e) {
+          console.error(`Error deleting bot ${bot.botId}:`, e);
+        }
+      }
+      
+      // Log before delete
+      await storage.createSystemLog({
+        level: 'warning',
+        source: 'super-admin',
+        message: `Workspace ${slug} deleted`,
+        workspaceId: (existing as any).id,
+        details: { deletedBots: workspaceBots.length },
+      });
+      
+      await deleteWorkspace(slug);
+      
+      res.json({ success: true, slug, deletedBots: workspaceBots.length });
+    } catch (error) {
+      console.error("Delete workspace error:", error);
+      res.status(500).json({ error: "Failed to delete workspace" });
     }
   });
 

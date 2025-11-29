@@ -437,6 +437,66 @@ export async function getWorkspaceBySlug(slug: string): Promise<any | null> {
   }
 }
 
+export async function createWorkspace(data: {
+  name: string;
+  slug: string;
+  ownerId: string;
+  plan?: string;
+  status?: string;
+  settings?: any;
+}): Promise<any> {
+  try {
+    const [workspace] = await db.insert(workspaces).values({
+      name: data.name,
+      slug: data.slug,
+      ownerId: data.ownerId,
+      plan: data.plan || 'starter',
+      status: data.status || 'active',
+      settings: data.settings || {},
+    }).returning();
+    return workspace;
+  } catch (error) {
+    console.error('Error creating workspace:', error);
+    throw error;
+  }
+}
+
+export async function updateWorkspace(slug: string, data: {
+  name?: string;
+  ownerId?: string;
+  plan?: string;
+  status?: string;
+  settings?: any;
+}): Promise<any> {
+  try {
+    const updateData: any = { updatedAt: new Date() };
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.ownerId !== undefined) updateData.ownerId = data.ownerId;
+    if (data.plan !== undefined) updateData.plan = data.plan;
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.settings !== undefined) updateData.settings = data.settings;
+    
+    const [workspace] = await db.update(workspaces)
+      .set(updateData)
+      .where(eq(workspaces.slug, slug))
+      .returning();
+    return workspace;
+  } catch (error) {
+    console.error('Error updating workspace:', error);
+    throw error;
+  }
+}
+
+export async function deleteWorkspace(slug: string): Promise<boolean> {
+  try {
+    const result = await db.delete(workspaces).where(eq(workspaces.slug, slug));
+    return true;
+  } catch (error) {
+    console.error('Error deleting workspace:', error);
+    throw error;
+  }
+}
+
 export async function getBotsByWorkspaceId(workspaceId: string): Promise<BotConfig[]> {
   try {
     const botRecords = await db.select().from(bots).where(eq(bots.workspaceId, workspaceId));
