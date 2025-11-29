@@ -275,7 +275,7 @@ export default function ControlCenter() {
     enabled: currentUser?.role === "super_admin" && dashboardSection === 'logs',
   });
 
-  // Admin Users
+  // Admin Users (needed for both users section and workspace owner selection)
   const { data: adminUsers, isLoading: usersLoading } = useQuery<Array<{
     id: number;
     username: string;
@@ -284,7 +284,7 @@ export default function ControlCenter() {
     createdAt?: string;
   }>>({
     queryKey: ["/api/super-admin/users"],
-    enabled: currentUser?.role === "super_admin" && dashboardSection === 'users',
+    enabled: currentUser?.role === "super_admin" && (dashboardSection === 'users' || dashboardSection === 'workspaces'),
   });
   
   // Recent Activity Feed
