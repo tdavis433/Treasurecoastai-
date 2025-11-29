@@ -12,7 +12,8 @@ import {
   Settings, Palette, Clock, Bell, BookOpen, LogOut, Send, AlertCircle, Shield, 
   Trash2, Plus, X, Sparkles, Building2, Calendar, ClipboardList, Edit2, 
   GripVertical, ChevronDown, ChevronUp, Save, Phone, Mail, Globe, MapPin,
-  BarChart3, MessageSquare, Users, Zap, AlertTriangle
+  BarChart3, MessageSquare, Users, Zap, AlertTriangle, DollarSign, CreditCard,
+  TrendingUp, TrendingDown, ExternalLink
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,30 @@ interface PlatformAnalytics {
     appointmentRequests: number;
   }>;
   totalBots: number;
+}
+
+interface BillingSubscription {
+  id: string;
+  status: string;
+  clientId: string | null;
+  customerName: string | null;
+  customerEmail: string | null;
+  productName: string | null;
+  amount: number;
+  currency: string;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  canceledAt: string | null;
+}
+
+interface BillingOverview {
+  mrr: number;
+  activeCount: number;
+  pastDueCount: number;
+  canceledCount: number;
+  incompleteCount: number;
+  totalSubscriptions: number;
+  subscriptions: BillingSubscription[];
 }
 
 interface GeneralSettings {
@@ -264,6 +289,12 @@ export default function SuperAdmin() {
   // Platform-wide analytics
   const { data: platformAnalytics, isLoading: analyticsLoading } = useQuery<PlatformAnalytics>({
     queryKey: ["/api/super-admin/analytics/overview"],
+    enabled: currentUser?.role === "super_admin",
+  });
+
+  // Billing overview
+  const { data: billingOverview, isLoading: billingLoading } = useQuery<BillingOverview>({
+    queryKey: ["/api/super-admin/billing/overview"],
     enabled: currentUser?.role === "super_admin",
   });
 
@@ -791,6 +822,124 @@ export default function SuperAdmin() {
                 </div>
               )}
             </div>
+          </GlassCardContent>
+        </GlassCard>
+
+        {/* Billing Overview Section */}
+        <GlassCard>
+          <GlassCardHeader>
+            <GlassCardTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-green-400" />
+              Billing Overview
+            </GlassCardTitle>
+            <GlassCardDescription>Revenue metrics and subscription status across all clients</GlassCardDescription>
+          </GlassCardHeader>
+          <GlassCardContent>
+            {billingLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="flex items-center gap-3 text-white/55">
+                  <Sparkles className="h-5 w-5 animate-pulse text-cyan-400" />
+                  <span>Loading billing data...</span>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="p-4 rounded-xl bg-gradient-to-br from-green-500/10 to-green-600/5 border border-green-500/20 text-center">
+                    <div className="flex items-center justify-center mb-2">
+                      <TrendingUp className="h-5 w-5 text-green-400" />
+                    </div>
+                    <div className="text-2xl font-bold text-white" data-testid="stat-mrr">
+                      ${billingOverview?.mrr?.toFixed(2) || '0.00'}
+                    </div>
+                    <div className="text-xs text-white/55">Monthly Recurring Revenue</div>
+                  </div>
+                  
+                  <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-center">
+                    <div className="flex items-center justify-center mb-2">
+                      <CreditCard className="h-5 w-5 text-blue-400" />
+                    </div>
+                    <div className="text-2xl font-bold text-white" data-testid="stat-active-subs">
+                      {billingOverview?.activeCount || 0}
+                    </div>
+                    <div className="text-xs text-white/55">Active Subscriptions</div>
+                  </div>
+                  
+                  <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-center">
+                    <div className="flex items-center justify-center mb-2">
+                      <AlertCircle className="h-5 w-5 text-amber-400" />
+                    </div>
+                    <div className={`text-2xl font-bold ${(billingOverview?.pastDueCount || 0) > 0 ? 'text-amber-500' : 'text-white'}`} data-testid="stat-past-due">
+                      {billingOverview?.pastDueCount || 0}
+                    </div>
+                    <div className="text-xs text-white/55">Past Due</div>
+                  </div>
+                  
+                  <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-center">
+                    <div className="flex items-center justify-center mb-2">
+                      <TrendingDown className="h-5 w-5 text-red-400" />
+                    </div>
+                    <div className="text-2xl font-bold text-white" data-testid="stat-canceled">
+                      {billingOverview?.canceledCount || 0}
+                    </div>
+                    <div className="text-xs text-white/55">Canceled</div>
+                  </div>
+                </div>
+
+                {billingOverview?.subscriptions && billingOverview.subscriptions.length > 0 && (
+                  <div className="pt-4 border-t border-white/10">
+                    <h4 className="text-sm font-medium text-white/70 mb-4">Subscription Details</h4>
+                    <div className="space-y-2">
+                      {billingOverview.subscriptions.slice(0, 10).map((sub) => (
+                        <div 
+                          key={sub.id}
+                          className="p-3 rounded-lg bg-white/5 border border-white/10 flex flex-col md:flex-row md:items-center md:justify-between gap-2"
+                          data-testid={`subscription-row-${sub.id}`}
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-white">{sub.customerName || sub.customerEmail || 'Unknown'}</span>
+                              <NeonBadge 
+                                variant={
+                                  sub.status === 'active' || sub.status === 'trialing' ? 'success' : 
+                                  sub.status === 'past_due' ? 'danger' : 
+                                  'default'
+                                } 
+                                className="text-xs"
+                              >
+                                {sub.status}
+                              </NeonBadge>
+                            </div>
+                            <div className="text-xs text-white/55 mt-1">
+                              {sub.productName || 'Unknown Plan'} • ${sub.amount}/{sub.currency.toUpperCase()}
+                              {sub.clientId && <span className="ml-2">• Client: {sub.clientId}</span>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {sub.currentPeriodEnd && (
+                              <span className="text-xs text-white/40">
+                                Renews: {new Date(sub.currentPeriodEnd).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {billingOverview.subscriptions.length > 10 && (
+                      <p className="text-xs text-white/40 mt-3 text-center">
+                        Showing 10 of {billingOverview.subscriptions.length} subscriptions
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {(!billingOverview?.subscriptions || billingOverview.subscriptions.length === 0) && (
+                  <div className="text-center py-4 text-white/50">
+                    No active subscriptions yet.
+                  </div>
+                )}
+              </div>
+            )}
           </GlassCardContent>
         </GlassCard>
 

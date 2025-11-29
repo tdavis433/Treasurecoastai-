@@ -5584,6 +5584,31 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
+  // Get billing overview for super admin dashboard
+  app.get("/api/super-admin/billing/overview", requireSuperAdmin, async (req, res) => {
+    try {
+      const { stripeService } = await import('./stripeService');
+      const overview = await stripeService.getBillingOverview();
+      res.json(overview);
+    } catch (error) {
+      console.error("Get billing overview error:", error);
+      res.status(500).json({ error: "Failed to get billing overview" });
+    }
+  });
+
+  // Get recent invoices for super admin dashboard
+  app.get("/api/super-admin/billing/invoices", requireSuperAdmin, async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 10;
+      const { stripeService } = await import('./stripeService');
+      const invoices = await stripeService.getRecentInvoices(limit);
+      res.json({ invoices });
+    } catch (error) {
+      console.error("Get recent invoices error:", error);
+      res.status(500).json({ error: "Failed to get recent invoices" });
+    }
+  });
+
   // =============================================
   // PHASE 4: AUTOMATION V2 API ENDPOINTS
   // =============================================
