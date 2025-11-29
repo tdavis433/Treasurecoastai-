@@ -9,9 +9,11 @@
   window.TreasureCoastAI = {
     initialized: false,
     config: {},
+    fullConfig: null,
     iframe: null,
     bubble: null,
-    isOpen: false
+    isOpen: false,
+    autoOpenTimer: null
   };
   
   function getScriptConfig() {
@@ -26,12 +28,14 @@
     }
     
     return {
+      token: currentScript.getAttribute('data-token') || '',
       clientId: currentScript.getAttribute('data-client-id') || '',
       botId: currentScript.getAttribute('data-bot-id') || '',
       primaryColor: currentScript.getAttribute('data-primary-color') || '#2563eb',
       position: currentScript.getAttribute('data-position') || 'bottom-right',
       greeting: currentScript.getAttribute('data-greeting') || 'Hi! How can I help you today?',
       bubbleIcon: currentScript.getAttribute('data-bubble-icon') || 'chat',
+      theme: currentScript.getAttribute('data-theme') || 'dark',
       apiUrl: currentScript.getAttribute('data-api-url') || getBaseUrl()
     };
   }
@@ -47,19 +51,48 @@
     return window.location.origin;
   }
   
-  function createBubble(config) {
+  async function fetchFullConfig(token, apiUrl) {
+    if (!token) return null;
+    
+    try {
+      var response = await fetch(apiUrl + '/api/widget/full-config/' + token);
+      if (!response.ok) {
+        console.warn('Failed to fetch widget config:', response.status);
+        return null;
+      }
+      return await response.json();
+    } catch (error) {
+      console.warn('Error fetching widget config:', error);
+      return null;
+    }
+  }
+  
+  function getResolvedTheme(themeMode) {
+    if (themeMode === 'auto') {
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return themeMode || 'dark';
+  }
+  
+  function createBubble(config, fullConfig) {
     var bubble = document.createElement('div');
     bubble.id = 'tcai-bubble';
     bubble.setAttribute('data-testid', 'widget-bubble');
+    bubble.setAttribute('role', 'button');
+    bubble.setAttribute('aria-label', 'Open chat');
+    bubble.setAttribute('tabindex', '0');
     
-    var positionStyles = getPositionStyles(config.position, 'bubble');
+    var position = (fullConfig && fullConfig.widgetSettings && fullConfig.widgetSettings.position) || config.position;
+    var primaryColor = (fullConfig && fullConfig.widgetSettings && fullConfig.widgetSettings.primaryColor) || config.primaryColor;
+    
+    var positionStyles = getPositionStyles(position, 'bubble');
     
     bubble.style.cssText = [
       'position: fixed',
       'width: 60px',
       'height: 60px',
       'border-radius: 50%',
-      'background: ' + config.primaryColor,
+      'background: ' + primaryColor,
       'cursor: pointer',
       'box-shadow: 0 4px 20px rgba(0,0,0,0.3)',
       'z-index: 2147483646',
@@ -70,7 +103,14 @@
       positionStyles
     ].join(';');
     
-    bubble.innerHTML = getChatIcon(config.bubbleIcon);
+    var bubbleIcon = config.bubbleIcon;
+    var avatarUrl = fullConfig && fullConfig.widgetSettings && fullConfig.widgetSettings.avatarUrl;
+    
+    if (avatarUrl) {
+      bubble.innerHTML = '<img src="' + avatarUrl + '" alt="Chat" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;">';
+    } else {
+      bubble.innerHTML = getChatIcon(bubbleIcon);
+    }
     
     bubble.onmouseover = function() {
       bubble.style.transform = 'scale(1.1)';
@@ -84,6 +124,13 @@
     
     bubble.onclick = function() {
       toggleWidget();
+    };
+    
+    bubble.onkeydown = function(e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleWidget();
+      }
     };
     
     return bubble;
@@ -102,13 +149,20 @@
   
   function getPositionStyles(position, element) {
     var styles = [];
-    var offset = element === 'bubble' ? '24px' : '100px';
-    var windowOffset = element === 'bubble' ? '24px' : '24px';
+    var windowOffset = '24px';
     
-    if (position.indexOf('bottom') !== -1) {
-      styles.push('bottom: ' + windowOffset);
+    if (element === 'window') {
+      if (position.indexOf('bottom') !== -1) {
+        styles.push('bottom: 100px');
+      } else {
+        styles.push('top: 24px');
+      }
     } else {
-      styles.push('top: ' + windowOffset);
+      if (position.indexOf('bottom') !== -1) {
+        styles.push('bottom: ' + windowOffset);
+      } else {
+        styles.push('top: ' + windowOffset);
+      }
     }
     
     if (position.indexOf('right') !== -1) {
@@ -120,12 +174,18 @@
     return styles.join(';');
   }
   
-  function createIframe(config) {
+  function createIframe(config, fullConfig) {
     var iframe = document.createElement('iframe');
     iframe.id = 'tcai-iframe';
     iframe.setAttribute('data-testid', 'widget-iframe');
+    iframe.setAttribute('title', 'Chat Widget');
     
-    var positionStyles = getPositionStyles(config.position, 'window');
+    var position = (fullConfig && fullConfig.widgetSettings && fullConfig.widgetSettings.position) || config.position;
+    var themeMode = (fullConfig && fullConfig.widgetSettings && fullConfig.widgetSettings.themeMode) || config.theme;
+    var resolvedTheme = getResolvedTheme(themeMode);
+    
+    var positionStyles = getPositionStyles(position, 'window');
+    var bgColor = resolvedTheme === 'light' ? '#ffffff' : '#1a1a2e';
     
     iframe.style.cssText = [
       'position: fixed',
@@ -141,23 +201,38 @@
       'transform: translateY(20px) scale(0.95)',
       'transition: opacity 0.3s ease, transform 0.3s ease',
       'pointer-events: none',
-      'background: #1a1a2e',
+      'background: ' + bgColor,
       positionStyles
     ].join(';');
     
     var params = new URLSearchParams({
       clientId: config.clientId,
       botId: config.botId,
-      primaryColor: config.primaryColor,
-      greeting: config.greeting
+      primaryColor: (fullConfig && fullConfig.widgetSettings && fullConfig.widgetSettings.primaryColor) || config.primaryColor,
+      greeting: (fullConfig && fullConfig.widgetSettings && fullConfig.widgetSettings.greeting) || config.greeting,
+      theme: resolvedTheme
     });
+    
+    if (config.token) {
+      params.set('token', config.token);
+    }
     
     iframe.src = config.apiUrl + '/widget/frame.html?' + params.toString();
     
     iframe.onload = function() {
+      var iframeConfig = Object.assign({}, config);
+      if (fullConfig) {
+        iframeConfig.fullConfig = fullConfig;
+        iframeConfig.theme = resolvedTheme;
+        if (fullConfig.widgetSettings) {
+          iframeConfig.primaryColor = fullConfig.widgetSettings.primaryColor || iframeConfig.primaryColor;
+          iframeConfig.greeting = fullConfig.widgetSettings.greeting || iframeConfig.greeting;
+        }
+      }
+      
       iframe.contentWindow.postMessage({
         type: 'TCAI_CONFIG',
-        config: config
+        config: iframeConfig
       }, '*');
     };
     
@@ -177,13 +252,23 @@
   function openWidget() {
     var tcai = window.TreasureCoastAI;
     
+    if (tcai.autoOpenTimer) {
+      clearTimeout(tcai.autoOpenTimer);
+      tcai.autoOpenTimer = null;
+    }
+    
     tcai.isOpen = true;
     tcai.iframe.style.opacity = '1';
     tcai.iframe.style.transform = 'translateY(0) scale(1)';
     tcai.iframe.style.pointerEvents = 'auto';
     tcai.bubble.innerHTML = getCloseIcon();
+    tcai.bubble.setAttribute('aria-label', 'Close chat');
     
     tcai.iframe.contentWindow.postMessage({ type: 'TCAI_OPEN' }, '*');
+    
+    try {
+      sessionStorage.setItem('tcai_opened', 'true');
+    } catch (e) {}
   }
   
   function closeWidget() {
@@ -193,7 +278,36 @@
     tcai.iframe.style.opacity = '0';
     tcai.iframe.style.transform = 'translateY(20px) scale(0.95)';
     tcai.iframe.style.pointerEvents = 'none';
-    tcai.bubble.innerHTML = getChatIcon(tcai.config.bubbleIcon);
+    
+    var avatarUrl = tcai.fullConfig && tcai.fullConfig.widgetSettings && tcai.fullConfig.widgetSettings.avatarUrl;
+    if (avatarUrl) {
+      tcai.bubble.innerHTML = '<img src="' + avatarUrl + '" alt="Chat" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;">';
+    } else {
+      tcai.bubble.innerHTML = getChatIcon(tcai.config.bubbleIcon);
+    }
+    tcai.bubble.setAttribute('aria-label', 'Open chat');
+  }
+  
+  function setupAutoOpen(config, fullConfig) {
+    if (!fullConfig || !fullConfig.widgetSettings) return;
+    
+    var settings = fullConfig.widgetSettings;
+    
+    if (!settings.autoOpenEnabled) return;
+    
+    try {
+      if (sessionStorage.getItem('tcai_opened') === 'true') {
+        return;
+      }
+    } catch (e) {}
+    
+    var delayMs = (settings.autoOpenDelay || 5) * 1000;
+    
+    window.TreasureCoastAI.autoOpenTimer = setTimeout(function() {
+      if (!window.TreasureCoastAI.isOpen) {
+        openWidget();
+      }
+    }, delayMs);
   }
   
   function handleMessage(event) {
@@ -210,10 +324,66 @@
           window.TreasureCoastAI.iframe.style.height = Math.min(data.height, window.innerHeight - 120) + 'px';
         }
         break;
+      case 'TCAI_PLAY_SOUND':
+        if (data.sound) {
+          playNotificationSound(data.sound);
+        }
+        break;
     }
   }
   
-  function init() {
+  function playNotificationSound(soundType) {
+    var tcai = window.TreasureCoastAI;
+    if (!tcai.fullConfig || !tcai.fullConfig.widgetSettings) return;
+    
+    var settings = tcai.fullConfig.widgetSettings;
+    if (!settings.notificationSoundEnabled) return;
+    
+    try {
+      var audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      var oscillator = audioContext.createOscillator();
+      var gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.type = 'sine';
+      oscillator.frequency.value = soundType === 'message' ? 800 : 600;
+      
+      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.2);
+    } catch (e) {
+      console.warn('Could not play notification sound:', e);
+    }
+  }
+  
+  function setupThemeListener() {
+    if (!window.matchMedia) return;
+    
+    var mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    
+    mediaQuery.addEventListener('change', function(e) {
+      var tcai = window.TreasureCoastAI;
+      if (!tcai.fullConfig || !tcai.fullConfig.widgetSettings) return;
+      
+      var themeMode = tcai.fullConfig.widgetSettings.themeMode;
+      if (themeMode !== 'auto') return;
+      
+      var newTheme = e.matches ? 'dark' : 'light';
+      var bgColor = newTheme === 'light' ? '#ffffff' : '#1a1a2e';
+      
+      tcai.iframe.style.background = bgColor;
+      tcai.iframe.contentWindow.postMessage({
+        type: 'TCAI_THEME_CHANGE',
+        theme: newTheme
+      }, '*');
+    });
+  }
+  
+  async function init() {
     var config = getScriptConfig();
     
     if (!config.clientId || !config.botId) {
@@ -223,8 +393,14 @@
     
     window.TreasureCoastAI.config = config;
     
-    var bubble = createBubble(config);
-    var iframe = createIframe(config);
+    var fullConfig = null;
+    if (config.token) {
+      fullConfig = await fetchFullConfig(config.token, config.apiUrl);
+      window.TreasureCoastAI.fullConfig = fullConfig;
+    }
+    
+    var bubble = createBubble(config, fullConfig);
+    var iframe = createIframe(config, fullConfig);
     
     window.TreasureCoastAI.bubble = bubble;
     window.TreasureCoastAI.iframe = iframe;
@@ -233,6 +409,9 @@
     document.body.appendChild(iframe);
     
     window.addEventListener('message', handleMessage);
+    
+    setupThemeListener();
+    setupAutoOpen(config, fullConfig);
     
     window.TreasureCoastAI.initialized = true;
     window.TreasureCoastAI.open = openWidget;

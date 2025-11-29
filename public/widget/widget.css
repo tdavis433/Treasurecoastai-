@@ -11,6 +11,26 @@
   --tcai-bot-bg: #252545;
 }
 
+body.theme-light {
+  --tcai-bg: #ffffff;
+  --tcai-bg-secondary: #f8fafc;
+  --tcai-bg-message: #f1f5f9;
+  --tcai-text: #1e293b;
+  --tcai-text-muted: #64748b;
+  --tcai-border: #e2e8f0;
+  --tcai-bot-bg: #f1f5f9;
+}
+
+body.theme-dark {
+  --tcai-bg: #1a1a2e;
+  --tcai-bg-secondary: #16213e;
+  --tcai-bg-message: #0f3460;
+  --tcai-text: #e8e8e8;
+  --tcai-text-muted: #9ca3af;
+  --tcai-border: #2a2a4a;
+  --tcai-bot-bg: #252545;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -46,22 +66,27 @@ body {
   padding: 16px;
   background: var(--tcai-bg-secondary);
   border-bottom: 1px solid var(--tcai-border);
+  gap: 8px;
 }
 
 .tcai-header-info {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
+  flex: 1;
 }
 
 .tcai-avatar {
   width: 40px;
   height: 40px;
+  min-width: 40px;
   border-radius: 50%;
   background: var(--tcai-primary);
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 
 .tcai-avatar svg {
@@ -70,11 +95,19 @@ body {
   color: white;
 }
 
+.tcai-header-text {
+  min-width: 0;
+  flex: 1;
+}
+
 .tcai-header-text h1 {
   font-size: 16px;
   font-weight: 600;
   color: var(--tcai-text);
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tcai-header-text p {
@@ -86,6 +119,7 @@ body {
 .tcai-close-btn {
   width: 32px;
   height: 32px;
+  min-width: 32px;
   border-radius: 8px;
   border: none;
   background: transparent;
@@ -100,6 +134,11 @@ body {
 .tcai-close-btn:hover {
   background: var(--tcai-border);
   color: var(--tcai-text);
+}
+
+.tcai-close-btn:focus {
+  outline: 2px solid var(--tcai-primary);
+  outline-offset: 2px;
 }
 
 .tcai-messages {
@@ -215,6 +254,11 @@ body {
   border-color: var(--tcai-primary);
 }
 
+.tcai-quick-action:focus {
+  outline: 2px solid var(--tcai-primary);
+  outline-offset: 2px;
+}
+
 .tcai-input-area {
   padding: 16px;
   background: var(--tcai-bg-secondary);
@@ -243,6 +287,7 @@ body {
   color: var(--tcai-text);
   font-size: 14px;
   outline: none;
+  min-width: 0;
 }
 
 .tcai-input::placeholder {
@@ -252,6 +297,7 @@ body {
 .tcai-send-btn {
   width: 36px;
   height: 36px;
+  min-width: 36px;
   border-radius: 50%;
   border: none;
   background: var(--tcai-primary);
@@ -276,6 +322,11 @@ body {
   cursor: not-allowed;
 }
 
+.tcai-send-btn:focus {
+  outline: 2px solid var(--tcai-primary);
+  outline-offset: 2px;
+}
+
 .tcai-footer {
   padding: 8px 16px;
   text-align: center;
@@ -295,6 +346,11 @@ body {
   text-decoration: underline;
 }
 
+.tcai-footer a:focus {
+  outline: 2px solid var(--tcai-primary);
+  outline-offset: 2px;
+}
+
 .tcai-error {
   padding: 12px 16px;
   background: rgba(239, 68, 68, 0.1);
@@ -303,6 +359,12 @@ body {
   color: #f87171;
   font-size: 13px;
   margin: 8px 16px;
+}
+
+body.theme-light .tcai-error {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.2);
+  color: #dc2626;
 }
 
 .tcai-paused {
@@ -335,4 +397,110 @@ body {
 .tcai-paused p {
   color: var(--tcai-text-muted);
   font-size: 14px;
+}
+
+@media (max-width: 420px) {
+  .tcai-header {
+    padding: 12px;
+  }
+  
+  .tcai-header-info {
+    gap: 10px;
+  }
+  
+  .tcai-avatar {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+  }
+  
+  .tcai-avatar svg {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .tcai-header-text h1 {
+    font-size: 14px;
+  }
+  
+  .tcai-header-text p {
+    font-size: 11px;
+  }
+  
+  .tcai-messages {
+    padding: 12px;
+    gap: 10px;
+  }
+  
+  .tcai-message {
+    max-width: 90%;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+  
+  .tcai-input-area {
+    padding: 12px;
+  }
+  
+  .tcai-input-wrapper {
+    padding: 6px 6px 6px 12px;
+  }
+  
+  .tcai-input {
+    font-size: 16px;
+  }
+  
+  .tcai-send-btn {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+  }
+  
+  .tcai-send-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .tcai-footer {
+    padding: 6px 12px;
+    font-size: 10px;
+  }
+  
+  .tcai-paused {
+    padding: 24px;
+  }
+  
+  .tcai-paused-icon {
+    width: 56px;
+    height: 56px;
+  }
+  
+  .tcai-paused h2 {
+    font-size: 16px;
+  }
+  
+  .tcai-paused p {
+    font-size: 13px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tcai-message,
+  .tcai-typing-dot,
+  .tcai-send-btn,
+  .tcai-close-btn,
+  .tcai-quick-action,
+  .tcai-input-wrapper {
+    animation: none;
+    transition: none;
+  }
+  
+  @keyframes tcai-fadeIn {
+    from { opacity: 1; transform: none; }
+    to { opacity: 1; transform: none; }
+  }
+  
+  @keyframes tcai-bounce {
+    0%, 100% { transform: none; opacity: 1; }
+  }
 }

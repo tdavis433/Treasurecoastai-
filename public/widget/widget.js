@@ -6,7 +6,12 @@
     botId: '',
     primaryColor: '#2563eb',
     greeting: 'Hi! How can I help you today?',
-    apiUrl: ''
+    apiUrl: '',
+    theme: 'dark',
+    avatarUrl: '',
+    showPoweredBy: true,
+    notificationSoundEnabled: false,
+    businessName: 'Chat Assistant'
   };
   
   var state = {
@@ -25,7 +30,9 @@
       clientId: params.get('clientId') || '',
       botId: params.get('botId') || '',
       primaryColor: params.get('primaryColor') || '#2563eb',
-      greeting: params.get('greeting') || 'Hi! How can I help you today?'
+      greeting: params.get('greeting') || 'Hi! How can I help you today?',
+      theme: params.get('theme') || 'dark',
+      token: params.get('token') || ''
     };
   }
   
@@ -84,7 +91,7 @@
   function sanitizeColor(color) {
     if (isValidHexColor(color)) return color;
     console.warn('Invalid color provided, using default: ' + color);
-    return '#2563eb'; // Default blue
+    return '#2563eb';
   }
   
   function formatMessage(text) {
@@ -94,10 +101,23 @@
       .replace(/\*(.*?)\*/g, '<em>$1</em>');
   }
   
+  function playNotificationSound(type) {
+    if (!config.notificationSoundEnabled) return;
+    
+    window.parent.postMessage({
+      type: 'TCAI_PLAY_SOUND',
+      sound: type
+    }, '*');
+  }
+  
   function addMessage(role, content) {
     state.messages.push({ role: role, content: content, timestamp: Date.now() });
     renderMessages();
     saveConversation();
+    
+    if (role === 'assistant') {
+      playNotificationSound('message');
+    }
   }
   
   function renderMessages() {
@@ -105,11 +125,11 @@
     
     state.messages.forEach(function(msg) {
       var className = msg.role === 'user' ? 'user' : 'bot';
-      html += '<div class="tcai-message ' + className + '" data-testid="message-' + className + '">' + formatMessage(msg.content) + '</div>';
+      html += '<div class="tcai-message ' + className + '" data-testid="message-' + className + '" role="article" aria-label="' + (msg.role === 'user' ? 'Your message' : 'Assistant message') + '">' + formatMessage(msg.content) + '</div>';
     });
     
     if (state.isLoading) {
-      html += '<div class="tcai-typing" data-testid="typing-indicator">';
+      html += '<div class="tcai-typing" data-testid="typing-indicator" aria-label="Assistant is typing">';
       html += '<div class="tcai-typing-dot"></div>';
       html += '<div class="tcai-typing-dot"></div>';
       html += '<div class="tcai-typing-dot"></div>';
@@ -124,6 +144,7 @@
     var errorDiv = document.createElement('div');
     errorDiv.className = 'tcai-error';
     errorDiv.setAttribute('data-testid', 'error-message');
+    errorDiv.setAttribute('role', 'alert');
     errorDiv.textContent = message;
     elements.messages.appendChild(errorDiv);
     elements.messages.scrollTop = elements.messages.scrollHeight;
@@ -134,29 +155,39 @@
     container.innerHTML = [
       '<div class="tcai-header">',
       '  <div class="tcai-header-info">',
-      '    <div class="tcai-avatar">',
-      '      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>',
-      '    </div>',
+      '    ' + getAvatarHtml(),
       '    <div class="tcai-header-text">',
-      '      <h1>Chat Assistant</h1>',
+      '      <h1>' + escapeHtml(config.businessName) + '</h1>',
       '      <p>We\'ll be back soon</p>',
       '    </div>',
       '  </div>',
-      '  <button class="tcai-close-btn" data-testid="button-close" onclick="closeWidget()">',
+      '  <button class="tcai-close-btn" data-testid="button-close" aria-label="Close chat" onclick="closeWidget()">',
       '    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
       '  </button>',
       '</div>',
-      '<div class="tcai-paused">',
+      '<div class="tcai-paused" role="status">',
       '  <div class="tcai-paused-icon">',
       '    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="10" y1="15" x2="10" y2="9"></line><line x1="14" y1="15" x2="14" y2="9"></line></svg>',
       '  </div>',
       '  <h2>Service Temporarily Unavailable</h2>',
       '  <p>Our chat service is currently paused. Please contact us directly or check back later.</p>',
       '</div>',
-      '<div class="tcai-footer">',
-      '  Powered by <a href="#">Treasure Coast AI</a>',
-      '</div>'
+      getFooterHtml()
     ].join('\n');
+  }
+  
+  function getAvatarHtml() {
+    if (config.avatarUrl) {
+      return '<div class="tcai-avatar"><img src="' + escapeHtml(config.avatarUrl) + '" alt="' + escapeHtml(config.businessName) + '" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;"></div>';
+    }
+    return '<div class="tcai-avatar" style="background: ' + config.primaryColor + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></div>';
+  }
+  
+  function getFooterHtml() {
+    if (!config.showPoweredBy) {
+      return '';
+    }
+    return '<div class="tcai-footer">Powered by <a href="https://treasurecoastai.com" target="_blank" rel="noopener">Treasure Coast AI</a></div>';
   }
   
   async function sendMessage(content) {
@@ -247,6 +278,9 @@
       return Math.max(0, c - 30).toString(16).padStart(2, '0');
     }).join('');
     document.documentElement.style.setProperty('--tcai-primary-hover', hoverColor);
+    
+    document.body.classList.remove('theme-light', 'theme-dark');
+    document.body.classList.add('theme-' + config.theme);
   }
   
   function render() {
@@ -255,30 +289,26 @@
     container.innerHTML = [
       '<div class="tcai-header">',
       '  <div class="tcai-header-info">',
-      '    <div class="tcai-avatar" style="background: ' + config.primaryColor + '">',
-      '      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>',
-      '    </div>',
+      '    ' + getAvatarHtml(),
       '    <div class="tcai-header-text">',
-      '      <h1>Chat Assistant</h1>',
+      '      <h1>' + escapeHtml(config.businessName) + '</h1>',
       '      <p>Online</p>',
       '    </div>',
       '  </div>',
-      '  <button class="tcai-close-btn" data-testid="button-close" onclick="closeWidget()">',
+      '  <button class="tcai-close-btn" data-testid="button-close" aria-label="Close chat" onclick="closeWidget()">',
       '    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
       '  </button>',
       '</div>',
-      '<div class="tcai-messages" id="tcai-messages" data-testid="messages-container"></div>',
+      '<div class="tcai-messages" id="tcai-messages" data-testid="messages-container" role="log" aria-live="polite" aria-label="Chat messages"></div>',
       '<div class="tcai-input-area">',
       '  <div class="tcai-input-wrapper">',
-      '    <input type="text" class="tcai-input" id="tcai-input" placeholder="Type your message..." data-testid="input-message">',
-      '    <button class="tcai-send-btn" id="tcai-send" data-testid="button-send">',
+      '    <input type="text" class="tcai-input" id="tcai-input" placeholder="Type your message..." data-testid="input-message" aria-label="Message input">',
+      '    <button class="tcai-send-btn" id="tcai-send" data-testid="button-send" aria-label="Send message">',
       '      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>',
       '    </button>',
       '  </div>',
       '</div>',
-      '<div class="tcai-footer">',
-      '  Powered by <a href="#">Treasure Coast AI</a>',
-      '</div>'
+      getFooterHtml()
     ].join('\n');
     
     elements.messages = document.getElementById('tcai-messages');
@@ -310,12 +340,33 @@
             data.config.primaryColor = sanitizeColor(data.config.primaryColor);
           }
           Object.assign(config, data.config);
+          
+          if (data.config.fullConfig && data.config.fullConfig.widgetSettings) {
+            var ws = data.config.fullConfig.widgetSettings;
+            config.avatarUrl = ws.avatarUrl || '';
+            config.showPoweredBy = ws.showPoweredBy !== false;
+            config.notificationSoundEnabled = ws.notificationSoundEnabled || false;
+            config.theme = data.config.theme || 'dark';
+            if (ws.primaryColor) config.primaryColor = sanitizeColor(ws.primaryColor);
+            if (ws.greeting) config.greeting = ws.greeting;
+          }
+          
+          if (data.config.fullConfig && data.config.fullConfig.botConfig) {
+            config.businessName = data.config.fullConfig.botConfig.businessName || 'Chat Assistant';
+          }
+          
           applyTheme();
         }
         break;
       case 'TCAI_OPEN':
         if (elements.input) {
           elements.input.focus();
+        }
+        break;
+      case 'TCAI_THEME_CHANGE':
+        if (data.theme) {
+          config.theme = data.theme;
+          applyTheme();
         }
         break;
     }
@@ -327,6 +378,7 @@
     config.botId = urlParams.botId;
     config.primaryColor = sanitizeColor(urlParams.primaryColor);
     config.greeting = urlParams.greeting;
+    config.theme = urlParams.theme;
     config.apiUrl = getApiUrl();
     
     applyTheme();
