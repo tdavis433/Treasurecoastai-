@@ -18,10 +18,13 @@ import {
   type InsertLead,
   type WorkspaceMembership,
   type Workspace,
+  type Bot,
   type AutomationWorkflow,
   type InsertAutomationWorkflow,
   type AutomationRun,
   type InsertAutomationRun,
+  type WidgetSettings,
+  type InsertWidgetSettings,
   appointments,
   clientSettings,
   conversationAnalytics,
@@ -35,7 +38,8 @@ import {
   workspaces,
   bots,
   automationWorkflows,
-  automationRuns
+  automationRuns,
+  widgetSettings
 } from "@shared/schema";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { neonConfig, Pool } from "@neondatabase/serverless";
@@ -851,6 +855,29 @@ export class DbStorage implements IStorage {
     return workspace;
   }
 
+  // Get bot by botId (the human-readable ID like 'faith_house_main')
+  async getBotByBotId(botId: string): Promise<(Bot & { clientId?: string }) | undefined> {
+    const [bot] = await db
+      .select()
+      .from(bots)
+      .where(eq(bots.botId, botId))
+      .limit(1);
+    
+    if (!bot) return undefined;
+    
+    // Get the workspace to determine clientId (workspace slug)
+    const [workspace] = await db
+      .select()
+      .from(workspaces)
+      .where(eq(workspaces.id, bot.workspaceId))
+      .limit(1);
+    
+    return {
+      ...bot,
+      clientId: workspace?.slug
+    };
+  }
+
   // =============================================
   // PHASE 4: AUTOMATION WORKFLOW METHODS
   // =============================================
@@ -971,6 +998,90 @@ export class DbStorage implements IStorage {
         eq(automationRuns.sessionId, sessionId)
       ));
     return result[0]?.count || 0;
+  }
+
+  // =============================================
+  // WIDGET SETTINGS
+  // =============================================
+
+  async getWidgetSettings(botId: string): Promise<WidgetSettings | undefined> {
+    const result = await db
+      .select()
+      .from(widgetSettings)
+      .where(eq(widgetSettings.botId, botId))
+      .limit(1);
+    return result[0];
+  }
+
+  async createWidgetSettings(settings: InsertWidgetSettings): Promise<WidgetSettings> {
+    const result = await db
+      .insert(widgetSettings)
+      .values(settings as any)
+      .returning();
+    return result[0];
+  }
+
+  async updateWidgetSettings(botId: string, updates: Partial<InsertWidgetSettings>): Promise<WidgetSettings | undefined> {
+    const updateData = { ...updates, updatedAt: new Date() };
+    const result = await db
+      .update(widgetSettings)
+      .set(updateData as any)
+      .where(eq(widgetSettings.botId, botId))
+      .returning();
+    return result[0];
+  }
+
+  async upsertWidgetSettings(botId: string, settings: Partial<InsertWidgetSettings>): Promise<WidgetSettings> {
+    const existing = await this.getWidgetSettings(botId);
+    if (existing) {
+      const updated = await this.updateWidgetSettings(botId, settings);
+      return updated!;
+    } else {
+      return this.createWidgetSettings({ botId, ...settings } as InsertWidgetSettings);
+    }
+  }
+
+  async deleteWidgetSettings(botId: string): Promise<void> {
+    await db
+      .delete(widgetSettings)
+      .where(eq(widgetSettings.botId, botId));
+  }
+
+  async getWidgetSettingsWithDefaults(botId: string): Promise<WidgetSettings> {
+    const settings = await this.getWidgetSettings(botId);
+    if (settings) return settings;
+    
+    // Return default settings without persisting
+    return {
+      id: '',
+      botId,
+      position: 'bottom-right',
+      theme: 'dark',
+      primaryColor: '#2563eb',
+      accentColor: null,
+      avatarUrl: null,
+      bubbleSize: 'medium',
+      windowWidth: 360,
+      windowHeight: 520,
+      borderRadius: 16,
+      showPoweredBy: true,
+      headerTitle: null,
+      headerSubtitle: 'Online',
+      welcomeMessage: null,
+      placeholderText: 'Type your message...',
+      offlineMessage: "We're currently offline. Leave a message!",
+      autoOpen: false,
+      autoOpenDelay: 5,
+      autoOpenOnce: true,
+      soundEnabled: false,
+      soundUrl: null,
+      mobileFullscreen: true,
+      mobileBreakpoint: 480,
+      customCss: null,
+      advanced: {},
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
   }
 }
 

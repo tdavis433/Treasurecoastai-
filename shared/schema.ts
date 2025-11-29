@@ -847,3 +847,69 @@ export const insertAutomationRunSchema = createInsertSchema(automationRuns).omit
 
 export type InsertAutomationRun = z.infer<typeof insertAutomationRunSchema>;
 export type AutomationRun = typeof automationRuns.$inferSelect;
+
+// =============================================
+// PHASE 5: WIDGET SETTINGS
+// =============================================
+
+// Widget settings - Customizable widget appearance and behavior per bot
+export const widgetSettings = pgTable("widget_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  botId: varchar("bot_id").notNull().unique(), // One widget config per bot
+  
+  // Appearance
+  position: text("position").notNull().default("bottom-right"), // bottom-left, bottom-right
+  theme: text("theme").notNull().default("dark"), // light, dark, auto
+  primaryColor: text("primary_color").notNull().default("#2563eb"),
+  accentColor: text("accent_color"),
+  avatarUrl: text("avatar_url"), // Custom avatar image URL
+  bubbleSize: text("bubble_size").notNull().default("medium"), // small, medium, large
+  windowWidth: integer("window_width").default(360), // Widget window width in pixels
+  windowHeight: integer("window_height").default(520), // Widget window height in pixels
+  borderRadius: integer("border_radius").default(16), // Corner radius
+  
+  // Branding
+  showPoweredBy: boolean("show_powered_by").notNull().default(true),
+  headerTitle: text("header_title"), // Custom header title (defaults to bot name)
+  headerSubtitle: text("header_subtitle").default("Online"), // Status text
+  
+  // Welcome & Messages
+  welcomeMessage: text("welcome_message"), // Custom welcome message
+  placeholderText: text("placeholder_text").default("Type your message..."),
+  offlineMessage: text("offline_message").default("We're currently offline. Leave a message!"),
+  
+  // Behavior
+  autoOpen: boolean("auto_open").notNull().default(false),
+  autoOpenDelay: integer("auto_open_delay").default(5), // Seconds before auto-open
+  autoOpenOnce: boolean("auto_open_once").notNull().default(true), // Only auto-open once per session
+  soundEnabled: boolean("sound_enabled").notNull().default(false),
+  soundUrl: text("sound_url"), // Custom notification sound URL
+  
+  // Mobile settings
+  mobileFullscreen: boolean("mobile_fullscreen").notNull().default(true),
+  mobileBreakpoint: integer("mobile_breakpoint").default(480), // Pixels
+  
+  // Advanced
+  customCss: text("custom_css"), // Custom CSS overrides
+  advanced: json("advanced").$type<{
+    hideOnPages?: string[];
+    showOnPages?: string[];
+    triggerSelector?: string;
+    zIndex?: number;
+  }>().default({}),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  botIdIdx: index("widget_settings_bot_id_idx").on(table.botId),
+}));
+
+export const insertWidgetSettingsSchema = createInsertSchema(widgetSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertWidgetSettings = z.infer<typeof insertWidgetSettingsSchema>;
+export type WidgetSettings = typeof widgetSettings.$inferSelect;

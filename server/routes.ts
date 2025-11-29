@@ -3894,6 +3894,161 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // =============================================
+  // PHASE 5: WIDGET SETTINGS ENDPOINTS
+  // =============================================
+
+  // Widget settings validation schema
+  const widgetSettingsSchema = z.object({
+    position: z.enum(['bottom-left', 'bottom-right']).optional(),
+    theme: z.enum(['light', 'dark', 'auto']).optional(),
+    primaryColor: z.string().regex(/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/, 'Invalid hex color').optional(),
+    accentColor: z.string().regex(/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/, 'Invalid hex color').optional().nullable(),
+    avatarUrl: z.string().url().optional().nullable(),
+    bubbleSize: z.enum(['small', 'medium', 'large']).optional(),
+    windowWidth: z.number().min(280).max(600).optional(),
+    windowHeight: z.number().min(400).max(800).optional(),
+    borderRadius: z.number().min(0).max(32).optional(),
+    showPoweredBy: z.boolean().optional(),
+    headerTitle: z.string().max(50).optional().nullable(),
+    headerSubtitle: z.string().max(30).optional().nullable(),
+    welcomeMessage: z.string().max(500).optional().nullable(),
+    placeholderText: z.string().max(100).optional().nullable(),
+    offlineMessage: z.string().max(500).optional().nullable(),
+    autoOpen: z.boolean().optional(),
+    autoOpenDelay: z.number().min(0).max(60).optional(),
+    autoOpenOnce: z.boolean().optional(),
+    soundEnabled: z.boolean().optional(),
+    soundUrl: z.string().url().optional().nullable(),
+    mobileFullscreen: z.boolean().optional(),
+    mobileBreakpoint: z.number().min(320).max(768).optional(),
+    customCss: z.string().max(10000).optional().nullable(),
+    advanced: z.object({
+      hideOnPages: z.array(z.string()).optional(),
+      showOnPages: z.array(z.string()).optional(),
+      triggerSelector: z.string().optional(),
+      zIndex: z.number().optional(),
+    }).optional(),
+  });
+
+  // Get widget settings for a bot
+  app.get("/api/bots/:botId/widget-settings", requireAuth, async (req, res) => {
+    try {
+      const { botId } = req.params;
+      
+      // Validate tenant access
+      if (!await validateBotAccess(req, res, botId)) return;
+      
+      const settings = await storage.getWidgetSettingsWithDefaults(botId);
+      res.json({ settings });
+    } catch (error) {
+      console.error("Get widget settings error:", error);
+      res.status(500).json({ error: "Failed to get widget settings" });
+    }
+  });
+
+  // Update widget settings for a bot (upsert)
+  app.put("/api/bots/:botId/widget-settings", requireAuth, async (req, res) => {
+    try {
+      const { botId } = req.params;
+      
+      // Validate tenant access
+      if (!await validateBotAccess(req, res, botId)) return;
+      
+      const validation = widgetSettingsSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: "Invalid widget settings", details: validation.error.format() });
+      }
+      
+      const settings = await storage.upsertWidgetSettings(botId, validation.data as any);
+      res.json({ settings });
+    } catch (error) {
+      console.error("Update widget settings error:", error);
+      res.status(500).json({ error: "Failed to update widget settings" });
+    }
+  });
+
+  // Delete widget settings for a bot (reset to defaults)
+  app.delete("/api/bots/:botId/widget-settings", requireAuth, async (req, res) => {
+    try {
+      const { botId } = req.params;
+      
+      // Validate tenant access
+      if (!await validateBotAccess(req, res, botId)) return;
+      
+      await storage.deleteWidgetSettings(botId);
+      res.json({ success: true, message: "Widget settings reset to defaults" });
+    } catch (error) {
+      console.error("Delete widget settings error:", error);
+      res.status(500).json({ error: "Failed to reset widget settings" });
+    }
+  });
+
+  // Update the widget config endpoint to return full settings
+  app.get('/api/widget/full-config/:clientId/:botId', widgetCors, async (req, res) => {
+    try {
+      const { clientId, botId } = req.params;
+      
+      const botConfig = getBotConfig(clientId, botId);
+      if (!botConfig) {
+        return res.status(404).json({ error: 'Bot not found' });
+      }
+      
+      const clientStatus = getClientStatus(clientId);
+      if (clientStatus === 'paused') {
+        return res.json({
+          status: 'paused',
+          message: 'This service is currently paused.'
+        });
+      }
+      
+      // Get widget settings from database
+      const widgetConfig = await storage.getWidgetSettingsWithDefaults(botId);
+      
+      // Generate signed widget token (expires in 24 hours)
+      const widgetToken = generateWidgetToken(clientId, botId, 86400);
+      
+      // Return full widget configuration
+      res.json({
+        status: 'active',
+        token: widgetToken,
+        bot: {
+          name: botConfig.name,
+          businessName: botConfig.businessProfile?.businessName || botConfig.name,
+        },
+        widget: {
+          position: widgetConfig.position,
+          theme: widgetConfig.theme,
+          primaryColor: widgetConfig.primaryColor,
+          accentColor: widgetConfig.accentColor,
+          avatarUrl: widgetConfig.avatarUrl,
+          bubbleSize: widgetConfig.bubbleSize,
+          windowWidth: widgetConfig.windowWidth,
+          windowHeight: widgetConfig.windowHeight,
+          borderRadius: widgetConfig.borderRadius,
+          showPoweredBy: widgetConfig.showPoweredBy,
+          headerTitle: widgetConfig.headerTitle || botConfig.businessProfile?.businessName || 'Chat Assistant',
+          headerSubtitle: widgetConfig.headerSubtitle,
+          welcomeMessage: widgetConfig.welcomeMessage || `Hi! I'm the ${botConfig.businessProfile?.businessName || 'AI'} assistant. How can I help you today?`,
+          placeholderText: widgetConfig.placeholderText,
+          offlineMessage: widgetConfig.offlineMessage,
+          autoOpen: widgetConfig.autoOpen,
+          autoOpenDelay: widgetConfig.autoOpenDelay,
+          autoOpenOnce: widgetConfig.autoOpenOnce,
+          soundEnabled: widgetConfig.soundEnabled,
+          soundUrl: widgetConfig.soundUrl,
+          mobileFullscreen: widgetConfig.mobileFullscreen,
+          mobileBreakpoint: widgetConfig.mobileBreakpoint,
+          customCss: widgetConfig.customCss,
+          advanced: widgetConfig.advanced,
+        }
+      });
+    } catch (error) {
+      console.error('Widget full config error:', error);
+      res.status(500).json({ error: 'Failed to load widget configuration' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
