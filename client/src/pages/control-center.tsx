@@ -137,7 +137,7 @@ export default function ControlCenter() {
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [dashboardSection, setDashboardSection] = useState<'overview' | 'workspaces' | 'analytics' | 'logs' | 'users'>('overview');
-  const [logFilters, setLogFilters] = useState({ level: '', source: '', isResolved: '' });
+  const [logFilters, setLogFilters] = useState({ level: 'all', source: '', isResolved: 'all' });
   const [analyticsRange, setAnalyticsRange] = useState<number>(7);
   const [selectedBots, setSelectedBots] = useState<Set<string>>(new Set());
   const [workspaceSearch, setWorkspaceSearch] = useState('');
@@ -258,9 +258,9 @@ export default function ControlCenter() {
     queryKey: ["/api/super-admin/system/logs", logFilters],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (logFilters.level) params.append('level', logFilters.level);
+      if (logFilters.level && logFilters.level !== 'all') params.append('level', logFilters.level);
       if (logFilters.source) params.append('source', logFilters.source);
-      if (logFilters.isResolved) params.append('isResolved', logFilters.isResolved);
+      if (logFilters.isResolved && logFilters.isResolved !== 'all') params.append('isResolved', logFilters.isResolved);
       params.append('limit', '50');
       const response = await fetch(`/api/super-admin/system/logs?${params}`, { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch logs");
@@ -717,6 +717,7 @@ export default function ControlCenter() {
                       }
                     }}
                     className="text-white/55 hover:text-white hover:bg-white/10"
+                    data-testid="button-select-all"
                   >
                     {selectedBots.size === filteredBots.length && filteredBots.length > 0 ? 'Deselect All' : 'Select All'}
                   </Button>
@@ -725,8 +726,11 @@ export default function ControlCenter() {
               
               {/* Bulk Actions Toolbar - appears when bots are selected */}
               {selectedBots.size > 0 && (
-                <div className="flex items-center gap-3 mb-4 p-3 rounded-lg bg-cyan-500/10 border border-cyan-400/30">
-                  <span className="text-sm text-white font-medium">{selectedBots.size} bot{selectedBots.size > 1 ? 's' : ''} selected</span>
+                <div 
+                  className="flex items-center gap-3 mb-4 p-3 rounded-lg bg-cyan-500/10 border border-cyan-400/30"
+                  data-testid="toolbar-bulk-actions"
+                >
+                  <span className="text-sm text-white font-medium" data-testid="text-selected-count">{selectedBots.size} bot{selectedBots.size > 1 ? 's' : ''} selected</span>
                   <div className="flex items-center gap-2 ml-auto">
                     <Button
                       variant="outline"
@@ -734,6 +738,7 @@ export default function ControlCenter() {
                       onClick={() => bulkStatusMutation.mutate({ botIds: Array.from(selectedBots), status: 'active' })}
                       disabled={bulkStatusMutation.isPending}
                       className="border-green-500/30 text-green-400 hover:bg-green-500/10"
+                      data-testid="button-bulk-activate"
                     >
                       <Check className="h-3 w-3 mr-1" />
                       Activate
@@ -744,6 +749,7 @@ export default function ControlCenter() {
                       onClick={() => bulkStatusMutation.mutate({ botIds: Array.from(selectedBots), status: 'paused' })}
                       disabled={bulkStatusMutation.isPending}
                       className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+                      data-testid="button-bulk-pause"
                     >
                       <Pause className="h-3 w-3 mr-1" />
                       Pause
@@ -753,6 +759,7 @@ export default function ControlCenter() {
                       size="sm"
                       onClick={() => setSelectedBots(new Set())}
                       className="text-white/55 hover:text-white"
+                      data-testid="button-bulk-clear"
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -778,6 +785,10 @@ export default function ControlCenter() {
                         {/* Checkbox for bulk selection */}
                         <div 
                           className="absolute top-3 left-3 z-10"
+                          data-testid={`checkbox-bot-${bot.botId}`}
+                          role="checkbox"
+                          aria-checked={isChecked}
+                          tabIndex={0}
                           onClick={(e) => {
                             e.stopPropagation();
                             const newSet = new Set(selectedBots);
@@ -787,6 +798,19 @@ export default function ControlCenter() {
                               newSet.add(bot.botId);
                             }
                             setSelectedBots(newSet);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const newSet = new Set(selectedBots);
+                              if (isChecked) {
+                                newSet.delete(bot.botId);
+                              } else {
+                                newSet.add(bot.botId);
+                              }
+                              setSelectedBots(newSet);
+                            }
                           }}
                         >
                           <div className={`h-5 w-5 rounded border-2 flex items-center justify-center transition-colors ${
@@ -1193,7 +1217,7 @@ export default function ControlCenter() {
                           <SelectValue placeholder="All Levels" />
                         </SelectTrigger>
                         <SelectContent className="bg-[#1a1d24] border-white/10">
-                          <SelectItem value="" className="text-white">All Levels</SelectItem>
+                          <SelectItem value="all" className="text-white">All Levels</SelectItem>
                           <SelectItem value="debug" className="text-white">Debug</SelectItem>
                           <SelectItem value="info" className="text-white">Info</SelectItem>
                           <SelectItem value="warn" className="text-white">Warning</SelectItem>
@@ -1206,7 +1230,7 @@ export default function ControlCenter() {
                           <SelectValue placeholder="All Status" />
                         </SelectTrigger>
                         <SelectContent className="bg-[#1a1d24] border-white/10">
-                          <SelectItem value="" className="text-white">All Status</SelectItem>
+                          <SelectItem value="all" className="text-white">All Status</SelectItem>
                           <SelectItem value="false" className="text-white">Unresolved</SelectItem>
                           <SelectItem value="true" className="text-white">Resolved</SelectItem>
                         </SelectContent>
