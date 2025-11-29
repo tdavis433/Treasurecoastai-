@@ -32,7 +32,8 @@ export default function Login() {
         if (data.user?.role === "super_admin") {
           window.location.href = "/super-admin";
         } else {
-          window.location.href = "/admin/dashboard";
+          // Client admins go to the client dashboard
+          window.location.href = "/client/dashboard";
         }
       }, 500);
     },
