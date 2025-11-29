@@ -994,3 +994,60 @@ export const insertSessionStateSchema = createInsertSchema(sessionStates).omit({
 
 export type InsertSessionState = z.infer<typeof insertSessionStateSchema>;
 export type SessionState = typeof sessionStates.$inferSelect;
+
+// =============================================
+// SUPER ADMIN: SYSTEM LOGS
+// =============================================
+
+// System logs - Platform-wide event and error logging for super admin
+export const systemLogs = pgTable("system_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Log classification
+  level: text("level").notNull().default("info"), // debug, info, warn, error, critical
+  source: text("source").notNull(), // Route or component: api/chat, stripe/webhook, auth, system, etc.
+  
+  // Context
+  workspaceId: varchar("workspace_id"), // Nullable - for workspace-specific logs
+  clientId: varchar("client_id"), // Nullable - for client-specific logs
+  userId: varchar("user_id"), // Nullable - for user-specific logs
+  sessionId: varchar("session_id"), // Nullable - for session-specific logs
+  
+  // Log content
+  message: text("message").notNull(),
+  details: json("details").$type<Record<string, any>>().default({}),
+  
+  // Error tracking
+  errorCode: varchar("error_code"),
+  stackTrace: text("stack_trace"),
+  
+  // Request context
+  requestMethod: varchar("request_method"), // GET, POST, etc.
+  requestPath: varchar("request_path"),
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  
+  // Resolution tracking
+  isResolved: boolean("is_resolved").notNull().default(false),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedBy: varchar("resolved_by"),
+  resolutionNotes: text("resolution_notes"),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  levelIdx: index("system_logs_level_idx").on(table.level),
+  sourceIdx: index("system_logs_source_idx").on(table.source),
+  workspaceIdIdx: index("system_logs_workspace_id_idx").on(table.workspaceId),
+  clientIdIdx: index("system_logs_client_id_idx").on(table.clientId),
+  createdAtIdx: index("system_logs_created_at_idx").on(table.createdAt),
+  isResolvedIdx: index("system_logs_is_resolved_idx").on(table.isResolved),
+}));
+
+export const insertSystemLogSchema = createInsertSchema(systemLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertSystemLog = z.infer<typeof insertSystemLogSchema>;
+export type SystemLog = typeof systemLogs.$inferSelect;

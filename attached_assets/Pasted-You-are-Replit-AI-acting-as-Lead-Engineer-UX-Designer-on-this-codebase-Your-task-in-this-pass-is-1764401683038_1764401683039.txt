@@ -1,0 +1,352 @@
+You are Replit AI acting as Lead Engineer + UX Designer on this codebase.
+
+Your task in this pass is very specific:
+
+Take the existing Super Admin Control Center page (the one that shows “Treasure Coast AI – Control Center” with the bot list and KPI tiles) and upgrade it into a full SaaS owner control center with:
+
+Workspace-level views
+
+Global analytics
+
+System status & logs
+
+Quick actions
+
+Rich bot metrics
+…while keeping the existing style, layout, and dark theme.
+
+Do not break the existing routing or working features.
+You are enhancing and expanding the current /super-admin area.
+
+1️⃣ FIND & UNDERSTAND CURRENT SUPER ADMIN UI
+
+Locate the current Super Admin “Control Center” page:
+
+The page showing:
+
+“Treasure Coast AI – Control Center” in the top-left
+
+“Dashboard Overview”
+
+total bots / active / demo / paused KPI tiles
+
+left sidebar list of chatbots
+
+big grid of bot cards.
+
+Identify:
+
+The route (likely /super-admin or similar).
+
+The main React component and layout file(s) used for this page.
+
+Any associated hooks, context, or API routes that feed bot data into this page.
+
+You will be modifying this page and adding additional routes/components under the super-admin section, not starting from scratch.
+
+2️⃣ ADD A REAL “WORKSPACES” LAYER (BUSINESS VIEW FOR OWNER)
+
+Right now, this page only shows bots.
+You must add a Workspaces overview so the owner can see and manage each client business.
+
+2.1. Workspace List Section
+
+Add a Workspaces panel/section (can be a tab, sub-page, or area on the main dashboard):
+
+Use a shadcn Table or card grid.
+
+Each row/card must show:
+
+Workspace name (business name)
+
+Owner email (if available)
+
+Status: active, paused, or cancelled
+
+Plan tier (Starter / Growth / Pro or whatever exists)
+
+Bots count
+
+Created date
+
+Last active (based on recent conversation/analytics if available)
+
+Each workspace row/card must have actions:
+
+“View details”
+
+“Suspend / Reactivate workspace”
+
+“Impersonate workspace”
+
+“Open Stripe / Billing overview” (if billing is wired)
+
+Use the existing dark/neon style.
+
+2.2. Workspace Detail View
+
+When you click a workspace row/card, open a Workspace Detail page or drawer:
+
+Show:
+
+Workspace name, industry, contact email
+
+Plan tier + limits
+
+Usage snapshot:
+
+conversations last 30 days
+
+leads last 30 days
+
+appointments last 30 days
+
+Current workspace status
+
+List of that workspace’s bots:
+
+bot name
+
+status
+
+last active
+
+Actions:
+
+Impersonate workspace (if impersonation is already implemented, reuse it; otherwise, wire a simple version where super admin can view the client dashboard as that workspace).
+
+Suspend / Reactivate workspace.
+
+Open Stripe subscription details (if Stripe integration exists).
+
+Put this under a clear route like:
+/super-admin/workspaces and /super-admin/workspaces/[workspaceId] (or equivalent in your router).
+
+3️⃣ ADD GLOBAL ANALYTICS PANEL (OWNER VIEW)
+
+Extend the /super-admin main dashboard to include global analytics, not just bot counts.
+
+Above or below the existing “Total Bots / Active / Demo / Paused” tiles, add:
+
+KPI cards for the ENTIRE platform:
+
+Total conversations (last 7 days)
+
+Total leads (last 7 days)
+
+Total appointments (last 7 days)
+
+Total active workspaces
+
+Charts:
+
+Conversations per day (last 7 or 30 days) as a line or area chart
+
+Leads per day as a bar/line chart
+
+Optionally, appointments per day
+
+Use shadcn cards + whatever chart library is already present in the project (or a minimal one if needed).
+All analytics should be read-only and aggregated across all workspaces.
+
+4️⃣ ADD A “SYSTEM STATUS” & “SYSTEM LOGS” EXPERIENCE
+4.1. System Status Indicator
+
+At the top-right of the Super Admin header (where you currently show “All Systems Operational”), turn this into a real status indicator:
+
+State text:
+
+“All Systems Operational”
+
+or “Degraded Performance”
+
+or “Incidents Detected”
+
+Color-coded badge based on recent error rates or log severity.
+
+It’s okay to use a simplified heuristic for now (e.g. error count in last N minutes).
+
+4.2. System Logs Page
+
+Add a new Super Admin page:
+
+Route: /super-admin/logs
+
+This must show a table of system logs, including:
+
+timestamp
+
+level (info/warn/error)
+
+workspace (if applicable)
+
+route or source (e.g. /api/chat, stripe/webhook, auth)
+
+message or error summary
+
+Add:
+
+filters by:
+
+log level
+
+workspace
+
+date range
+
+search by message text
+
+If you already have any logging mechanism, surface it here.
+If not, create a simple logs table in the DB and log basic events (errors, Stripe events, impersonation events).
+
+5️⃣ UPGRADE BOT LIST INTO A REAL “BOT MANAGEMENT” PANEL
+
+The existing bot grid is good, but it needs richer data to feel like a real control center.
+
+You must:
+
+Keep the existing layout and styling, but enhance each bot card so it also shows:
+
+Parent workspace name
+
+Conversations in last 7 days
+
+Leads in last 7 days
+
+Appointments in last 7 days
+
+Last active time
+
+Add filter controls above the bot grid:
+
+Search by bot name
+
+Filter by workspace
+
+Filter by bot status (active/demo/paused)
+
+Optional filter by industry
+
+Add click handlers:
+
+Click on a bot card → open detail drawer or page:
+
+bot info
+
+workspace
+
+recent stats
+
+quick link: “Impersonate workspace & open this bot’s analytics” (i.e., jump into the client-side /bots/:botId/analytics view in impersonation mode).
+
+6️⃣ ADD A SUPER ADMIN “QUICK ACTIONS” BAR
+
+At the top of the /super-admin dashboard (below the header), add a strip with Quick Actions such as:
+
+“Create New Workspace”
+
+“Create Demo Workspace”
+
+“Add New Bot”
+
+“Go to Global Analytics”
+
+“Open Logs”
+
+These can be shadcn buttons with icons.
+
+They should open modals/forms or navigate to the appropriate pages.
+
+7️⃣ UI/UX & CONSISTENCY REQUIREMENTS
+
+While implementing all of the above:
+
+Reuse the existing dark, neon, glassmorphism style.
+
+Use shadcn/ui components for:
+
+cards
+
+tables
+
+badges
+
+buttons
+
+tabs
+
+modals/drawers
+
+Ensure:
+
+consistent padding, spacing, and typography with the current dashboard
+
+responsive behavior on common screen sizes
+
+loading states (skeletons) while data is fetched
+
+empty states for lists with zero items (“No workspaces yet”, “No logs yet”, etc.)
+
+Do not break existing /super-admin logic; just enhance it and add the new sections & routes.
+
+8️⃣ BACKEND & SECURITY HOOKS
+
+You must:
+
+Reuse existing auth & role logic so that /super-admin and all its sub-routes are accessible ONLY to super-admin users.
+
+All new APIs for:
+
+fetching workspaces
+
+fetching global analytics
+
+fetching system logs
+must be super-admin protected.
+
+Do not expose these endpoints to normal client users.
+
+If any needed endpoints are missing, add them in a clean, consistent style with Zod validation and proper TypeScript typing.
+
+9️⃣ FINAL CHECKLIST BEFORE YOU STOP
+
+Before you finish, you MUST:
+
+Confirm /super-admin now contains:
+
+a Workspaces section
+
+a Workspace detail view
+
+a Bot management panel with richer KPIs & filters
+
+Global analytics
+
+System status indicator
+
+Quick actions bar
+
+Confirm there is a /super-admin/logs (or equivalent) page with:
+
+system logs table
+
+filters/search
+
+Confirm:
+
+routes are secured to super-admin only
+
+nothing broke for the existing admin flows
+
+the UI looks consistent with the rest of the app
+
+Output a short summary listing:
+
+new files created
+
+key files modified
+
+new routes and components added
+
+🔥 Begin now.
+Upgrade the existing Super Admin “Control Center” into a full, professional SaaS owner dashboard with all the features above, while keeping the styling and theme consistent with the current page.
