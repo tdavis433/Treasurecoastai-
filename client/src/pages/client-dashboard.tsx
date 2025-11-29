@@ -232,7 +232,6 @@ export default function ClientDashboard() {
   const [editingSettings, setEditingSettings] = useState(false);
   const [settingsForm, setSettingsForm] = useState({
     phone: '',
-    hours: '',
     location: ''
   });
 
@@ -306,7 +305,7 @@ export default function ClientDashboard() {
   const unreadInboxCount = inboxStatesData?.states?.filter(state => !state.isRead).length || 0;
 
   const updateSettingsMutation = useMutation({
-    mutationFn: async (data: { phone?: string; hours?: string; location?: string }) => {
+    mutationFn: async (data: { phone?: string; location?: string }) => {
       const response = await apiRequest("PATCH", "/api/client/settings", data);
       return response.json();
     },
@@ -363,10 +362,33 @@ export default function ClientDashboard() {
   const startEditingSettings = () => {
     setSettingsForm({
       phone: profile?.businessInfo?.phone || '',
-      hours: profile?.businessInfo?.hours || '',
       location: profile?.businessInfo?.location || ''
     });
     setEditingSettings(true);
+  };
+
+  const formatHoursValue = (hours: unknown): string => {
+    if (!hours) return "Not configured";
+    if (typeof hours === 'string') return hours;
+    if (typeof hours !== 'object') return String(hours);
+    
+    const formatObject = (obj: Record<string, unknown>, prefix = ''): string[] => {
+      const parts: string[] = [];
+      for (const [key, val] of Object.entries(obj)) {
+        const label = prefix ? `${prefix} ${key}` : key;
+        if (typeof val === 'string') {
+          parts.push(`${label}: ${val}`);
+        } else if (typeof val === 'object' && val !== null) {
+          parts.push(...formatObject(val as Record<string, unknown>, label));
+        } else if (val !== undefined && val !== null) {
+          parts.push(`${label}: ${String(val)}`);
+        }
+      }
+      return parts;
+    };
+    
+    const formatted = formatObject(hours as Record<string, unknown>);
+    return formatted.length > 0 ? formatted.join(' | ') : "Not configured";
   };
 
   const handleLogout = async () => {
@@ -1341,46 +1363,33 @@ export default function ClientDashboard() {
             </div>
             
             <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium text-white/55">Hours</Label>
+                <p className="text-lg flex items-center gap-2 text-white">
+                  <Clock className="h-4 w-4 text-white/55" />
+                  {formatHoursValue(profile?.businessInfo?.hours)}
+                </p>
+                <p className="text-xs text-white/40 mt-1">Contact admin to update hours</p>
+              </div>
               {editingSettings ? (
-                <>
-                  <div>
-                    <Label className="text-sm font-medium text-white/55">Hours</Label>
-                    <Input
-                      value={settingsForm.hours}
-                      onChange={(e) => setSettingsForm(prev => ({ ...prev, hours: e.target.value }))}
-                      className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
-                      placeholder="Mon-Fri 9AM-5PM"
-                      data-testid="input-settings-hours"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-white/55">Location</Label>
-                    <Input
-                      value={settingsForm.location}
-                      onChange={(e) => setSettingsForm(prev => ({ ...prev, location: e.target.value }))}
-                      className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
-                      placeholder="123 Main St, City, State"
-                      data-testid="input-settings-location"
-                    />
-                  </div>
-                </>
+                <div>
+                  <Label className="text-sm font-medium text-white/55">Location</Label>
+                  <Input
+                    value={settingsForm.location}
+                    onChange={(e) => setSettingsForm(prev => ({ ...prev, location: e.target.value }))}
+                    className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                    placeholder="123 Main St, City, State"
+                    data-testid="input-settings-location"
+                  />
+                </div>
               ) : (
-                <>
-                  <div>
-                    <Label className="text-sm font-medium text-white/55">Hours</Label>
-                    <p className="text-lg flex items-center gap-2 text-white">
-                      <Clock className="h-4 w-4 text-white/55" />
-                      {profile?.businessInfo?.hours || "Not configured"}
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-white/55">Location</Label>
-                    <p className="text-lg flex items-center gap-2 text-white">
-                      <MapPin className="h-4 w-4 text-white/55" />
-                      {profile?.businessInfo?.location || "Not configured"}
-                    </p>
-                  </div>
-                </>
+                <div>
+                  <Label className="text-sm font-medium text-white/55">Location</Label>
+                  <p className="text-lg flex items-center gap-2 text-white">
+                    <MapPin className="h-4 w-4 text-white/55" />
+                    {profile?.businessInfo?.location || "Not configured"}
+                  </p>
+                </div>
               )}
               <div>
                 <Label className="text-sm font-medium text-white/55">Bot ID</Label>
