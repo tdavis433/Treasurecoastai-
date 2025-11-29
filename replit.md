@@ -46,7 +46,13 @@ The system utilizes a React, TypeScript, Tailwind CSS, and shadcn/ui frontend, w
 ### Frontend
 - **Demo Hub (`/demos`):** Showcases available bot templates.
 - **Admin Interface (`/admin`, `/super-admin`):**
-    - **Control Center (`/super-admin`):** Unified bot management with split-pane layout, bot search, and detailed configuration tabs (Overview, Settings, Billing, Analytics, Logs, Install). The old `/super-admin/control-center` URL redirects here.
+    - **Control Center (`/super-admin`):** Full SaaS owner dashboard with:
+      - **Quick Actions Bar:** Toggle between Overview, Workspaces, and Analytics sections
+      - **System Status Badge:** Real-time health indicator showing operational status, warnings, or incidents
+      - **Workspaces Section:** Grid view of all tenant workspaces with metrics (bots count, conversations, status)
+      - **Global Analytics:** Platform-wide KPIs (conversations, leads, active workspaces, total bots) with 7-day trend charts using Recharts
+      - **System Logs:** Filterable logs by level/source/workspace with resolution tracking
+      - **Overview Section:** Unified bot management with split-pane layout, bot search, and detailed configuration tabs (Settings, Billing, Analytics, Logs, Install)
     - **Bot-Specific Dashboards (`/admin/bot/:botId`):** Tailored dashboards with industry-specific tabs.
     - **Bot Creation Wizard (`/admin/bot/wizard`):** 5-step process with template selection, business info, services, FAQs, personality sliders, and widget code generation.
 - **Client Dashboard (`/client/dashboard`):** Client-specific view of conversation statistics, appointments, and business info, with proper data scoping.
