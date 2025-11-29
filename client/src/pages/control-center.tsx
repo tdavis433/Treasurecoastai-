@@ -18,8 +18,10 @@ import {
   Bot, Users, FileText, Settings, BarChart3, MessageSquare, 
   Plus, Play, Pause, Eye, Edit2, Save, X, LogOut, Zap, 
   AlertTriangle, Phone, Mail, Globe, MapPin, Clock, Trash2,
-  ChevronRight, Search, CreditCard, ExternalLink, Building2, Code, Copy, Check
+  ChevronRight, Search, CreditCard, ExternalLink, Building2, Code, Copy, Check,
+  TrendingUp, Users2, AlertCircle, Activity, RefreshCw, Download, Layers
 } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 interface Client {
   id: string;
@@ -130,6 +132,7 @@ export default function ControlCenter() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [dashboardSection, setDashboardSection] = useState<'overview' | 'workspaces' | 'analytics'>('overview');
 
   const { data: currentUser, isLoading: authLoading } = useQuery<AuthUser>({
     queryKey: ["/api/auth/me"],
@@ -169,6 +172,53 @@ export default function ControlCenter() {
   // Fetch templates
   const { data: templates = [] } = useQuery<Template[]>({
     queryKey: ["/api/super-admin/templates"],
+    enabled: currentUser?.role === "super_admin",
+  });
+
+  // Global Analytics
+  const { data: globalAnalytics, isLoading: analyticsLoading } = useQuery<{
+    summary: {
+      totalConversations: number;
+      totalMessages: number;
+      totalLeads: number;
+      totalAppointments: number;
+      activeWorkspaces: number;
+      totalBots: number;
+    };
+    dailyTrends: Array<{ date: string; conversations: number; leads: number; appointments: number }>;
+    dateRange: { start: string; end: string; days: number };
+  }>({
+    queryKey: ["/api/super-admin/analytics/global", { days: 7 }],
+    enabled: currentUser?.role === "super_admin",
+    refetchInterval: 60000,
+  });
+
+  // System Status
+  const { data: systemStatus, isLoading: statusLoading } = useQuery<{
+    status: 'operational' | 'degraded' | 'incident';
+    errorCount: number;
+    lastError?: { message: string; createdAt: string };
+  }>({
+    queryKey: ["/api/super-admin/system/status"],
+    enabled: currentUser?.role === "super_admin",
+    refetchInterval: 30000,
+  });
+
+  // Workspaces List  
+  const { data: workspacesData, isLoading: workspacesLoading } = useQuery<{
+    workspaces: Array<{
+      id: string;
+      name: string;
+      slug: string;
+      status: string;
+      plan: string;
+      botsCount: number;
+      totalConversations: number;
+      lastActive: string | null;
+    }>;
+    total: number;
+  }>({
+    queryKey: ["/api/super-admin/workspaces"],
     enabled: currentUser?.role === "super_admin",
   });
 
@@ -244,8 +294,18 @@ export default function ControlCenter() {
           <span className="font-semibold text-lg text-white">Treasure Coast AI – Control Center</span>
         </div>
         <div className="flex items-center gap-4">
-          <Badge className="bg-green-500/20 text-green-400 border border-green-500/30">
-            All Systems Operational
+          <Badge 
+            data-testid="badge-system-status"
+            className={
+              systemStatus?.status === 'operational' ? "bg-green-500/20 text-green-400 border border-green-500/30" :
+              systemStatus?.status === 'degraded' ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" :
+              "bg-red-500/20 text-red-400 border border-red-500/30"
+            }
+          >
+            {statusLoading ? 'Checking...' : 
+             systemStatus?.status === 'operational' ? 'All Systems Operational' :
+             systemStatus?.status === 'degraded' ? `${systemStatus.errorCount} Warnings` :
+             `System Incident (${systemStatus?.errorCount || 0} Errors)`}
           </Badge>
           <span className="text-sm text-white/55">{currentUser?.username}</span>
           <Button data-testid="button-logout" variant="ghost" size="icon" onClick={handleLogout} className="text-white/85 hover:bg-white/10 hover:text-white">
@@ -362,6 +422,56 @@ export default function ControlCenter() {
                 </p>
               </div>
 
+              {/* Quick Actions Bar */}
+              <div className="flex items-center gap-3 mb-6 flex-wrap">
+                <Button
+                  data-testid="button-section-overview"
+                  variant={dashboardSection === 'overview' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setDashboardSection('overview')}
+                  className={dashboardSection === 'overview' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-400/30' : 'border-white/10 text-white/85 hover:bg-white/10'}
+                >
+                  <Layers className="h-4 w-4 mr-2" />
+                  Overview
+                </Button>
+                <Button
+                  data-testid="button-section-workspaces"
+                  variant={dashboardSection === 'workspaces' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setDashboardSection('workspaces')}
+                  className={dashboardSection === 'workspaces' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-400/30' : 'border-white/10 text-white/85 hover:bg-white/10'}
+                >
+                  <Users2 className="h-4 w-4 mr-2" />
+                  Workspaces ({workspacesData?.total || 0})
+                </Button>
+                <Button
+                  data-testid="button-section-analytics"
+                  variant={dashboardSection === 'analytics' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setDashboardSection('analytics')}
+                  className={dashboardSection === 'analytics' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-400/30' : 'border-white/10 text-white/85 hover:bg-white/10'}
+                >
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  Analytics
+                </Button>
+                <div className="flex-1" />
+                <Button
+                  data-testid="button-refresh-data"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    queryClient.invalidateQueries({ queryKey: ["/api/super-admin/analytics/global"] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/super-admin/system/status"] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/super-admin/workspaces"] });
+                  }}
+                  className="text-white/55 hover:text-white hover:bg-white/10"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {dashboardSection === 'overview' && (
+              <>
               {/* Stats Overview - Shows filtered counts when search is active */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 <GlassCard hover>
@@ -503,6 +613,151 @@ export default function ControlCenter() {
                   </div>
                 </div>
               </div>
+              </>
+              )}
+
+              {dashboardSection === 'workspaces' && (
+                <div className="space-y-6">
+                  <h2 className="text-lg font-semibold text-white">All Workspaces</h2>
+                  {workspacesLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="h-8 w-8 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                      {workspacesData?.workspaces.map(workspace => (
+                        <GlassCard key={workspace.id} hover data-testid={`card-workspace-${workspace.slug}`}>
+                          <GlassCardHeader className="pb-3">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <GlassCardTitle className="text-sm">{workspace.name}</GlassCardTitle>
+                                <GlassCardDescription className="text-xs">{workspace.slug}</GlassCardDescription>
+                              </div>
+                              <Badge className={
+                                workspace.status === 'active' ? "bg-green-500/20 text-green-400 border-green-500/30" :
+                                workspace.status === 'suspended' ? "bg-red-500/20 text-red-400 border-red-500/30" :
+                                "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                              }>{workspace.status}</Badge>
+                            </div>
+                          </GlassCardHeader>
+                          <GlassCardContent className="pb-4">
+                            <div className="grid grid-cols-2 gap-3 text-xs">
+                              <div>
+                                <span className="text-white/55">Bots</span>
+                                <p className="text-white font-medium">{workspace.botsCount}</p>
+                              </div>
+                              <div>
+                                <span className="text-white/55">Conversations</span>
+                                <p className="text-white font-medium">{workspace.totalConversations}</p>
+                              </div>
+                              <div>
+                                <span className="text-white/55">Plan</span>
+                                <p className="text-white font-medium capitalize">{workspace.plan}</p>
+                              </div>
+                              <div>
+                                <span className="text-white/55">Last Active</span>
+                                <p className="text-white font-medium">{workspace.lastActive ? new Date(workspace.lastActive).toLocaleDateString() : 'Never'}</p>
+                              </div>
+                            </div>
+                          </GlassCardContent>
+                        </GlassCard>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {dashboardSection === 'analytics' && (
+                <div className="space-y-6">
+                  {/* Global Stats Cards */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <GlassCard>
+                      <GlassCardContent className="pt-6">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-lg bg-cyan-400/10 flex items-center justify-center">
+                            <MessageSquare className="h-5 w-5 text-cyan-400" />
+                          </div>
+                          <div>
+                            <p className="text-2xl font-bold text-white">{globalAnalytics?.summary?.totalConversations || 0}</p>
+                            <p className="text-sm text-white/55">Conversations (7d)</p>
+                          </div>
+                        </div>
+                      </GlassCardContent>
+                    </GlassCard>
+                    <GlassCard>
+                      <GlassCardContent className="pt-6">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                            <Users className="h-5 w-5 text-green-400" />
+                          </div>
+                          <div>
+                            <p className="text-2xl font-bold text-white">{globalAnalytics?.summary?.totalLeads || 0}</p>
+                            <p className="text-sm text-white/55">Leads Captured</p>
+                          </div>
+                        </div>
+                      </GlassCardContent>
+                    </GlassCard>
+                    <GlassCard>
+                      <GlassCardContent className="pt-6">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                            <Activity className="h-5 w-5 text-purple-400" />
+                          </div>
+                          <div>
+                            <p className="text-2xl font-bold text-white">{globalAnalytics?.summary?.activeWorkspaces || 0}</p>
+                            <p className="text-sm text-white/55">Active Workspaces</p>
+                          </div>
+                        </div>
+                      </GlassCardContent>
+                    </GlassCard>
+                    <GlassCard>
+                      <GlassCardContent className="pt-6">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                            <Bot className="h-5 w-5 text-amber-400" />
+                          </div>
+                          <div>
+                            <p className="text-2xl font-bold text-white">{globalAnalytics?.summary?.totalBots || 0}</p>
+                            <p className="text-sm text-white/55">Total Bots</p>
+                          </div>
+                        </div>
+                      </GlassCardContent>
+                    </GlassCard>
+                  </div>
+
+                  {/* Trends Chart */}
+                  <GlassCard>
+                    <GlassCardHeader>
+                      <GlassCardTitle>Platform Activity (Last 7 Days)</GlassCardTitle>
+                      <GlassCardDescription>Conversations, leads, and appointments across all bots</GlassCardDescription>
+                    </GlassCardHeader>
+                    <GlassCardContent>
+                      {analyticsLoading ? (
+                        <div className="h-64 flex items-center justify-center">
+                          <div className="h-8 w-8 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
+                        </div>
+                      ) : (
+                        <div className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={globalAnalytics?.dailyTrends || []}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                              <XAxis dataKey="date" stroke="rgba(255,255,255,0.5)" fontSize={12} tickFormatter={(d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} />
+                              <YAxis stroke="rgba(255,255,255,0.5)" fontSize={12} />
+                              <Tooltip 
+                                contentStyle={{ backgroundColor: '#1a1d24', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                                labelStyle={{ color: 'white' }}
+                              />
+                              <Line type="monotone" dataKey="conversations" stroke="#4FC3F7" strokeWidth={2} dot={false} name="Conversations" />
+                              <Line type="monotone" dataKey="leads" stroke="#10B981" strokeWidth={2} dot={false} name="Leads" />
+                              <Line type="monotone" dataKey="appointments" stroke="#F59E0B" strokeWidth={2} dot={false} name="Appointments" />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+                    </GlassCardContent>
+                  </GlassCard>
+                </div>
+              )}
             </div>
           </main>
 

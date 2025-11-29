@@ -4211,7 +4211,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // List all workspaces with stats
   app.get("/api/super-admin/workspaces", requireSuperAdmin, async (req, res) => {
     try {
-      const workspaceList = getWorkspaces();
+      const workspaceList = await getWorkspaces();
       const allBots = getAllBotConfigs();
       
       // Enrich workspace data with stats
@@ -4260,7 +4260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/super-admin/workspaces/:slug", requireSuperAdmin, async (req, res) => {
     try {
       const { slug } = req.params;
-      const workspace = getWorkspaceBySlug(slug);
+      const workspace = await getWorkspaceBySlug(slug);
       
       if (!workspace) {
         return res.status(404).json({ error: "Workspace not found" });
@@ -4328,7 +4328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid status. Must be one of: active, paused, suspended, cancelled" });
       }
       
-      const workspace = getWorkspaceBySlug(slug);
+      const workspace = await getWorkspaceBySlug(slug);
       if (!workspace) {
         return res.status(404).json({ error: "Workspace not found" });
       }
