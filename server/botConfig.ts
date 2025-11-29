@@ -39,6 +39,22 @@ export interface BotFaq {
   answer: string;
 }
 
+export interface BotPersonality {
+  tone?: 'professional' | 'friendly' | 'casual' | 'compassionate' | 'informative';
+  responseLength?: 'brief' | 'medium' | 'detailed' | 'short' | 'long';
+  formality?: number;
+  enthusiasm?: number;
+  warmth?: number;
+  humor?: number;
+}
+
+export interface BotQuickAction {
+  id: string;
+  label: string;
+  labelEs?: string;
+  prompt?: string;
+}
+
 export interface AutomationRule {
   id: string;
   type: 'keyword_trigger' | 'office_hours' | 'lead_capture' | 'fallback';
@@ -89,6 +105,8 @@ export interface BotConfig {
   systemPrompt: string;
   faqs: BotFaq[];
   automations?: BotAutomationConfig;
+  personality?: BotPersonality;
+  quickActions?: BotQuickAction[];
   metadata?: {
     isDemo: boolean;
     isTemplate?: boolean;
@@ -148,6 +166,8 @@ async function loadBotFromDatabase(botId: string): Promise<BotConfig | null> {
     const rules = (settingsRecord?.rules || {}) as BotRules;
     const faqs = (settingsRecord?.faqs || []) as BotFaq[];
     const automations = (settingsRecord?.automations || {}) as BotAutomationConfig;
+    const personality = (settingsRecord?.personality || {}) as BotPersonality;
+    const quickActions = (settingsRecord?.quickActions || []) as BotQuickAction[];
     
     const config: BotConfig = {
       clientId: workspaceRecord?.slug || botRecord.workspaceId,
@@ -167,6 +187,8 @@ async function loadBotFromDatabase(botId: string): Promise<BotConfig | null> {
       systemPrompt: botRecord.systemPrompt,
       faqs,
       automations,
+      personality,
+      quickActions,
       metadata: {
         isDemo: botRecord.isDemo,
         createdAt: botRecord.createdAt.toISOString().split('T')[0],
@@ -547,6 +569,90 @@ export function getCrisisResponse(config: BotConfig): string {
     'If you are in crisis, please call 911 or your local emergency number.';
 }
 
+function buildPersonalityInstructions(personality?: BotPersonality): string {
+  if (!personality) return '';
+  
+  const instructions: string[] = [];
+  
+  // Tone setting
+  if (personality.tone) {
+    const toneDescriptions: Record<string, string> = {
+      'professional': 'Maintain a professional, business-appropriate tone. Be polished and respectful.',
+      'friendly': 'Be warm and approachable. Use a conversational, friendly tone while remaining helpful.',
+      'casual': 'Be relaxed and informal. Use everyday language and feel free to be personable.',
+      'compassionate': 'Show empathy and understanding. Be gentle, supportive, and patient in your responses.',
+      'informative': 'Focus on being clear and educational. Provide detailed, helpful information.'
+    };
+    if (toneDescriptions[personality.tone]) {
+      instructions.push(toneDescriptions[personality.tone]);
+    }
+  }
+  
+  // Formality (0-100 scale)
+  if (typeof personality.formality === 'number') {
+    if (personality.formality < 30) {
+      instructions.push('Use very casual, informal language. Feel free to use colloquialisms and relaxed phrasing.');
+    } else if (personality.formality < 50) {
+      instructions.push('Use somewhat casual language while remaining clear and helpful.');
+    } else if (personality.formality > 70) {
+      instructions.push('Use formal, polished language. Avoid slang and maintain professional standards.');
+    } else if (personality.formality > 85) {
+      instructions.push('Use highly formal, professional language at all times. Be polished and respectful.');
+    }
+  }
+  
+  // Enthusiasm (0-100 scale)
+  if (typeof personality.enthusiasm === 'number') {
+    if (personality.enthusiasm > 70) {
+      instructions.push('Be enthusiastic and energetic in your responses! Show genuine excitement when helping.');
+    } else if (personality.enthusiasm > 85) {
+      instructions.push('Be very enthusiastic and upbeat! Express genuine excitement and positive energy.');
+    } else if (personality.enthusiasm < 30) {
+      instructions.push('Keep a calm, measured tone. Be helpful without being overly enthusiastic.');
+    }
+  }
+  
+  // Warmth (0-100 scale)
+  if (typeof personality.warmth === 'number') {
+    if (personality.warmth > 70) {
+      instructions.push('Be warm and caring in your responses. Show genuine interest in helping the person.');
+    } else if (personality.warmth > 85) {
+      instructions.push('Be exceptionally warm and personable. Make people feel valued and cared for.');
+    } else if (personality.warmth < 30) {
+      instructions.push('Keep responses focused and efficient. Be helpful but direct.');
+    }
+  }
+  
+  // Humor (0-100 scale)
+  if (typeof personality.humor === 'number') {
+    if (personality.humor > 70) {
+      instructions.push('Feel free to use appropriate humor and wit when it fits naturally.');
+    } else if (personality.humor > 85) {
+      instructions.push('Be playful and humorous when appropriate. Light-heartedness is welcome.');
+    } else if (personality.humor < 20) {
+      instructions.push('Keep responses straightforward and serious. Avoid humor or jokes.');
+    }
+  }
+  
+  // Response length
+  if (personality.responseLength) {
+    const lengthDescriptions: Record<string, string> = {
+      'brief': 'Keep responses concise and to the point. Aim for 1-2 sentences when possible.',
+      'short': 'Keep responses brief. Aim for 2-3 sentences when possible.',
+      'medium': 'Provide balanced responses with enough detail to be helpful, typically 3-5 sentences.',
+      'detailed': 'Provide thorough, detailed responses. Include helpful context and explanations.',
+      'long': 'Provide comprehensive responses with full details and explanations.'
+    };
+    if (lengthDescriptions[personality.responseLength]) {
+      instructions.push(lengthDescriptions[personality.responseLength]);
+    }
+  }
+  
+  if (instructions.length === 0) return '';
+  
+  return '\n\nCOMMUNICATION STYLE:\n' + instructions.map(i => `- ${i}`).join('\n');
+}
+
 export function buildSystemPromptFromConfig(config: BotConfig): string {
   let prompt = config.systemPrompt;
   
@@ -571,7 +677,10 @@ ${bp.amenities ? `- Amenities: ${bp.amenities.join(', ')}` : ''}
     });
   }
   
-  return prompt + '\n\n' + businessInfo + faqInfo;
+  // Add personality instructions
+  const personalityInfo = buildPersonalityInstructions(config.personality);
+  
+  return prompt + '\n\n' + businessInfo + faqInfo + personalityInfo;
 }
 
 export async function saveBotConfigAsync(botId: string, updates: Partial<BotConfig>): Promise<boolean> {

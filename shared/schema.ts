@@ -662,6 +662,14 @@ export const botSettings = pgTable("bot_settings", {
     warmth?: number;
   }>().default({}),
   
+  // Quick action buttons for chat widget
+  quickActions: json("quick_actions").$type<Array<{
+    id: string;
+    label: string;
+    labelEs?: string;
+    prompt?: string;
+  }>>().default([]),
+  
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({
   botIdIdx: index("bot_settings_bot_id_idx").on(table.botId),

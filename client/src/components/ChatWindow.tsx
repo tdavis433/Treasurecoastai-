@@ -1,4 +1,4 @@
-import { X, Send, Languages, RotateCcw } from "lucide-react";
+import { X, Send, Languages, RotateCcw, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect, useRef, ReactNode } from "react";
@@ -7,6 +7,14 @@ import { cn } from "@/lib/utils";
 interface Message {
   role: "assistant" | "user";
   content: string;
+  suggestedReplies?: string[];
+}
+
+interface QuickAction {
+  id: string;
+  label: string;
+  labelEs?: string;
+  prompt?: string;
 }
 
 interface ChatWindowProps {
@@ -21,53 +29,21 @@ interface ChatWindowProps {
   onLanguageToggle: () => void;
   onResetChat: () => void;
   flowContent?: ReactNode;
+  botName?: string;
+  botTagline?: string;
+  quickActions?: QuickAction[];
+  onHumanHandoff?: () => void;
+  showHumanHandoff?: boolean;
 }
 
-const quickActions = {
-  en: [
-    { id: "about", label: "About The Faith House" },
-    { id: "requirements", label: "Requirements" },
-    { id: "availability", label: "Availability" },
-    { id: "pricing", label: "Pricing" },
-    { id: "qualify", label: "See if I qualify" },
-    { id: "tour", label: "Request a call or tour" },
-    { id: "crisis", label: "Crisis support" },
-    { id: "contact", label: "Contact info" },
-  ],
-  es: [
-    { id: "about", label: "Sobre The Faith House" },
-    { id: "requirements", label: "Requisitos" },
-    { id: "availability", label: "Disponibilidad" },
-    { id: "pricing", label: "Precios" },
-    { id: "qualify", label: "Ver si califico" },
-    { id: "tour", label: "Pedir llamada o tour" },
-    { id: "crisis", label: "Apoyo en crisis" },
-    { id: "contact", label: "Información de contacto" },
-  ],
-};
-
-const menuOptions = {
-  en: [
-    { id: "about", label: "About" },
-    { id: "requirements", label: "Requirements" },
-    { id: "availability", label: "Availability" },
-    { id: "pricing", label: "Pricing" },
-    { id: "apply", label: "Apply Now" },
-    { id: "tour", label: "Request Tour/Call" },
-    { id: "crisis", label: "Crisis Support" },
-    { id: "contact", label: "Contact Info" },
-  ],
-  es: [
-    { id: "about", label: "Acerca de" },
-    { id: "requirements", label: "Requisitos" },
-    { id: "availability", label: "Disponibilidad" },
-    { id: "pricing", label: "Precios" },
-    { id: "apply", label: "Aplicar Ahora" },
-    { id: "tour", label: "Solicitar Tour/Llamada" },
-    { id: "crisis", label: "Apoyo de Crisis" },
-    { id: "contact", label: "Información de Contacto" },
-  ],
-};
+const defaultQuickActions: QuickAction[] = [
+  { id: "services", label: "Our Services", labelEs: "Nuestros Servicios" },
+  { id: "pricing", label: "Pricing", labelEs: "Precios" },
+  { id: "hours", label: "Hours & Location", labelEs: "Horario y Ubicación" },
+  { id: "contact", label: "Contact Us", labelEs: "Contáctenos" },
+  { id: "appointment", label: "Book Appointment", labelEs: "Reservar Cita" },
+  { id: "faq", label: "FAQs", labelEs: "Preguntas Frecuentes" },
+];
 
 export default function ChatWindow({
   isOpen,
@@ -81,13 +57,22 @@ export default function ChatWindow({
   onLanguageToggle,
   onResetChat,
   flowContent,
+  botName = "AI Assistant",
+  botTagline,
+  quickActions = defaultQuickActions,
+  onHumanHandoff,
+  showHumanHandoff = false,
 }: ChatWindowProps) {
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const isInitialState = messages.length === 1;
-  const currentQuickActions = quickActions[language as keyof typeof quickActions] || quickActions.en;
-  const currentMenu = menuOptions[language as keyof typeof menuOptions] || menuOptions.en;
+  
+  const currentQuickActions = quickActions.map(action => ({
+    id: action.id,
+    label: language === "es" && action.labelEs ? action.labelEs : action.label,
+    prompt: action.prompt
+  }));
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -124,11 +109,13 @@ export default function ChatWindow({
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div>
           <h2 className="text-lg font-semibold text-foreground" data-testid="text-chat-title">
-            HopeLine Assistant
+            {botName}
           </h2>
-          <p className="text-sm text-muted-foreground">
-            {language === "es" ? "Aquí para apoyar tu próximo paso" : "Here to support your next step"}
-          </p>
+          {botTagline && (
+            <p className="text-sm text-muted-foreground">
+              {botTagline}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-1">
           <Button
@@ -165,35 +152,52 @@ export default function ChatWindow({
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.map((message, index) => (
-          <div
-            key={index}
-            className={cn(
-              "flex",
-              message.role === "user" ? "justify-end" : "justify-start"
-            )}
-          >
+          <div key={index} className="space-y-2">
             <div
-              data-testid={`message-${message.role}-${index}`}
               className={cn(
-                "max-w-[80%] rounded-xl p-3 text-sm",
-                message.role === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-card text-card-foreground shadow-sm"
+                "flex",
+                message.role === "user" ? "justify-end" : "justify-start"
               )}
             >
-              {message.content}
+              <div
+                data-testid={`message-${message.role}-${index}`}
+                className={cn(
+                  "max-w-[80%] rounded-xl p-3 text-sm",
+                  message.role === "user"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-card text-card-foreground shadow-sm"
+                )}
+              >
+                {message.content}
+              </div>
             </div>
+            {message.role === "assistant" && message.suggestedReplies && message.suggestedReplies.length > 0 && index === messages.length - 1 && !isLoading && (
+              <div className="flex flex-wrap gap-1.5 pl-2">
+                {message.suggestedReplies.map((reply, replyIndex) => (
+                  <Button
+                    key={replyIndex}
+                    data-testid={`button-suggested-reply-${replyIndex}`}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onSendMessage(reply)}
+                    className="text-[10px] font-medium h-6 px-2 rounded-full hover-elevate"
+                  >
+                    {reply}
+                  </Button>
+                ))}
+              </div>
+            )}
           </div>
         ))}
         
         {isLoading && (
           <div className="flex justify-start">
             <div className="bg-card text-card-foreground rounded-xl p-3 text-sm shadow-sm">
-              <span className="inline-flex gap-1">
-                <span className="animate-bounce">.</span>
-                <span className="animate-bounce" style={{ animationDelay: "0.2s" }}>.</span>
-                <span className="animate-bounce" style={{ animationDelay: "0.4s" }}>.</span>
-              </span>
+              <div className="flex items-center gap-1" data-testid="typing-indicator">
+                <span className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDuration: '0.6s' }} />
+                <span className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDuration: '0.6s', animationDelay: '0.15s' }} />
+                <span className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDuration: '0.6s', animationDelay: '0.3s' }} />
+              </div>
             </div>
           </div>
         )}
@@ -234,19 +238,34 @@ export default function ChatWindow({
       {showMenu && !isInitialState && (
         <div className="px-4 pb-2">
           <div className="grid grid-cols-2 gap-1.5">
-            {currentMenu.map((option) => (
+            {currentQuickActions.slice(0, 6).map((action) => (
               <Button
-                key={option.id}
-                data-testid={`button-menu-${option.id}`}
+                key={action.id}
+                data-testid={`button-menu-${action.id}`}
                 variant="outline"
                 size="sm"
-                onClick={() => onMenuClick(option.id)}
+                onClick={() => onMenuClick(action.id)}
                 className="rounded-full text-[10px] font-medium h-7 px-2 hover-elevate"
               >
-                {option.label}
+                {action.label}
               </Button>
             ))}
           </div>
+        </div>
+      )}
+
+      {showHumanHandoff && onHumanHandoff && (
+        <div className="px-4 pb-2">
+          <Button
+            data-testid="button-human-handoff"
+            variant="outline"
+            size="sm"
+            onClick={onHumanHandoff}
+            className="w-full text-[10px] font-medium h-8 gap-2"
+          >
+            <User className="h-3 w-3" />
+            {language === "es" ? "Hablar con una persona" : "Talk to a person"}
+          </Button>
         </div>
       )}
 

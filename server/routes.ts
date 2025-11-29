@@ -1115,12 +1115,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   }, express.static(widgetPath));
   
+  // Generate default quick actions based on bot type
+  function getDefaultQuickActions(botType?: string, businessName?: string): Array<{id: string; label: string; labelEs?: string}> {
+    const defaults: Record<string, Array<{id: string; label: string; labelEs?: string}>> = {
+      'restaurant': [
+        { id: 'menu', label: 'View Menu', labelEs: 'Ver Menú' },
+        { id: 'hours', label: 'Hours & Location', labelEs: 'Horario y Ubicación' },
+        { id: 'reservation', label: 'Make Reservation', labelEs: 'Hacer Reservación' },
+        { id: 'specials', label: "Today's Specials", labelEs: 'Especiales del Día' },
+        { id: 'delivery', label: 'Delivery Options', labelEs: 'Opciones de Entrega' },
+        { id: 'contact', label: 'Contact Us', labelEs: 'Contáctenos' },
+      ],
+      'barber': [
+        { id: 'services', label: 'Our Services', labelEs: 'Nuestros Servicios' },
+        { id: 'pricing', label: 'Pricing', labelEs: 'Precios' },
+        { id: 'appointment', label: 'Book Appointment', labelEs: 'Reservar Cita' },
+        { id: 'hours', label: 'Hours & Location', labelEs: 'Horario y Ubicación' },
+        { id: 'barbers', label: 'Our Barbers', labelEs: 'Nuestros Barberos' },
+        { id: 'contact', label: 'Contact Us', labelEs: 'Contáctenos' },
+      ],
+      'gym': [
+        { id: 'memberships', label: 'Membership Options', labelEs: 'Opciones de Membresía' },
+        { id: 'classes', label: 'Class Schedule', labelEs: 'Horario de Clases' },
+        { id: 'tour', label: 'Schedule Tour', labelEs: 'Agendar Tour' },
+        { id: 'hours', label: 'Hours & Location', labelEs: 'Horario y Ubicación' },
+        { id: 'trainers', label: 'Personal Trainers', labelEs: 'Entrenadores' },
+        { id: 'contact', label: 'Contact Us', labelEs: 'Contáctenos' },
+      ],
+      'auto_shop': [
+        { id: 'services', label: 'Our Services', labelEs: 'Nuestros Servicios' },
+        { id: 'estimate', label: 'Get Estimate', labelEs: 'Obtener Cotización' },
+        { id: 'appointment', label: 'Book Appointment', labelEs: 'Reservar Cita' },
+        { id: 'hours', label: 'Hours & Location', labelEs: 'Horario y Ubicación' },
+        { id: 'specials', label: 'Current Specials', labelEs: 'Especiales Actuales' },
+        { id: 'contact', label: 'Contact Us', labelEs: 'Contáctenos' },
+      ],
+      'sober_living': [
+        { id: 'about', label: `About ${businessName || 'Us'}`, labelEs: `Sobre ${businessName || 'Nosotros'}` },
+        { id: 'requirements', label: 'Requirements', labelEs: 'Requisitos' },
+        { id: 'availability', label: 'Availability', labelEs: 'Disponibilidad' },
+        { id: 'pricing', label: 'Pricing', labelEs: 'Precios' },
+        { id: 'tour', label: 'Request Tour', labelEs: 'Solicitar Tour' },
+        { id: 'contact', label: 'Contact Info', labelEs: 'Información de Contacto' },
+      ],
+      'med_spa': [
+        { id: 'treatments', label: 'Our Treatments', labelEs: 'Nuestros Tratamientos' },
+        { id: 'pricing', label: 'Pricing', labelEs: 'Precios' },
+        { id: 'consultation', label: 'Book Consultation', labelEs: 'Reservar Consulta' },
+        { id: 'specials', label: 'Current Specials', labelEs: 'Especiales Actuales' },
+        { id: 'hours', label: 'Hours & Location', labelEs: 'Horario y Ubicación' },
+        { id: 'contact', label: 'Contact Us', labelEs: 'Contáctenos' },
+      ],
+      'real_estate': [
+        { id: 'listings', label: 'View Listings', labelEs: 'Ver Propiedades' },
+        { id: 'buying', label: 'Buying Help', labelEs: 'Ayuda para Comprar' },
+        { id: 'selling', label: 'Selling Help', labelEs: 'Ayuda para Vender' },
+        { id: 'schedule', label: 'Schedule Viewing', labelEs: 'Agendar Visita' },
+        { id: 'valuation', label: 'Home Valuation', labelEs: 'Valuación de Casa' },
+        { id: 'contact', label: 'Contact Agent', labelEs: 'Contactar Agente' },
+      ],
+      'home_services': [
+        { id: 'services', label: 'Our Services', labelEs: 'Nuestros Servicios' },
+        { id: 'quote', label: 'Get Free Quote', labelEs: 'Cotización Gratis' },
+        { id: 'schedule', label: 'Schedule Service', labelEs: 'Agendar Servicio' },
+        { id: 'areas', label: 'Service Areas', labelEs: 'Áreas de Servicio' },
+        { id: 'reviews', label: 'Customer Reviews', labelEs: 'Reseñas de Clientes' },
+        { id: 'contact', label: 'Contact Us', labelEs: 'Contáctenos' },
+      ],
+      'tattoo': [
+        { id: 'portfolio', label: 'View Portfolio', labelEs: 'Ver Portafolio' },
+        { id: 'artists', label: 'Our Artists', labelEs: 'Nuestros Artistas' },
+        { id: 'consultation', label: 'Book Consultation', labelEs: 'Reservar Consulta' },
+        { id: 'pricing', label: 'Pricing Info', labelEs: 'Información de Precios' },
+        { id: 'aftercare', label: 'Aftercare Tips', labelEs: 'Consejos de Cuidado' },
+        { id: 'contact', label: 'Contact Us', labelEs: 'Contáctenos' },
+      ],
+    };
+    
+    return defaults[botType || 'generic'] || [
+      { id: 'services', label: 'Our Services', labelEs: 'Nuestros Servicios' },
+      { id: 'pricing', label: 'Pricing', labelEs: 'Precios' },
+      { id: 'hours', label: 'Hours & Location', labelEs: 'Horario y Ubicación' },
+      { id: 'contact', label: 'Contact Us', labelEs: 'Contáctenos' },
+      { id: 'appointment', label: 'Book Appointment', labelEs: 'Reservar Cita' },
+      { id: 'faq', label: 'FAQs', labelEs: 'Preguntas Frecuentes' },
+    ];
+  }
+
   // Widget configuration endpoint
   app.get('/api/widget/config/:clientId/:botId', widgetCors, async (req, res) => {
     try {
       const { clientId, botId } = req.params;
       
-      const botConfig = getBotConfig(clientId, botId);
+      const botConfig = await getBotConfigAsync(clientId, botId);
       if (!botConfig) {
         return res.status(404).json({ error: 'Bot not found' });
       }
@@ -1136,15 +1223,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Phase 2.4: Generate signed widget token (expires in 24 hours)
       const widgetToken = generateWidgetToken(clientId, botId, 86400);
       
+      // Get quick actions - use bot config if set, otherwise use defaults based on bot type
+      const quickActions = botConfig.quickActions && botConfig.quickActions.length > 0
+        ? botConfig.quickActions
+        : getDefaultQuickActions(botConfig.botType, botConfig.businessProfile?.businessName);
+      
       // Return safe widget configuration (no sensitive data)
       res.json({
         status: 'active',
         botName: botConfig.name,
         businessName: botConfig.businessProfile?.businessName || botConfig.name,
+        botTagline: `${botConfig.businessProfile?.businessName || 'AI'} Assistant`,
         welcomeMessage: `Hi! I'm the ${botConfig.businessProfile?.businessName || 'AI'} assistant. How can I help you today?`,
         primaryColor: '#2563eb',
         theme: 'dark',
-        token: widgetToken // Signed token for widget authentication
+        token: widgetToken,
+        quickActions,
+        enableHumanHandoff: true
       });
     } catch (error) {
       console.error('Widget config error:', error);
@@ -1560,6 +1655,264 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Multi-tenant chat error:", error);
       res.status(500).json({ error: "Failed to process chat message" });
+    }
+  });
+
+  // Streaming chat endpoint with SSE
+  app.post("/api/chat/:clientId/:botId/stream", widgetCors, async (req, res) => {
+    const startTime = Date.now();
+    
+    try {
+      // Validate params
+      const paramsValidation = validateRequest(clientBotParamsSchema, req.params);
+      if (!paramsValidation.success) {
+        return res.status(400).json({ error: paramsValidation.error });
+      }
+      const { clientId, botId } = paramsValidation.data;
+      
+      // Validate body
+      const bodyValidation = validateRequest(chatBodySchema, req.body);
+      if (!bodyValidation.success) {
+        return res.status(400).json({ error: bodyValidation.error });
+      }
+      const { messages, sessionId, language } = bodyValidation.data;
+
+      // Load bot configuration
+      const botConfig = await getBotConfigAsync(clientId, botId);
+      if (!botConfig) {
+        return res.status(404).json({ error: `Bot not found: ${clientId}/${botId}` });
+      }
+
+      // Check client status
+      const clientStatus = getClientStatus(clientId);
+      if (clientStatus === 'paused') {
+        return res.status(503).json({ 
+          error: "Service temporarily unavailable",
+          message: "This service is currently paused."
+        });
+      }
+
+      // Check plan limits
+      const limitCheck = await checkMessageLimit(clientId);
+      if (!limitCheck.allowed) {
+        return res.status(429).json({
+          error: "Usage limit reached",
+          message: limitCheck.reason
+        });
+      }
+
+      const lastUserMessage = messages[messages.length - 1];
+      const actualSessionId = sessionId || `session_${Date.now()}`;
+      
+      // Crisis detection (non-streamed response)
+      if (lastUserMessage?.role === "user" && detectCrisisInMessage(lastUserMessage.content, botConfig)) {
+        const crisisReply = getBotCrisisResponse(botConfig);
+        return res.json({ 
+          reply: crisisReply,
+          meta: { clientId, botId, crisis: true, sessionId: actualSessionId }
+        });
+      }
+
+      // Set up SSE headers
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.flushHeaders();
+
+      // Build system prompt with suggested replies instruction
+      const systemPrompt = buildSystemPromptFromConfig(botConfig);
+      const enhancedPrompt = `${systemPrompt}
+
+IMPORTANT: After your response, always include 2-3 suggested follow-up questions the user might want to ask. Format them as JSON at the very end of your response on a new line like this:
+[SUGGESTIONS]{"replies":["Question 1?","Question 2?","Question 3?"]}[/SUGGESTIONS]
+These suggestions should be relevant to what was just discussed and help guide the conversation.`;
+
+      let fullReply = '';
+      
+      // Create streaming completion
+      const stream = await openai.chat.completions.create({
+        model: "gpt-4.1-mini",
+        messages: [
+          { role: "system", content: enhancedPrompt },
+          ...messages
+        ],
+        max_completion_tokens: 500,
+        stream: true,
+      });
+
+      // Stream the response
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content || '';
+        if (content) {
+          fullReply += content;
+          
+          // Don't stream the suggestions metadata
+          if (!content.includes('[SUGGESTIONS]') && !fullReply.includes('[SUGGESTIONS]')) {
+            res.write(`data: ${JSON.stringify({ type: 'chunk', content })}\n\n`);
+          }
+        }
+      }
+
+      const responseTime = Date.now() - startTime;
+      
+      // Extract suggested replies from the response
+      let suggestedReplies: string[] = [];
+      let cleanReply = fullReply;
+      
+      const suggestionsMatch = fullReply.match(/\[SUGGESTIONS\](.*?)\[\/SUGGESTIONS\]/s);
+      if (suggestionsMatch) {
+        try {
+          const suggestionsData = JSON.parse(suggestionsMatch[1]);
+          suggestedReplies = suggestionsData.replies || [];
+          cleanReply = fullReply.replace(/\[SUGGESTIONS\].*?\[\/SUGGESTIONS\]/s, '').trim();
+        } catch (e) {
+          console.error('Failed to parse suggestions:', e);
+        }
+      }
+
+      // Send final message with metadata
+      res.write(`data: ${JSON.stringify({ 
+        type: 'done', 
+        suggestedReplies,
+        meta: { 
+          clientId, 
+          botId, 
+          sessionId: actualSessionId, 
+          responseTimeMs: responseTime 
+        }
+      })}\n\n`);
+      
+      res.end();
+
+      // Async analytics and logging (after response is sent)
+      const messageCategory = categorizeMessageTopic(lastUserMessage?.content || "");
+      const existingSession = await storage.getChatSession(actualSessionId, clientId, botId);
+      
+      const sessionData = {
+        sessionId: actualSessionId,
+        clientId,
+        botId,
+        startedAt: existingSession?.startedAt || new Date(),
+        userMessageCount: (existingSession?.userMessageCount || 0) + 1,
+        botMessageCount: (existingSession?.botMessageCount || 0) + 1,
+        totalResponseTimeMs: (existingSession?.totalResponseTimeMs || 0) + responseTime,
+        crisisDetected: existingSession?.crisisDetected || false,
+        appointmentRequested: existingSession?.appointmentRequested || false,
+        topics: [...(existingSession?.topics as string[] || [])],
+      };
+      
+      if (messageCategory && !sessionData.topics.includes(messageCategory)) {
+        sessionData.topics.push(messageCategory);
+      }
+
+      await storage.createOrUpdateChatSession(sessionData);
+      await incrementMessageCount(clientId);
+      
+      await storage.updateOrCreateDailyAnalytics({
+        date: new Date().toISOString().split('T')[0],
+        clientId,
+        botId,
+        totalConversations: existingSession ? 0 : 1,
+        totalMessages: 2,
+        userMessages: 1,
+        botMessages: 1,
+      });
+
+      // Log to file
+      logConversationToFile({
+        timestamp: new Date().toISOString(),
+        clientId,
+        botId,
+        sessionId: actualSessionId,
+        userMessage: lastUserMessage?.content || "",
+        botReply: cleanReply
+      });
+
+    } catch (error) {
+      console.error("Streaming chat error:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Failed to process chat message" });
+      } else {
+        res.write(`data: ${JSON.stringify({ type: 'error', message: 'Stream interrupted' })}\n\n`);
+        res.end();
+      }
+    }
+  });
+
+  // Human handoff endpoint - marks session for human review
+  app.post("/api/chat/:clientId/:botId/handoff", widgetCors, async (req, res) => {
+    try {
+      const paramsValidation = validateRequest(clientBotParamsSchema, req.params);
+      if (!paramsValidation.success) {
+        return res.status(400).json({ error: paramsValidation.error });
+      }
+      const { clientId, botId } = paramsValidation.data;
+      
+      const { sessionId, messages, contactInfo, reason, language } = req.body;
+      
+      if (!sessionId) {
+        return res.status(400).json({ error: "Session ID is required" });
+      }
+
+      // Get bot configuration
+      const botConfig = await getBotConfigAsync(clientId, botId);
+      if (!botConfig) {
+        return res.status(404).json({ error: "Bot not found" });
+      }
+
+      // Log analytics event for handoff request
+      await storage.logAnalyticsEvent({
+        clientId,
+        botId,
+        sessionId,
+        eventType: 'human_handoff',
+        actor: 'user',
+        messageContent: reason || 'User requested to speak with a person',
+        metadata: { 
+          language,
+          contactInfo: contactInfo || null,
+          messageCount: messages?.length || 0
+        } as any,
+      });
+
+      // Update session state to flag for human review
+      await storage.updateSessionState(sessionId, {
+        status: 'needs_attention',
+        priority: 'high'
+      });
+
+      // Generate conversation summary for quick handoff context
+      const lastMessages = (messages || []).slice(-5).map((m: any) => 
+        `${m.role === 'user' ? 'User' : 'Bot'}: ${m.content.slice(0, 100)}...`
+      ).join('\n');
+
+      // Add note to session for staff
+      await storage.createConversationNote({
+        sessionId,
+        clientId,
+        botId,
+        content: `🔔 Human handoff requested\nReason: ${reason || 'User clicked "Talk to a person"'}\nContact: ${contactInfo?.email || contactInfo?.phone || 'Not provided'}\n\nRecent conversation:\n${lastMessages}`,
+        createdBy: 'system'
+      });
+
+      // Get business contact info to show user
+      const businessPhone = botConfig.businessProfile?.phone || null;
+      const businessEmail = botConfig.businessProfile?.email || null;
+
+      res.json({
+        success: true,
+        message: language === 'es' 
+          ? 'Su solicitud ha sido recibida. Nuestro equipo se pondrá en contacto pronto.'
+          : 'Your request has been received. Our team will reach out to you soon.',
+        businessContact: {
+          phone: businessPhone,
+          email: businessEmail
+        }
+      });
+    } catch (error) {
+      console.error("Human handoff error:", error);
+      res.status(500).json({ error: "Failed to process handoff request" });
     }
   });
   
