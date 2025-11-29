@@ -225,7 +225,7 @@ export default function ClientDashboard() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white" data-testid="text-dashboard-title">{businessName}</h1>
-          <p className="text-white/55 flex items-center gap-2">
+          <div className="text-white/55 flex items-center gap-2">
             <Badge className="bg-cyan-500/20 text-cyan-400 border border-cyan-500/30" data-testid="badge-business-type">{businessType}</Badge>
             {profile?.businessInfo?.location && (
               <span className="flex items-center gap-1">
@@ -233,7 +233,7 @@ export default function ClientDashboard() {
                 {profile.businessInfo.location}
               </span>
             )}
-          </p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button
