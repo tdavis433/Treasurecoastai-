@@ -15,6 +15,7 @@ import LeadsPage from "@/pages/leads";
 import InboxPage from "@/pages/inbox";
 import CreateBot from "@/pages/create-bot";
 import BotWizard from "@/pages/bot-wizard";
+import AutomationsPage from "@/pages/automations";
 import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
 import DemosPage from "@/pages/demos";
@@ -32,6 +33,7 @@ function Router() {
       <Route path="/admin/analytics" component={AdminAnalytics} />
       <Route path="/admin/bot/new" component={CreateBot} />
       <Route path="/admin/bot/wizard" component={BotWizard} />
+      <Route path="/admin/bot/:botId/automations" component={AutomationsPage} />
       <Route path="/admin/bot/:botId" component={BotDashboard} />
       <Route path="/admin">
         <Redirect to="/admin/dashboard" />

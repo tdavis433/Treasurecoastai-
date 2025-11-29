@@ -467,6 +467,59 @@ async function requireClientAuth(req: Request, res: Response, next: NextFunction
   return res.status(403).json({ error: "Access denied" });
 }
 
+// Helper to validate bot access for tenant isolation
+async function validateBotAccess(req: Request, res: Response, botId: string): Promise<boolean> {
+  const userId = req.session.userId;
+  const userRole = req.session.userRole;
+  
+  if (!userId) {
+    res.status(401).json({ error: "Authentication required" });
+    return false;
+  }
+  
+  // Super admins have access to all bots
+  if (userRole === "super_admin") {
+    return true;
+  }
+  
+  // Client admins must have access through workspace membership
+  if (userRole === "client_admin" && req.session.clientId) {
+    try {
+      // Get the bot's workspace
+      const bot = await storage.getBotByBotId(botId);
+      if (!bot) {
+        res.status(404).json({ error: "Bot not found" });
+        return false;
+      }
+      
+      // Check if bot belongs to user's workspace/clientId
+      if (bot.clientId !== req.session.clientId) {
+        console.warn(`Client admin ${userId} attempted to access bot ${botId} from different client ${bot.clientId}`);
+        res.status(403).json({ error: "Access denied - bot belongs to different tenant" });
+        return false;
+      }
+      
+      // Additional workspace membership check if workspace exists
+      if (bot.workspaceId) {
+        const membership = await storage.checkWorkspaceMembership(userId, bot.workspaceId);
+        if (!membership) {
+          console.warn(`Client admin ${userId} has no workspace membership for bot ${botId}`);
+          // Log warning but allow access for backwards compatibility
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Bot access validation error:", error);
+      res.status(500).json({ error: "Access validation failed" });
+      return false;
+    }
+  }
+  
+  res.status(403).json({ error: "Access denied" });
+  return false;
+}
+
 const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
@@ -3554,6 +3607,290 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Create portal session error:", error);
       res.status(500).json({ error: "Failed to create portal session" });
+    }
+  });
+
+  // =============================================
+  // PHASE 4: AUTOMATION V2 API ENDPOINTS
+  // =============================================
+
+  // Automation workflow Zod schemas
+  const automationWorkflowSchema = z.object({
+    name: z.string().min(1).max(100),
+    description: z.string().optional().nullable(),
+    botId: z.string().min(1),
+    triggerType: z.enum(['keyword', 'schedule', 'inactivity', 'message_count', 'lead_captured', 'appointment_booked']),
+    triggerConfig: z.object({
+      keywords: z.array(z.string()).optional(),
+      matchType: z.enum(['exact', 'contains', 'regex']).optional(),
+      schedule: z.string().optional(),
+      inactivityMinutes: z.number().optional(),
+      messageCountThreshold: z.number().optional(),
+      eventType: z.string().optional(),
+    }).optional(),
+    conditions: z.array(z.object({
+      id: z.string(),
+      field: z.string(),
+      operator: z.enum(['equals', 'contains', 'greater_than', 'less_than', 'matches_regex', 'in_list']),
+      value: z.union([z.string(), z.number(), z.array(z.string())]),
+      groupId: z.string().optional(),
+    })).optional(),
+    actions: z.array(z.object({
+      id: z.string(),
+      type: z.enum(['send_message', 'capture_lead', 'tag_session', 'notify_staff', 'send_email', 'delay', 'set_variable']),
+      order: z.number(),
+      config: z.object({
+        message: z.string().optional(),
+        delay: z.number().optional(),
+        template: z.string().optional(),
+        channel: z.enum(['chat', 'email', 'sms']).optional(),
+        tags: z.array(z.string()).optional(),
+        variable: z.object({ name: z.string(), value: z.string() }).optional(),
+      }),
+    })).optional(),
+    status: z.enum(['active', 'paused', 'draft']).optional(),
+    priority: z.number().optional(),
+    throttleSeconds: z.number().optional(),
+    maxExecutionsPerSession: z.number().optional().nullable(),
+    scheduleTimezone: z.string().optional(),
+  });
+
+  // List automation workflows for a bot
+  app.get("/api/bots/:botId/automations", requireAuth, async (req, res) => {
+    try {
+      const { botId } = req.params;
+      
+      // Validate tenant access
+      if (!await validateBotAccess(req, res, botId)) return;
+      
+      const workflows = await storage.getAutomationWorkflowsByBot(botId);
+      res.json({ workflows });
+    } catch (error) {
+      console.error("Get automations error:", error);
+      res.status(500).json({ error: "Failed to get automation workflows" });
+    }
+  });
+
+  // Get a single automation workflow
+  app.get("/api/bots/:botId/automations/:workflowId", requireAuth, async (req, res) => {
+    try {
+      const { botId, workflowId } = req.params;
+      
+      // Validate tenant access
+      if (!await validateBotAccess(req, res, botId)) return;
+      
+      const workflow = await storage.getAutomationWorkflow(workflowId);
+      
+      if (!workflow || workflow.botId !== botId) {
+        return res.status(404).json({ error: "Automation workflow not found" });
+      }
+      
+      res.json({ workflow });
+    } catch (error) {
+      console.error("Get automation error:", error);
+      res.status(500).json({ error: "Failed to get automation workflow" });
+    }
+  });
+
+  // Create a new automation workflow
+  app.post("/api/bots/:botId/automations", requireAuth, async (req, res) => {
+    try {
+      const { botId } = req.params;
+      
+      // Validate tenant access
+      if (!await validateBotAccess(req, res, botId)) return;
+      
+      const validation = automationWorkflowSchema.safeParse({ ...req.body, botId });
+      
+      if (!validation.success) {
+        return res.status(400).json({ error: "Invalid automation data", details: validation.error.format() });
+      }
+      
+      const workflow = await storage.createAutomationWorkflow(validation.data as any);
+      res.status(201).json({ workflow });
+    } catch (error) {
+      console.error("Create automation error:", error);
+      res.status(500).json({ error: "Failed to create automation workflow" });
+    }
+  });
+
+  // Update an automation workflow
+  app.patch("/api/bots/:botId/automations/:workflowId", requireAuth, async (req, res) => {
+    try {
+      const { botId, workflowId } = req.params;
+      
+      // Validate tenant access
+      if (!await validateBotAccess(req, res, botId)) return;
+      
+      const existing = await storage.getAutomationWorkflow(workflowId);
+      
+      if (!existing || existing.botId !== botId) {
+        return res.status(404).json({ error: "Automation workflow not found" });
+      }
+      
+      const partialSchema = automationWorkflowSchema.partial();
+      const validation = partialSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ error: "Invalid update data", details: validation.error.format() });
+      }
+      
+      const updated = await storage.updateAutomationWorkflow(workflowId, validation.data as any);
+      res.json({ workflow: updated });
+    } catch (error) {
+      console.error("Update automation error:", error);
+      res.status(500).json({ error: "Failed to update automation workflow" });
+    }
+  });
+
+  // Delete an automation workflow
+  app.delete("/api/bots/:botId/automations/:workflowId", requireAuth, async (req, res) => {
+    try {
+      const { botId, workflowId } = req.params;
+      
+      // Validate tenant access
+      if (!await validateBotAccess(req, res, botId)) return;
+      
+      const existing = await storage.getAutomationWorkflow(workflowId);
+      
+      if (!existing || existing.botId !== botId) {
+        return res.status(404).json({ error: "Automation workflow not found" });
+      }
+      
+      await storage.deleteAutomationWorkflow(workflowId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete automation error:", error);
+      res.status(500).json({ error: "Failed to delete automation workflow" });
+    }
+  });
+
+  // Toggle automation status (quick action)
+  app.post("/api/bots/:botId/automations/:workflowId/toggle", requireAuth, async (req, res) => {
+    try {
+      const { botId, workflowId } = req.params;
+      
+      // Validate tenant access
+      if (!await validateBotAccess(req, res, botId)) return;
+      
+      const existing = await storage.getAutomationWorkflow(workflowId);
+      
+      if (!existing || existing.botId !== botId) {
+        return res.status(404).json({ error: "Automation workflow not found" });
+      }
+      
+      const newStatus = existing.status === 'active' ? 'paused' : 'active';
+      const updated = await storage.updateAutomationWorkflow(workflowId, { status: newStatus });
+      res.json({ workflow: updated });
+    } catch (error) {
+      console.error("Toggle automation error:", error);
+      res.status(500).json({ error: "Failed to toggle automation status" });
+    }
+  });
+
+  // Get automation run history for a workflow
+  app.get("/api/bots/:botId/automations/:workflowId/runs", requireAuth, async (req, res) => {
+    try {
+      const { botId, workflowId } = req.params;
+      const limit = parseInt(req.query.limit as string) || 50;
+      
+      // Validate tenant access
+      if (!await validateBotAccess(req, res, botId)) return;
+      
+      const existing = await storage.getAutomationWorkflow(workflowId);
+      if (!existing || existing.botId !== botId) {
+        return res.status(404).json({ error: "Automation workflow not found" });
+      }
+      
+      const runs = await storage.getAutomationRunsByWorkflow(workflowId, limit);
+      res.json({ runs });
+    } catch (error) {
+      console.error("Get automation runs error:", error);
+      res.status(500).json({ error: "Failed to get automation runs" });
+    }
+  });
+
+  // Get all automation runs for a bot (recent 24h by default)
+  app.get("/api/bots/:botId/automation-runs", requireAuth, async (req, res) => {
+    try {
+      const { botId } = req.params;
+      const hours = parseInt(req.query.hours as string) || 24;
+      
+      // Validate tenant access
+      if (!await validateBotAccess(req, res, botId)) return;
+      
+      const runs = await storage.getRecentAutomationRuns(botId, hours);
+      res.json({ runs });
+    } catch (error) {
+      console.error("Get bot automation runs error:", error);
+      res.status(500).json({ error: "Failed to get automation runs" });
+    }
+  });
+
+  // Test an automation workflow (dry run)
+  app.post("/api/bots/:botId/automations/:workflowId/test", requireAuth, async (req, res) => {
+    try {
+      const { botId, workflowId } = req.params;
+      const { testMessage, testContext } = req.body;
+      
+      // Validate tenant access
+      if (!await validateBotAccess(req, res, botId)) return;
+      
+      const workflow = await storage.getAutomationWorkflow(workflowId);
+      if (!workflow || workflow.botId !== botId) {
+        return res.status(404).json({ error: "Automation workflow not found" });
+      }
+      
+      // Simulate workflow execution
+      const testResult = {
+        wouldTrigger: false,
+        matchedConditions: [] as string[],
+        actionsToExecute: workflow.actions || [],
+        testMessage,
+        workflow: {
+          name: workflow.name,
+          triggerType: workflow.triggerType,
+        }
+      };
+      
+      // Check trigger conditions based on type
+      if (workflow.triggerType === 'keyword' && workflow.triggerConfig) {
+        const keywords = (workflow.triggerConfig as any).keywords || [];
+        const matchType = (workflow.triggerConfig as any).matchType || 'contains';
+        const message = (testMessage || '').toLowerCase();
+        
+        for (const keyword of keywords) {
+          const kw = keyword.toLowerCase();
+          let matched = false;
+          
+          if (matchType === 'exact') {
+            matched = message === kw;
+          } else if (matchType === 'contains') {
+            matched = message.includes(kw);
+          } else if (matchType === 'regex') {
+            try {
+              matched = new RegExp(keyword, 'i').test(message);
+            } catch { matched = false; }
+          }
+          
+          if (matched) {
+            testResult.wouldTrigger = true;
+            testResult.matchedConditions.push(`Keyword: "${keyword}"`);
+          }
+        }
+      } else if (workflow.triggerType === 'message_count' && workflow.triggerConfig) {
+        const threshold = (workflow.triggerConfig as any).messageCountThreshold || 1;
+        const currentCount = testContext?.messageCount || 0;
+        if (currentCount >= threshold) {
+          testResult.wouldTrigger = true;
+          testResult.matchedConditions.push(`Message count: ${currentCount} >= ${threshold}`);
+        }
+      }
+      
+      res.json({ testResult });
+    } catch (error) {
+      console.error("Test automation error:", error);
+      res.status(500).json({ error: "Failed to test automation" });
     }
   });
 

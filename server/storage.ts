@@ -18,6 +18,10 @@ import {
   type InsertLead,
   type WorkspaceMembership,
   type Workspace,
+  type AutomationWorkflow,
+  type InsertAutomationWorkflow,
+  type AutomationRun,
+  type InsertAutomationRun,
   appointments,
   clientSettings,
   conversationAnalytics,
@@ -29,7 +33,9 @@ import {
   leads,
   workspaceMemberships,
   workspaces,
-  bots
+  bots,
+  automationWorkflows,
+  automationRuns
 } from "@shared/schema";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { neonConfig, Pool } from "@neondatabase/serverless";
@@ -686,7 +692,7 @@ export class DbStorage implements IStorage {
   async createLead(lead: InsertLead): Promise<Lead> {
     const [created] = await db
       .insert(leads)
-      .values(lead)
+      .values(lead as any)
       .returning();
     return created;
   }
@@ -843,6 +849,128 @@ export class DbStorage implements IStorage {
       .limit(1);
     
     return workspace;
+  }
+
+  // =============================================
+  // PHASE 4: AUTOMATION WORKFLOW METHODS
+  // =============================================
+
+  async createAutomationWorkflow(workflow: InsertAutomationWorkflow): Promise<AutomationWorkflow> {
+    const [created] = await db
+      .insert(automationWorkflows)
+      .values(workflow as any)
+      .returning();
+    return created;
+  }
+
+  async getAutomationWorkflow(id: string): Promise<AutomationWorkflow | undefined> {
+    const [workflow] = await db
+      .select()
+      .from(automationWorkflows)
+      .where(eq(automationWorkflows.id, id))
+      .limit(1);
+    return workflow;
+  }
+
+  async getAutomationWorkflowsByBot(botId: string): Promise<AutomationWorkflow[]> {
+    return db
+      .select()
+      .from(automationWorkflows)
+      .where(eq(automationWorkflows.botId, botId))
+      .orderBy(desc(automationWorkflows.priority));
+  }
+
+  async getActiveAutomationWorkflowsByBot(botId: string): Promise<AutomationWorkflow[]> {
+    return db
+      .select()
+      .from(automationWorkflows)
+      .where(and(
+        eq(automationWorkflows.botId, botId),
+        eq(automationWorkflows.status, 'active')
+      ))
+      .orderBy(desc(automationWorkflows.priority));
+  }
+
+  async updateAutomationWorkflow(id: string, updates: Partial<AutomationWorkflow>): Promise<AutomationWorkflow> {
+    const [updated] = await db
+      .update(automationWorkflows)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(automationWorkflows.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteAutomationWorkflow(id: string): Promise<void> {
+    await db
+      .delete(automationWorkflows)
+      .where(eq(automationWorkflows.id, id));
+  }
+
+  // Automation runs (execution logs)
+  async createAutomationRun(run: InsertAutomationRun): Promise<AutomationRun> {
+    const [created] = await db
+      .insert(automationRuns)
+      .values(run as any)
+      .returning();
+    return created;
+  }
+
+  async updateAutomationRun(id: string, updates: Partial<AutomationRun>): Promise<AutomationRun> {
+    const [updated] = await db
+      .update(automationRuns)
+      .set(updates)
+      .where(eq(automationRuns.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getAutomationRunsByWorkflow(workflowId: string, limit: number = 50): Promise<AutomationRun[]> {
+    return db
+      .select()
+      .from(automationRuns)
+      .where(eq(automationRuns.workflowId, workflowId))
+      .orderBy(desc(automationRuns.triggeredAt))
+      .limit(limit);
+  }
+
+  async getAutomationRunsByBot(botId: string, limit: number = 100): Promise<AutomationRun[]> {
+    return db
+      .select()
+      .from(automationRuns)
+      .where(eq(automationRuns.botId, botId))
+      .orderBy(desc(automationRuns.triggeredAt))
+      .limit(limit);
+  }
+
+  async getAutomationRunsBySession(sessionId: string): Promise<AutomationRun[]> {
+    return db
+      .select()
+      .from(automationRuns)
+      .where(eq(automationRuns.sessionId, sessionId))
+      .orderBy(desc(automationRuns.triggeredAt));
+  }
+
+  async getRecentAutomationRuns(botId: string, hours: number = 24): Promise<AutomationRun[]> {
+    const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+    return db
+      .select()
+      .from(automationRuns)
+      .where(and(
+        eq(automationRuns.botId, botId),
+        gte(automationRuns.triggeredAt, since)
+      ))
+      .orderBy(desc(automationRuns.triggeredAt));
+  }
+
+  async countAutomationRunsForSession(workflowId: string, sessionId: string): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(automationRuns)
+      .where(and(
+        eq(automationRuns.workflowId, workflowId),
+        eq(automationRuns.sessionId, sessionId)
+      ));
+    return result[0]?.count || 0;
   }
 }
 

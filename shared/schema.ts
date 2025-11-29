@@ -719,3 +719,131 @@ export const insertBotTemplateSchema = createInsertSchema(botTemplates).omit({
 
 export type InsertBotTemplate = z.infer<typeof insertBotTemplateSchema>;
 export type BotTemplate = typeof botTemplates.$inferSelect;
+
+// =============================================
+// PHASE 4: AUTOMATIONS V2 TABLES
+// =============================================
+
+// Automation workflows - Main automation definitions
+export const automationWorkflows = pgTable("automation_workflows", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  botId: varchar("bot_id").notNull(), // References bots.botId
+  
+  // Workflow identification
+  name: text("name").notNull(),
+  description: text("description"),
+  
+  // Trigger configuration
+  triggerType: text("trigger_type").notNull(), // keyword, schedule, inactivity, message_count, lead_captured, appointment_booked
+  triggerConfig: json("trigger_config").$type<{
+    keywords?: string[];
+    matchType?: 'exact' | 'contains' | 'regex';
+    schedule?: string; // cron expression
+    inactivityMinutes?: number;
+    messageCountThreshold?: number;
+    eventType?: string;
+  }>().default({}),
+  
+  // Entry conditions (all must match for workflow to trigger)
+  conditions: json("conditions").$type<Array<{
+    id: string;
+    field: string; // e.g., 'session.messageCount', 'time.hour', 'message.content'
+    operator: 'equals' | 'contains' | 'greater_than' | 'less_than' | 'matches_regex' | 'in_list';
+    value: string | number | string[];
+    groupId?: string; // For OR grouping within conditions
+  }>>().default([]),
+  
+  // Actions to execute (in order)
+  actions: json("actions").$type<Array<{
+    id: string;
+    type: 'send_message' | 'capture_lead' | 'tag_session' | 'notify_staff' | 'send_email' | 'delay' | 'set_variable';
+    order: number;
+    config: {
+      message?: string;
+      delay?: number; // seconds
+      template?: string;
+      channel?: 'chat' | 'email' | 'sms';
+      tags?: string[];
+      variable?: { name: string; value: string };
+    };
+  }>>().default([]),
+  
+  // Execution controls
+  status: text("status").notNull().default("active"), // active, paused, draft
+  priority: integer("priority").notNull().default(10), // Higher = evaluated first
+  throttleSeconds: integer("throttle_seconds").default(0), // Min seconds between triggers
+  maxExecutionsPerSession: integer("max_executions_per_session"), // Null = unlimited
+  
+  // Schedule-specific settings
+  scheduleTimezone: text("schedule_timezone").default("America/New_York"),
+  nextScheduledRun: timestamp("next_scheduled_run"),
+  lastScheduledRun: timestamp("last_scheduled_run"),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  botIdIdx: index("automation_workflows_bot_id_idx").on(table.botId),
+  statusIdx: index("automation_workflows_status_idx").on(table.status),
+  triggerTypeIdx: index("automation_workflows_trigger_type_idx").on(table.triggerType),
+}));
+
+export const insertAutomationWorkflowSchema = createInsertSchema(automationWorkflows).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAutomationWorkflow = z.infer<typeof insertAutomationWorkflowSchema>;
+export type AutomationWorkflow = typeof automationWorkflows.$inferSelect;
+
+// Automation execution logs - Track workflow runs
+export const automationRuns = pgTable("automation_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workflowId: varchar("workflow_id").notNull(), // References automationWorkflows.id
+  botId: varchar("bot_id").notNull(),
+  sessionId: varchar("session_id"),
+  
+  // Execution details
+  triggeredAt: timestamp("triggered_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+  status: text("status").notNull().default("running"), // running, completed, failed, skipped
+  
+  // Context that triggered the workflow
+  triggerContext: json("trigger_context").$type<{
+    message?: string;
+    messageCount?: number;
+    triggerType?: string;
+    matchedKeywords?: string[];
+    scheduledTime?: string;
+  }>().default({}),
+  
+  // Results
+  actionsExecuted: integer("actions_executed").default(0),
+  result: json("result").$type<{
+    success: boolean;
+    response?: string;
+    error?: string;
+    actionsResults?: Array<{
+      actionId: string;
+      success: boolean;
+      output?: any;
+    }>;
+  }>().default({ success: false }),
+  
+  // Error tracking
+  errorMessage: text("error_message"),
+}, (table) => ({
+  workflowIdIdx: index("automation_runs_workflow_id_idx").on(table.workflowId),
+  botIdIdx: index("automation_runs_bot_id_idx").on(table.botId),
+  sessionIdIdx: index("automation_runs_session_id_idx").on(table.sessionId),
+  triggeredAtIdx: index("automation_runs_triggered_at_idx").on(table.triggeredAt),
+  statusIdx: index("automation_runs_status_idx").on(table.status),
+}));
+
+export const insertAutomationRunSchema = createInsertSchema(automationRuns).omit({
+  id: true,
+});
+
+export type InsertAutomationRun = z.infer<typeof insertAutomationRunSchema>;
+export type AutomationRun = typeof automationRuns.$inferSelect;
