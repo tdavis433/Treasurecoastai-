@@ -344,15 +344,6 @@ export default function ControlCenter() {
               <Plus className="h-4 w-4 mr-2" />
               Add New Bot
             </Button>
-            <Button 
-              data-testid="button-settings-legacy"
-              variant="ghost" 
-              className="w-full justify-start mt-1 text-white/55 hover:bg-white/10 hover:text-white"
-              onClick={() => setLocation('/super-admin')}
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Legacy Admin
-            </Button>
           </div>
         </aside>
 

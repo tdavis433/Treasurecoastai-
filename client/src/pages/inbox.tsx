@@ -591,7 +591,7 @@ export default function InboxPage() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setLocation(isSuperAdmin ? "/super-admin/control-center" : "/client/dashboard")}
+            onClick={() => setLocation(isSuperAdmin ? "/super-admin" : "/client/dashboard")}
             className="text-white/55 hover:text-white hover:bg-white/10"
             data-testid="button-back"
           >

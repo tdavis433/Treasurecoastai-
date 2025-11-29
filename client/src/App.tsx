@@ -7,7 +7,6 @@ import Home from "@/pages/home";
 import AdminDashboard from "@/pages/admin-dashboard";
 import AdminAppointments from "@/pages/admin-appointments";
 import AdminAnalytics from "@/pages/admin-analytics";
-import SuperAdmin from "@/pages/super-admin";
 import ControlCenter from "@/pages/control-center";
 import BotDashboard from "@/pages/bot-dashboard";
 import ClientDashboard from "@/pages/client-dashboard";
@@ -44,8 +43,10 @@ function Router() {
       <Route path="/client/leads" component={LeadsPage} />
       <Route path="/client/inbox" component={InboxPage} />
       <Route path="/login" component={Login} />
-      <Route path="/super-admin" component={SuperAdmin} />
-      <Route path="/super-admin/control-center" component={ControlCenter} />
+      <Route path="/super-admin" component={ControlCenter} />
+      <Route path="/super-admin/control-center">
+        <Redirect to="/super-admin" />
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
