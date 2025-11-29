@@ -1,0 +1,46 @@
+{
+  "botId": "bot_sweet_dreams_bakery_xgfjqe_mikpx0m6",
+  "clientId": "client_mikpx0m6",
+  "name": "Sweet Dreams Bakery XGfjqE Assistant",
+  "description": "AI assistant for Sweet Dreams Bakery XGfjqE",
+  "businessProfile": {
+    "businessName": "Sweet Dreams Bakery XGfjqE",
+    "type": "restaurant",
+    "cuisine": "",
+    "location": "123 Main Street, Port St. Lucie, FL",
+    "phone": "772-555-0199",
+    "email": "info@sweetdreamsbakery.test",
+    "website": "",
+    "hours": {
+      "officeHours": "Mon-Fri 9am-5pm"
+    },
+    "services": [
+      "Custom Birthday Cakes",
+      "Wedding Cakes",
+      "Fresh Pastries"
+    ]
+  },
+  "systemPrompt": "You are a friendly restaurant assistant. Help guests with menu questions, hours, reservations, and general info. Be concise and polite.",
+  "faqs": [
+    {
+      "question": "What are your hours?",
+      "answer": "Open Tuesday-Sunday, 7am-6pm. Closed Mondays."
+    },
+    {
+      "question": "Do you take custom orders?",
+      "answer": "Yes! We need 48 hours notice for custom cakes."
+    }
+  ],
+  "rules": {
+    "allowedTopics": [
+      "menu",
+      "hours",
+      "reservations",
+      "location"
+    ],
+    "forbiddenTopics": [
+      "medical advice",
+      "legal advice"
+    ]
+  }
+}

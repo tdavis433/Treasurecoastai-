@@ -747,6 +747,30 @@ export function saveBotConfig(botId: string, config: BotConfig): boolean {
   }
 }
 
+export function createBotConfig(config: BotConfig): boolean {
+  try {
+    if (!fs.existsSync(BOTS_DIR)) {
+      fs.mkdirSync(BOTS_DIR, { recursive: true });
+    }
+    
+    const sanitizedBotId = config.botId.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const filePath = path.join(BOTS_DIR, `${sanitizedBotId}.json`);
+    
+    if (fs.existsSync(filePath)) {
+      console.error(`Bot config file already exists: ${filePath}`);
+      return false;
+    }
+    
+    fs.writeFileSync(filePath, JSON.stringify(config, null, 2), 'utf-8');
+    clearCache();
+    console.log(`Created new bot config: ${filePath}`);
+    return true;
+  } catch (error) {
+    console.error(`Error creating bot config for ${config.botId}:`, error);
+    return false;
+  }
+}
+
 export function getBotFileName(botId: string): string | null {
   try {
     const botFiles = fs.readdirSync(BOTS_DIR).filter(f => f.endsWith('.json'));

@@ -35,6 +35,7 @@ import {
   buildSystemPromptFromConfig,
   saveBotConfig,
   saveBotConfigAsync,
+  createBotConfig,
   registerClient,
   updateClientStatus,
   getClientStatus,
@@ -2839,7 +2840,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Create a new bot
-  app.post("/api/super-admin/bots", requireSuperAdmin, (req, res) => {
+  app.post("/api/super-admin/bots", requireSuperAdmin, async (req, res) => {
     try {
       // Validate request body
       const validation = validateRequest(createBotBodySchema, req.body);
@@ -2864,34 +2865,46 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(409).json({ error: `Bot with ID '${botId}' already exists` });
       }
       
-      // If cloning from a template, get the template config
+      // If cloning from a template, get the template config from database
       let newConfig: BotConfig;
       
       if (templateBotId) {
-        const templateConfig = getBotConfigByBotId(templateBotId);
-        if (!templateConfig) {
+        // First try to get template from database (bot_templates table)
+        const dbTemplate = await getTemplateById(templateBotId);
+        
+        // Fall back to bot config file if not in database
+        const templateConfig = dbTemplate?.defaultConfig || getBotConfigByBotId(templateBotId);
+        
+        if (!templateConfig && !dbTemplate) {
           return res.status(404).json({ error: `Template bot not found: ${templateBotId}` });
         }
         
+        // Use template data from database or config file
+        const templateBusinessProfile = dbTemplate?.defaultConfig?.businessProfile || templateConfig?.businessProfile || {};
+        const templateSystemPrompt = dbTemplate?.defaultConfig?.systemPrompt || templateConfig?.systemPrompt;
+        const templateFaqs = dbTemplate?.defaultConfig?.faqs || templateConfig?.faqs;
+        const templateRules = dbTemplate?.defaultConfig?.rules || templateConfig?.rules;
+        const templateName = dbTemplate?.name || templateConfig?.name;
+        
         // Clone template - merge businessProfile, inherit systemPrompt/FAQs/rules unless explicitly provided
         const mergedBusinessProfile = {
-          ...templateConfig.businessProfile,
+          ...templateBusinessProfile,
           ...businessProfile,
-          businessName: businessProfile?.businessName || name || templateConfig.businessProfile?.businessName,
-          hours: businessProfile?.hours || templateConfig.businessProfile?.hours,
-          services: (businessProfile?.services?.length ?? 0) > 0 ? businessProfile!.services : templateConfig.businessProfile?.services,
+          businessName: businessProfile?.businessName || name || templateBusinessProfile?.businessName,
+          type: businessProfile?.type || dbTemplate?.botType || templateBusinessProfile?.type,
+          hours: businessProfile?.hours || templateBusinessProfile?.hours,
+          services: (businessProfile?.services?.length ?? 0) > 0 ? businessProfile!.services : templateBusinessProfile?.services,
         };
         
         newConfig = {
-          ...templateConfig,
           botId,
           clientId,
-          name: name || templateConfig.name,
-          description: description || `AI assistant based on ${templateConfig.name}`,
+          name: name || templateName || 'New Bot',
+          description: description || `AI assistant based on ${templateName}`,
           businessProfile: mergedBusinessProfile,
-          systemPrompt: systemPrompt || templateConfig.systemPrompt,
-          faqs: faqs || templateConfig.faqs,
-          rules: (rules || templateConfig.rules) as any,
+          systemPrompt: systemPrompt || templateSystemPrompt || `You are a helpful assistant for ${name}.`,
+          faqs: faqs || templateFaqs || [],
+          rules: (rules || templateRules || {}) as any,
         };
       } else {
         // Create from scratch with provided values
@@ -2929,8 +2942,8 @@ These suggestions should be relevant to what was just discussed and help guide t
         };
       }
       
-      // Save the new bot config
-      const success = saveBotConfig(botId, newConfig);
+      // Create the new bot config (use createBotConfig for new bots)
+      const success = createBotConfig(newConfig);
       
       if (success) {
         // Create log directory for the new client

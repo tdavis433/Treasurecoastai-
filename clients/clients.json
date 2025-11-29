@@ -23,6 +23,16 @@
       ],
       "status": "active",
       "createdAt": "2025-11-27"
+    },
+    {
+      "id": "client_mikpx0m6",
+      "name": "Sweet Dreams Bakery XGfjqE",
+      "type": "restaurant",
+      "bots": [
+        "bot_sweet_dreams_bakery_xgfjqe_mikpx0m6"
+      ],
+      "status": "active",
+      "createdAt": "2025-11-29"
     }
   ]
 }
