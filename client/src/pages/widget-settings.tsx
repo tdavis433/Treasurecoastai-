@@ -69,14 +69,24 @@ export default function WidgetSettingsPage() {
 
   useEffect(() => {
     if (data?.settings) {
-      const { id, botId: _, ...rest } = data.settings;
-      setSettings({ ...defaultSettings, ...rest });
+      const { id, botId: _, theme, ...rest } = data.settings as any;
+      setSettings({ 
+        ...defaultSettings, 
+        ...rest,
+        themeMode: theme || defaultSettings.themeMode,
+      });
     }
   }, [data]);
 
   const saveMutation = useMutation({
-    mutationFn: (settingsData: Omit<WidgetSettings, 'id' | 'botId'>) =>
-      apiRequest('PUT', `/api/bots/${botId}/widget-settings`, settingsData),
+    mutationFn: (settingsData: Omit<WidgetSettings, 'id' | 'botId'>) => {
+      const { themeMode, ...rest } = settingsData;
+      const apiData = {
+        ...rest,
+        theme: themeMode,
+      };
+      return apiRequest('PUT', `/api/bots/${botId}/widget-settings`, apiData);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/bots', botId, 'widget-settings'] });
       toast({ title: "Settings saved", description: "Widget settings have been updated." });
