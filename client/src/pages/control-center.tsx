@@ -144,6 +144,9 @@ export default function ControlCenter() {
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [newUserForm, setNewUserForm] = useState({ username: '', password: '', role: 'client_admin' as 'super_admin' | 'client_admin', clientId: '' });
   const [editingUser, setEditingUser] = useState<{ id: string; username: string; role: string } | null>(null);
+  const [showCreateWorkspaceModal, setShowCreateWorkspaceModal] = useState(false);
+  const [newWorkspaceForm, setNewWorkspaceForm] = useState({ name: '', slug: '', ownerId: '', plan: 'starter' });
+  const [editingWorkspace, setEditingWorkspace] = useState<{ slug: string; name: string; plan: string; ownerId?: string } | null>(null);
 
   const { data: currentUser, isLoading: authLoading } = useQuery<AuthUser>({
     queryKey: ["/api/auth/me"],
@@ -438,6 +441,52 @@ export default function ControlCenter() {
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message || "Failed to delete user.", variant: "destructive" });
+    },
+  });
+
+  // Workspace CRUD mutations
+  const createWorkspaceMutation = useMutation({
+    mutationFn: async (data: { name: string; slug: string; ownerId: string; plan?: string }) => {
+      const response = await apiRequest("POST", "/api/super-admin/workspaces", data);
+      return response.json();
+    },
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ["/api/super-admin/workspaces"] });
+      setShowCreateWorkspaceModal(false);
+      setNewWorkspaceForm({ name: '', slug: '', ownerId: '', plan: 'starter' });
+      toast({ title: "Workspace Created", description: "New workspace has been created successfully." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to create workspace.", variant: "destructive" });
+    },
+  });
+
+  const updateWorkspaceMutation = useMutation({
+    mutationFn: async ({ slug, ...data }: { slug: string; name?: string; ownerId?: string; plan?: string }) => {
+      const response = await apiRequest("PATCH", `/api/super-admin/workspaces/${slug}`, data);
+      return response.json();
+    },
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ["/api/super-admin/workspaces"] });
+      setEditingWorkspace(null);
+      toast({ title: "Workspace Updated", description: "Workspace has been updated successfully." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update workspace.", variant: "destructive" });
+    },
+  });
+
+  const deleteWorkspaceMutation = useMutation({
+    mutationFn: async (slug: string) => {
+      const response = await apiRequest("DELETE", `/api/super-admin/workspaces/${slug}`);
+      return response.json();
+    },
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ["/api/super-admin/workspaces"] });
+      toast({ title: "Workspace Deleted", description: "Workspace and its bots have been deleted." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to delete workspace.", variant: "destructive" });
     },
   });
 
@@ -979,8 +1028,165 @@ export default function ControlCenter() {
                         <Download className="h-4 w-4 mr-2" />
                         Export
                       </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowCreateWorkspaceModal(true)}
+                        className="border-white/10 text-white/85 hover:bg-white/10"
+                        data-testid="button-add-workspace"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Workspace
+                      </Button>
                     </div>
                   </div>
+
+                  {/* Create Workspace Modal */}
+                  <AlertDialog open={showCreateWorkspaceModal} onOpenChange={setShowCreateWorkspaceModal}>
+                    <AlertDialogContent className="bg-[#1a1d24] border-white/10">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="text-white">Create New Workspace</AlertDialogTitle>
+                        <AlertDialogDescription className="text-white/55">
+                          Add a new business workspace to the platform.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <label className="text-sm text-white/85">Business Name</label>
+                          <input
+                            type="text"
+                            value={newWorkspaceForm.name}
+                            onChange={(e) => {
+                              const name = e.target.value;
+                              const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+                              setNewWorkspaceForm(f => ({ ...f, name, slug }));
+                            }}
+                            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-cyan-400/50"
+                            placeholder="e.g. Acme Restaurant"
+                            data-testid="input-new-workspace-name"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm text-white/85">Slug (auto-generated)</label>
+                          <input
+                            type="text"
+                            value={newWorkspaceForm.slug}
+                            onChange={(e) => setNewWorkspaceForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') }))}
+                            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-cyan-400/50"
+                            placeholder="e.g. acme_restaurant"
+                            data-testid="input-new-workspace-slug"
+                          />
+                          <p className="text-xs text-white/40">Lowercase letters, numbers, and underscores only</p>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm text-white/85">Plan</label>
+                          <Select
+                            value={newWorkspaceForm.plan}
+                            onValueChange={(value) => setNewWorkspaceForm(f => ({ ...f, plan: value }))}
+                          >
+                            <SelectTrigger className="w-full bg-white/5 border-white/10 text-white" data-testid="select-new-workspace-plan">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-[#1a1d24] border-white/10">
+                              <SelectItem value="free" className="text-white">Free</SelectItem>
+                              <SelectItem value="starter" className="text-white">Starter</SelectItem>
+                              <SelectItem value="pro" className="text-white">Pro</SelectItem>
+                              <SelectItem value="enterprise" className="text-white">Enterprise</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm text-white/85">Owner</label>
+                          <Select
+                            value={newWorkspaceForm.ownerId}
+                            onValueChange={(value) => setNewWorkspaceForm(f => ({ ...f, ownerId: value }))}
+                          >
+                            <SelectTrigger className="w-full bg-white/5 border-white/10 text-white" data-testid="select-new-workspace-owner">
+                              <SelectValue placeholder="Select owner..." />
+                            </SelectTrigger>
+                            <SelectContent className="bg-[#1a1d24] border-white/10">
+                              {adminUsers?.map(user => (
+                                <SelectItem key={user.id} value={String(user.id)} className="text-white">
+                                  {user.username} ({user.role === 'super_admin' ? 'Super Admin' : 'Client Admin'})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel className="bg-transparent border-white/10 text-white hover:bg-white/10">
+                          Cancel
+                        </AlertDialogCancel>
+                        <Button
+                          onClick={() => createWorkspaceMutation.mutate(newWorkspaceForm)}
+                          disabled={!newWorkspaceForm.name || !newWorkspaceForm.slug || !newWorkspaceForm.ownerId || createWorkspaceMutation.isPending}
+                          className="bg-cyan-500 hover:bg-cyan-600 text-white"
+                          data-testid="button-create-workspace-confirm"
+                        >
+                          {createWorkspaceMutation.isPending ? "Creating..." : "Create Workspace"}
+                        </Button>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+
+                  {/* Edit Workspace Modal */}
+                  <AlertDialog open={!!editingWorkspace} onOpenChange={(open) => !open && setEditingWorkspace(null)}>
+                    <AlertDialogContent className="bg-[#1a1d24] border-white/10">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="text-white">Edit Workspace</AlertDialogTitle>
+                        <AlertDialogDescription className="text-white/55">
+                          Update workspace settings for {editingWorkspace?.slug}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <label className="text-sm text-white/85">Business Name</label>
+                          <input
+                            type="text"
+                            value={editingWorkspace?.name || ''}
+                            onChange={(e) => setEditingWorkspace(w => w ? { ...w, name: e.target.value } : null)}
+                            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-cyan-400/50"
+                            data-testid="input-edit-workspace-name"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm text-white/85">Plan</label>
+                          <Select
+                            value={editingWorkspace?.plan || 'starter'}
+                            onValueChange={(value) => setEditingWorkspace(w => w ? { ...w, plan: value } : null)}
+                          >
+                            <SelectTrigger className="w-full bg-white/5 border-white/10 text-white" data-testid="select-edit-workspace-plan">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-[#1a1d24] border-white/10">
+                              <SelectItem value="free" className="text-white">Free</SelectItem>
+                              <SelectItem value="starter" className="text-white">Starter</SelectItem>
+                              <SelectItem value="pro" className="text-white">Pro</SelectItem>
+                              <SelectItem value="enterprise" className="text-white">Enterprise</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel className="bg-transparent border-white/10 text-white hover:bg-white/10">
+                          Cancel
+                        </AlertDialogCancel>
+                        <Button
+                          onClick={() => editingWorkspace && updateWorkspaceMutation.mutate({ 
+                            slug: editingWorkspace.slug, 
+                            name: editingWorkspace.name,
+                            plan: editingWorkspace.plan 
+                          })}
+                          disabled={updateWorkspaceMutation.isPending}
+                          className="bg-cyan-500 hover:bg-cyan-600 text-white"
+                          data-testid="button-edit-workspace-confirm"
+                        >
+                          {updateWorkspaceMutation.isPending ? "Saving..." : "Save Changes"}
+                        </Button>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                   {workspacesLoading ? (
                     <div className="flex items-center justify-center py-12">
                       <div className="h-8 w-8 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
@@ -999,28 +1205,58 @@ export default function ControlCenter() {
                                 <GlassCardTitle className="text-sm truncate">{workspace.name}</GlassCardTitle>
                                 <GlassCardDescription className="text-xs">{workspace.slug}</GlassCardDescription>
                               </div>
-                              <Select
-                                value={workspace.status}
-                                onValueChange={(value) => updateWorkspaceStatusMutation.mutate({ slug: workspace.slug, status: value })}
-                              >
-                                <SelectTrigger 
-                                  data-testid={`select-workspace-status-${workspace.slug}`}
-                                  className={`w-[110px] h-7 text-xs ${
-                                    workspace.status === 'active' ? "bg-green-500/20 text-green-400 border-green-500/30" :
-                                    workspace.status === 'suspended' ? "bg-red-500/20 text-red-400 border-red-500/30" :
-                                    workspace.status === 'cancelled' ? "bg-gray-500/20 text-gray-400 border-gray-500/30" :
-                                    "bg-amber-500/20 text-amber-400 border-amber-500/30"
-                                  }`}
+                              <div className="flex items-center gap-1">
+                                <Select
+                                  value={workspace.status}
+                                  onValueChange={(value) => updateWorkspaceStatusMutation.mutate({ slug: workspace.slug, status: value })}
                                 >
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="active">Active</SelectItem>
-                                  <SelectItem value="paused">Paused</SelectItem>
-                                  <SelectItem value="suspended">Suspended</SelectItem>
-                                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                                </SelectContent>
-                              </Select>
+                                  <SelectTrigger 
+                                    data-testid={`select-workspace-status-${workspace.slug}`}
+                                    className={`w-[90px] h-7 text-xs ${
+                                      workspace.status === 'active' ? "bg-green-500/20 text-green-400 border-green-500/30" :
+                                      workspace.status === 'suspended' ? "bg-red-500/20 text-red-400 border-red-500/30" :
+                                      workspace.status === 'cancelled' ? "bg-gray-500/20 text-gray-400 border-gray-500/30" :
+                                      "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                                    }`}
+                                  >
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="active">Active</SelectItem>
+                                    <SelectItem value="paused">Paused</SelectItem>
+                                    <SelectItem value="suspended">Suspended</SelectItem>
+                                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-white/55 hover:text-white hover:bg-white/10" data-testid={`button-workspace-menu-${workspace.slug}`}>
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="bg-[#1a1d24] border-white/10">
+                                    <DropdownMenuItem 
+                                      className="text-white hover:bg-white/10"
+                                      onClick={() => setEditingWorkspace({ slug: workspace.slug, name: workspace.name, plan: workspace.plan })}
+                                      data-testid={`button-edit-workspace-${workspace.slug}`}
+                                    >
+                                      Edit Workspace
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator className="bg-white/10" />
+                                    <DropdownMenuItem 
+                                      className="text-red-400 hover:bg-red-500/10"
+                                      onClick={() => {
+                                        if (confirm(`Are you sure you want to delete "${workspace.name}"? This will also delete all ${workspace.botsCount} bots in this workspace.`)) {
+                                          deleteWorkspaceMutation.mutate(workspace.slug);
+                                        }
+                                      }}
+                                      data-testid={`button-delete-workspace-${workspace.slug}`}
+                                    >
+                                      Delete Workspace
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
                             </div>
                           </GlassCardHeader>
                           <GlassCardContent className="pb-4">
