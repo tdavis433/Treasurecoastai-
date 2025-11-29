@@ -3862,14 +3862,17 @@ function InstallPanel({ bot, client }: { bot: BotConfig; client: Client }) {
         </GlassCardHeader>
         <GlassCardContent className="space-y-6">
           {/* Customization Options */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="space-y-2">
-              <Label>Position</Label>
+              <Label className="text-sm text-white/70">Position</Label>
               <Select value={position} onValueChange={setPosition}>
-                <SelectTrigger data-testid="select-widget-position">
+                <SelectTrigger 
+                  data-testid="select-widget-position"
+                  className="bg-white/5 border-white/10 text-white hover:bg-white/10 focus:ring-emerald-500/30"
+                >
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-slate-900 border-white/10">
                   <SelectItem value="bottom-right">Bottom Right</SelectItem>
                   <SelectItem value="bottom-left">Bottom Left</SelectItem>
                   <SelectItem value="top-right">Top Right</SelectItem>
@@ -3878,42 +3881,45 @@ function InstallPanel({ bot, client }: { bot: BotConfig; client: Client }) {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Primary Color</Label>
-              <div className="flex gap-2">
-                <Input
-                  data-testid="input-widget-color"
-                  type="color"
-                  value={primaryColor}
-                  onChange={(e) => setPrimaryColor(e.target.value)}
-                  className="w-12 h-10 p-1 cursor-pointer"
-                />
+              <Label className="text-sm text-white/70">Primary Color</Label>
+              <div className="flex gap-2 items-center">
+                <div className="relative">
+                  <Input
+                    data-testid="input-widget-color"
+                    type="color"
+                    value={primaryColor}
+                    onChange={(e) => setPrimaryColor(e.target.value)}
+                    className="w-12 h-10 p-1 cursor-pointer bg-transparent border-white/10 rounded-md"
+                  />
+                </div>
                 <Input
                   data-testid="input-widget-color-text"
                   type="text"
                   value={primaryColor}
                   onChange={(e) => setPrimaryColor(e.target.value)}
-                  className="flex-1"
+                  className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:ring-emerald-500/30"
                   placeholder="#2563eb"
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Greeting Message</Label>
+              <Label className="text-sm text-white/70">Greeting Message</Label>
               <Input
                 data-testid="input-widget-greeting"
                 value={greeting}
                 onChange={(e) => setGreeting(e.target.value)}
                 placeholder="Hi! How can I help you today?"
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:ring-emerald-500/30"
               />
             </div>
           </div>
 
-          <Separator />
+          <Separator className="bg-white/10" />
 
           {/* Embed Code */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label>Embed Code</Label>
+              <Label className="text-sm text-white/70">Embed Code</Label>
               <Button
                 data-testid="button-copy-embed"
                 variant="outline"
@@ -3944,8 +3950,8 @@ function InstallPanel({ bot, client }: { bot: BotConfig; client: Client }) {
 
           {/* Instructions */}
           <div className="space-y-3">
-            <Label className="text-white">Installation Steps</Label>
-            <ol className="list-decimal list-inside space-y-2 text-sm text-white/55">
+            <Label className="text-sm text-white/70">Installation Steps</Label>
+            <ol className="list-decimal list-inside space-y-2 text-sm text-white/60">
               <li>Copy the embed code above</li>
               <li>Paste it just before the closing <code className="bg-white/10 px-1 rounded text-white/85">&lt;/body&gt;</code> tag on your website</li>
               <li>The chat widget will appear automatically in the selected position</li>
@@ -3977,26 +3983,29 @@ function InstallPanel({ bot, client }: { bot: BotConfig; client: Client }) {
 
       {/* Widget Configuration Details */}
       <GlassCard>
-        <GlassCardHeader>
-          <GlassCardTitle className="text-base">Configuration Details</GlassCardTitle>
+        <GlassCardHeader className="pb-4">
+          <GlassCardTitle className="text-base flex items-center gap-2">
+            <Settings className="h-4 w-4 text-white/70" />
+            Configuration Details
+          </GlassCardTitle>
         </GlassCardHeader>
         <GlassCardContent>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-white/55">Client ID:</span>
-              <code className="ml-2 bg-white/10 px-2 py-1 rounded text-white/85">{client.id}</code>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
+              <span className="text-sm text-white/60">Client ID</span>
+              <code className="text-sm font-mono bg-slate-800/80 px-3 py-1 rounded border border-white/10 text-emerald-400">{client.id}</code>
             </div>
-            <div>
-              <span className="text-white/55">Bot ID:</span>
-              <code className="ml-2 bg-white/10 px-2 py-1 rounded text-white/85">{bot.botId}</code>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
+              <span className="text-sm text-white/60">Bot ID</span>
+              <code className="text-sm font-mono bg-slate-800/80 px-3 py-1 rounded border border-white/10 text-emerald-400">{bot.botId}</code>
             </div>
-            <div>
-              <span className="text-white/55">Business:</span>
-              <span className="ml-2 text-white">{bot.businessProfile?.businessName || client.name}</span>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
+              <span className="text-sm text-white/60">Business</span>
+              <span className="text-sm text-white font-medium">{bot.businessProfile?.businessName || client.name}</span>
             </div>
-            <div>
-              <span className="text-white/55">Status:</span>
-              <Badge className={`ml-2 ${client.status === 'active' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-white/10 text-white/55 border border-white/20'}`}>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
+              <span className="text-sm text-white/60">Status</span>
+              <Badge className={`${client.status === 'active' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/10 text-white/55 border border-white/20'}`}>
                 {client.status}
               </Badge>
             </div>
