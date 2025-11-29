@@ -4160,9 +4160,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create user
       const [newUser] = await db.insert(adminUsers).values({
-        id: crypto.randomUUID(),
         username,
-        password: hashedPassword,
+        passwordHash: hashedPassword,
         role,
         clientId: role === 'client_admin' ? clientId : null,
       }).returning({
@@ -4207,7 +4206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (password) {
-        updateData.password = await bcrypt.hash(password, 10);
+        updateData.passwordHash = await bcrypt.hash(password, 10);
       }
       
       if (Object.keys(updateData).length === 0) {
@@ -4236,10 +4235,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/super-admin/users/:id", requireSuperAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      const currentUser = req.user as any;
+      const currentUserId = (req.session as any)?.passport?.user;
       
       // Prevent self-deletion
-      if (currentUser.id === id) {
+      if (currentUserId === id) {
         return res.status(400).json({ error: "Cannot delete your own account" });
       }
       

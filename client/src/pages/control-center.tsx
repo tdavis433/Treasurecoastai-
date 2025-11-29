@@ -141,6 +141,9 @@ export default function ControlCenter() {
   const [analyticsRange, setAnalyticsRange] = useState<number>(7);
   const [selectedBots, setSelectedBots] = useState<Set<string>>(new Set());
   const [workspaceSearch, setWorkspaceSearch] = useState('');
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+  const [newUserForm, setNewUserForm] = useState({ username: '', password: '', role: 'client_admin' as 'super_admin' | 'client_admin', clientId: '' });
+  const [editingUser, setEditingUser] = useState<{ id: string; username: string; role: string } | null>(null);
 
   const { data: currentUser, isLoading: authLoading } = useQuery<AuthUser>({
     queryKey: ["/api/auth/me"],
@@ -389,6 +392,52 @@ export default function ControlCenter() {
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to update some bots.", variant: "destructive" });
+    },
+  });
+
+  // User CRUD mutations
+  const createUserMutation = useMutation({
+    mutationFn: async (data: { username: string; password: string; role: string; clientId?: string }) => {
+      const response = await apiRequest("POST", "/api/super-admin/users", data);
+      return response.json();
+    },
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ["/api/super-admin/users"] });
+      setShowCreateUserModal(false);
+      setNewUserForm({ username: '', password: '', role: 'client_admin', clientId: '' });
+      toast({ title: "User Created", description: "New admin user has been created successfully." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to create user.", variant: "destructive" });
+    },
+  });
+
+  const updateUserMutation = useMutation({
+    mutationFn: async ({ id, ...data }: { id: string; role?: string; password?: string }) => {
+      const response = await apiRequest("PATCH", `/api/super-admin/users/${id}`, data);
+      return response.json();
+    },
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ["/api/super-admin/users"] });
+      setEditingUser(null);
+      toast({ title: "User Updated", description: "User has been updated successfully." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update user.", variant: "destructive" });
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const response = await apiRequest("DELETE", `/api/super-admin/users/${userId}`);
+      return response.json();
+    },
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ["/api/super-admin/users"] });
+      toast({ title: "User Deleted", description: "Admin user has been deleted successfully." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to delete user.", variant: "destructive" });
     },
   });
 
@@ -1361,12 +1410,90 @@ export default function ControlCenter() {
                       variant="outline" 
                       size="sm"
                       className="border-white/10 text-white/85 hover:bg-white/10"
-                      onClick={() => toast({ title: "Coming Soon", description: "User creation will be available soon." })}
+                      onClick={() => setShowCreateUserModal(true)}
+                      data-testid="button-add-user"
                     >
                       <UserPlus className="h-4 w-4 mr-2" />
                       Add User
                     </Button>
                   </div>
+
+                  {/* Create User Modal */}
+                  <AlertDialog open={showCreateUserModal} onOpenChange={setShowCreateUserModal}>
+                    <AlertDialogContent className="bg-[#1a1d24] border-white/10">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="text-white">Create New User</AlertDialogTitle>
+                        <AlertDialogDescription className="text-white/55">
+                          Add a new admin user to the platform.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <label className="text-sm text-white/85">Username</label>
+                          <input
+                            type="text"
+                            value={newUserForm.username}
+                            onChange={(e) => setNewUserForm(f => ({ ...f, username: e.target.value }))}
+                            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-cyan-400/50"
+                            placeholder="Enter username"
+                            data-testid="input-new-username"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm text-white/85">Password</label>
+                          <input
+                            type="password"
+                            value={newUserForm.password}
+                            onChange={(e) => setNewUserForm(f => ({ ...f, password: e.target.value }))}
+                            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-cyan-400/50"
+                            placeholder="Enter password"
+                            data-testid="input-new-password"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm text-white/85">Role</label>
+                          <Select
+                            value={newUserForm.role}
+                            onValueChange={(value) => setNewUserForm(f => ({ ...f, role: value as 'super_admin' | 'client_admin' }))}
+                          >
+                            <SelectTrigger className="w-full bg-white/5 border-white/10 text-white" data-testid="select-new-role">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-[#1a1d24] border-white/10">
+                              <SelectItem value="client_admin" className="text-white">Client Admin</SelectItem>
+                              <SelectItem value="super_admin" className="text-white">Super Admin</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {newUserForm.role === 'client_admin' && (
+                          <div className="space-y-2">
+                            <label className="text-sm text-white/85">Client ID (optional)</label>
+                            <input
+                              type="text"
+                              value={newUserForm.clientId}
+                              onChange={(e) => setNewUserForm(f => ({ ...f, clientId: e.target.value }))}
+                              className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-cyan-400/50"
+                              placeholder="e.g. faith_house"
+                              data-testid="input-new-clientid"
+                            />
+                          </div>
+                        )}
+                      </div>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel className="bg-transparent border-white/10 text-white hover:bg-white/10">
+                          Cancel
+                        </AlertDialogCancel>
+                        <Button
+                          onClick={() => createUserMutation.mutate(newUserForm)}
+                          disabled={!newUserForm.username || !newUserForm.password || createUserMutation.isPending}
+                          className="bg-cyan-500 hover:bg-cyan-600 text-white"
+                          data-testid="button-create-user-confirm"
+                        >
+                          {createUserMutation.isPending ? "Creating..." : "Create User"}
+                        </Button>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
 
                   {usersLoading ? (
                     <div className="flex items-center justify-center py-12">
@@ -1382,7 +1509,7 @@ export default function ControlCenter() {
                   ) : (
                     <div className="grid gap-4">
                       {adminUsers.map((user) => (
-                        <GlassCard key={user.id}>
+                        <GlassCard key={user.id} data-testid={`card-user-${user.id}`}>
                           <GlassCardContent className="py-4">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
@@ -1403,15 +1530,33 @@ export default function ControlCenter() {
                               </div>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="text-white/55 hover:text-white hover:bg-white/10">
+                                  <Button variant="ghost" size="icon" className="text-white/55 hover:text-white hover:bg-white/10" data-testid={`button-user-menu-${user.id}`}>
                                     <MoreVertical className="h-4 w-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="bg-[#1a1d24] border-white/10">
-                                  <DropdownMenuItem className="text-white hover:bg-white/10">Edit User</DropdownMenuItem>
-                                  <DropdownMenuItem className="text-white hover:bg-white/10">Reset Password</DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    className="text-white hover:bg-white/10"
+                                    onClick={() => {
+                                      const newRole = user.role === 'super_admin' ? 'client_admin' : 'super_admin';
+                                      updateUserMutation.mutate({ id: user.id, role: newRole });
+                                    }}
+                                    data-testid={`button-toggle-role-${user.id}`}
+                                  >
+                                    {user.role === 'super_admin' ? 'Demote to Client Admin' : 'Promote to Super Admin'}
+                                  </DropdownMenuItem>
                                   <DropdownMenuSeparator className="bg-white/10" />
-                                  <DropdownMenuItem className="text-red-400 hover:bg-red-500/10">Delete User</DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    className="text-red-400 hover:bg-red-500/10"
+                                    onClick={() => {
+                                      if (confirm(`Are you sure you want to delete user "${user.username}"?`)) {
+                                        deleteUserMutation.mutate(user.id);
+                                      }
+                                    }}
+                                    data-testid={`button-delete-user-${user.id}`}
+                                  >
+                                    Delete User
+                                  </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </div>
