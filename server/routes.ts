@@ -4023,6 +4023,379 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // =============================================
+  // SUPER-ADMIN: SYSTEM LOGS & STATUS
+  // =============================================
+
+  // Get system status (operational, degraded, incident)
+  app.get("/api/super-admin/system/status", requireSuperAdmin, async (req, res) => {
+    try {
+      const status = await storage.getSystemStatus();
+      res.json(status);
+    } catch (error) {
+      console.error("Get system status error:", error);
+      res.status(500).json({ error: "Failed to fetch system status" });
+    }
+  });
+
+  // Get system logs with filters
+  app.get("/api/super-admin/system/logs", requireSuperAdmin, async (req, res) => {
+    try {
+      const { level, source, workspaceId, clientId, isResolved, search, startDate, endDate, limit, offset } = req.query;
+      
+      const filters: any = {};
+      if (level) filters.level = String(level);
+      if (source) filters.source = String(source);
+      if (workspaceId) filters.workspaceId = String(workspaceId);
+      if (clientId) filters.clientId = String(clientId);
+      if (isResolved !== undefined) filters.isResolved = isResolved === 'true';
+      if (search) filters.search = String(search);
+      if (startDate) filters.startDate = new Date(String(startDate));
+      if (endDate) filters.endDate = new Date(String(endDate));
+      if (limit) filters.limit = parseInt(String(limit), 10);
+      if (offset) filters.offset = parseInt(String(offset), 10);
+      
+      const result = await storage.getSystemLogs(filters);
+      res.json(result);
+    } catch (error) {
+      console.error("Get system logs error:", error);
+      res.status(500).json({ error: "Failed to fetch system logs" });
+    }
+  });
+
+  // Get single system log
+  app.get("/api/super-admin/system/logs/:id", requireSuperAdmin, async (req, res) => {
+    try {
+      const log = await storage.getSystemLogById(req.params.id);
+      if (!log) {
+        return res.status(404).json({ error: "Log not found" });
+      }
+      res.json(log);
+    } catch (error) {
+      console.error("Get system log error:", error);
+      res.status(500).json({ error: "Failed to fetch system log" });
+    }
+  });
+
+  // Resolve a system log
+  app.post("/api/super-admin/system/logs/:id/resolve", requireSuperAdmin, async (req, res) => {
+    try {
+      const { notes } = req.body;
+      const user = (req as any).user;
+      
+      const resolved = await storage.resolveSystemLog(req.params.id, user?.username || 'super-admin', notes);
+      res.json(resolved);
+    } catch (error) {
+      console.error("Resolve system log error:", error);
+      res.status(500).json({ error: "Failed to resolve log" });
+    }
+  });
+
+  // Create a system log (for testing or manual logging)
+  app.post("/api/super-admin/system/logs", requireSuperAdmin, async (req, res) => {
+    try {
+      const logSchema = z.object({
+        level: z.enum(['debug', 'info', 'warn', 'error', 'critical']).default('info'),
+        source: z.string().min(1),
+        message: z.string().min(1),
+        workspaceId: z.string().optional(),
+        clientId: z.string().optional(),
+        details: z.record(z.any()).optional(),
+      });
+      
+      const validation = logSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: validation.error.message });
+      }
+      
+      const log = await storage.createSystemLog(validation.data);
+      res.status(201).json(log);
+    } catch (error) {
+      console.error("Create system log error:", error);
+      res.status(500).json({ error: "Failed to create system log" });
+    }
+  });
+
+  // =============================================
+  // SUPER-ADMIN: GLOBAL ANALYTICS (Enhanced)
+  // =============================================
+
+  // Get global analytics with daily trends
+  app.get("/api/super-admin/analytics/global", requireSuperAdmin, async (req, res) => {
+    try {
+      const { days: daysParam } = req.query;
+      const days = daysParam ? parseInt(String(daysParam), 10) : 7;
+      
+      const allBots = getAllBotConfigs();
+      const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+      
+      // Get aggregated stats across all bots
+      let totalConversations = 0;
+      let totalMessages = 0;
+      let totalLeads = 0;
+      let totalAppointments = 0;
+      let activeWorkspaces = new Set<string>();
+      
+      const dailyData: Record<string, { conversations: number; leads: number; appointments: number }> = {};
+      
+      // Initialize daily data for the date range
+      for (let i = 0; i < days; i++) {
+        const date = new Date(Date.now() - (days - 1 - i) * 24 * 60 * 60 * 1000);
+        const dateStr = date.toISOString().split('T')[0];
+        dailyData[dateStr] = { conversations: 0, leads: 0, appointments: 0 };
+      }
+      
+      for (const bot of allBots) {
+        const summary = await storage.getClientAnalyticsSummary(bot.clientId, bot.botId, startDate);
+        totalConversations += summary.totalConversations;
+        totalMessages += summary.totalMessages;
+        totalAppointments += summary.appointmentRequests;
+        
+        if (summary.totalConversations > 0) {
+          activeWorkspaces.add(bot.clientId);
+        }
+        
+        // Get daily trends for this bot
+        const trends = await storage.getClientDailyTrends(bot.clientId, bot.botId, days);
+        trends.forEach(trend => {
+          if (dailyData[trend.date]) {
+            dailyData[trend.date].conversations += trend.totalConversations;
+            dailyData[trend.date].appointments += trend.appointmentRequests;
+          }
+        });
+        
+        // Get leads for this bot
+        const { leads } = await storage.getLeads(bot.clientId, { limit: 1000 });
+        const recentLeads = leads.filter(l => l.createdAt >= startDate);
+        totalLeads += recentLeads.length;
+        
+        // Add leads to daily data
+        recentLeads.forEach(lead => {
+          const dateStr = lead.createdAt.toISOString().split('T')[0];
+          if (dailyData[dateStr]) {
+            dailyData[dateStr].leads += 1;
+          }
+        });
+      }
+      
+      // Convert daily data to array sorted by date
+      const dailyTrends = Object.entries(dailyData)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([date, data]) => ({ date, ...data }));
+      
+      res.json({
+        summary: {
+          totalConversations,
+          totalMessages,
+          totalLeads,
+          totalAppointments,
+          activeWorkspaces: activeWorkspaces.size,
+          totalBots: allBots.length,
+        },
+        dailyTrends,
+        dateRange: {
+          start: startDate.toISOString(),
+          end: new Date().toISOString(),
+          days,
+        },
+      });
+    } catch (error) {
+      console.error("Get global analytics error:", error);
+      res.status(500).json({ error: "Failed to fetch global analytics" });
+    }
+  });
+
+  // =============================================
+  // SUPER-ADMIN: WORKSPACES MANAGEMENT
+  // =============================================
+
+  // List all workspaces with stats
+  app.get("/api/super-admin/workspaces", requireSuperAdmin, async (req, res) => {
+    try {
+      const workspaceList = getWorkspaces();
+      const allBots = getAllBotConfigs();
+      
+      // Enrich workspace data with stats
+      const enrichedWorkspaces = await Promise.all(workspaceList.map(async (ws: any) => {
+        const wsBots = allBots.filter(b => b.clientId === ws.slug || b.clientId === ws.id);
+        
+        let totalConversations = 0;
+        let lastActive: Date | null = null;
+        
+        for (const bot of wsBots) {
+          const recentSessions = await storage.getClientRecentSessions(bot.clientId, bot.botId, 10);
+          totalConversations += recentSessions.length;
+          
+          if (recentSessions.length > 0 && recentSessions[0].startedAt) {
+            if (!lastActive || recentSessions[0].startedAt > lastActive) {
+              lastActive = recentSessions[0].startedAt;
+            }
+          }
+        }
+        
+        return {
+          id: ws.id,
+          name: ws.name,
+          slug: ws.slug,
+          status: ws.status || 'active',
+          plan: ws.plan || 'starter',
+          botsCount: wsBots.length,
+          totalConversations,
+          lastActive: lastActive?.toISOString() || null,
+          createdAt: ws.createdAt,
+          settings: ws.settings || {},
+        };
+      }));
+      
+      res.json({
+        workspaces: enrichedWorkspaces,
+        total: enrichedWorkspaces.length,
+      });
+    } catch (error) {
+      console.error("Get workspaces error:", error);
+      res.status(500).json({ error: "Failed to fetch workspaces" });
+    }
+  });
+
+  // Get single workspace with detailed stats
+  app.get("/api/super-admin/workspaces/:slug", requireSuperAdmin, async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const workspace = getWorkspaceBySlug(slug);
+      
+      if (!workspace) {
+        return res.status(404).json({ error: "Workspace not found" });
+      }
+      
+      const allBots = getAllBotConfigs();
+      const wsBots = allBots.filter(b => b.clientId === workspace.slug || b.clientId === (workspace as any).id);
+      
+      // Get 30-day stats
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      let totalConversations30d = 0;
+      let totalLeads30d = 0;
+      let totalAppointments30d = 0;
+      
+      const botDetails = await Promise.all(wsBots.map(async (bot) => {
+        const summary = await storage.getClientAnalyticsSummary(bot.clientId, bot.botId, thirtyDaysAgo);
+        const recentSessions = await storage.getClientRecentSessions(bot.clientId, bot.botId, 5);
+        const { leads } = await storage.getLeads(bot.clientId, { limit: 100 });
+        const recentLeads = leads.filter(l => l.createdAt >= thirtyDaysAgo);
+        
+        totalConversations30d += summary.totalConversations;
+        totalLeads30d += recentLeads.length;
+        totalAppointments30d += summary.appointmentRequests;
+        
+        return {
+          botId: bot.botId,
+          name: bot.name,
+          status: (bot as any).status || 'active',
+          lastActive: recentSessions[0]?.startedAt?.toISOString() || null,
+          conversations30d: summary.totalConversations,
+          leads30d: recentLeads.length,
+        };
+      }));
+      
+      res.json({
+        workspace: {
+          id: (workspace as any).id,
+          name: workspace.name,
+          slug: workspace.slug,
+          status: (workspace as any).status || 'active',
+          plan: (workspace as any).plan || 'starter',
+          settings: (workspace as any).settings || {},
+          createdAt: (workspace as any).createdAt,
+        },
+        stats: {
+          conversations30d: totalConversations30d,
+          leads30d: totalLeads30d,
+          appointments30d: totalAppointments30d,
+        },
+        bots: botDetails,
+      });
+    } catch (error) {
+      console.error("Get workspace error:", error);
+      res.status(500).json({ error: "Failed to fetch workspace" });
+    }
+  });
+
+  // Update workspace status (suspend/reactivate)
+  app.patch("/api/super-admin/workspaces/:slug/status", requireSuperAdmin, async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const { status } = req.body;
+      
+      if (!['active', 'paused', 'suspended', 'cancelled'].includes(status)) {
+        return res.status(400).json({ error: "Invalid status. Must be one of: active, paused, suspended, cancelled" });
+      }
+      
+      const workspace = getWorkspaceBySlug(slug);
+      if (!workspace) {
+        return res.status(404).json({ error: "Workspace not found" });
+      }
+      
+      // Log this action
+      await storage.createSystemLog({
+        level: 'info',
+        source: 'super-admin',
+        message: `Workspace ${slug} status changed to ${status}`,
+        workspaceId: (workspace as any).id,
+        details: { previousStatus: (workspace as any).status || 'active', newStatus: status },
+      });
+      
+      // Update client status through existing mechanism
+      updateClientStatus(slug, status);
+      
+      res.json({ success: true, slug, status });
+    } catch (error) {
+      console.error("Update workspace status error:", error);
+      res.status(500).json({ error: "Failed to update workspace status" });
+    }
+  });
+
+  // =============================================
+  // SUPER-ADMIN: ENHANCED BOT STATS
+  // =============================================
+
+  // Get bot with enriched stats (for control center)
+  app.get("/api/super-admin/bots/:botId/stats", requireSuperAdmin, async (req, res) => {
+    try {
+      const { botId } = req.params;
+      const { days: daysParam } = req.query;
+      const days = daysParam ? parseInt(String(daysParam), 10) : 7;
+      
+      const bot = getBotConfigByBotId(botId);
+      if (!bot) {
+        return res.status(404).json({ error: "Bot not found" });
+      }
+      
+      const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+      const summary = await storage.getClientAnalyticsSummary(bot.clientId, bot.botId, startDate);
+      const { leads } = await storage.getLeads(bot.clientId, { limit: 1000 });
+      const recentLeads = leads.filter(l => l.createdAt >= startDate);
+      const recentSessions = await storage.getClientRecentSessions(bot.clientId, bot.botId, 5);
+      
+      res.json({
+        botId,
+        clientId: bot.clientId,
+        name: bot.name,
+        businessName: bot.businessProfile?.businessName,
+        stats: {
+          conversations: summary.totalConversations,
+          leads: recentLeads.length,
+          appointments: summary.appointmentRequests,
+          messages: summary.totalMessages,
+          avgResponseTimeMs: summary.avgResponseTimeMs,
+        },
+        lastActive: recentSessions[0]?.startedAt?.toISOString() || null,
+        dateRange: { days, startDate: startDate.toISOString() },
+      });
+    } catch (error) {
+      console.error("Get bot stats error:", error);
+      res.status(500).json({ error: "Failed to fetch bot stats" });
+    }
+  });
+
+  // =============================================
   // STRIPE BILLING ENDPOINTS
   // =============================================
 

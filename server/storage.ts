@@ -29,6 +29,8 @@ import {
   type InsertConversationNote,
   type SessionState,
   type InsertSessionState,
+  type SystemLog,
+  type InsertSystemLog,
   appointments,
   clientSettings,
   conversationAnalytics,
@@ -45,7 +47,8 @@ import {
   automationRuns,
   widgetSettings,
   conversationNotes,
-  sessionStates
+  sessionStates,
+  systemLogs
 } from "@shared/schema";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { neonConfig, Pool } from "@neondatabase/serverless";
@@ -152,6 +155,26 @@ export interface IStorage {
   
   // Health check
   healthCheck?(): Promise<{ status: string; latencyMs?: number }>;
+  
+  // System logs (Super Admin)
+  createSystemLog(log: InsertSystemLog): Promise<SystemLog>;
+  getSystemLogs(filters?: {
+    level?: string;
+    source?: string;
+    workspaceId?: string;
+    clientId?: string;
+    isResolved?: boolean;
+    search?: string;
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ logs: SystemLog[]; total: number }>;
+  getSystemLogById(id: string): Promise<SystemLog | undefined>;
+  updateSystemLog(id: string, updates: Partial<SystemLog>): Promise<SystemLog>;
+  resolveSystemLog(id: string, resolvedBy: string, notes?: string): Promise<SystemLog>;
+  getRecentErrorCount(minutes?: number): Promise<number>;
+  getSystemStatus(): Promise<{ status: 'operational' | 'degraded' | 'incident'; errorCount: number; lastError?: SystemLog }>;
 }
 
 export class DbStorage implements IStorage {
@@ -1208,6 +1231,152 @@ export class DbStorage implements IStorage {
       .from(sessionStates)
       .where(and(...conditions))
       .orderBy(desc(sessionStates.lastActivityAt));
+  }
+
+  // =============================================
+  // SYSTEM LOGS (Super Admin)
+  // =============================================
+
+  async createSystemLog(log: InsertSystemLog): Promise<SystemLog> {
+    const result = await db
+      .insert(systemLogs)
+      .values(log as any)
+      .returning();
+    return result[0];
+  }
+
+  async getSystemLogs(filters?: {
+    level?: string;
+    source?: string;
+    workspaceId?: string;
+    clientId?: string;
+    isResolved?: boolean;
+    search?: string;
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ logs: SystemLog[]; total: number }> {
+    const conditions: any[] = [];
+    
+    if (filters?.level) {
+      conditions.push(eq(systemLogs.level, filters.level));
+    }
+    
+    if (filters?.source) {
+      conditions.push(eq(systemLogs.source, filters.source));
+    }
+    
+    if (filters?.workspaceId) {
+      conditions.push(eq(systemLogs.workspaceId, filters.workspaceId));
+    }
+    
+    if (filters?.clientId) {
+      conditions.push(eq(systemLogs.clientId, filters.clientId));
+    }
+    
+    if (filters?.isResolved !== undefined) {
+      conditions.push(eq(systemLogs.isResolved, filters.isResolved));
+    }
+    
+    if (filters?.search) {
+      const searchTerm = `%${filters.search}%`;
+      conditions.push(like(systemLogs.message, searchTerm));
+    }
+    
+    if (filters?.startDate) {
+      conditions.push(gte(systemLogs.createdAt, filters.startDate));
+    }
+    
+    if (filters?.endDate) {
+      conditions.push(lte(systemLogs.createdAt, filters.endDate));
+    }
+    
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    
+    const [totalResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(systemLogs)
+      .where(whereClause);
+    
+    const logs = await db
+      .select()
+      .from(systemLogs)
+      .where(whereClause)
+      .orderBy(desc(systemLogs.createdAt))
+      .limit(filters?.limit || 50)
+      .offset(filters?.offset || 0);
+    
+    return { logs, total: totalResult?.count || 0 };
+  }
+
+  async getSystemLogById(id: string): Promise<SystemLog | undefined> {
+    const result = await db
+      .select()
+      .from(systemLogs)
+      .where(eq(systemLogs.id, id))
+      .limit(1);
+    return result[0];
+  }
+
+  async updateSystemLog(id: string, updates: Partial<SystemLog>): Promise<SystemLog> {
+    const result = await db
+      .update(systemLogs)
+      .set(updates as any)
+      .where(eq(systemLogs.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async resolveSystemLog(id: string, resolvedBy: string, notes?: string): Promise<SystemLog> {
+    const result = await db
+      .update(systemLogs)
+      .set({
+        isResolved: true,
+        resolvedAt: new Date(),
+        resolvedBy,
+        resolutionNotes: notes || null,
+      } as any)
+      .where(eq(systemLogs.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async getRecentErrorCount(minutes: number = 15): Promise<number> {
+    const since = new Date(Date.now() - minutes * 60 * 1000);
+    const result = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(systemLogs)
+      .where(and(
+        or(eq(systemLogs.level, 'error'), eq(systemLogs.level, 'critical')),
+        gte(systemLogs.createdAt, since),
+        eq(systemLogs.isResolved, false)
+      ));
+    return result[0]?.count || 0;
+  }
+
+  async getSystemStatus(): Promise<{ status: 'operational' | 'degraded' | 'incident'; errorCount: number; lastError?: SystemLog }> {
+    const errorCount = await this.getRecentErrorCount(15);
+    
+    // Get most recent unresolved error
+    const [lastError] = await db
+      .select()
+      .from(systemLogs)
+      .where(and(
+        or(eq(systemLogs.level, 'error'), eq(systemLogs.level, 'critical')),
+        eq(systemLogs.isResolved, false)
+      ))
+      .orderBy(desc(systemLogs.createdAt))
+      .limit(1);
+    
+    let status: 'operational' | 'degraded' | 'incident' = 'operational';
+    if (errorCount >= 10) {
+      status = 'incident';
+    } else if (errorCount >= 3) {
+      status = 'degraded';
+    }
+    
+    return { status, errorCount, lastError };
   }
 }
 
