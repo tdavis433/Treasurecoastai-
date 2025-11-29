@@ -4112,8 +4112,8 @@ These suggestions should be relevant to what was just discussed and help guide t
       const subscription = await stripeService.getSubscriptionByClientId(clientId);
       const customer = await stripeService.getCustomerByClientId(clientId);
       
-      // Get client info for plan name
-      const client = await storage.getClientById(clientId);
+      // Get workspace info for plan name
+      const workspace = await storage.getWorkspaceByClientId(clientId);
       
       res.json({
         clientId,
@@ -4128,8 +4128,8 @@ These suggestions should be relevant to what was just discussed and help guide t
           id: (customer as any).id,
           email: (customer as any).email,
         } : null,
-        plan: client?.plan || 'starter',
-        planName: client?.plan === 'pro' ? 'Pro Plan' : client?.plan === 'enterprise' ? 'Enterprise Plan' : 'Starter Plan',
+        plan: workspace?.plan || 'starter',
+        planName: workspace?.plan === 'pro' ? 'Pro Plan' : workspace?.plan === 'enterprise' ? 'Enterprise Plan' : 'Starter Plan',
       });
     } catch (error) {
       console.error("Get client billing error:", error);
