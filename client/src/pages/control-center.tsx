@@ -3098,9 +3098,9 @@ function AutomationsPanel({ botId, clientId }: { botId: string; clientId: string
 
       <Button 
         variant="outline" 
-        onClick={() => botData?.id && setLocation(`/admin/bot/${botData.id}/automations`)}
+        onClick={() => setLocation(`/admin/bot/${botId}/automations`)}
         className="w-full border-white/10 text-white/85 hover:bg-white/10 hover:text-white"
-        disabled={!botData?.id}
+        data-testid="button-open-automations"
       >
         <Workflow className="h-4 w-4 mr-2" />
         Open Automations Manager
@@ -3216,9 +3216,9 @@ function WidgetSettingsPanel({ botId, clientId }: { botId: string; clientId: str
 
       <Button 
         variant="outline" 
-        onClick={() => botData?.id && setLocation(`/admin/bot/${botData.id}/widget-settings`)}
+        onClick={() => setLocation(`/admin/bot/${botId}/widget-settings`)}
         className="w-full border-white/10 text-white/85 hover:bg-white/10 hover:text-white"
-        disabled={!botData?.id}
+        data-testid="button-open-widget-customizer"
       >
         <Palette className="h-4 w-4 mr-2" />
         Open Widget Customizer
