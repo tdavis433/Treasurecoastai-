@@ -1775,7 +1775,7 @@ export default function ControlCenter() {
                                     className="text-white hover:bg-white/10"
                                     onClick={() => {
                                       const newRole = user.role === 'super_admin' ? 'client_admin' : 'super_admin';
-                                      updateUserMutation.mutate({ id: user.id, role: newRole });
+                                      updateUserMutation.mutate({ id: String(user.id), role: newRole });
                                     }}
                                     data-testid={`button-toggle-role-${user.id}`}
                                   >
@@ -1786,7 +1786,7 @@ export default function ControlCenter() {
                                     className="text-red-400 hover:bg-red-500/10"
                                     onClick={() => {
                                       if (confirm(`Are you sure you want to delete user "${user.username}"?`)) {
-                                        deleteUserMutation.mutate(user.id);
+                                        deleteUserMutation.mutate(String(user.id));
                                       }
                                     }}
                                     data-testid={`button-delete-user-${user.id}`}
@@ -2455,6 +2455,7 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                   data-testid="input-bot-name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/60"
                 />
               ) : (
                 <p className="text-sm mt-1">{formData.name || '-'}</p>
@@ -2489,6 +2490,7 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={2}
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/60"
               />
             ) : (
               <p className="text-sm mt-1 text-white">{formData.description || '-'}</p>
@@ -2515,6 +2517,7 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                   data-testid="input-business-name"
                   value={formData.businessName}
                   onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/60"
                 />
               ) : (
                 <p className="text-sm mt-1">{formData.businessName || '-'}</p>
@@ -2530,6 +2533,7 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                   data-testid="input-phone"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/60"
                 />
               ) : (
                 <p className="text-sm mt-1">{formData.phone || '-'}</p>
@@ -2545,6 +2549,7 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                   data-testid="input-email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/60"
                 />
               ) : (
                 <p className="text-sm mt-1">{formData.email || '-'}</p>
@@ -2560,6 +2565,7 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                   data-testid="input-website"
                   value={formData.website}
                   onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/60"
                 />
               ) : (
                 <p className="text-sm mt-1">{formData.website || '-'}</p>
@@ -2576,6 +2582,7 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                 data-testid="input-location"
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/60"
               />
             ) : (
               <p className="text-sm mt-1">{formData.location || '-'}</p>
@@ -2593,6 +2600,7 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                 onChange={(e) => setFormData({ ...formData, hours: e.target.value })}
                 placeholder="Monday: 9am-5pm&#10;Tuesday: 9am-5pm&#10;..."
                 rows={4}
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/60"
               />
             ) : (
               <pre className="text-sm mt-1 whitespace-pre-wrap">{formData.hours || '-'}</pre>
@@ -2607,6 +2615,7 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                 onChange={(e) => setFormData({ ...formData, services: e.target.value })}
                 placeholder="Service 1, Service 2, Service 3"
                 rows={2}
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/60"
               />
             ) : (
               <p className="text-sm mt-1 text-white">{formData.services || '-'}</p>
@@ -2681,7 +2690,7 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                 value={formData.systemPrompt}
                 onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
                 rows={8}
-                className="font-mono text-sm"
+                className="font-mono text-sm bg-white/5 border-white/10 text-white placeholder:text-white/60"
               />
             ) : (
               <pre className="text-sm mt-1 whitespace-pre-wrap bg-white/5 p-3 rounded-lg max-h-48 overflow-auto text-white/85">
@@ -2724,6 +2733,7 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                   value={newFaq.question}
                   onChange={(e) => setNewFaq({ ...newFaq, question: e.target.value })}
                   placeholder="Enter the question..."
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/60"
                 />
               </div>
               <div>
@@ -2734,6 +2744,7 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                   onChange={(e) => setNewFaq({ ...newFaq, answer: e.target.value })}
                   placeholder="Enter the answer..."
                   rows={3}
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/60"
                 />
               </div>
               <div className="flex gap-2">
@@ -2778,6 +2789,7 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                         value={faq.question}
                         onChange={(e) => handleUpdateFaq(i, 'question', e.target.value)}
                         placeholder="Question"
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/60"
                       />
                       <Textarea
                         data-testid={`input-faq-answer-${i}`}
@@ -2785,6 +2797,7 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                         onChange={(e) => handleUpdateFaq(i, 'answer', e.target.value)}
                         placeholder="Answer"
                         rows={3}
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/60"
                       />
                       <div className="flex gap-2">
                         <Button
