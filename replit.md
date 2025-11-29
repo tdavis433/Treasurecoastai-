@@ -46,7 +46,7 @@ The system utilizes a React, TypeScript, Tailwind CSS, and shadcn/ui frontend, w
 ### Frontend
 - **Demo Hub (`/demos`):** Showcases available bot templates.
 - **Admin Interface (`/admin`, `/super-admin`):**
-    - **Control Center (`/super-admin/control-center`):** Unified bot management with split-pane layout, bot search, and detailed configuration tabs (Overview, Settings, Billing, Analytics, Logs).
+    - **Control Center (`/super-admin/control-center`):** Unified bot management with split-pane layout, bot search, and detailed configuration tabs (Overview, Settings, Billing, Analytics, Logs, Install).
     - **Bot-Specific Dashboards (`/admin/bot/:botId`):** Tailored dashboards with industry-specific tabs.
     - **Bot Creation Wizard (`/admin/bot/wizard`):** 5-step process with template selection, business info, services, FAQs, personality sliders, and widget code generation.
 - **Client Dashboard (`/client/dashboard`):** Client-specific view of conversation statistics, appointments, and business info, with proper data scoping.
