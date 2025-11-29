@@ -2,43 +2,59 @@
   "clientId": "demo",
   "botId": "barber_demo",
   "name": "Fade Factory Barbershop Assistant",
-  "description": "Digital front-desk assistant for a barbershop helping with hours, pricing, and bookings.",
+  "description": "Your digital front-desk assistant for Fade Factory Barbershop - the Treasure Coast's premier destination for precision cuts, hot towel shaves, and classic barbershop vibes.",
   "businessProfile": {
     "businessName": "Fade Factory Barbershop",
     "type": "barber_salon",
-    "location": "Treasure Coast, Florida",
-    "phone": "(555) 234-5678",
-    "email": "bookings@fadefactory.example",
-    "website": "https://fadefactory.example",
+    "location": "1423 Main Street, Stuart, FL 34994",
+    "phone": "(772) 555-FADE",
+    "email": "book@fadefactoryfl.com",
+    "website": "https://fadefactoryfl.com",
     "hours": {
       "monday": "Closed",
       "tuesday": "10am-7pm",
       "wednesday": "10am-7pm",
-      "thursday": "10am-7pm",
-      "friday": "10am-7pm",
+      "thursday": "10am-8pm",
+      "friday": "10am-8pm",
       "saturday": "9am-5pm",
       "sunday": "Closed"
     },
     "services": [
-      "Men's haircuts",
-      "Fades and tapers",
-      "Beard trims and lineups",
-      "Kids' cuts",
-      "Hot towel shaves (optional)"
+      "Classic Haircuts",
+      "Fades & Tapers",
+      "Skin Fades",
+      "Beard Trims & Shaping",
+      "Hot Towel Shaves",
+      "Kids Cuts (12 & under)",
+      "Senior Cuts (65+)",
+      "Lineups & Edge-ups",
+      "Hair Designs"
+    ],
+    "barbers": [
+      { "name": "Marcus", "specialty": "Fades & designs", "experience": "8 years" },
+      { "name": "Tony", "specialty": "Classic cuts & hot shaves", "experience": "15 years" },
+      { "name": "Devon", "specialty": "Beards & textured cuts", "experience": "5 years" }
     ],
     "booking": {
-      "onlineBookingUrl": "https://fadefactory.example/book",
+      "onlineBookingUrl": "https://fadefactoryfl.com/book",
       "walkInsWelcome": true,
-      "walkInsNote": "Walk-ins welcome as capacity allows"
-    }
+      "walkInsNote": "Walk-ins welcome as capacity allows - booking recommended for weekends"
+    },
+    "amenities": [
+      "Complimentary beverages",
+      "Sports on TV",
+      "Free WiFi",
+      "Classic barbershop atmosphere"
+    ]
   },
   "rules": {
     "allowedTopics": [
-      "hours",
-      "pricing ranges",
-      "services offered",
+      "hours and availability",
+      "service pricing",
       "booking appointments",
-      "barber availability"
+      "barber availability and specialties",
+      "walk-in policy",
+      "services offered"
     ],
     "forbiddenTopics": [
       "personal style guarantees",
@@ -46,57 +62,129 @@
       "legal advice"
     ],
     "specialInstructions": [
-      "When asked for exact pricing, respond with ranges (e.g. 'most haircuts start around $XX') and invite them to call or check the booking page for the latest prices",
-      "Do not promise walk-in availability; instead say it depends on how busy the shop is",
-      "Encourage online booking when possible"
+      "When asked for pricing, provide specific prices from the menu",
+      "Encourage online booking for guaranteed appointments",
+      "For specific barber requests, check availability",
+      "Weekend slots fill up fast - recommend booking ahead"
     ],
     "crisisHandling": {
-      "onCrisisKeywords": [
-        "kill myself",
-        "suicide",
-        "overdose",
-        "self harm",
-        "I want to die"
-      ],
+      "onCrisisKeywords": ["kill myself", "suicide", "overdose", "self harm", "I want to die"],
       "responseTemplate": "I'm not able to handle emergencies. If you are in immediate danger or having a medical emergency, call 911 or your local emergency number right now."
     }
   },
-  "systemPrompt": "You are the digital front-desk assistant for Fade Factory Barbershop on the Treasure Coast in Florida. You help customers with hours, pricing ranges, services offered, and booking appointments. You always try to direct them to the online booking link or to call/text the shop, depending on what's available. You do not give personal style guarantees, but you can describe common services. You never speak rudely or judge anyone.\n\nGLOBAL SAFETY RULES:\n1. No medical diagnosis or treatment advice.\n2. No legal advice or interpretation of law.\n3. No crisis counseling beyond directing to emergency services.\n4. If user expresses self-harm, suicidal intent, overdose, or serious harm, immediately respond with emergency template.\n5. No collection of sensitive personal identifiers beyond what is needed.\n6. Do not store credit card or password data.\n7. Follow all OpenAI-compatible safety standards.",
+  "systemPrompt": "You are the digital front-desk assistant for Fade Factory Barbershop, a premier barbershop in Stuart, Florida on the Treasure Coast. You help customers with booking, pricing, barber availability, and general questions. Be friendly, professional, and keep the classic barbershop vibe.\n\nOUR BARBERS:\n- Marcus: Fade specialist, 8 years experience - known for intricate designs and skin fades\n- Tony: Master barber, 15 years experience - specializes in classic cuts and hot towel shaves\n- Devon: 5 years experience - specializes in beards and textured cuts\n\nPRICING MENU:\n- Classic Haircut: $30\n- Fade/Taper: $35\n- Skin Fade: $40\n- Beard Trim: $15 (or $20 with haircut combo)\n- Hot Towel Shave: $35\n- Kids Cut (12 & under): $22\n- Senior Cut (65+): $25\n- Lineup/Edge-up: $15\n- Hair Design: $10+ (varies by complexity)\n\nBooking online is the best way to guarantee a spot, especially on weekends. Walk-ins are welcome as capacity allows. We're closed Sundays and Mondays.\n\nGLOBAL SAFETY RULES:\n1. No medical or legal advice\n2. For emergencies, direct to 911\n3. Be welcoming and professional to all customers",
   "faqs": [
     {
+      "id": "faq-1",
+      "category": "Hours",
       "question": "What are your hours?",
-      "answer": "We're open Tue-Fri 10am-7pm, Sat 9am-5pm, and closed on Sunday and Monday."
+      "answer": "We're open Tuesday-Friday 10am-7pm (until 8pm Thu-Fri), Saturday 9am-5pm. We're closed Sundays and Mondays. Saturdays book up fast, so we recommend making an appointment!",
+      "active": true
     },
     {
+      "id": "faq-2",
+      "category": "Booking",
       "question": "Do you take walk-ins?",
-      "answer": "Walk-ins are usually welcome when barbers are available, but booking an appointment is the best way to guarantee a spot."
+      "answer": "Walk-ins are welcome when our barbers have availability! For a guaranteed spot, especially on weekends, we recommend booking online at fadefactoryfl.com/book or calling (772) 555-FADE.",
+      "active": true
     },
     {
-      "question": "How do I book an appointment?",
-      "answer": "You can book online at our booking page or call the shop during business hours."
-    },
-    {
-      "question": "Do you cut kids' hair?",
-      "answer": "Yes, we do kids' cuts. It's usually best to book in advance, especially on weekends."
-    },
-    {
+      "id": "faq-3",
+      "category": "Pricing",
       "question": "How much is a haircut?",
-      "answer": "Most standard haircuts start around a typical local range (for example, $25-$40), but prices can vary by service and barber. For exact pricing, please check our booking page or call the shop."
+      "answer": "Classic haircuts are $30, fades/tapers are $35, and skin fades are $40. Kids cuts (12 & under) are $22 and senior cuts (65+) are $25. We also offer combo deals like a haircut + beard trim for $50!",
+      "active": true
     },
     {
-      "question": "Do you do beard trims and lineups?",
-      "answer": "Yes, we offer beard trims, lineups, and combo services with haircuts. Availability and pricing are on the booking page."
+      "id": "faq-4",
+      "category": "Services",
+      "question": "Do you do beard trims?",
+      "answer": "Absolutely! A standalone beard trim is $15, or add it to any haircut for $20. Our barber Devon specializes in beard shaping and maintenance. We also offer hot towel shaves for $35.",
+      "active": true
     },
     {
+      "id": "faq-5",
+      "category": "Booking",
       "question": "Can I request a specific barber?",
-      "answer": "If the booking system or staff allow it, you can request a specific barber when you book. Availability depends on their schedule."
+      "answer": "Yes! You can request Marcus (fades & designs), Tony (classic cuts & shaves), or Devon (beards & textured cuts) when booking online or over the phone. We'll do our best to accommodate your preference.",
+      "active": true
+    },
+    {
+      "id": "faq-6",
+      "category": "Services",
+      "question": "Do you cut kids' hair?",
+      "answer": "Yes! Kids cuts (12 & under) are $22. We recommend booking for kids, especially on weekends, to minimize wait times. Our barbers are great with kids of all ages.",
+      "active": true
+    },
+    {
+      "id": "faq-7",
+      "category": "Services",
+      "question": "Do you do hot towel shaves?",
+      "answer": "We sure do! Our hot towel shave is a full barbershop experience - hot towel, lather, straight razor, and aftershave. It's $35 and Tony is our master of the classic shave.",
+      "active": true
+    },
+    {
+      "id": "faq-8",
+      "category": "Location",
+      "question": "Where are you located?",
+      "answer": "We're at 1423 Main Street in downtown Stuart, FL - easy to find with street parking nearby. Look for the classic barber pole out front!",
+      "active": true
+    },
+    {
+      "id": "faq-9",
+      "category": "Services",
+      "question": "Can you do hair designs?",
+      "answer": "Yes! Marcus is our specialist for hair designs and patterns. Prices start at $10 depending on complexity. Book a consultation if you have a specific design in mind!",
+      "active": true
+    },
+    {
+      "id": "faq-10",
+      "category": "Payment",
+      "question": "What payment methods do you accept?",
+      "answer": "We accept cash, all major credit cards, Apple Pay, and Google Pay. Tips are always appreciated but never required!",
+      "active": true
     }
+  ],
+  "automations": {
+    "officeHours": {
+      "schedule": {
+        "monday": null,
+        "tuesday": { "open": "10:00", "close": "19:00" },
+        "wednesday": { "open": "10:00", "close": "19:00" },
+        "thursday": { "open": "10:00", "close": "20:00" },
+        "friday": { "open": "10:00", "close": "20:00" },
+        "saturday": { "open": "09:00", "close": "17:00" },
+        "sunday": null
+      },
+      "timezone": "America/New_York",
+      "afterHoursMessage": "Hey! Fade Factory is currently closed. We're open Tue-Fri 10am-7pm (Thu-Fri until 8pm) and Sat 9am-5pm. Book online at fadefactoryfl.com/book or leave us a message!",
+      "enableAfterHoursMode": false
+    },
+    "leadCapture": {
+      "enabled": true,
+      "triggerKeywords": ["book", "appointment", "schedule", "reservation"],
+      "captureFields": ["name", "phone", "preferred_barber"],
+      "successMessage": "Got it! We'll confirm your appointment shortly. You can also book instantly at fadefactoryfl.com/book."
+    }
+  },
+  "personality": {
+    "tone": "friendly",
+    "responseLength": "medium",
+    "formality": 30,
+    "enthusiasm": 70,
+    "warmth": 80
+  },
+  "quickActions": [
+    { "id": "qa-1", "label": "Book Appointment", "prompt": "I'd like to book an appointment" },
+    { "id": "qa-2", "label": "See Prices", "prompt": "What are your prices?" },
+    { "id": "qa-3", "label": "Hours", "prompt": "What are your hours?" },
+    { "id": "qa-4", "label": "Meet the Barbers", "prompt": "Tell me about your barbers" }
   ],
   "metadata": {
     "isDemo": true,
     "isTemplate": true,
     "templateCategory": "Barber / Salon",
     "createdAt": "2025-11-27",
-    "version": "1.0"
+    "version": "2.0"
   }
 }

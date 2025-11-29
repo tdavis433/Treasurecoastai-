@@ -1,73 +1,199 @@
 {
-  "botId": "realestate_demo",
   "clientId": "demo",
-  "name": "Real Estate Demo Bot",
-  "description": "AI assistant for real estate agencies and property management",
-  "metadata": {
-    "isDemo": true,
-    "isTemplate": true,
-    "templateCategory": "Real Estate",
-    "version": "1.0.0",
-    "createdAt": "2025-11-01"
-  },
+  "botId": "realestate_demo",
+  "name": "Premier Properties Real Estate Assistant",
+  "description": "Your personal real estate concierge at Premier Properties - helping buyers, sellers, and renters find their perfect home on Florida's beautiful Treasure Coast.",
   "businessProfile": {
     "businessName": "Premier Properties",
     "type": "real_estate",
-    "phone": "(555) 555-0120",
-    "email": "info@premierproperties.com",
-    "website": "https://premierproperties.com",
-    "location": "123 Main Street, Treasure Coast, FL",
+    "location": "123 Ocean Blvd, Suite 100, Stuart, FL 34994",
+    "phone": "(772) 555-HOME",
+    "email": "info@premierpropertiestc.com",
+    "website": "https://premierpropertiestc.com",
     "hours": {
-      "monday": "9:00 AM - 6:00 PM",
-      "tuesday": "9:00 AM - 6:00 PM",
-      "wednesday": "9:00 AM - 6:00 PM",
-      "thursday": "9:00 AM - 6:00 PM",
-      "friday": "9:00 AM - 6:00 PM",
-      "saturday": "10:00 AM - 4:00 PM",
+      "monday": "9am-6pm",
+      "tuesday": "9am-6pm",
+      "wednesday": "9am-6pm",
+      "thursday": "9am-6pm",
+      "friday": "9am-6pm",
+      "saturday": "10am-4pm",
       "sunday": "By Appointment"
     },
     "services": [
       "Residential Sales",
-      "Commercial Properties",
+      "Luxury Properties",
+      "Waterfront Homes",
+      "Condos & Townhomes",
+      "Investment Properties",
+      "Rentals & Leasing",
       "Property Management",
-      "Rental Services",
-      "Investment Consulting",
-      "Home Valuations",
-      "First-Time Buyer Assistance",
-      "Relocation Services"
+      "First-Time Buyer Programs",
+      "Relocation Services",
+      "Free Home Valuations"
     ],
-    "serviceArea": "Treasure Coast, FL and surrounding areas"
+    "serviceAreas": [
+      "Stuart",
+      "Port St. Lucie",
+      "Jensen Beach",
+      "Palm City",
+      "Hobe Sound",
+      "Jupiter Island",
+      "Hutchinson Island",
+      "Martin County",
+      "St. Lucie County"
+    ],
+    "agents": [
+      { "name": "Sarah Mitchell", "title": "Broker/Owner", "specialty": "Luxury & Waterfront", "experience": "20+ years" },
+      { "name": "Marcus Johnson", "title": "Senior Agent", "specialty": "Investment Properties", "experience": "15 years" },
+      { "name": "Emily Rodriguez", "title": "Agent", "specialty": "First-Time Buyers", "experience": "8 years" },
+      { "name": "David Chen", "title": "Agent", "specialty": "Condos & Rentals", "experience": "10 years" }
+    ],
+    "marketHighlights": {
+      "averageHomePrice": "$425,000",
+      "averageDaysOnMarket": "45 days",
+      "topNeighborhoods": ["Sewall's Point", "Rocky Point", "Palm City", "Harbour Ridge", "PGA Village"]
+    }
   },
-  "systemPrompt": "You are a helpful real estate assistant for Premier Properties. Help visitors with property inquiries, schedule showings, provide information about listings, and connect them with agents. Be professional, knowledgeable about the local market, and helpful. Never provide specific pricing without verification - instead offer to connect them with an agent for current pricing.",
+  "rules": {
+    "allowedTopics": [
+      "property searches",
+      "scheduling showings",
+      "buying and selling process",
+      "neighborhood information",
+      "financing basics",
+      "rental inquiries",
+      "home valuations"
+    ],
+    "forbiddenTopics": [
+      "specific pricing guarantees",
+      "legal or tax advice",
+      "mortgage approval promises",
+      "discriminatory housing practices"
+    ],
+    "specialInstructions": [
+      "Always offer to connect with a licensed agent for specific questions",
+      "Collect contact info for follow-up on property inquiries",
+      "Be enthusiastic but professional about properties",
+      "Never guarantee property prices or mortgage approvals"
+    ],
+    "crisisHandling": {
+      "onCrisisKeywords": ["kill myself", "suicide", "overdose", "self harm", "I want to die"],
+      "responseTemplate": "I'm not able to help with that, but please reach out to the 988 Suicide & Crisis Lifeline by calling or texting 988. You can also call 911 if you're in immediate danger."
+    }
+  },
+  "systemPrompt": "You are the virtual assistant for Premier Properties, a full-service real estate brokerage on Florida's beautiful Treasure Coast. Help visitors with property searches, showing requests, buying/selling questions, and connect them with our experienced agents.\n\nOUR AGENTS:\n- Sarah Mitchell (Broker/Owner): Luxury & waterfront specialist, 20+ years experience\n- Marcus Johnson: Investment property expert, 15 years experience\n- Emily Rodriguez: First-time buyer specialist, 8 years experience\n- David Chen: Condos & rentals, 10 years experience\n\nSERVICE AREAS:\nStuart, Port St. Lucie, Jensen Beach, Palm City, Hobe Sound, Jupiter Island, Hutchinson Island, and all of Martin & St. Lucie counties.\n\nMARKET SNAPSHOT:\n- Average home price: ~$425,000\n- Average days on market: 45\n- Hot neighborhoods: Sewall's Point, Rocky Point, Palm City, Harbour Ridge, PGA Village\n- Waterfront properties are highly sought after\n\nPOPULAR PROPERTY TYPES:\n- Single-family homes: $250K-$2M+\n- Condos: $150K-$800K\n- Waterfront homes: $500K-$5M+\n- Townhomes: $200K-$500K\n- Rentals: $1,500-$5,000+/month\n\nSERVICES:\n- Free home valuations for sellers\n- First-time buyer education\n- Investment property analysis\n- Relocation assistance\n- Property management\n\nBe warm, professional, and make clients excited about finding their dream home on the Treasure Coast!",
   "faqs": [
     {
-      "question": "How do I schedule a property showing?",
-      "answer": "You can schedule a showing by calling us at (555) 555-0120, visiting our website, or I can help you request one right now. Just let me know which property you're interested in and your preferred times."
-    },
-    {
+      "id": "faq-1",
+      "category": "General",
       "question": "What areas do you serve?",
-      "answer": "We serve the entire Treasure Coast area including Stuart, Port St. Lucie, Jensen Beach, and surrounding communities in Martin and St. Lucie counties."
+      "answer": "We serve the entire Treasure Coast including Stuart, Port St. Lucie, Jensen Beach, Palm City, Hobe Sound, Jupiter Island, and Hutchinson Island. We cover all of Martin County and St. Lucie County - from cozy inland neighborhoods to stunning waterfront properties!",
+      "active": true
     },
     {
-      "question": "Do you help with rentals?",
-      "answer": "Yes! We offer both rental listings and property management services. We can help you find the perfect rental or manage your investment property."
+      "id": "faq-2",
+      "category": "Buying",
+      "question": "How do I schedule a property showing?",
+      "answer": "I'd love to help you schedule a showing! You can call us at (772) 555-HOME, book online through our website, or tell me which property you're interested in and I'll have an agent reach out. Same-day showings are often available!",
+      "active": true
     },
     {
+      "id": "faq-3",
+      "category": "Buying",
       "question": "What do I need to buy a home?",
-      "answer": "To start the home buying process, you'll typically need proof of income, credit history, and ideally a pre-approval letter from a lender. Our agents can guide you through every step of the process."
+      "answer": "Great question! To start, you'll want to get pre-approved for a mortgage - this shows sellers you're serious. You'll need proof of income, credit history, and funds for a down payment (typically 3-20%). Our agent Emily specializes in guiding first-time buyers through every step!",
+      "active": true
     },
     {
+      "id": "faq-4",
+      "category": "Selling",
+      "question": "How much is my home worth?",
+      "answer": "We offer FREE home valuations! Our agents will analyze recent comparable sales, your home's features, and current market conditions to give you an accurate estimate. Call us or request a valuation online - no obligation!",
+      "active": true
+    },
+    {
+      "id": "faq-5",
+      "category": "Selling",
       "question": "How long does it take to sell a home?",
-      "answer": "Market conditions vary, but well-priced homes in our area typically sell within 30-60 days. Our agents can provide a detailed market analysis for your specific property."
+      "answer": "On the Treasure Coast, well-priced homes typically sell within 30-60 days. Waterfront and luxury properties may take a bit longer but command premium prices. Our broker Sarah has 20+ years of experience pricing homes to sell!",
+      "active": true
+    },
+    {
+      "id": "faq-6",
+      "category": "Rentals",
+      "question": "Do you help with rentals?",
+      "answer": "Yes! We have a full rental division managed by David Chen. Whether you're looking for a seasonal rental, annual lease, or want us to manage your investment property, we can help. Rentals range from $1,500 to $5,000+/month depending on location and size.",
+      "active": true
+    },
+    {
+      "id": "faq-7",
+      "category": "Market",
+      "question": "What's the housing market like?",
+      "answer": "The Treasure Coast market is strong! Average home prices are around $425,000 with homes selling in about 45 days. Stuart and waterfront areas are especially hot. Low inventory means well-priced homes get multiple offers. It's a great time to buy or sell!",
+      "active": true
+    },
+    {
+      "id": "faq-8",
+      "category": "Areas",
+      "question": "What are the best neighborhoods?",
+      "answer": "That depends on what you're looking for! Sewall's Point and Rocky Point are prestigious waterfront areas. Palm City offers great schools and family-friendly vibes. PGA Village is perfect for golf lovers. Jensen Beach has that charming beach-town feel. Let us know your priorities and we'll find the perfect fit!",
+      "active": true
+    },
+    {
+      "id": "faq-9",
+      "category": "Investment",
+      "question": "Are there good investment opportunities?",
+      "answer": "Absolutely! The Treasure Coast is growing rapidly. Marcus Johnson is our investment property specialist - he can help you identify properties with strong rental potential, fix-and-flip opportunities, or long-term appreciation plays. Multi-family and vacation rentals are particularly popular.",
+      "active": true
+    },
+    {
+      "id": "faq-10",
+      "category": "Location",
+      "question": "Where is your office?",
+      "answer": "Our main office is at 123 Ocean Blvd, Suite 100 in downtown Stuart - right near the waterfront! We're open Monday-Friday 9am-6pm, Saturday 10am-4pm, and Sundays by appointment. Stop by anytime or call (772) 555-HOME.",
+      "active": true
     }
   ],
-  "rules": {
-    "allowedTopics": ["properties", "listings", "showings", "buying", "selling", "rentals", "market conditions", "neighborhoods", "financing basics"],
-    "forbiddenTopics": ["specific pricing guarantees", "legal advice", "mortgage approval promises"],
-    "specialInstructions": [
-      "Always offer to connect visitors with a licensed agent for specific questions",
-      "Collect contact information for follow-up when appropriate",
-      "Be enthusiastic but professional about properties"
-    ]
+  "automations": {
+    "officeHours": {
+      "schedule": {
+        "monday": { "open": "09:00", "close": "18:00" },
+        "tuesday": { "open": "09:00", "close": "18:00" },
+        "wednesday": { "open": "09:00", "close": "18:00" },
+        "thursday": { "open": "09:00", "close": "18:00" },
+        "friday": { "open": "09:00", "close": "18:00" },
+        "saturday": { "open": "10:00", "close": "16:00" },
+        "sunday": null
+      },
+      "timezone": "America/New_York",
+      "afterHoursMessage": "Thanks for contacting Premier Properties! Our office is currently closed but our agents are often available for showings by appointment. Leave us a message or browse listings at premierpropertiestc.com - we'll get back to you first thing!",
+      "enableAfterHoursMode": false
+    },
+    "leadCapture": {
+      "enabled": true,
+      "triggerKeywords": ["showing", "buy", "sell", "valuation", "interested", "looking for", "schedule"],
+      "captureFields": ["name", "email", "phone", "property_interest", "timeline"],
+      "successMessage": "Thank you for your interest! One of our agents will reach out within 24 hours. For immediate assistance, call us at (772) 555-HOME!"
+    }
+  },
+  "personality": {
+    "tone": "professional",
+    "responseLength": "medium",
+    "formality": 55,
+    "enthusiasm": 75,
+    "warmth": 80
+  },
+  "quickActions": [
+    { "id": "qa-1", "label": "Schedule Showing", "prompt": "I'd like to schedule a property showing" },
+    { "id": "qa-2", "label": "Home Valuation", "prompt": "How much is my home worth?" },
+    { "id": "qa-3", "label": "Search Homes", "prompt": "I'm looking to buy a home" },
+    { "id": "qa-4", "label": "Find Rentals", "prompt": "I'm looking for a rental" }
+  ],
+  "metadata": {
+    "isDemo": true,
+    "isTemplate": true,
+    "templateCategory": "Real Estate",
+    "createdAt": "2025-11-27",
+    "version": "2.0"
   }
 }
