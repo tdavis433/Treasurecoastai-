@@ -57,9 +57,16 @@ The system utilizes a React, TypeScript, Tailwind CSS, and shadcn/ui frontend, w
       - **Overview Section:** Unified bot management with split-pane layout, bot search, and detailed configuration tabs (Settings, Billing, Analytics, Logs, Install)
     - **Bot-Specific Dashboards (`/admin/bot/:botId`):** Tailored dashboards with industry-specific tabs.
     - **Bot Creation Wizard (`/admin/bot/wizard`):** 5-step process with template selection, business info, services, FAQs, personality sliders, and widget code generation.
-- **Client Dashboard (`/client/dashboard`):** Client-specific view of conversation statistics, appointments, and business info, with proper data scoping.
-- **Leads Module (`/client/leads`):** Manages lead generation and tracking.
-- **Inbox Module (`/client/inbox`):** Provides a conversation management interface for sessions.
+- **Client Dashboard (`/client/dashboard`):** Enhanced sidebar-based dashboard with 7 sections:
+      - **Dashboard:** Overview stats, Quick Overview card, Recent Sessions, Usage & Plan card with progress bars
+      - **Analytics:** Date range filtering (7/14/30/90 days), CSV export buttons, trend charts
+      - **Leads:** Lead management and tracking (navigates to /client/leads)
+      - **Inbox:** Conversation management (navigates to /client/inbox)
+      - **Appointments:** Appointment management interface
+      - **Widget Code:** Embed code with copy-to-clipboard functionality and installation instructions
+      - **Settings:** Limited business info editing (phone, hours, location only - bot config remains admin-only)
+- **Leads Module (`/client/leads`):** Manages lead generation and tracking with bulk actions.
+- **Inbox Module (`/client/inbox`):** Provides conversation management with notes panel and session states.
 
 ### Key Features
 - **AI Chat:** OpenAI integration with safety protocols.
