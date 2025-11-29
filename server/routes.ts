@@ -2757,23 +2757,28 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
-  // Get all bots as a flat list for individual editing
+  // Get all bots as a flat list for individual editing (includes full config with FAQs)
   app.get("/api/super-admin/bots", requireSuperAdmin, (req, res) => {
     try {
       const allBots = getAllBotConfigs();
       
+      // Return full bot configs including FAQs, rules, etc.
       const botList = allBots.map(bot => ({
         botId: bot.botId,
         clientId: bot.clientId,
         name: bot.name,
         description: bot.description,
-        businessType: bot.businessProfile.type,
-        businessName: bot.businessProfile.businessName,
+        businessProfile: bot.businessProfile,
+        businessType: bot.businessProfile?.type,
+        businessName: bot.businessProfile?.businessName,
         isDemo: bot.metadata?.isDemo ?? false,
-        phone: bot.businessProfile.phone,
-        email: bot.businessProfile.email,
-        website: bot.businessProfile.website,
-        location: bot.businessProfile.location
+        systemPrompt: bot.systemPrompt,
+        faqs: bot.faqs || [],
+        rules: bot.rules || {},
+        automations: bot.automations || {},
+        personality: bot.personality || {},
+        quickActions: bot.quickActions || [],
+        metadata: bot.metadata
       }));
       
       res.json(botList);
