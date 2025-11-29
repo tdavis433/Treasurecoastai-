@@ -16,7 +16,7 @@ This project is a multi-tenant AI chatbot platform designed to support various b
 - **Phase 3 (Bot Wizard):** COMPLETE - 5-step wizard at /admin/bot/wizard
 - **Phase 4 (Automations V2):** COMPLETE - Database-backed automation workflows with trigger types (keyword, schedule, inactivity, message_count, lead_captured, appointment_booked), conditions/actions, run logging, Admin UI at /admin/bot/:botId/automations
 - **Phase 5 (Widget Improvements):** COMPLETE - widget_settings table, full widget customization (theme modes: light/dark/auto, colors, position, avatar, auto-open, notification sounds, accessibility), Admin UI at /admin/bot/:botId/widget-settings with live preview
-- **Phase 6 (Analytics/Leads/Inbox):** IN PROGRESS
+- **Phase 6 (Analytics/Leads/Inbox):** COMPLETE
   - 6.1 Enhanced Analytics: COMPLETE - Date range filtering, bot selector, CSV export buttons
   - 6.2 CSV Export Endpoints: COMPLETE - Server-side endpoints for analytics, leads, and sessions export
   - 6.3 Auto-Lead Capture: COMPLETE - extractContactInfo() and autoCaptureLead() functions detect email/phone in chat messages and auto-create leads
@@ -24,6 +24,10 @@ This project is a multi-tenant AI chatbot platform designed to support various b
   - 6.5 Conversation Notes & Session States: COMPLETE - conversation_notes and session_states database tables, CRUD API endpoints, Inbox UI with notes panel (add/delete notes), session state controls (read/unread toggle, status dropdown, priority selector), tabbed interface for messages/notes
   - 6.6 User Management: COMPLETE - Full CRUD for admin users (POST/PATCH/DELETE /api/super-admin/users), create user modal, role promotion/demotion, deletion with confirmation
   - 6.7 Workspace Management: COMPLETE - Full CRUD for workspaces (POST/PATCH/DELETE /api/super-admin/workspaces/:slug), create workspace modal with name/slug/plan/owner, edit workspace modal, delete with confirmation, dropdown menu actions on workspace cards
+  - 6.8 Self-Service Account Management: COMPLETE - Password change with bcrypt hashing, notification preferences with Zod validation and proper data merging, billing portal access via Stripe Customer Portal, usage limits display with progress bars
+  - 6.9 Super Admin Billing Overview: COMPLETE - MRR calculation with CTE-based aggregation handling multi-item subscriptions and quantity, subscription counts by status (active/past_due/canceled), per-client billing details, GET /api/super-admin/billing/overview endpoint
+  - 6.10 Help/Support Section: COMPLETE - FAQ section with common questions, documentation links, contact support button
+  - 6.11 Mobile Responsiveness: COMPLETE - All dashboards verified working on mobile (375x667) and tablet (768x1024) viewports, responsive grid patterns (grid-cols-1 md:grid-cols-2 lg:grid-cols-4), collapsible sidebar navigation
 - **Phases 7-10:** Pending
 
 ## System Architecture
