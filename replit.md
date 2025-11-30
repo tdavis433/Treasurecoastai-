@@ -61,21 +61,23 @@ The system utilizes a React, TypeScript, Tailwind CSS, and shadcn/ui frontend, w
       - **Overview Section:** Unified bot management with split-pane layout, bot search, and detailed configuration tabs (Settings, Billing, Analytics, Logs, Install)
     - **Bot-Specific Dashboards (`/admin/bot/:botId`):** Tailored dashboards with industry-specific tabs.
     - **Bot Creation Wizard (`/admin/bot/wizard`):** 5-step process with template selection, business info, services, FAQs, personality sliders, and widget code generation.
-- **Client Dashboard (`/client/dashboard`):** Enhanced sidebar-based dashboard with 7 sections:
+- **Client Dashboard (`/client/dashboard`):** Enhanced sidebar-based dashboard with 8 sections:
       - **Dashboard:** Overview stats, Quick Overview card, Recent Sessions, Usage & Plan card with progress bars
       - **Analytics:** Date range filtering (7/14/30/90 days), CSV export buttons, trend charts
       - **Leads:** Lead management and tracking (navigates to /client/leads)
       - **Inbox:** Conversation management (navigates to /client/inbox)
       - **Appointments:** Appointment management interface
       - **Widget Code:** Embed code with copy-to-clipboard functionality and installation instructions
+      - **Integrations:** Webhook configuration, external booking/payment URLs, event selection, secret management, test webhook delivery, and documentation
       - **Settings:** Limited business info editing (phone, hours, location only - bot config remains admin-only)
 - **Leads Module (`/client/leads`):** Manages lead generation and tracking with bulk actions.
 - **Inbox Module (`/client/inbox`):** Provides conversation management with notes panel and session states.
 
 ### Key Features
 - **AI Chat:** OpenAI integration with safety protocols.
-- **Appointment Booking:** Supports multi-type appointments with pre-qualification.
+- **Appointment Booking:** Supports multi-type appointments with pre-qualification, external booking URL redirect.
 - **Notification System:** Dual Email (Resend) and SMS (Twilio) alerts.
+- **Webhook Integrations:** Outbound webhooks with HMAC-SHA256 signatures for lead.created, lead.updated, appointment.created, session.started, session.ended events; external booking/payment URL support.
 - **Authentication & RBAC:** Session-based authentication with `super_admin` and `client_admin` roles.
 - **Analytics:** Multi-layer tracking for message events, sessions, and daily trends, with CSV export.
 - **Crisis Support:** Integration of crisis hotlines.
