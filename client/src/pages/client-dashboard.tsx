@@ -53,6 +53,13 @@ import {
   LogOut,
   HelpCircle,
   Headphones,
+  Webhook,
+  Link,
+  TestTube2,
+  Key,
+  RefreshCcw,
+  ToggleLeft,
+  ToggleRight,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useLocation } from "wouter";
@@ -193,7 +200,22 @@ interface UsageSummary {
   };
 }
 
-type SectionType = 'dashboard' | 'analytics' | 'leads' | 'inbox' | 'appointments' | 'widget' | 'settings';
+type SectionType = 'dashboard' | 'analytics' | 'leads' | 'inbox' | 'appointments' | 'widget' | 'integrations' | 'settings';
+
+interface WebhookSettings {
+  webhookUrl: string | null;
+  webhookSecret: string | null;
+  webhookEnabled: boolean;
+  webhookEvents: {
+    newLead: boolean;
+    newAppointment: boolean;
+    chatSessionStart: boolean;
+    chatSessionEnd: boolean;
+    leadStatusChange: boolean;
+  };
+  externalBookingUrl: string | null;
+  externalPaymentUrl: string | null;
+}
 
 const TOPIC_COLORS = [
   "#4FC3F7",
@@ -220,6 +242,7 @@ const SIDEBAR_ITEMS = [
   { id: 'inbox' as SectionType, label: 'Inbox', icon: Mail },
   { id: 'appointments' as SectionType, label: 'Appointments', icon: Calendar },
   { id: 'widget' as SectionType, label: 'Widget Code', icon: Code },
+  { id: 'integrations' as SectionType, label: 'Integrations', icon: Webhook },
   { id: 'settings' as SectionType, label: 'Settings', icon: Settings },
 ];
 
@@ -335,6 +358,17 @@ export default function ClientDashboard() {
     enabled: !!currentUser,
   });
 
+  const { data: webhookSettings, isLoading: webhooksLoading, refetch: refetchWebhooks } = useQuery<WebhookSettings>({
+    queryKey: ["/api/client/webhooks"],
+    enabled: !!currentUser,
+  });
+
+  const [webhookForm, setWebhookForm] = useState<Partial<WebhookSettings>>({});
+  const [editingWebhooks, setEditingWebhooks] = useState(false);
+  const [showWebhookSecret, setShowWebhookSecret] = useState(false);
+  const [testingWebhook, setTestingWebhook] = useState(false);
+  const [generatingSecret, setGeneratingSecret] = useState(false);
+
   const newLeadsCount = leadsData?.leads?.filter((lead: any) => lead.status === 'new').length || 0;
   const unreadInboxCount = inboxStatesData?.states?.filter(state => !state.isRead).length || 0;
 
@@ -353,6 +387,92 @@ export default function ClientDashboard() {
       toast({ title: "Error", description: "Failed to update settings.", variant: "destructive" });
     },
   });
+
+  const updateWebhooksMutation = useMutation({
+    mutationFn: async (data: Partial<WebhookSettings>) => {
+      const response = await apiRequest("PATCH", "/api/client/webhooks", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/client/webhooks"] });
+      setEditingWebhooks(false);
+      toast({ title: "Integrations Updated", description: "Your webhook settings have been saved." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update webhook settings.", variant: "destructive" });
+    },
+  });
+
+  const handleTestWebhook = async () => {
+    setTestingWebhook(true);
+    try {
+      const response = await apiRequest("POST", "/api/client/webhooks/test", {});
+      const result = await response.json();
+      if (result.success) {
+        toast({ title: "Webhook Test Successful", description: result.message });
+      } else {
+        toast({ title: "Webhook Test Failed", description: result.error || "Failed to deliver test webhook", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to test webhook", variant: "destructive" });
+    } finally {
+      setTestingWebhook(false);
+    }
+  };
+
+  const handleGenerateSecret = async () => {
+    setGeneratingSecret(true);
+    try {
+      const response = await apiRequest("POST", "/api/client/webhooks/generate-secret", {});
+      const result = await response.json();
+      if (result.success) {
+        setWebhookForm(prev => ({ ...prev, webhookSecret: result.webhookSecret }));
+        setShowWebhookSecret(true);
+        queryClient.invalidateQueries({ queryKey: ["/api/client/webhooks"] });
+        toast({ 
+          title: "New Secret Generated", 
+          description: "Save this secret - it will only be shown once." 
+        });
+      } else {
+        toast({ title: "Error", description: "Failed to generate secret", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to generate secret", variant: "destructive" });
+    } finally {
+      setGeneratingSecret(false);
+    }
+  };
+
+  const startEditingWebhooks = () => {
+    setWebhookForm({
+      webhookUrl: webhookSettings?.webhookUrl || null,
+      webhookSecret: null, // Don't pre-fill secret for security
+      webhookEnabled: webhookSettings?.webhookEnabled ?? false,
+      webhookEvents: webhookSettings?.webhookEvents ?? {
+        newLead: true,
+        newAppointment: true,
+        chatSessionStart: false,
+        chatSessionEnd: false,
+        leadStatusChange: false,
+      },
+      externalBookingUrl: webhookSettings?.externalBookingUrl || null,
+      externalPaymentUrl: webhookSettings?.externalPaymentUrl || null,
+    });
+    setEditingWebhooks(true);
+    setShowWebhookSecret(false);
+  };
+
+  const handleSaveWebhooks = () => {
+    const updates: Partial<WebhookSettings> = {};
+    if (webhookForm.webhookUrl !== undefined) updates.webhookUrl = webhookForm.webhookUrl || null;
+    if (webhookForm.webhookSecret) updates.webhookSecret = webhookForm.webhookSecret;
+    if (webhookForm.webhookEnabled !== undefined) updates.webhookEnabled = webhookForm.webhookEnabled;
+    if (webhookForm.webhookEvents) updates.webhookEvents = webhookForm.webhookEvents;
+    if (webhookForm.externalBookingUrl !== undefined) updates.externalBookingUrl = webhookForm.externalBookingUrl || null;
+    if (webhookForm.externalPaymentUrl !== undefined) updates.externalPaymentUrl = webhookForm.externalPaymentUrl || null;
+    
+    updateWebhooksMutation.mutate(updates);
+  };
 
   const handleCopyWidgetCode = () => {
     const botId = profile?.botId || stats?.botId || '';
@@ -1347,6 +1467,348 @@ export default function ClientDashboard() {
     </div>
   );
 
+  const renderIntegrationsSection = () => (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold text-white">Integrations</h2>
+        <p className="text-sm text-white/55">Connect your external systems and receive real-time webhook notifications</p>
+      </div>
+
+      <GlassCard data-testid="card-external-links">
+        <GlassCardHeader>
+          <GlassCardTitle className="flex items-center gap-2">
+            <Link className="h-5 w-5 text-cyan-400" />
+            External Links
+          </GlassCardTitle>
+          <GlassCardDescription>
+            Connect your existing booking and payment systems
+          </GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent className="space-y-4">
+          {editingWebhooks ? (
+            <>
+              <div>
+                <Label className="text-sm font-medium text-white/55">Booking System URL</Label>
+                <Input
+                  type="url"
+                  value={webhookForm.externalBookingUrl || ''}
+                  onChange={(e) => setWebhookForm(prev => ({ ...prev, externalBookingUrl: e.target.value || null }))}
+                  placeholder="https://calendly.com/your-business"
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                  data-testid="input-external-booking-url"
+                />
+                <p className="text-xs text-white/40 mt-1">Your Calendly, Acuity, or other booking system link</p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium text-white/55">Payment Page URL</Label>
+                <Input
+                  type="url"
+                  value={webhookForm.externalPaymentUrl || ''}
+                  onChange={(e) => setWebhookForm(prev => ({ ...prev, externalPaymentUrl: e.target.value || null }))}
+                  placeholder="https://square.link/your-payment"
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                  data-testid="input-external-payment-url"
+                />
+                <p className="text-xs text-white/40 mt-1">Your Square, PayPal, or other payment page link</p>
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <Label className="text-sm font-medium text-white/55">Booking System</Label>
+                <p className="text-sm text-white flex items-center gap-2">
+                  <ExternalLink className="h-4 w-4 text-white/55" />
+                  {webhookSettings?.externalBookingUrl || 'Not configured'}
+                </p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium text-white/55">Payment Page</Label>
+                <p className="text-sm text-white flex items-center gap-2">
+                  <ExternalLink className="h-4 w-4 text-white/55" />
+                  {webhookSettings?.externalPaymentUrl || 'Not configured'}
+                </p>
+              </div>
+            </>
+          )}
+        </GlassCardContent>
+      </GlassCard>
+
+      <GlassCard data-testid="card-webhooks">
+        <GlassCardHeader>
+          <GlassCardTitle className="flex items-center gap-2">
+            <Webhook className="h-5 w-5 text-cyan-400" />
+            Webhook Configuration
+          </GlassCardTitle>
+          <GlassCardDescription>
+            Receive real-time notifications when events occur in your chatbot
+          </GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent className="space-y-6">
+          {editingWebhooks ? (
+            <>
+              <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10">
+                <div>
+                  <Label className="text-sm font-medium text-white">Enable Webhooks</Label>
+                  <p className="text-xs text-white/40">Send notifications to your endpoint when events occur</p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setWebhookForm(prev => ({ ...prev, webhookEnabled: !prev.webhookEnabled }))}
+                  className="text-white"
+                  data-testid="button-toggle-webhooks"
+                >
+                  {webhookForm.webhookEnabled ? (
+                    <ToggleRight className="h-8 w-8 text-cyan-400" />
+                  ) : (
+                    <ToggleLeft className="h-8 w-8 text-white/40" />
+                  )}
+                </Button>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium text-white/55">Webhook URL</Label>
+                <Input
+                  type="url"
+                  value={webhookForm.webhookUrl || ''}
+                  onChange={(e) => setWebhookForm(prev => ({ ...prev, webhookUrl: e.target.value || null }))}
+                  placeholder="https://your-server.com/webhooks/tcai"
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                  data-testid="input-webhook-url"
+                />
+                <p className="text-xs text-white/40 mt-1">Your server endpoint that will receive webhook events</p>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-sm font-medium text-white/55">Webhook Secret</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleGenerateSecret}
+                    disabled={generatingSecret}
+                    className="text-xs text-cyan-400 hover:text-cyan-300"
+                    data-testid="button-generate-secret"
+                  >
+                    <RefreshCcw className={`h-3 w-3 mr-1 ${generatingSecret ? 'animate-spin' : ''}`} />
+                    Generate New
+                  </Button>
+                </div>
+                <div className="relative">
+                  <Input
+                    type={showWebhookSecret ? 'text' : 'password'}
+                    value={webhookForm.webhookSecret || ''}
+                    onChange={(e) => setWebhookForm(prev => ({ ...prev, webhookSecret: e.target.value || null }))}
+                    placeholder="Enter secret or generate one"
+                    className="bg-white/5 border-white/10 text-white placeholder:text-white/40 pr-10"
+                    data-testid="input-webhook-secret"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowWebhookSecret(!showWebhookSecret)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 text-white/40 hover:text-white"
+                  >
+                    <Key className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-white/40 mt-1">Used to sign webhooks (min 16 characters). Check X-Webhook-Signature header.</p>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium text-white/55 mb-3 block">Events to Send</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {[
+                    { key: 'newLead', label: 'New Lead Captured', desc: 'When a visitor shares contact info' },
+                    { key: 'newAppointment', label: 'Appointment Requested', desc: 'When someone books an appointment' },
+                    { key: 'leadStatusChange', label: 'Lead Status Changed', desc: 'When you update a lead status' },
+                    { key: 'chatSessionStart', label: 'Chat Session Started', desc: 'When a new conversation begins' },
+                    { key: 'chatSessionEnd', label: 'Chat Session Ended', desc: 'When a conversation ends' },
+                  ].map(event => (
+                    <div
+                      key={event.key}
+                      className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                        webhookForm.webhookEvents?.[event.key as keyof typeof webhookForm.webhookEvents]
+                          ? 'bg-cyan-500/10 border-cyan-400/40'
+                          : 'bg-white/5 border-white/10 hover:border-white/20'
+                      }`}
+                      onClick={() => setWebhookForm(prev => ({
+                        ...prev,
+                        webhookEvents: {
+                          ...prev.webhookEvents!,
+                          [event.key]: !prev.webhookEvents?.[event.key as keyof typeof prev.webhookEvents]
+                        }
+                      }))}
+                      data-testid={`toggle-event-${event.key}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {webhookForm.webhookEvents?.[event.key as keyof typeof webhookForm.webhookEvents] ? (
+                          <CheckCircle className="h-4 w-4 text-cyan-400" />
+                        ) : (
+                          <AlertCircle className="h-4 w-4 text-white/30" />
+                        )}
+                        <span className="text-sm font-medium text-white">{event.label}</span>
+                      </div>
+                      <p className="text-xs text-white/40 mt-1 ml-6">{event.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10">
+                <div>
+                  <Label className="text-sm font-medium text-white">Status</Label>
+                </div>
+                <Badge className={webhookSettings?.webhookEnabled 
+                  ? 'bg-green-500/20 text-green-400 border-green-400/30' 
+                  : 'bg-white/10 text-white/50 border-white/20'
+                }>
+                  {webhookSettings?.webhookEnabled ? 'Enabled' : 'Disabled'}
+                </Badge>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium text-white/55">Webhook URL</Label>
+                <p className="text-sm text-white font-mono">{webhookSettings?.webhookUrl || 'Not configured'}</p>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium text-white/55">Secret</Label>
+                <p className="text-sm text-white">{webhookSettings?.webhookSecret ? '••••••••' : 'Not set'}</p>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium text-white/55 mb-2 block">Enabled Events</Label>
+                <div className="flex flex-wrap gap-2">
+                  {webhookSettings?.webhookEvents?.newLead && (
+                    <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-400/30">New Lead</Badge>
+                  )}
+                  {webhookSettings?.webhookEvents?.newAppointment && (
+                    <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-400/30">Appointment</Badge>
+                  )}
+                  {webhookSettings?.webhookEvents?.leadStatusChange && (
+                    <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-400/30">Lead Update</Badge>
+                  )}
+                  {webhookSettings?.webhookEvents?.chatSessionStart && (
+                    <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-400/30">Session Start</Badge>
+                  )}
+                  {webhookSettings?.webhookEvents?.chatSessionEnd && (
+                    <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-400/30">Session End</Badge>
+                  )}
+                  {!Object.values(webhookSettings?.webhookEvents || {}).some(Boolean) && (
+                    <span className="text-sm text-white/40">No events enabled</span>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
+          <div className="flex items-center gap-3 pt-4 border-t border-white/10">
+            {editingWebhooks ? (
+              <>
+                <Button
+                  onClick={handleSaveWebhooks}
+                  disabled={updateWebhooksMutation.isPending}
+                  className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white"
+                  data-testid="button-save-webhooks"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {updateWebhooksMutation.isPending ? 'Saving...' : 'Save Changes'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setEditingWebhooks(false)}
+                  className="border-white/10 text-white/85 hover:bg-white/10"
+                  data-testid="button-cancel-webhooks"
+                >
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={startEditingWebhooks}
+                  className="border-white/10 text-white/85 hover:bg-white/10"
+                  data-testid="button-edit-webhooks"
+                >
+                  Configure
+                </Button>
+                {webhookSettings?.webhookUrl && webhookSettings?.webhookEnabled && (
+                  <Button
+                    variant="outline"
+                    onClick={handleTestWebhook}
+                    disabled={testingWebhook}
+                    className="border-white/10 text-white/85 hover:bg-white/10"
+                    data-testid="button-test-webhook"
+                  >
+                    <TestTube2 className={`h-4 w-4 mr-2 ${testingWebhook ? 'animate-pulse' : ''}`} />
+                    {testingWebhook ? 'Testing...' : 'Send Test'}
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
+        </GlassCardContent>
+      </GlassCard>
+
+      <GlassCard data-testid="card-webhook-docs">
+        <GlassCardHeader>
+          <GlassCardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-cyan-400" />
+            Webhook Documentation
+          </GlassCardTitle>
+        </GlassCardHeader>
+        <GlassCardContent>
+          <div className="space-y-4 text-sm">
+            <div>
+              <h4 className="font-medium text-white mb-2">Payload Format</h4>
+              <pre className="p-3 bg-black/40 rounded-lg text-xs text-white/80 overflow-x-auto">
+{`{
+  "event": "lead.created",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "clientId": "your_client_id",
+  "data": {
+    "leadId": "abc123",
+    "name": "John Doe",
+    "email": "john@example.com",
+    "phone": "(555) 123-4567",
+    "source": "chat",
+    "status": "new"
+  }
+}`}
+              </pre>
+            </div>
+
+            <div>
+              <h4 className="font-medium text-white mb-2">Verifying Signatures</h4>
+              <p className="text-white/60 mb-2">
+                All webhooks include an <code className="text-cyan-400">X-Webhook-Signature</code> header with format <code className="text-cyan-400">sha256=HASH</code>.
+                Verify by computing HMAC-SHA256 of the raw request body using your webhook secret.
+              </p>
+            </div>
+
+            <div>
+              <h4 className="font-medium text-white mb-2">Event Types</h4>
+              <ul className="space-y-1 text-white/60">
+                <li><code className="text-cyan-400">lead.created</code> - New lead captured from chat</li>
+                <li><code className="text-cyan-400">lead.updated</code> - Lead status changed</li>
+                <li><code className="text-cyan-400">appointment.created</code> - New appointment requested</li>
+                <li><code className="text-cyan-400">session.started</code> - Chat session began</li>
+                <li><code className="text-cyan-400">session.ended</code> - Chat session ended</li>
+              </ul>
+            </div>
+          </div>
+        </GlassCardContent>
+      </GlassCard>
+    </div>
+  );
+
   const renderSettingsSection = () => (
     <div className="space-y-6">
       <div>
@@ -1505,6 +1967,8 @@ export default function ClientDashboard() {
         return renderAppointmentsSection();
       case 'widget':
         return renderWidgetSection();
+      case 'integrations':
+        return renderIntegrationsSection();
       case 'settings':
         return renderSettingsSection();
       default:
