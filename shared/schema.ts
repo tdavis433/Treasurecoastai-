@@ -159,6 +159,28 @@ export const clientSettings = pgTable("client_settings", {
   primaryColor: text("primary_color").notNull().default("#1FA2A8"),
   accentColor: text("accent_color").notNull().default("#F59E0B"),
   
+  // External integrations - allow clients to link their existing systems
+  externalBookingUrl: text("external_booking_url"), // Client's existing booking system (Calendly, Acuity, etc.)
+  externalPaymentUrl: text("external_payment_url"), // Client's existing payment page (Square, PayPal, etc.)
+  
+  // Webhook configuration for real-time event delivery to client's systems
+  webhookUrl: text("webhook_url"), // Endpoint to receive webhook events
+  webhookSecret: text("webhook_secret"), // HMAC secret for verifying webhook signatures
+  webhookEvents: json("webhook_events").$type<{
+    newLead: boolean;
+    newAppointment: boolean;
+    chatSessionStart: boolean;
+    chatSessionEnd: boolean;
+    leadStatusChange: boolean;
+  }>().default({
+    newLead: true,
+    newAppointment: true,
+    chatSessionStart: false,
+    chatSessionEnd: false,
+    leadStatusChange: false,
+  }),
+  webhookEnabled: boolean("webhook_enabled").notNull().default(false),
+  
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
