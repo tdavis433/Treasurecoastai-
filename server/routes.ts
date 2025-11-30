@@ -2347,7 +2347,10 @@ These suggestions should be relevant to what was just discussed and help guide t
 
   app.get("/api/appointments", requireAuth, async (req, res) => {
     try {
-      const { status, startDate, endDate, search, limit, offset } = req.query;
+      const { status, startDate, endDate, search, limit, offset, clientId: queryClientId } = req.query;
+      
+      // Derive clientId: use session clientId for client_admin, query param for super_admin, fallback to default
+      const clientId = req.session.clientId || (queryClientId as string) || "default-client";
       
       const filters: any = {};
       if (status) filters.status = status as string;
@@ -2357,7 +2360,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       if (limit) filters.limit = parseInt(limit as string);
       if (offset) filters.offset = parseInt(offset as string);
       
-      const result = await storage.getFilteredAppointments("default-client", filters);
+      const result = await storage.getFilteredAppointments(clientId, filters);
       res.json(result);
     } catch (error) {
       console.error("Get appointments error:", error);
@@ -2367,7 +2370,10 @@ These suggestions should be relevant to what was just discussed and help guide t
 
   app.get("/api/appointments/:id", requireAuth, async (req, res) => {
     try {
-      const appointment = await storage.getAppointmentById("default-client", req.params.id);
+      const queryClientId = req.query.clientId as string | undefined;
+      const clientId = req.session.clientId || queryClientId || "default-client";
+      
+      const appointment = await storage.getAppointmentById(clientId, req.params.id);
       if (!appointment) {
         return res.status(404).json({ error: "Appointment not found" });
       }
@@ -2397,7 +2403,10 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(400).json({ error: "No valid fields to update" });
       }
       
-      const appointment = await storage.updateAppointment("default-client", paramsValidation.data.id, updates);
+      const queryClientId = req.query.clientId as string | undefined;
+      const clientId = req.session.clientId || queryClientId || "default-client";
+      
+      const appointment = await storage.updateAppointment(clientId, paramsValidation.data.id, updates);
       res.json(appointment);
     } catch (error) {
       console.error("Update appointment error:", error);
@@ -2418,7 +2427,10 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(400).json({ error: bodyValidation.error });
       }
       
-      await storage.updateAppointmentStatus("default-client", paramsValidation.data.id, bodyValidation.data.status);
+      const queryClientId = req.query.clientId as string | undefined;
+      const clientId = req.session.clientId || queryClientId || "default-client";
+      
+      await storage.updateAppointmentStatus(clientId, paramsValidation.data.id, bodyValidation.data.status);
       res.json({ success: true });
     } catch (error) {
       console.error("Update appointment status error:", error);
@@ -2429,7 +2441,10 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.delete("/api/appointments/:id", requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
-      await storage.deleteAppointment("default-client", id);
+      const queryClientId = req.query.clientId as string | undefined;
+      const clientId = req.session.clientId || queryClientId || "default-client";
+      
+      await storage.deleteAppointment(clientId, id);
       res.json({ success: true });
     } catch (error) {
       console.error("Delete appointment error:", error);

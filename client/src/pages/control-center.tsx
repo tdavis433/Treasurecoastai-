@@ -1901,7 +1901,7 @@ export default function ControlCenter() {
 
                 {/* Tabs */}
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="mb-6 w-full justify-start flex-wrap h-auto gap-1 bg-white/5 border border-white/10 rounded-xl p-1">
+                  <TabsList className="mb-6 w-full justify-start flex-wrap h-auto gap-1 bg-white/5 border border-white/10 rounded-xl p-1 overflow-x-auto">
                     <TabsTrigger data-testid="tab-overview" value="overview" className="text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/55">
                       <Eye className="h-4 w-4 mr-1" />
                       Overview
