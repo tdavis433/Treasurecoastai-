@@ -57,6 +57,15 @@ import {
   getUsageSummary
 } from "./planLimits";
 
+import {
+  sendLeadCreatedWebhook,
+  sendLeadUpdatedWebhook,
+  sendAppointmentCreatedWebhook,
+  sendSessionStartedWebhook,
+  sendSessionEndedWebhook,
+  testWebhook
+} from "./webhooks";
+
 import { 
   getWidgetSecret, 
   getOpenAIConfig, 
@@ -2116,6 +2125,17 @@ These suggestions should be relevant to what was just discussed and help guide t
         
         // Increment lead counter
         await incrementLeadCount(clientId);
+        
+        // Fire webhook for new lead (async, non-blocking)
+        sendLeadCreatedWebhook(clientId, {
+          id: newLead.id,
+          name: newLead.name || 'Unknown',
+          email: newLead.email,
+          phone: newLead.phone,
+          source: newLead.source,
+          status: newLead.status,
+          createdAt: newLead.createdAt,
+        }).catch(err => console.error('[Webhook] Error sending lead webhook:', err));
       }
     } catch (error) {
       // Don't fail the chat request if lead capture fails
@@ -2337,6 +2357,19 @@ These suggestions should be relevant to what was just discussed and help guide t
           }
         }
       }
+      
+      // Fire webhook for new appointment (async, non-blocking)
+      sendAppointmentCreatedWebhook(effectiveClientId, {
+        id: appointment.id,
+        name: appointment.name,
+        email: null, // appointment table doesn't have email column
+        phone: appointment.contact,
+        preferredDate: null,
+        preferredTime: appointment.preferredTime,
+        appointmentType: appointment.appointmentType,
+        notes: appointment.notes,
+        createdAt: appointment.createdAt,
+      }).catch(err => console.error('[Webhook] Error sending appointment webhook:', err));
       
       res.json({ success: true, appointment });
     } catch (error) {
@@ -3550,6 +3583,199 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
+  // =============================================
+  // WEBHOOK SETTINGS ENDPOINTS
+  // =============================================
+
+  const webhookSettingsSchema = z.object({
+    webhookUrl: z.string().url().nullable().optional(),
+    webhookSecret: z.string().min(16).nullable().optional(),
+    webhookEnabled: z.boolean().optional(),
+    webhookEvents: z.object({
+      newLead: z.boolean().optional(),
+      newAppointment: z.boolean().optional(),
+      chatSessionStart: z.boolean().optional(),
+      chatSessionEnd: z.boolean().optional(),
+      leadStatusChange: z.boolean().optional(),
+    }).optional(),
+    externalBookingUrl: z.string().url().nullable().optional(),
+    externalPaymentUrl: z.string().url().nullable().optional(),
+  });
+
+  // Get webhook settings
+  app.get("/api/client/webhooks", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      const settings = await storage.getSettings(clientId);
+      
+      if (!settings) {
+        return res.json({
+          webhookUrl: null,
+          webhookSecret: null,
+          webhookEnabled: false,
+          webhookEvents: {
+            newLead: true,
+            newAppointment: true,
+            chatSessionStart: false,
+            chatSessionEnd: false,
+            leadStatusChange: false,
+          },
+          externalBookingUrl: null,
+          externalPaymentUrl: null,
+        });
+      }
+      
+      res.json({
+        webhookUrl: settings.webhookUrl,
+        webhookSecret: settings.webhookSecret ? '********' : null, // Mask the secret
+        webhookEnabled: settings.webhookEnabled,
+        webhookEvents: settings.webhookEvents ?? {
+          newLead: true,
+          newAppointment: true,
+          chatSessionStart: false,
+          chatSessionEnd: false,
+          leadStatusChange: false,
+        },
+        externalBookingUrl: settings.externalBookingUrl,
+        externalPaymentUrl: settings.externalPaymentUrl,
+      });
+    } catch (error) {
+      console.error("Get webhook settings error:", error);
+      res.status(500).json({ error: "Failed to fetch webhook settings" });
+    }
+  });
+
+  // Update webhook settings
+  app.patch("/api/client/webhooks", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      
+      const validation = validateRequest(webhookSettingsSchema, req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: validation.error });
+      }
+      
+      const updates: Record<string, any> = {};
+      
+      if (validation.data.webhookUrl !== undefined) {
+        updates.webhookUrl = validation.data.webhookUrl;
+      }
+      if (validation.data.webhookSecret !== undefined) {
+        updates.webhookSecret = validation.data.webhookSecret;
+      }
+      if (validation.data.webhookEnabled !== undefined) {
+        updates.webhookEnabled = validation.data.webhookEnabled;
+      }
+      if (validation.data.webhookEvents !== undefined) {
+        // Merge with existing events
+        const currentSettings = await storage.getSettings(clientId);
+        const currentEvents = currentSettings?.webhookEvents ?? {
+          newLead: true,
+          newAppointment: true,
+          chatSessionStart: false,
+          chatSessionEnd: false,
+          leadStatusChange: false,
+        };
+        updates.webhookEvents = { ...currentEvents, ...validation.data.webhookEvents };
+      }
+      if (validation.data.externalBookingUrl !== undefined) {
+        updates.externalBookingUrl = validation.data.externalBookingUrl;
+      }
+      if (validation.data.externalPaymentUrl !== undefined) {
+        updates.externalPaymentUrl = validation.data.externalPaymentUrl;
+      }
+      
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ error: "No valid updates provided" });
+      }
+      
+      // Ensure client_settings record exists
+      let settings = await storage.getSettings(clientId);
+      if (!settings) {
+        // Create default settings first
+        await db.insert(clientSettings).values({
+          clientId,
+          businessName: 'My Business',
+          tagline: 'Welcome!',
+          knowledgeBase: { about: '', requirements: '', pricing: '', application: '' },
+          operatingHours: {
+            enabled: false,
+            timezone: 'America/New_York',
+            schedule: {
+              monday: { open: '09:00', close: '17:00', enabled: true },
+              tuesday: { open: '09:00', close: '17:00', enabled: true },
+              wednesday: { open: '09:00', close: '17:00', enabled: true },
+              thursday: { open: '09:00', close: '17:00', enabled: true },
+              friday: { open: '09:00', close: '17:00', enabled: true },
+              saturday: { open: '10:00', close: '14:00', enabled: false },
+              sunday: { open: '10:00', close: '14:00', enabled: false },
+            },
+            afterHoursMessage: 'We are currently closed. Please leave a message.'
+          },
+        });
+      }
+      
+      const updated = await storage.updateSettings(clientId, updates as any);
+      
+      res.json({
+        success: true,
+        webhookUrl: updated.webhookUrl,
+        webhookSecret: updated.webhookSecret ? '********' : null,
+        webhookEnabled: updated.webhookEnabled,
+        webhookEvents: updated.webhookEvents,
+        externalBookingUrl: updated.externalBookingUrl,
+        externalPaymentUrl: updated.externalPaymentUrl,
+      });
+    } catch (error) {
+      console.error("Update webhook settings error:", error);
+      res.status(500).json({ error: "Failed to update webhook settings" });
+    }
+  });
+
+  // Test webhook endpoint
+  app.post("/api/client/webhooks/test", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      const result = await testWebhook(clientId);
+      
+      if (result.success) {
+        res.json({
+          success: true,
+          message: `Test webhook delivered successfully (HTTP ${result.statusCode})`,
+          statusCode: result.statusCode,
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          error: result.error,
+          statusCode: result.statusCode,
+        });
+      }
+    } catch (error) {
+      console.error("Test webhook error:", error);
+      res.status(500).json({ error: "Failed to test webhook" });
+    }
+  });
+
+  // Generate new webhook secret
+  app.post("/api/client/webhooks/generate-secret", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      const newSecret = crypto.randomBytes(32).toString('hex');
+      
+      await storage.updateSettings(clientId, { webhookSecret: newSecret } as any);
+      
+      res.json({
+        success: true,
+        webhookSecret: newSecret,
+        message: "New webhook secret generated. Save this value - it will only be shown once.",
+      });
+    } catch (error) {
+      console.error("Generate webhook secret error:", error);
+      res.status(500).json({ error: "Failed to generate webhook secret" });
+    }
+  });
+
   // Get client dashboard stats
   app.get("/api/client/stats", requireClientAuth, async (req, res) => {
     try {
@@ -4482,6 +4708,17 @@ These suggestions should be relevant to what was just discussed and help guide t
       const currentMonth = new Date().toISOString().slice(0, 7);
       await storage.incrementMonthlyUsage(clientId, currentMonth, 'leads');
       
+      // Fire webhook for new lead (async, non-blocking)
+      sendLeadCreatedWebhook(clientId, {
+        id: lead.id,
+        name: lead.name || 'Unknown',
+        email: lead.email,
+        phone: lead.phone,
+        source: lead.source,
+        status: lead.status,
+        createdAt: lead.createdAt,
+      }).catch(err => console.error('[Webhook] Error sending lead webhook:', err));
+      
       res.status(201).json(lead);
     } catch (error) {
       console.error("Create lead error:", error);
@@ -4516,7 +4753,19 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(403).json({ error: "Access denied" });
       }
       
+      const previousStatus = lead.status;
       const updated = await storage.updateLead(paramsValidation.data.id, bodyValidation.data as any);
+      
+      // Fire webhook if status changed (async, non-blocking)
+      if (updated && bodyValidation.data.status && bodyValidation.data.status !== previousStatus) {
+        sendLeadUpdatedWebhook(clientId, {
+          id: updated.id,
+          name: updated.name || 'Unknown',
+          status: updated.status,
+          previousStatus,
+        }).catch(err => console.error('[Webhook] Error sending lead update webhook:', err));
+      }
+      
       res.json(updated);
     } catch (error) {
       console.error("Update lead error:", error);
