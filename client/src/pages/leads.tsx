@@ -348,9 +348,9 @@ export default function LeadsPage() {
                 data-testid="input-search-leads"
               />
             </div>
-            <div className="flex flex-wrap gap-2 items-center">
+            <div className="flex flex-wrap gap-2 items-center overflow-x-auto">
               <Select value={statusFilter || "all"} onValueChange={(v) => setStatusFilter(v === "all" ? "" : v)}>
-                <SelectTrigger className="w-[160px] bg-white/5 border-white/10 text-white" data-testid="select-status-filter">
+                <SelectTrigger className="w-[130px] sm:w-[160px] bg-white/5 border-white/10 text-white flex-shrink-0" data-testid="select-status-filter">
                   <Filter className="h-4 w-4 mr-2 text-white/55" />
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -364,7 +364,7 @@ export default function LeadsPage() {
                 </SelectContent>
               </Select>
               <Select value={priorityFilter || "all"} onValueChange={(v) => setPriorityFilter(v === "all" ? "" : v)}>
-                <SelectTrigger className="w-[160px] bg-white/5 border-white/10 text-white" data-testid="select-priority-filter">
+                <SelectTrigger className="w-[130px] sm:w-[160px] bg-white/5 border-white/10 text-white flex-shrink-0" data-testid="select-priority-filter">
                   <Star className="h-4 w-4 mr-2 text-white/55" />
                   <SelectValue placeholder="Priority" />
                 </SelectTrigger>
@@ -382,7 +382,7 @@ export default function LeadsPage() {
                   variant="outline"
                   size="sm"
                   onClick={toggleAllLeads}
-                  className="ml-auto bg-white/5 border-white/10 text-white/85 hover:bg-white/10"
+                  className="ml-auto bg-white/5 border-white/10 text-white/85 hover:bg-white/10 flex-shrink-0"
                   data-testid="button-select-all"
                 >
                   {selectedLeadIds.size === leads.length ? (
