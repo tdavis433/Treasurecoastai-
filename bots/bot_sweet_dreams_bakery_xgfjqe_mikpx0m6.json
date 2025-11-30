@@ -12,7 +12,7 @@
     "email": "info@sweetdreamsbakery.test",
     "website": "",
     "hours": {
-      "officeHours": "Mon-Fri 9am-5pm"
+      "officehours": "Mon-Fri 9am-5pm"
     },
     "services": [
       "Custom Birthday Cakes",
@@ -42,5 +42,13 @@
       "medical advice",
       "legal advice"
     ]
-  }
+  },
+  "businessType": "restaurant",
+  "businessName": "Sweet Dreams Bakery XGfjqE",
+  "isDemo": false,
+  "automations": {},
+  "personality": {},
+  "quickActions": [],
+  "tone": "professional",
+  "responseLength": "medium"
 }

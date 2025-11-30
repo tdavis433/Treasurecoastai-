@@ -520,9 +520,9 @@ export default function DemosPage() {
               <span className="font-semibold text-white">Treasure Coast AI</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-white/40">
-              <Link href="/super-admin" className="hover:text-white/70 transition-colors">Admin</Link>
-              <Link href="/client/dashboard" className="hover:text-white/70 transition-colors">Client Portal</Link>
-              <Link href="/faith-house" className="hover:text-white/70 transition-colors">Faith House</Link>
+              <Link href="/login" className="hover:text-white/70 transition-colors">Sign In</Link>
+              <span className="hover:text-white/70 transition-colors cursor-pointer">Contact</span>
+              <span className="hover:text-white/70 transition-colors cursor-pointer">Privacy</span>
             </div>
             <p className="text-sm text-white/40">
               2025 Treasure Coast AI. Built with care.

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { GlassCard, GlassCardHeader, GlassCardTitle, GlassCardDescription, GlassCardContent } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
@@ -223,6 +223,12 @@ const SIDEBAR_ITEMS = [
   { id: 'settings' as SectionType, label: 'Settings', icon: Settings },
 ];
 
+interface AuthUser {
+  id: string;
+  username: string;
+  role: 'super_admin' | 'client_admin';
+}
+
 export default function ClientDashboard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -235,12 +241,32 @@ export default function ClientDashboard() {
     location: ''
   });
 
+  const { data: currentUser, isLoading: authLoading } = useQuery<AuthUser>({
+    queryKey: ["/api/auth/me"],
+    queryFn: async () => {
+      const response = await fetch("/api/auth/me", { credentials: "include" });
+      if (!response.ok) {
+        throw new Error("Not authenticated");
+      }
+      return response.json();
+    },
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (!authLoading && !currentUser) {
+      setLocation("/login");
+    }
+  }, [currentUser, authLoading, setLocation]);
+
   const { data: profile, isLoading: profileLoading } = useQuery<ClientProfile>({
     queryKey: ["/api/client/me"],
+    enabled: !!currentUser,
   });
 
   const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useQuery<ClientStats>({
     queryKey: ["/api/client/stats"],
+    enabled: !!currentUser,
   });
 
   const { data: appointmentsData, isLoading: appointmentsLoading } = useQuery<{
@@ -249,6 +275,7 @@ export default function ClientDashboard() {
     total: number;
   }>({
     queryKey: ["/api/client/appointments"],
+    enabled: !!currentUser,
   });
 
   const { data: conversationsData, isLoading: conversationsLoading } = useQuery<{
@@ -258,10 +285,12 @@ export default function ClientDashboard() {
     dbConversations: Conversation[];
   }>({
     queryKey: ["/api/client/conversations"],
+    enabled: !!currentUser,
   });
 
   const { data: analyticsData, isLoading: analyticsLoading } = useQuery<AnalyticsSummary>({
     queryKey: ["/api/client/analytics/summary"],
+    enabled: !!currentUser,
   });
 
   const { data: trendsData, isLoading: trendsLoading } = useQuery<{
@@ -271,6 +300,7 @@ export default function ClientDashboard() {
     trends: DailyTrend[];
   }>({
     queryKey: ["/api/client/analytics/trends", { days: dateRange }],
+    enabled: !!currentUser,
   });
 
   const { data: sessionsData, isLoading: sessionsLoading } = useQuery<{
@@ -280,10 +310,12 @@ export default function ClientDashboard() {
     total: number;
   }>({
     queryKey: ["/api/client/analytics/sessions"],
+    enabled: !!currentUser,
   });
 
   const { data: usageData, isLoading: usageLoading } = useQuery<UsageSummary>({
     queryKey: ["/api/client/usage"],
+    enabled: !!currentUser,
   });
 
   const { data: leadsData } = useQuery<{
@@ -292,6 +324,7 @@ export default function ClientDashboard() {
     total: number;
   }>({
     queryKey: ["/api/client/leads"],
+    enabled: !!currentUser,
   });
 
   const { data: inboxStatesData } = useQuery<{
@@ -299,6 +332,7 @@ export default function ClientDashboard() {
     states: { sessionId: string; isRead: boolean; status: string }[];
   }>({
     queryKey: ["/api/client/inbox/states"],
+    enabled: !!currentUser,
   });
 
   const newLeadsCount = leadsData?.leads?.filter((lead: any) => lead.status === 'new').length || 0;
@@ -404,6 +438,14 @@ export default function ClientDashboard() {
       toast({ title: "Error", description: "Network error during logout.", variant: "destructive" });
     }
   };
+
+  if (authLoading || !currentUser) {
+    return (
+      <div className="min-h-screen bg-[#0B0E13] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
+      </div>
+    );
+  }
 
   if (profileLoading) {
     return (
