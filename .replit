@@ -105,4 +105,3 @@ integrations = ["javascript_mem_db:1.0.0", "javascript_openai_ai_integrations:1.
 [userenv]
 
 [userenv.shared]
-WIDGET_TOKEN_SECRET = "tcai-widget-secret-2024-production-key"

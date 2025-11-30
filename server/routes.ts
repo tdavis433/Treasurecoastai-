@@ -57,16 +57,21 @@ import {
   getUsageSummary
 } from "./planLimits";
 
+import { 
+  getWidgetSecret, 
+  getOpenAIConfig, 
+  getTwilioConfig, 
+  getResendApiKey,
+  getAdminCredentials,
+  getStaffCredentials
+} from './env';
+
 // =============================================
 // PHASE 2.4: SIGNED WIDGET TOKENS
 // =============================================
 
-// Widget signing secret - SHOULD be set via WIDGET_TOKEN_SECRET env var for production
-// If not set, generates a random secret (tokens won't persist across restarts)
-const WIDGET_SECRET = process.env.WIDGET_TOKEN_SECRET || (() => {
-  console.warn("WARNING: WIDGET_TOKEN_SECRET not set - generating random secret. Widget tokens will not persist across server restarts. Set WIDGET_TOKEN_SECRET environment variable for production.");
-  return crypto.randomBytes(32).toString('hex');
-})();
+// Widget signing secret - uses centralized env module with fallback for dev
+const WIDGET_SECRET = getWidgetSecret();
 
 // Generate a signed token for widget authentication
 function generateWidgetToken(clientId: string, botId: string, expiresIn: number = 86400): string {
@@ -334,11 +339,13 @@ function validateRequest<T>(schema: z.ZodSchema<T>, data: unknown): { success: t
 
 async function ensureAdminUserExists() {
   try {
-    // Get credentials from environment variables (secure approach)
-    const adminUsername = process.env.DEFAULT_ADMIN_USERNAME || "admin";
-    const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD;
-    const staffUsername = process.env.DEFAULT_STAFF_USERNAME || "staff";
-    const staffPassword = process.env.DEFAULT_STAFF_PASSWORD;
+    // Get credentials from centralized env module (secure approach)
+    const adminCreds = getAdminCredentials();
+    const staffCreds = getStaffCredentials();
+    const adminUsername = adminCreds.username;
+    const adminPassword = adminCreds.password;
+    const staffUsername = staffCreds.username;
+    const staffPassword = staffCreds.password;
 
     // Create or update super_admin (owner) account if password is set via env
     const existingAdmin = await storage.findAdminByUsername(adminUsername);
@@ -526,10 +533,11 @@ async function validateBotAccess(req: Request, res: Response, botId: string): Pr
   return false;
 }
 
-const openai = new OpenAI({
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
-});
+const openaiConfig = getOpenAIConfig();
+const openai = openaiConfig ? new OpenAI({
+  baseURL: openaiConfig.baseURL,
+  apiKey: openaiConfig.apiKey
+}) : null;
 
 function isWithinOperatingHours(settings: any): boolean {
   if (!settings?.operatingHours?.enabled) {
@@ -855,14 +863,14 @@ async function sendSmsNotification(
   isClientConfirmation: boolean = false
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
-    const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
-    const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
+    const twilioConfig = getTwilioConfig();
     
-    if (!twilioAccountSid || !twilioAuthToken || !twilioPhoneNumber) {
+    if (!twilioConfig) {
       console.log("📱 Twilio credentials not configured - skipping SMS notification");
       return { success: false, error: "Twilio not configured" };
     }
+    
+    const { accountSid: twilioAccountSid, authToken: twilioAuthToken, phoneNumber: twilioPhoneNumber } = twilioConfig;
 
     const response = await fetch(
       `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`,
@@ -901,7 +909,7 @@ async function sendEmailNotification(
   settings: any
 ): Promise<{ success: boolean; error?: string; sentTo?: string[] }> {
   try {
-    const resendApiKey = process.env.RESEND_API_KEY;
+    const resendApiKey = getResendApiKey();
     
     if (!resendApiKey) {
       console.log("📧 Resend API key not configured - skipping email notification");
