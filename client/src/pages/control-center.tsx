@@ -304,8 +304,9 @@ export default function ControlCenter() {
     refetchInterval: 30000,
   });
 
-  // Filter out template bots - only show real client bots
-  const clientBots = allBots.filter(bot => !bot.metadata?.isTemplate);
+  // Filter out pure template bots - show real client bots AND demo bots
+  // Demo bots have isDemo=true and should be visible for preview/management
+  const clientBots = allBots.filter(bot => !bot.metadata?.isTemplate || bot.isDemo || bot.metadata?.isDemo);
 
   // Get selected bot
   const selectedBot = clientBots.find(b => b.botId === selectedBotId);
@@ -773,8 +774,8 @@ export default function ControlCenter() {
                       <div>
                         <p className="text-2xl font-bold text-white">
                           {searchQuery 
-                            ? filteredBots.filter(b => clients.find(c => c.id === b.clientId)?.status === 'demo').length
-                            : clients.filter(c => c.status === 'demo').length}
+                            ? filteredBots.filter(b => b.isDemo || b.metadata?.isDemo).length
+                            : clientBots.filter(b => b.isDemo || b.metadata?.isDemo).length}
                         </p>
                         <p className="text-sm text-white/55">Demo</p>
                       </div>
