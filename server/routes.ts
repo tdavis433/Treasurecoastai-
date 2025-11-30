@@ -1706,9 +1706,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sessionData.appointmentRequested || false
       ).catch(err => console.error('[Auto-Lead] Background capture failed:', err));
 
+      // Check for external booking URL if booking intent detected
+      let externalBookingUrl: string | null = null;
+      if (mentionsAppointment) {
+        const settings = await storage.getClientSettings(clientId);
+        if (settings?.externalBookingUrl) {
+          externalBookingUrl = settings.externalBookingUrl;
+        }
+      }
+
       res.json({ 
         reply,
-        meta: { clientId, botId, sessionId: actualSessionId, responseTimeMs: responseTime }
+        meta: { 
+          clientId, 
+          botId, 
+          sessionId: actualSessionId, 
+          responseTimeMs: responseTime,
+          showBooking: mentionsAppointment,
+          externalBookingUrl
+        }
       });
     } catch (error) {
       console.error("Multi-tenant chat error:", error);
