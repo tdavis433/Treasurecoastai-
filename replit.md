@@ -142,6 +142,8 @@ All 10 sections verified with E2E Playwright tests:
 6. **Mobile Navigation:** Added `overflow-x-auto` to Quick Actions Bar for horizontal scroll on small screens
 7. **OpenAI Model Name:** Fixed invalid model name `gpt-4.1-mini` → `gpt-4o-mini` in server/routes.ts (5 instances)
 8. **Faith House Status:** Changed client status from `paused` → `active` in clients/clients.json to enable chat
+9. **Leads CSV Export:** Added Export CSV button to leads page header with client-side CSV generation and download
+10. **Leads Mobile Responsive:** Made filter dropdowns responsive (w-[130px] sm:w-[160px]) and added overflow-x-auto to prevent horizontal overflow at 360px viewport
 
 ### Production Readiness
 - All critical workflows validated end-to-end
