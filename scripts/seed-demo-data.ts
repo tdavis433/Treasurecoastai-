@@ -15,9 +15,10 @@ import {
   botSettings, 
   botTemplates,
   leads,
-  adminUsers
+  adminUsers,
+  workspaceMemberships
 } from '../shared/schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 
 async function seedDemoUser() {
@@ -180,6 +181,54 @@ async function seedSampleLeads() {
   }
 }
 
+async function seedWorkspaceMembership() {
+  console.log('Creating workspace membership for demo_admin...');
+  
+  try {
+    const demoUser = await db.select()
+      .from(adminUsers)
+      .where(eq(adminUsers.username, 'demo_admin'))
+      .limit(1);
+    
+    if (demoUser.length === 0) {
+      console.log('  Demo admin user not found, skipping membership');
+      return;
+    }
+    
+    const faithHouseWorkspace = await db.select()
+      .from(workspaces)
+      .where(eq(workspaces.slug, 'faith_house'))
+      .limit(1);
+    
+    if (faithHouseWorkspace.length === 0) {
+      console.log('  Faith House workspace not found, skipping membership');
+      return;
+    }
+    
+    const existing = await db.select()
+      .from(workspaceMemberships)
+      .where(and(
+        eq(workspaceMemberships.workspaceId, faithHouseWorkspace[0].id),
+        eq(workspaceMemberships.userId, demoUser[0].id)
+      ))
+      .limit(1);
+    
+    if (existing.length === 0) {
+      await db.insert(workspaceMemberships).values({
+        workspaceId: faithHouseWorkspace[0].id,
+        userId: demoUser[0].id,
+        role: 'manager',
+        acceptedAt: new Date()
+      });
+      console.log('  Workspace membership created');
+    } else {
+      console.log('  Workspace membership already exists');
+    }
+  } catch (error) {
+    console.error('Error creating workspace membership:', error);
+  }
+}
+
 async function main() {
   console.log('Starting demo data seed...\n');
   
@@ -187,6 +236,7 @@ async function main() {
   await seedDemoWorkspace(ownerId);
   await seedBotTemplates();
   await seedSampleLeads();
+  await seedWorkspaceMembership();
   
   console.log('\nSeed completed successfully!');
   console.log('\nDemo Data Summary:');
@@ -194,6 +244,7 @@ async function main() {
   console.log('- Demo workspace: demo');
   console.log('- Bot templates: 10 industry templates');
   console.log('- Sample leads: 3 demo leads');
+  console.log('- Workspace membership: demo_admin -> faith_house');
   
   process.exit(0);
 }
