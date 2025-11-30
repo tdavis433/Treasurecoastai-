@@ -40,13 +40,7 @@ declare module 'http' {
   }
 }
 
-declare module 'express-session' {
-  interface SessionData {
-    userId?: string;
-    userRole?: 'super_admin' | 'client_admin';
-    clientId?: string | null;
-  }
-}
+// Session types are declared in types.d.ts
 
 // Build CSP directives based on environment
 const isDev = process.env.NODE_ENV !== 'production';
