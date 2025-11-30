@@ -858,6 +858,10 @@ async function generateConversationSummary(sessionId: string, clientId: string =
       .map(msg => `${msg.role}: ${sanitizePII(msg.content)}`)
       .join("\n");
 
+    if (!openai) {
+      return "AI service not configured - unable to generate summary.";
+    }
+
     const completion = await openai.chat.completions.create({
       model: "gpt-4.1-mini",
       messages: [
@@ -1319,6 +1323,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const systemPrompt = await getSystemPrompt(language, effectiveClientId);
       
+      if (!openai) {
+        return res.status(503).json({ error: "AI service not configured" });
+      }
+
       const completion = await openai.chat.completions.create({
         model: "gpt-4.1-mini",
         messages: [
@@ -1592,6 +1600,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Build system prompt from bot config
       const systemPrompt = buildSystemPromptFromConfig(botConfig);
 
+      if (!openai) {
+        return res.status(503).json({ error: "AI service not configured" });
+      }
+
       const completion = await openai.chat.completions.create({
         model: "gpt-4.1-mini",
         messages: [
@@ -1764,6 +1776,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 IMPORTANT: After your response, always include 2-3 suggested follow-up questions the user might want to ask. Format them as JSON at the very end of your response on a new line like this:
 [SUGGESTIONS]{"replies":["Question 1?","Question 2?","Question 3?"]}[/SUGGESTIONS]
 These suggestions should be relevant to what was just discussed and help guide the conversation.`;
+
+      if (!openai) {
+        res.write(`data: ${JSON.stringify({ type: 'error', error: 'AI service not configured' })}\n\n`);
+        res.end();
+        return;
+      }
 
       let fullReply = '';
       
@@ -2238,7 +2256,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       // If no analytics found, try to generate summary from frontend conversation history
       if (conversationSummary === "No conversation history available." && 
-          conversationHistory && Array.isArray(conversationHistory) && conversationHistory.length > 0) {
+          conversationHistory && Array.isArray(conversationHistory) && conversationHistory.length > 0 && openai) {
         try {
           const conversationText = conversationHistory
             .map((msg: { role: string; content: string }) => `${msg.role}: ${sanitizePII(msg.content)}`)

@@ -6,6 +6,7 @@ export default function AppointmentFlowExample() {
       <AppointmentFlow
         onComplete={(data) => console.log('Appointment submitted:', data)}
         onCancel={() => console.log('Appointment cancelled')}
+        language="en"
       />
     </div>
   );

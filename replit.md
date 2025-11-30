@@ -94,6 +94,28 @@ The system utilizes a React, TypeScript, Tailwind CSS, and shadcn/ui frontend, w
 - **Drizzle Relations:** Comprehensive ORM relations defined for workspaces, bots, users, sessions, leads, analytics, and automations enabling proper FK constraints and optimized queries.
 - **Monthly Usage Upsert:** Unique constraint on `monthly_usage(clientId, month)` with PostgreSQL `ON CONFLICT` upsert logic prevents race condition duplicates.
 
+### Testing Infrastructure
+- **Vitest:** Configured with TypeScript support and type checking
+- **Unit Tests:** 48 passing tests across 4 test suites (utils, automations, planLimits, conversationLogger)
+- **Run Tests:** `npm test` or `npx vitest run`
+- **Coverage:** `npm run test:coverage`
+
+### Error Handling
+- **Centralized Module:** `server/errorHandler.ts` provides production-safe error sanitization
+- **Stack Trace Protection:** Sensitive details and stack traces stripped in production mode
+- **Standardized Responses:** Consistent error codes and messages across all endpoints
+
+### Documentation
+- **README.md:** Quick start guide, architecture overview, and development instructions
+- **DEPLOYMENT.md:** Complete deployment guide for Replit with environment setup
+- **API Documentation:** Inline route documentation with Zod schema validation
+
+### Demo Data Seeding
+- **Seed Script:** `npx tsx scripts/seed-demo-data.ts` initializes demo data
+- **Demo Admin:** Username `demo_admin`, password `DemoPass123!`
+- **Demo Workspace:** Pre-configured workspace with sample leads
+- **Bot Templates:** 10 industry templates seeded from script
+
 ## External Dependencies
 - **OpenAI:** Provides AI chatbot capabilities and conversation summarization via Replit AI Integrations.
 - **PostgreSQL (Neon):** Primary database for data persistence (currently for Faith House tenant and Stripe schema).

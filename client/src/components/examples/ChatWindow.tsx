@@ -17,6 +17,9 @@ export default function ChatWindowExample() {
       onMenuClick={(option) => console.log('Menu clicked:', option)}
       isLoading={false}
       showMenu={true}
+      language="en"
+      onLanguageToggle={() => console.log('Language toggle clicked')}
+      onResetChat={() => console.log('Reset chat clicked')}
     />
   );
 }
