@@ -129,6 +129,27 @@ const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+// Strong password validation for new passwords and password changes
+const strongPasswordSchema = z.string()
+  .min(8, "Password must be at least 8 characters long")
+  .max(128, "Password must be less than 128 characters")
+  .refine(
+    (password) => /[A-Z]/.test(password),
+    "Password must contain at least one uppercase letter"
+  )
+  .refine(
+    (password) => /[a-z]/.test(password),
+    "Password must contain at least one lowercase letter"
+  )
+  .refine(
+    (password) => /[0-9]/.test(password),
+    "Password must contain at least one number"
+  )
+  .refine(
+    (password) => /[^A-Za-z0-9]/.test(password),
+    "Password must contain at least one special character"
+  );
+
 // =============================================
 // ZOD VALIDATION SCHEMAS FOR API ROUTES
 // =============================================
@@ -4200,7 +4221,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Zod schemas for account settings
   const passwordChangeSchema = z.object({
     currentPassword: z.string().min(1, "Current password is required"),
-    newPassword: z.string().min(8, "New password must be at least 8 characters"),
+    newPassword: strongPasswordSchema,
   });
 
   const notificationUpdateSchema = z.object({
@@ -4801,18 +4822,24 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
+  // Create new admin user schema with strong password
+  const createUserSchema = z.object({
+    username: z.string().min(3, "Username must be at least 3 characters").max(50),
+    password: strongPasswordSchema,
+    role: z.enum(['super_admin', 'client_admin']),
+    clientId: z.string().optional(),
+  });
+
   // Create new admin user
   app.post("/api/super-admin/users", requireSuperAdmin, async (req, res) => {
     try {
-      const { username, password, role, clientId } = req.body;
-      
-      if (!username || !password || !role) {
-        return res.status(400).json({ error: "Username, password, and role are required" });
+      const validation = createUserSchema.safeParse(req.body);
+      if (!validation.success) {
+        const errorMessage = validation.error.errors.map(e => e.message).join(', ');
+        return res.status(400).json({ error: errorMessage });
       }
       
-      if (!['super_admin', 'client_admin'].includes(role)) {
-        return res.status(400).json({ error: "Role must be 'super_admin' or 'client_admin'" });
-      }
+      const { username, password, role, clientId } = validation.data;
       
       // Check if username already exists
       const existing = await db.select().from(adminUsers).where(eq(adminUsers.username, username)).limit(1);
@@ -4851,11 +4878,25 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
+  // Update admin user schema (password is optional but must be strong if provided)
+  const updateUserSchema = z.object({
+    role: z.enum(['super_admin', 'client_admin']).optional(),
+    clientId: z.string().optional(),
+    password: strongPasswordSchema.optional(),
+  });
+
   // Update admin user
   app.patch("/api/super-admin/users/:id", requireSuperAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      const { role, clientId, password } = req.body;
+      
+      const validation = updateUserSchema.safeParse(req.body);
+      if (!validation.success) {
+        const errorMessage = validation.error.errors.map(e => e.message).join(', ');
+        return res.status(400).json({ error: errorMessage });
+      }
+      
+      const { role, clientId, password } = validation.data;
       
       // Find the user
       const existing = await db.select().from(adminUsers).where(eq(adminUsers.id, id)).limit(1);
