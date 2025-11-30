@@ -61,9 +61,9 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 export const db = drizzle(pool);
 
 export interface IStorage {
-  createAppointment(appointment: InsertAppointment): Promise<Appointment>;
-  getAllAppointments(): Promise<Appointment[]>;
-  getFilteredAppointments(filters: { 
+  createAppointment(clientId: string, appointment: InsertAppointment): Promise<Appointment>;
+  getAllAppointments(clientId: string): Promise<Appointment[]>;
+  getFilteredAppointments(clientId: string, filters: { 
     status?: string; 
     startDate?: Date; 
     endDate?: Date; 
@@ -71,17 +71,17 @@ export interface IStorage {
     limit?: number;
     offset?: number;
   }): Promise<{ appointments: Appointment[]; total: number }>;
-  getAppointmentById(id: string): Promise<Appointment | undefined>;
-  updateAppointment(id: string, updates: Partial<Appointment>): Promise<Appointment>;
-  updateAppointmentStatus(id: string, status: string): Promise<void>;
-  deleteAppointment(id: string): Promise<void>;
+  getAppointmentById(clientId: string, id: string): Promise<Appointment | undefined>;
+  updateAppointment(clientId: string, id: string, updates: Partial<Appointment>): Promise<Appointment>;
+  updateAppointmentStatus(clientId: string, id: string, status: string): Promise<void>;
+  deleteAppointment(clientId: string, id: string): Promise<void>;
   
-  getSettings(): Promise<ClientSettings | undefined>;
-  updateSettings(settings: Partial<InsertClientSettings>): Promise<ClientSettings>;
+  getSettings(clientId: string): Promise<ClientSettings | undefined>;
+  updateSettings(clientId: string, settings: Partial<InsertClientSettings>): Promise<ClientSettings>;
   
-  logConversation(analytics: InsertConversationAnalytics): Promise<void>;
-  getAnalytics(startDate?: Date, endDate?: Date): Promise<ConversationAnalytics[]>;
-  getAnalyticsSummary(startDate?: Date, endDate?: Date): Promise<{
+  logConversation(clientId: string, analytics: InsertConversationAnalytics): Promise<void>;
+  getAnalytics(clientId: string, startDate?: Date, endDate?: Date): Promise<ConversationAnalytics[]>;
+  getAnalyticsSummary(clientId: string, startDate?: Date, endDate?: Date): Promise<{
     totalConversations: number;
     totalAppointments: number;
     conversionRate: number;
@@ -178,23 +178,23 @@ export interface IStorage {
 }
 
 export class DbStorage implements IStorage {
-  async createAppointment(insertAppointment: InsertAppointment): Promise<Appointment> {
+  async createAppointment(clientId: string, insertAppointment: InsertAppointment): Promise<Appointment> {
     const [appointment] = await db
       .insert(appointments)
       .values({
         ...insertAppointment,
-        clientId: 'default-client',
+        clientId,
         notes: insertAppointment.notes ?? null,
       })
       .returning();
     return appointment;
   }
 
-  async getAllAppointments(): Promise<Appointment[]> {
-    return await db.select().from(appointments).where(eq(appointments.clientId, 'default-client')).orderBy(desc(appointments.createdAt));
+  async getAllAppointments(clientId: string): Promise<Appointment[]> {
+    return await db.select().from(appointments).where(eq(appointments.clientId, clientId)).orderBy(desc(appointments.createdAt));
   }
 
-  async getFilteredAppointments(filters: { 
+  async getFilteredAppointments(clientId: string, filters: { 
     status?: string; 
     startDate?: Date; 
     endDate?: Date; 
@@ -202,7 +202,7 @@ export class DbStorage implements IStorage {
     limit?: number;
     offset?: number;
   }): Promise<{ appointments: Appointment[]; total: number }> {
-    const conditions = [eq(appointments.clientId, 'default-client')];
+    const conditions = [eq(appointments.clientId, clientId)];
     
     if (filters.status) {
       conditions.push(eq(appointments.status, filters.status));
@@ -245,43 +245,43 @@ export class DbStorage implements IStorage {
     return { appointments: results, total: total?.count || 0 };
   }
 
-  async getAppointmentById(id: string): Promise<Appointment | undefined> {
+  async getAppointmentById(clientId: string, id: string): Promise<Appointment | undefined> {
     const [appointment] = await db
       .select()
       .from(appointments)
-      .where(and(eq(appointments.id, id), eq(appointments.clientId, 'default-client')))
+      .where(and(eq(appointments.id, id), eq(appointments.clientId, clientId)))
       .limit(1);
     return appointment;
   }
 
-  async updateAppointment(id: string, updates: Partial<Appointment>): Promise<Appointment> {
+  async updateAppointment(clientId: string, id: string, updates: Partial<Appointment>): Promise<Appointment> {
     const [updated] = await db
       .update(appointments)
       .set(updates)
-      .where(and(eq(appointments.id, id), eq(appointments.clientId, 'default-client')))
+      .where(and(eq(appointments.id, id), eq(appointments.clientId, clientId)))
       .returning();
     return updated;
   }
 
-  async updateAppointmentStatus(id: string, status: string): Promise<void> {
+  async updateAppointmentStatus(clientId: string, id: string, status: string): Promise<void> {
     await db
       .update(appointments)
       .set({ status })
-      .where(and(eq(appointments.id, id), eq(appointments.clientId, 'default-client')));
+      .where(and(eq(appointments.id, id), eq(appointments.clientId, clientId)));
   }
 
-  async deleteAppointment(id: string): Promise<void> {
-    await db.delete(appointments).where(and(eq(appointments.id, id), eq(appointments.clientId, 'default-client')));
+  async deleteAppointment(clientId: string, id: string): Promise<void> {
+    await db.delete(appointments).where(and(eq(appointments.id, id), eq(appointments.clientId, clientId)));
   }
 
-  async getSettings(): Promise<ClientSettings | undefined> {
-    const [settings] = await db.select().from(clientSettings).where(eq(clientSettings.clientId, 'default-client')).limit(1);
+  async getSettings(clientId: string): Promise<ClientSettings | undefined> {
+    const [settings] = await db.select().from(clientSettings).where(eq(clientSettings.clientId, clientId)).limit(1);
     
     if (!settings) {
       const [created] = await db
         .insert(clientSettings)
         .values({
-          clientId: 'default-client',
+          clientId,
           businessName: "The Faith House",
           tagline: "Here to support your next step",
           businessType: "Sober Living",
@@ -348,11 +348,11 @@ export class DbStorage implements IStorage {
     return settings;
   }
 
-  async updateSettings(updates: Partial<InsertClientSettings>): Promise<ClientSettings> {
-    const existing = await this.getSettings();
+  async updateSettings(clientId: string, updates: Partial<InsertClientSettings>): Promise<ClientSettings> {
+    const existing = await this.getSettings(clientId);
     
     if (!existing) {
-      const defaultValues = await this.getSettings();
+      const defaultValues = await this.getSettings(clientId);
       return defaultValues!;
     }
     
@@ -365,16 +365,16 @@ export class DbStorage implements IStorage {
     return updated;
   }
 
-  async logConversation(analytics: InsertConversationAnalytics): Promise<void> {
-    await db.insert(conversationAnalytics).values({ ...analytics, clientId: 'default-client' });
+  async logConversation(clientId: string, analytics: InsertConversationAnalytics): Promise<void> {
+    await db.insert(conversationAnalytics).values({ ...analytics, clientId });
   }
 
-  async getAnalytics(startDate?: Date, endDate?: Date): Promise<ConversationAnalytics[]> {
-    const results = await db.select().from(conversationAnalytics).where(eq(conversationAnalytics.clientId, 'default-client'));
+  async getAnalytics(clientId: string, startDate?: Date, endDate?: Date): Promise<ConversationAnalytics[]> {
+    const results = await db.select().from(conversationAnalytics).where(eq(conversationAnalytics.clientId, clientId));
     return results;
   }
 
-  async getAnalyticsSummary(startDate?: Date, endDate?: Date): Promise<{
+  async getAnalyticsSummary(clientId: string, startDate?: Date, endDate?: Date): Promise<{
     totalConversations: number;
     totalAppointments: number;
     conversionRate: number;
@@ -382,8 +382,8 @@ export class DbStorage implements IStorage {
     messagesByCategory: { category: string; count: number }[];
     dailyActivity: { date: string; conversations: number; appointments: number }[];
   }> {
-    const conditions = [eq(conversationAnalytics.clientId, 'default-client')];
-    const appointmentConditions = [eq(appointments.clientId, 'default-client')];
+    const conditions = [eq(conversationAnalytics.clientId, clientId)];
+    const appointmentConditions = [eq(appointments.clientId, clientId)];
     
     if (startDate) {
       conditions.push(gte(conversationAnalytics.createdAt, startDate));

@@ -5,7 +5,7 @@ import { z } from "zod";
 
 export const appointments = pgTable("appointments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().default('default-client'),
+  clientId: varchar("client_id").notNull(),
   name: text("name").notNull(),
   contact: text("contact").notNull(),
   email: text("email"),
@@ -39,7 +39,7 @@ export type Appointment = typeof appointments.$inferSelect;
 
 export const clientSettings = pgTable("client_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().default('default-client').unique(),
+  clientId: varchar("client_id").notNull().unique(),
   businessName: text("business_name").notNull().default("The Faith House"),
   tagline: text("tagline").notNull().default("Here to support your next step"),
   
@@ -173,7 +173,7 @@ export type ClientSettings = typeof clientSettings.$inferSelect;
 
 export const conversationAnalytics = pgTable("conversation_analytics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().default('default-client'),
+  clientId: varchar("client_id").notNull(),
   sessionId: varchar("session_id").notNull(),
   role: text("role").notNull(),
   content: text("content").notNull(),

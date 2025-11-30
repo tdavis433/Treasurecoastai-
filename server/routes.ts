@@ -194,6 +194,8 @@ const chatBodySchema = z.object({
   messages: z.array(chatMessageSchema).min(1, "At least one message is required"),
   sessionId: z.string().optional(),
   language: z.enum(["en", "es"]).optional().default("en"),
+  clientId: z.string().regex(/^[a-zA-Z0-9_-]+$/).optional(),
+  botId: z.string().regex(/^[a-zA-Z0-9_-]+$/).optional(),
 });
 
 // Appointment schemas
@@ -583,8 +585,8 @@ function isWithinOperatingHours(settings: any): boolean {
   return currentTime >= openTime && currentTime <= closeTime;
 }
 
-async function getSystemPrompt(language: string = "en") {
-  const settings = await storage.getSettings();
+async function getSystemPrompt(language: string = "en", clientId: string = "default-client") {
+  const settings = await storage.getSettings(clientId);
   if (!settings) {
     return getDefaultSystemPrompt(language);
   }
@@ -840,9 +842,9 @@ function categorizeMessage(message: string, role: string): string | null {
   return "other";
 }
 
-async function generateConversationSummary(sessionId: string): Promise<string> {
+async function generateConversationSummary(sessionId: string, clientId: string = "default-client"): Promise<string> {
   try {
-    const analytics = await storage.getAnalytics();
+    const analytics = await storage.getAnalytics(clientId);
     const sessionMessages = analytics
       .filter(a => a.sessionId === sessionId)
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
@@ -1285,12 +1287,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!validation.success) {
         return res.status(400).json({ error: validation.error });
       }
-      const { messages, sessionId, language } = validation.data;
+      const { messages, sessionId, language, clientId: bodyClientId, botId: bodyBotId } = validation.data;
+      
+      // Use clientId from body if provided, otherwise use default for backwards compatibility
+      const effectiveClientId = bodyClientId || "default-client";
 
       if (sessionId && messages.length > 0) {
         const lastUserMessage = messages[messages.length - 1];
         if (lastUserMessage.role === "user") {
-          await storage.logConversation({
+          await storage.logConversation(effectiveClientId, {
             sessionId,
             role: "user",
             content: sanitizePII(lastUserMessage.content),
@@ -1300,7 +1305,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (detectCrisisKeywords(lastUserMessage.content, language)) {
             const crisisReply = getCrisisResponse(language);
             
-            await storage.logConversation({
+            await storage.logConversation(effectiveClientId, {
               sessionId,
               role: "assistant",
               content: sanitizePII(crisisReply),
@@ -1312,7 +1317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const systemPrompt = await getSystemPrompt(language);
+      const systemPrompt = await getSystemPrompt(language, effectiveClientId);
       
       const completion = await openai.chat.completions.create({
         model: "gpt-4.1-mini",
@@ -1330,7 +1335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (sessionId) {
         const category = categorizeMessage(reply, "assistant");
-        await storage.logConversation({
+        await storage.logConversation(effectiveClientId, {
           sessionId,
           role: "assistant",
           content: sanitizePII(reply),
@@ -2218,14 +2223,17 @@ These suggestions should be relevant to what was just discussed and help guide t
 
   app.post("/api/appointment", async (req, res) => {
     try {
-      const { sessionId, conversationHistory, ...appointmentData } = req.body;
+      const { sessionId, conversationHistory, clientId: bodyClientId, ...appointmentData } = req.body;
       const validatedData = insertAppointmentSchema.parse(appointmentData);
+      
+      // Use clientId from body if provided, otherwise use default for backwards compatibility
+      const effectiveClientId = bodyClientId || "default-client";
       
       let conversationSummary = "No conversation history available.";
       
       // First try to get summary from logged analytics (actual chat messages)
       if (sessionId) {
-        conversationSummary = await generateConversationSummary(sessionId);
+        conversationSummary = await generateConversationSummary(sessionId, effectiveClientId);
       }
       
       // If no analytics found, try to generate summary from frontend conversation history
@@ -2257,12 +2265,12 @@ These suggestions should be relevant to what was just discussed and help guide t
         }
       }
       
-      const appointment = await storage.createAppointment({
+      const appointment = await storage.createAppointment(effectiveClientId, {
         ...validatedData,
         conversationSummary
       } as any);
       
-      const settings = await storage.getSettings();
+      const settings = await storage.getSettings(effectiveClientId);
       
       if (settings?.enableEmailNotifications && settings.notificationEmail) {
         const emailResult = await sendEmailNotification(
@@ -2331,7 +2339,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       if (limit) filters.limit = parseInt(limit as string);
       if (offset) filters.offset = parseInt(offset as string);
       
-      const result = await storage.getFilteredAppointments(filters);
+      const result = await storage.getFilteredAppointments("default-client", filters);
       res.json(result);
     } catch (error) {
       console.error("Get appointments error:", error);
@@ -2341,7 +2349,7 @@ These suggestions should be relevant to what was just discussed and help guide t
 
   app.get("/api/appointments/:id", requireAuth, async (req, res) => {
     try {
-      const appointment = await storage.getAppointmentById(req.params.id);
+      const appointment = await storage.getAppointmentById("default-client", req.params.id);
       if (!appointment) {
         return res.status(404).json({ error: "Appointment not found" });
       }
@@ -2371,7 +2379,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(400).json({ error: "No valid fields to update" });
       }
       
-      const appointment = await storage.updateAppointment(paramsValidation.data.id, updates);
+      const appointment = await storage.updateAppointment("default-client", paramsValidation.data.id, updates);
       res.json(appointment);
     } catch (error) {
       console.error("Update appointment error:", error);
@@ -2392,7 +2400,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(400).json({ error: bodyValidation.error });
       }
       
-      await storage.updateAppointmentStatus(paramsValidation.data.id, bodyValidation.data.status);
+      await storage.updateAppointmentStatus("default-client", paramsValidation.data.id, bodyValidation.data.status);
       res.json({ success: true });
     } catch (error) {
       console.error("Update appointment status error:", error);
@@ -2403,7 +2411,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.delete("/api/appointments/:id", requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
-      await storage.deleteAppointment(id);
+      await storage.deleteAppointment("default-client", id);
       res.json({ success: true });
     } catch (error) {
       console.error("Delete appointment error:", error);
@@ -2413,7 +2421,7 @@ These suggestions should be relevant to what was just discussed and help guide t
 
   app.get("/api/settings", requireSuperAdmin, async (req, res) => {
     try {
-      const settings = await storage.getSettings();
+      const settings = await storage.getSettings("default-client");
       res.json(settings);
     } catch (error) {
       console.error("Get settings error:", error);
@@ -2424,7 +2432,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.patch("/api/settings", requireSuperAdmin, async (req, res) => {
     try {
       const validatedData = insertClientSettingsSchema.partial().parse(req.body);
-      const settings = await storage.updateSettings(validatedData);
+      const settings = await storage.updateSettings("default-client", validatedData);
       res.json(settings);
     } catch (error) {
       console.error("Update settings error:", error);
@@ -2434,7 +2442,7 @@ These suggestions should be relevant to what was just discussed and help guide t
 
   app.get("/api/analytics", requireAuth, async (req, res) => {
     try {
-      const analytics = await storage.getAnalytics();
+      const analytics = await storage.getAnalytics("default-client");
       res.json(analytics);
     } catch (error) {
       console.error("Get analytics error:", error);
@@ -2454,7 +2462,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const start = startDate ? new Date(startDate) : undefined;
       const end = endDate ? new Date(endDate) : undefined;
       
-      const summary = await storage.getAnalyticsSummary(start, end);
+      const summary = await storage.getAnalyticsSummary("default-client", start, end);
       res.json(summary);
     } catch (error) {
       console.error("Get analytics summary error:", error);
@@ -3175,10 +3183,8 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Get client general settings
   app.get("/api/super-admin/clients/:clientId/general", requireSuperAdmin, async (req, res) => {
     try {
-      if (req.params.clientId !== 'default-client') {
-        return res.status(404).json({ error: "Client not found" });
-      }
-      const settings = await storage.getSettings();
+      const { clientId } = req.params;
+      const settings = await storage.getSettings(clientId);
       res.json({
         businessName: settings?.businessName || '',
         tagline: settings?.tagline || '',
@@ -3202,13 +3208,11 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Update client general settings
   app.put("/api/super-admin/clients/:clientId/general", requireSuperAdmin, async (req, res) => {
     try {
-      if (req.params.clientId !== 'default-client') {
-        return res.status(404).json({ error: "Client not found" });
-      }
+      const { clientId } = req.params;
       const { businessName, tagline, businessType, primaryPhone, primaryEmail, 
               websiteUrl, city, state, timezone, defaultContactMethod, internalNotes, status } = req.body;
       
-      const settings = await storage.updateSettings({
+      const settings = await storage.updateSettings(clientId, {
         businessName,
         tagline,
         businessType,
@@ -3232,10 +3236,8 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Get client knowledge (FAQ entries + long-form sections)
   app.get("/api/super-admin/clients/:clientId/knowledge", requireSuperAdmin, async (req, res) => {
     try {
-      if (req.params.clientId !== 'default-client') {
-        return res.status(404).json({ error: "Client not found" });
-      }
-      const settings = await storage.getSettings();
+      const { clientId } = req.params;
+      const settings = await storage.getSettings(clientId);
       res.json({
         faqEntries: settings?.faqEntries || [],
         longFormKnowledge: settings?.longFormKnowledge || {
@@ -3254,16 +3256,14 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Add FAQ entry
   app.post("/api/super-admin/clients/:clientId/knowledge", requireSuperAdmin, async (req, res) => {
     try {
-      if (req.params.clientId !== 'default-client') {
-        return res.status(404).json({ error: "Client not found" });
-      }
+      const { clientId } = req.params;
       const { category, question, answer, active = true } = req.body;
       
       if (!category || !question || !answer) {
         return res.status(400).json({ error: "Category, question, and answer are required" });
       }
       
-      const settings = await storage.getSettings();
+      const settings = await storage.getSettings(clientId);
       const faqEntries = settings?.faqEntries || [];
       
       const newEntry = {
@@ -3275,7 +3275,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       };
       
       const updatedEntries = [...faqEntries, newEntry];
-      await storage.updateSettings({ faqEntries: updatedEntries });
+      await storage.updateSettings(clientId, { faqEntries: updatedEntries });
       
       res.json(newEntry);
     } catch (error) {
@@ -3287,11 +3287,8 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Update FAQ entry
   app.put("/api/super-admin/clients/:clientId/knowledge/:faqId", requireSuperAdmin, async (req, res) => {
     try {
-      if (req.params.clientId !== 'default-client') {
-        return res.status(404).json({ error: "Client not found" });
-      }
-      
-      const settings = await storage.getSettings();
+      const { clientId } = req.params;
+      const settings = await storage.getSettings(clientId);
       const faqEntries = settings?.faqEntries || [];
       
       const faqIndex = faqEntries.findIndex((f: any) => f.id === req.params.faqId);
@@ -3302,7 +3299,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const updatedEntry = { ...faqEntries[faqIndex], ...req.body, id: req.params.faqId };
       faqEntries[faqIndex] = updatedEntry;
       
-      await storage.updateSettings({ faqEntries });
+      await storage.updateSettings(clientId, { faqEntries });
       res.json(updatedEntry);
     } catch (error) {
       console.error("Update FAQ error:", error);
@@ -3313,15 +3310,12 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Delete FAQ entry
   app.delete("/api/super-admin/clients/:clientId/knowledge/:faqId", requireSuperAdmin, async (req, res) => {
     try {
-      if (req.params.clientId !== 'default-client') {
-        return res.status(404).json({ error: "Client not found" });
-      }
-      
-      const settings = await storage.getSettings();
+      const { clientId } = req.params;
+      const settings = await storage.getSettings(clientId);
       const faqEntries = settings?.faqEntries || [];
       
       const updatedEntries = faqEntries.filter((f: any) => f.id !== req.params.faqId);
-      await storage.updateSettings({ faqEntries: updatedEntries });
+      await storage.updateSettings(clientId, { faqEntries: updatedEntries });
       
       res.json({ success: true });
     } catch (error) {
@@ -3333,12 +3327,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Update long-form knowledge
   app.put("/api/super-admin/clients/:clientId/knowledge/long-form", requireSuperAdmin, async (req, res) => {
     try {
-      if (req.params.clientId !== 'default-client') {
-        return res.status(404).json({ error: "Client not found" });
-      }
-      
+      const { clientId } = req.params;
       const { aboutProgram, houseRules, whoItsFor, paymentInfo } = req.body;
-      const settings = await storage.getSettings();
+      const settings = await storage.getSettings(clientId);
       
       const longFormKnowledge = {
         aboutProgram: aboutProgram ?? settings?.longFormKnowledge?.aboutProgram ?? '',
@@ -3347,7 +3338,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         paymentInfo: paymentInfo ?? settings?.longFormKnowledge?.paymentInfo ?? ''
       };
       
-      await storage.updateSettings({ longFormKnowledge });
+      await storage.updateSettings(clientId, { longFormKnowledge });
       res.json(longFormKnowledge);
     } catch (error) {
       console.error("Update long-form knowledge error:", error);
@@ -3358,10 +3349,8 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Get appointment types config
   app.get("/api/super-admin/clients/:clientId/appointment-types", requireSuperAdmin, async (req, res) => {
     try {
-      if (req.params.clientId !== 'default-client') {
-        return res.status(404).json({ error: "Client not found" });
-      }
-      const settings = await storage.getSettings();
+      const { clientId } = req.params;
+      const settings = await storage.getSettings(clientId);
       res.json(settings?.appointmentTypesConfig || []);
     } catch (error) {
       console.error("Get appointment types error:", error);
@@ -3372,17 +3361,14 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Update appointment types config (batch)
   app.put("/api/super-admin/clients/:clientId/appointment-types", requireSuperAdmin, async (req, res) => {
     try {
-      if (req.params.clientId !== 'default-client') {
-        return res.status(404).json({ error: "Client not found" });
-      }
-      
+      const { clientId } = req.params;
       const appointmentTypesConfig = req.body;
       
       if (!Array.isArray(appointmentTypesConfig)) {
         return res.status(400).json({ error: "Appointment types must be an array" });
       }
       
-      await storage.updateSettings({ appointmentTypesConfig });
+      await storage.updateSettings(req.params.clientId, { appointmentTypesConfig });
       res.json(appointmentTypesConfig);
     } catch (error) {
       console.error("Update appointment types error:", error);
@@ -3393,10 +3379,8 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Get pre-intake config
   app.get("/api/super-admin/clients/:clientId/pre-intake", requireSuperAdmin, async (req, res) => {
     try {
-      if (req.params.clientId !== 'default-client') {
-        return res.status(404).json({ error: "Client not found" });
-      }
-      const settings = await storage.getSettings();
+      const { clientId } = req.params;
+      const settings = await storage.getSettings(clientId);
       res.json(settings?.preIntakeConfig || []);
     } catch (error) {
       console.error("Get pre-intake config error:", error);
@@ -3407,17 +3391,14 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Update pre-intake config
   app.put("/api/super-admin/clients/:clientId/pre-intake", requireSuperAdmin, async (req, res) => {
     try {
-      if (req.params.clientId !== 'default-client') {
-        return res.status(404).json({ error: "Client not found" });
-      }
-      
+      const { clientId } = req.params;
       const preIntakeConfig = req.body;
       
       if (!Array.isArray(preIntakeConfig)) {
         return res.status(400).json({ error: "Pre-intake config must be an array" });
       }
       
-      await storage.updateSettings({ preIntakeConfig });
+      await storage.updateSettings(clientId, { preIntakeConfig });
       res.json(preIntakeConfig);
     } catch (error) {
       console.error("Update pre-intake config error:", error);
@@ -3428,10 +3409,8 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Get notification settings
   app.get("/api/super-admin/clients/:clientId/notifications", requireSuperAdmin, async (req, res) => {
     try {
-      if (req.params.clientId !== 'default-client') {
-        return res.status(404).json({ error: "Client not found" });
-      }
-      const settings = await storage.getSettings();
+      const { clientId } = req.params;
+      const settings = await storage.getSettings(clientId);
       res.json(settings?.notificationSettings || {
         staffEmails: [],
         staffPhones: [],
@@ -3456,12 +3435,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Update notification settings
   app.put("/api/super-admin/clients/:clientId/notifications", requireSuperAdmin, async (req, res) => {
     try {
-      if (req.params.clientId !== 'default-client') {
-        return res.status(404).json({ error: "Client not found" });
-      }
-      
+      const { clientId } = req.params;
       const notificationSettings = req.body;
-      await storage.updateSettings({ notificationSettings });
+      await storage.updateSettings(clientId, { notificationSettings });
       res.json(notificationSettings);
     } catch (error) {
       console.error("Update notification settings error:", error);
@@ -3557,25 +3533,22 @@ These suggestions should be relevant to what was just discussed and help guide t
       // Get conversation stats from file-based logs
       const logStats = getLogStats(clientId);
       
-      // For Faith House (real tenant), also get database stats
-      let dbStats = null;
-      if (clientId === "faith_house" || clientId === "default-client") {
-        const appointments = await storage.getAllAppointments();
-        const analytics = await storage.getAnalytics();
-        
-        const now = new Date();
-        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const weekAgo = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
-        
-        dbStats = {
-          totalAppointments: appointments.length,
-          pendingAppointments: appointments.filter((a: any) => a.status === "new" || a.status === "pending").length,
-          completedAppointments: appointments.filter((a: any) => a.status === "confirmed" || a.status === "completed").length,
-          totalConversations: new Set(analytics.map((a: any) => a.sessionId)).size,
-          totalMessages: analytics.length,
-          weeklyConversations: new Set(analytics.filter((a: any) => new Date(a.createdAt) > weekAgo).map((a: any) => a.sessionId)).size,
-        };
-      }
+      // Get database stats for any valid client
+      const appointments = await storage.getAllAppointments(clientId);
+      const analytics = await storage.getAnalytics(clientId);
+      
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const weekAgo = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+      
+      const dbStats = {
+        totalAppointments: appointments.length,
+        pendingAppointments: appointments.filter((a: any) => a.status === "new" || a.status === "pending").length,
+        completedAppointments: appointments.filter((a: any) => a.status === "confirmed" || a.status === "completed").length,
+        totalConversations: new Set(analytics.map((a: any) => a.sessionId)).size,
+        totalMessages: analytics.length,
+        weeklyConversations: new Set(analytics.filter((a: any) => new Date(a.createdAt) > weekAgo).map((a: any) => a.sessionId)).size,
+      };
 
       res.json({
         clientId,
@@ -3614,31 +3587,28 @@ These suggestions should be relevant to what was just discussed and help guide t
       // Get conversations from file-based logs
       const logs = getConversationLogs(clientId, botConfig.botId);
       
-      // For Faith House, also include database analytics
-      let dbConversations: any[] = [];
-      if (clientId === "faith_house" || clientId === "default-client") {
-        const analytics = await storage.getAnalytics();
-        
-        // Group by sessionId to create conversation threads
-        const sessionMap = new Map<string, any[]>();
-        analytics.forEach(msg => {
-          if (!sessionMap.has(msg.sessionId)) {
-            sessionMap.set(msg.sessionId, []);
-          }
-          sessionMap.get(msg.sessionId)!.push(msg);
-        });
-        
-        dbConversations = Array.from(sessionMap.entries())
-          .map(([sessionId, messages]) => ({
-            sessionId,
-            messageCount: messages.length,
-            firstMessage: messages[0]?.createdAt,
-            lastMessage: messages[messages.length - 1]?.createdAt,
-            preview: messages[0]?.content?.substring(0, 100),
-          }))
-          .sort((a, b) => new Date(b.lastMessage).getTime() - new Date(a.lastMessage).getTime())
-          .slice(offset, offset + limit);
-      }
+      // Get database analytics for any valid client
+      const analytics = await storage.getAnalytics(clientId);
+      
+      // Group by sessionId to create conversation threads
+      const sessionMap = new Map<string, any[]>();
+      analytics.forEach(msg => {
+        if (!sessionMap.has(msg.sessionId)) {
+          sessionMap.set(msg.sessionId, []);
+        }
+        sessionMap.get(msg.sessionId)!.push(msg);
+      });
+      
+      const dbConversations = Array.from(sessionMap.entries())
+        .map(([sessionId, messages]) => ({
+          sessionId,
+          messageCount: messages.length,
+          firstMessage: messages[0]?.createdAt,
+          lastMessage: messages[messages.length - 1]?.createdAt,
+          preview: messages[0]?.content?.substring(0, 100),
+        }))
+        .sort((a, b) => new Date(b.lastMessage).getTime() - new Date(a.lastMessage).getTime())
+        .slice(offset, offset + limit);
 
       res.json({
         clientId,
@@ -3657,15 +3627,8 @@ These suggestions should be relevant to what was just discussed and help guide t
     try {
       const clientId = (req as any).effectiveClientId;
       
-      // For now, only Faith House has database-backed appointments
-      if (clientId !== "faith_house" && clientId !== "default-client") {
-        return res.json({ 
-          appointments: [], 
-          message: "Appointment tracking not enabled for this business type" 
-        });
-      }
-
-      const appointments = await storage.getAllAppointments();
+      // Get appointments for any valid client
+      const appointments = await storage.getAllAppointments(clientId);
       
       // Sort by creation date, most recent first
       const sortedAppointments = appointments.sort(
