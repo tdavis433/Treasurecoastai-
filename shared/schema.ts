@@ -1,5 +1,5 @@
-import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, integer, json, index } from "drizzle-orm/pg-core";
+import { sql, relations } from "drizzle-orm";
+import { pgTable, text, varchar, timestamp, boolean, integer, json, index, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -318,6 +318,7 @@ export const monthlyUsage = pgTable("monthly_usage", {
   lastUpdated: timestamp("last_updated").defaultNow().notNull(),
 }, (table) => ({
   clientIdMonthIdx: index("monthly_usage_client_month_idx").on(table.clientId, table.month),
+  clientIdMonthUnique: unique("monthly_usage_client_month_unique").on(table.clientId, table.month),
 }));
 
 export const insertMonthlyUsageSchema = createInsertSchema(monthlyUsage).omit({
@@ -1059,3 +1060,141 @@ export const insertSystemLogSchema = createInsertSchema(systemLogs).omit({
 
 export type InsertSystemLog = z.infer<typeof insertSystemLogSchema>;
 export type SystemLog = typeof systemLogs.$inferSelect;
+
+// =============================================
+// DRIZZLE RELATIONS
+// =============================================
+
+// Workspace relations
+export const workspacesRelations = relations(workspaces, ({ one, many }) => ({
+  owner: one(adminUsers, {
+    fields: [workspaces.ownerId],
+    references: [adminUsers.id],
+  }),
+  memberships: many(workspaceMemberships),
+  bots: many(bots),
+}));
+
+// Workspace membership relations
+export const workspaceMembershipsRelations = relations(workspaceMemberships, ({ one }) => ({
+  workspace: one(workspaces, {
+    fields: [workspaceMemberships.workspaceId],
+    references: [workspaces.id],
+  }),
+  user: one(adminUsers, {
+    fields: [workspaceMemberships.userId],
+    references: [adminUsers.id],
+  }),
+  inviter: one(adminUsers, {
+    fields: [workspaceMemberships.invitedBy],
+    references: [adminUsers.id],
+    relationName: 'inviter',
+  }),
+}));
+
+// Admin users relations
+export const adminUsersRelations = relations(adminUsers, ({ many }) => ({
+  workspaceMemberships: many(workspaceMemberships),
+  ownedWorkspaces: many(workspaces),
+}));
+
+// Bots relations
+export const botsRelations = relations(bots, ({ one, many }) => ({
+  workspace: one(workspaces, {
+    fields: [bots.workspaceId],
+    references: [workspaces.id],
+  }),
+  settings: one(botSettings, {
+    fields: [bots.botId],
+    references: [botSettings.botId],
+  }),
+  widgetSettings: one(widgetSettings, {
+    fields: [bots.botId],
+    references: [widgetSettings.botId],
+  }),
+  leads: many(leads),
+  sessions: many(chatSessions),
+  analyticsEvents: many(chatAnalyticsEvents),
+  dailyAnalytics: many(dailyAnalytics),
+  automationWorkflows: many(automationWorkflows),
+  automationRuns: many(automationRuns),
+}));
+
+// Bot settings relations
+export const botSettingsRelations = relations(botSettings, ({ one }) => ({
+  bot: one(bots, {
+    fields: [botSettings.botId],
+    references: [bots.botId],
+  }),
+}));
+
+// Widget settings relations
+export const widgetSettingsRelations = relations(widgetSettings, ({ one }) => ({
+  bot: one(bots, {
+    fields: [widgetSettings.botId],
+    references: [bots.botId],
+  }),
+}));
+
+// Leads relations
+export const leadsRelations = relations(leads, ({ one }) => ({
+  bot: one(bots, {
+    fields: [leads.botId],
+    references: [bots.botId],
+  }),
+  session: one(chatSessions, {
+    fields: [leads.sessionId],
+    references: [chatSessions.sessionId],
+  }),
+}));
+
+// Chat sessions relations
+export const chatSessionsRelations = relations(chatSessions, ({ one, many }) => ({
+  bot: one(bots, {
+    fields: [chatSessions.botId],
+    references: [bots.botId],
+  }),
+  analyticsEvents: many(chatAnalyticsEvents),
+  leads: many(leads),
+}));
+
+// Chat analytics events relations
+export const chatAnalyticsEventsRelations = relations(chatAnalyticsEvents, ({ one }) => ({
+  bot: one(bots, {
+    fields: [chatAnalyticsEvents.botId],
+    references: [bots.botId],
+  }),
+  session: one(chatSessions, {
+    fields: [chatAnalyticsEvents.sessionId],
+    references: [chatSessions.sessionId],
+  }),
+}));
+
+// Daily analytics relations
+export const dailyAnalyticsRelations = relations(dailyAnalytics, ({ one }) => ({
+  bot: one(bots, {
+    fields: [dailyAnalytics.botId],
+    references: [bots.botId],
+  }),
+}));
+
+// Automation workflows relations
+export const automationWorkflowsRelations = relations(automationWorkflows, ({ one, many }) => ({
+  bot: one(bots, {
+    fields: [automationWorkflows.botId],
+    references: [bots.botId],
+  }),
+  runs: many(automationRuns),
+}));
+
+// Automation runs relations
+export const automationRunsRelations = relations(automationRuns, ({ one }) => ({
+  workflow: one(automationWorkflows, {
+    fields: [automationRuns.workflowId],
+    references: [automationWorkflows.id],
+  }),
+  bot: one(bots, {
+    fields: [automationRuns.botId],
+    references: [bots.botId],
+  }),
+}));

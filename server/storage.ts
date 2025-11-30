@@ -670,20 +670,7 @@ export class DbStorage implements IStorage {
   }
 
   async getOrCreateMonthlyUsage(clientId: string, month: string): Promise<MonthlyUsage> {
-    const [existing] = await db
-      .select()
-      .from(monthlyUsage)
-      .where(and(
-        eq(monthlyUsage.clientId, clientId),
-        eq(monthlyUsage.month, month)
-      ))
-      .limit(1);
-    
-    if (existing) {
-      return existing;
-    }
-    
-    const [created] = await db
+    const [result] = await db
       .insert(monthlyUsage)
       .values({
         clientId,
@@ -692,9 +679,15 @@ export class DbStorage implements IStorage {
         leadsCapture: 0,
         automationsTriggered: 0,
       })
+      .onConflictDoUpdate({
+        target: [monthlyUsage.clientId, monthlyUsage.month],
+        set: {
+          lastUpdated: new Date(),
+        },
+      })
       .returning();
     
-    return created;
+    return result;
   }
 
   async incrementMonthlyUsage(

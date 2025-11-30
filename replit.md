@@ -88,6 +88,11 @@ The system utilizes a React, TypeScript, Tailwind CSS, and shadcn/ui frontend, w
 - **Rate Limiting:** Configured for general API, authentication, and chat endpoints.
 - **CORS:** Applied selectively to widget routes.
 - **CSP:** Strict Content Security Policy for production environments.
+- **Environment Validation:** Zod-based validation in `server/env.ts` with centralized access for OpenAI, Twilio, Resend, admin credentials; required vars throw boot errors, optional vars have sensible fallbacks.
+
+### Database Integrity
+- **Drizzle Relations:** Comprehensive ORM relations defined for workspaces, bots, users, sessions, leads, analytics, and automations enabling proper FK constraints and optimized queries.
+- **Monthly Usage Upsert:** Unique constraint on `monthly_usage(clientId, month)` with PostgreSQL `ON CONFLICT` upsert logic prevents race condition duplicates.
 
 ## External Dependencies
 - **OpenAI:** Provides AI chatbot capabilities and conversation summarization via Replit AI Integrations.
