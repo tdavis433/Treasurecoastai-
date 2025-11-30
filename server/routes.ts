@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import express from "express";
 import crypto from "crypto";
 import { storage, db } from "./storage";
-import { insertAppointmentSchema, insertClientSettingsSchema, adminUsers, type AdminRole, bots, botSettings, leads, appointments, clientSettings } from "@shared/schema";
+import { insertAppointmentSchema, insertClientSettingsSchema, adminUsers, type AdminRole, bots, botSettings, leads, appointments, clientSettings, workspaces, workspaceMemberships } from "@shared/schema";
 import OpenAI from "openai";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -2683,6 +2683,175 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
       console.error("Login error:", error);
       res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  // Signup endpoint - Create new workspace and user
+  const signupSchema = z.object({
+    fullName: z.string().min(1, "Full name is required"),
+    email: z.string().email("Invalid email address"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    businessName: z.string().min(1, "Business name is required"),
+    phone: z.string().optional(),
+  });
+
+  app.post("/api/auth/signup", async (req, res) => {
+    try {
+      const validatedData = signupSchema.parse(req.body);
+      const { fullName, email, password, businessName, phone } = validatedData;
+
+      // Check if email already exists (as username)
+      const existingUser = await storage.findAdminByUsername(email);
+      if (existingUser) {
+        return res.status(400).json({ error: "This email is already registered" });
+      }
+
+      // Generate workspace slug from business name
+      const baseSlug = businessName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_|_$/g, '')
+        .substring(0, 50);
+      
+      // Ensure unique slug by appending random suffix
+      const uniqueSlug = `${baseSlug}_${Date.now().toString(36)}`;
+
+      // Hash password
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      // Create the user first
+      const [newUser] = await db.insert(adminUsers).values({
+        username: email,
+        passwordHash,
+        role: "client_admin",
+        clientId: uniqueSlug, // Use workspace slug as clientId
+      }).returning();
+
+      // Create workspace
+      const [newWorkspace] = await db.insert(workspaces).values({
+        name: businessName,
+        slug: uniqueSlug,
+        ownerId: newUser.id,
+        plan: "free",
+        status: "active",
+        settings: {
+          brandColor: "#06b6d4",
+          logoUrl: null,
+          timezone: "America/New_York",
+        },
+      }).returning();
+
+      // Create workspace membership
+      await db.insert(workspaceMemberships).values({
+        workspaceId: newWorkspace.id,
+        userId: newUser.id,
+        role: "owner",
+        status: "active",
+        acceptedAt: new Date(),
+      });
+
+      // Create default bot for the workspace
+      const defaultBotId = `${uniqueSlug}_bot`;
+      await db.insert(bots).values({
+        botId: defaultBotId,
+        workspaceId: newWorkspace.id,
+        name: `${businessName} Assistant`,
+        templateId: "generic",
+        status: "active",
+        settings: {
+          personality: {
+            tone: "friendly",
+            formality: 50,
+          },
+        },
+      });
+
+      // Create default bot settings
+      await db.insert(botSettings).values({
+        botId: defaultBotId,
+        systemPrompt: `You are a helpful AI assistant for ${businessName}. Be friendly, professional, and help visitors with their questions.`,
+        welcomeMessage: `Welcome to ${businessName}! How can I help you today?`,
+        personality: {
+          tone: "friendly",
+          formality: 50,
+          empathy: 70,
+        },
+        businessInfo: {
+          name: businessName,
+          phone: phone || "",
+          email: email,
+        },
+        services: [],
+        faqs: [],
+      });
+
+      // Create client settings for the new workspace
+      await db.insert(clientSettings).values({
+        clientId: uniqueSlug,
+        businessName: businessName,
+        tagline: "Welcome to our business",
+        primaryEmail: email,
+        primaryPhone: phone || null,
+        status: "active",
+        knowledgeBase: {
+          about: `Welcome to ${businessName}.`,
+          requirements: "",
+          pricing: "",
+          application: "",
+        },
+        operatingHours: {
+          enabled: false,
+          timezone: "America/New_York",
+          schedule: {
+            monday: { open: "09:00", close: "17:00", enabled: true },
+            tuesday: { open: "09:00", close: "17:00", enabled: true },
+            wednesday: { open: "09:00", close: "17:00", enabled: true },
+            thursday: { open: "09:00", close: "17:00", enabled: true },
+            friday: { open: "09:00", close: "17:00", enabled: true },
+            saturday: { open: "09:00", close: "17:00", enabled: false },
+            sunday: { open: "09:00", close: "17:00", enabled: false },
+          },
+          afterHoursMessage: "We're currently closed. Please leave a message and we'll get back to you.",
+        },
+      });
+
+      // Auto-login the new user
+      req.session.regenerate((err) => {
+        if (err) {
+          console.error("Session regeneration error:", err);
+          return res.status(500).json({ error: "Account created but session failed. Please log in." });
+        }
+        req.session.userId = newUser.id;
+        req.session.userRole = "client_admin";
+        req.session.clientId = uniqueSlug;
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.error("Session save error:", saveErr);
+            return res.status(500).json({ error: "Account created but session failed. Please log in." });
+          }
+          res.status(201).json({
+            success: true,
+            user: {
+              id: newUser.id,
+              username: newUser.username,
+              role: newUser.role,
+              clientId: uniqueSlug,
+            },
+            workspace: {
+              id: newWorkspace.id,
+              name: newWorkspace.name,
+              slug: newWorkspace.slug,
+            },
+          });
+        });
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const firstError = error.errors[0];
+        return res.status(400).json({ error: firstError.message });
+      }
+      console.error("Signup error:", error);
+      res.status(500).json({ error: "Failed to create account. Please try again." });
     }
   });
 

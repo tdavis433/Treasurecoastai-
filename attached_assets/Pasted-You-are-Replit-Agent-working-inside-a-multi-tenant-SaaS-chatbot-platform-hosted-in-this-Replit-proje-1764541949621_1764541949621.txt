@@ -1,0 +1,162 @@
+You are Replit Agent working inside a multi-tenant SaaS chatbot platform hosted in this Replit project.
+
+Your task: **Fix, complete, and fully implement the entire signup flow** for the platform.
+
+Currently the “Sign Up” button or route does not work or lead anywhere. You must correct this and build a functional, secure, multi-tenant signup onboarding system.
+
+Follow this plan exactly, without breaking existing login or admin functionality:
+
+────────────────────────────────────────────────────────────
+## 1. OBJECTIVE
+
+Implement a **fully working, secure, multi-tenant-aware signup flow** that:
+
+- Allows a new customer to create their own **workspace (tenant)**.
+- Creates the first **Client Admin user** for that workspace.
+- Logs them in immediately after signup.
+- Redirects them to their new **Client Dashboard**.
+- Applies default workspace settings + default bot(s).
+- Does NOT interfere with Super Admin or existing client workspaces.
+
+Signup must be production-safe and visually clean.
+
+────────────────────────────────────────────────────────────
+## 2. REQUIRED SIGNUP FLOW (END TO END)
+
+### 2.1 SIGNUP UI
+Fix or create the following:
+
+- A working **Signup Page** (e.g. `/signup`).
+- Form fields:
+  - Full Name
+  - Email
+  - Password
+  - Business / Workspace Name
+  - (Optional) Phone Number
+- Submit button that:
+  - Disables during submission
+  - Shows success/error states
+  - Redirects accordingly
+
+Ensure UI validates fields:
+- Required fields
+- Valid email format
+- Password length (>= 8 chars)
+- Workspace name not empty
+
+### 2.2 SIGNUP ENDPOINT (BACKEND)
+Create or fix an endpoint such as:
+
+`POST /api/auth/signup`
+
+This must:
+
+1. Validate all fields.
+2. Ensure email is not already used.
+3. Create a new **workspace** row.
+4. Create a **workspace_admin** user inside that new workspace.
+5. Hash the password (bcrypt or existing hash method).
+6. Create default workspace settings.
+7. Create default bot(s) (use an existing template or create an empty bot).
+8. Start an authenticated session or return a session token.
+9. Return success, with workspace + user info.
+
+### 2.3 SESSION / LOGIN AFTER SIGNUP
+After successful signup:
+
+- Automatically log the user in.
+- Redirect: `/client/dashboard` or the correct workspace dashboard route.
+- Ensure session cookie / JWT is created the same way login does.
+- Ensure multi-tenant scoping works:
+  - The new user should only see their own workspace.
+  - They must NOT see other tenants’ data.
+
+### 2.4 DATABASE CHANGES (ONLY IF NEEDED)
+Only add what is missing:
+- Ensure tables:
+  - `workspaces`
+  - `workspace_members`
+  - `users`
+  - `bots`
+  - `sessions`
+are compatible with signup creation.
+
+If anything needed for signup logic is missing, add minimal required fields:
+- workspace name
+- owner flag or role
+- initial settings defaults
+
+Do NOT modify existing tables in a way that breaks super-admin or current client dashboards.
+
+────────────────────────────────────────────────────────────
+## 3. FUNCTIONALITY TO FIX / IMPLEMENT
+
+### 3.1 SIGNUP BUTTON DOES NOTHING
+Fix:
+- The signup button must link to `/signup`
+- Or trigger the signup modal/router page
+- Ensure routing works in both local dev and deployed environment
+
+### 3.2 ERROR HANDLING
+Add proper:
+- Inline field errors
+- Toast notifications
+- API error messages (email already exists, weak password, etc.)
+- Server-side validation (never rely only on frontend)
+
+### 3.3 DEFAULT WORKSPACE INITIALIZATION
+On signup, also create:
+- Default workspace config (colors, widget settings)
+- Default bot (or clone primary demo bot)
+- Default automations if required
+- Default analytics counters
+
+All must be scoped to the new workspace ID.
+
+### 3.4 SECURITY REQUIREMENTS
+Signup flow must:
+- Hash passwords
+- Prevent duplicate emails across the same workspace
+- Not reveal if an email exists already (“This email is unavailable” instead of “This email is already registered in workspace X”)
+- Not leak any workspace IDs in responses unless authenticated
+
+────────────────────────────────────────────────────────────
+## 4. TESTS TO RUN AFTER BUILDING
+
+After implementation:
+
+1. Load `/signup` – ensure UI loads with no errors.
+2. Fill form with valid info → ensure success → redirected → logged in.
+3. Fill with invalid email → fail with validation.
+4. Fill with short password → fail with validation.
+5. Try using an email that already exists → fail with safe error.
+6. Confirm new workspace appears in super admin view.
+7. Confirm user sees only THEIR workspace data.
+8. Confirm default bot exists for that workspace.
+9. Confirm chat widget for that new workspace works.
+10. Confirm logging out & logging back in works properly.
+
+Run through all screens on mobile and desktop.
+
+────────────────────────────────────────────────────────────
+## 5. FINAL OUTPUT REQUIRED FROM YOU
+
+After implementing everything:
+
+- Output a **Signup Implementation Report** that includes:
+  - Files created or modified
+  - New routes or components
+  - Database migrations (if any)
+  - Summary of fixes
+  - Instructions for testing
+  - Any TODOs for later improvement
+
+- Then confirm:
+  - Signup is working
+  - Login after signup is working
+  - Multi-tenant isolation works
+  - No breaking changes occurred
+
+────────────────────────────────────────────────────────────
+
+Proceed now. Implement the full signup system end-to-end, fix the broken button, and ensure it is fully functional, secure, tenant-aware, and polished.

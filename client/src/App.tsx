@@ -17,6 +17,7 @@ import BotWizard from "@/pages/bot-wizard";
 import AutomationsPage from "@/pages/automations";
 import WidgetSettingsPage from "@/pages/widget-settings";
 import Login from "@/pages/login";
+import Signup from "@/pages/signup";
 import NotFound from "@/pages/not-found";
 import DemosPage from "@/pages/demos";
 import DemoBotPage from "@/pages/demo-bot";
@@ -43,6 +44,7 @@ function Router() {
       <Route path="/client/leads" component={LeadsPage} />
       <Route path="/client/inbox" component={InboxPage} />
       <Route path="/login" component={Login} />
+      <Route path="/signup" component={Signup} />
       <Route path="/super-admin" component={ControlCenter} />
       <Route path="/super-admin/control-center">
         <Redirect to="/super-admin" />
