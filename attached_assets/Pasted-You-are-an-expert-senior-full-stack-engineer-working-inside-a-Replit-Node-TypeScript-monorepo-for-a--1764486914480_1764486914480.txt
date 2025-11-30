@@ -1,0 +1,347 @@
+You are an expert senior full-stack engineer working inside a Replit Node/TypeScript monorepo for a multi-tenant SaaS chatbot platform (treasure-coast-ai-platform).
+
+Your goals:
+
+Fix the structural and security issues described below.
+
+Add missing tooling (tests, env handling, docs, seed script, constraints).
+
+Do NOT break any existing features or public APIs unless they are clearly wrong.
+
+Work incrementally, keep commits small, and run checks after each major change.
+
+0. Ground Rules
+
+Before changing anything, scan the repo and understand:
+
+server/ Express app structure.
+
+shared/schema.ts (Drizzle schema) and related DB code.
+
+client/ React app routes.
+
+Existing scripts in package.json (root + server + client if separate).
+
+Preserve all existing API routes, types, and behaviors unless explicitly asked to change them.
+
+When in doubt, add TODO comments instead of deleting code.
+
+For every batch of changes:
+
+Run npm run lint (if available).
+
+Run npm test once tests exist.
+
+Ensure npm run dev or the main start script still boots without runtime errors.
+
+At the end, output a summary of changes (files touched + what you did + how to run tests/seed).
+
+1. Environment & Secrets – Fix Hard-Coded Values and Add Validation
+
+Goal: Remove secrets from code, standardize env usage, and make boot failures obvious when env is misconfigured.
+
+Create env.example at repo root:
+
+Include all required env vars with placeholder values, e.g.:
+
+DATABASE_URL
+
+SESSION_SECRET
+
+WIDGET_TOKEN_SECRET
+
+AI_INTEGRATIONS_OPENAI_API_KEY
+
+AI_INTEGRATIONS_OPENAI_BASE_URL
+
+STRIPE_SECRET_KEY
+
+STRIPE_WEBHOOK_SECRET
+
+STRIPE_PRICE_ID_STARTER
+
+STRIPE_PRICE_ID_PRO
+
+Any email/notification keys (e.g. Resend, Twilio) used by the app.
+
+Add short comments describing each variable.
+
+Remove any hard-coded secrets from tracked files:
+
+In particular, fix .replit and any config that has WIDGET_TOKEN_SECRET or similar literal secrets.
+
+Ensure secrets are only read from environment variables (Replit secrets or .env in dev).
+
+Add a small env validation module (e.g. server/env.ts or shared/env.ts):
+
+Use Zod or a similar small helper.
+
+On server startup, validate all required env vars.
+
+If any are missing/invalid, throw a clear error with a list of missing keys and stop the process.
+
+Import and use this module in server/app.ts or wherever the main server is created.
+
+Update any files reading env vars directly to use the validated env object.
+
+2. Multi-Tenant Cleanup – Remove default-client Assumptions
+
+Goal: Ensure everything is properly multi-tenant and no logic is hard-coded to a specific client ID.
+
+Search the codebase for 'default-client' and similar magic client IDs.
+
+For each occurrence:
+
+Replace with proper workspace / client referencing using IDs from:
+
+Request user’s workspace / client context.
+
+Or explicit route params / query params.
+
+Remove “if clientId !== 'default-client' return 404” guards; replace them with correct tenant scoping.
+
+In shared/schema.ts:
+
+Remove default values of 'default-client' for fields like appointments.clientId if they exist.
+
+Make those fields required and expect callers to pass explicit clientId/workspaceId.
+
+Ensure all affected endpoints and callers are updated consistently so functionality stays the same, just without hard-coded IDs.
+
+After changes, run the app and verify:
+
+Super admin can still manage the existing main client.
+
+Client dashboards still load.
+
+Faith House / demo workspace still works as before.
+
+3. Database Integrity – Constraints & Relations
+
+Goal: Tighten the DB layer without breaking existing code.
+
+In shared/schema.ts:
+
+Add relations() definitions for important entities:
+
+Workspaces ↔ workspace_memberships.
+
+Workspaces ↔ bots ↔ sessions ↔ leads ↔ analytics.
+
+Keep them simple; do not rewrite all queries, only add relations where they help clarity.
+
+Enforce unique monthly usage records:
+
+Add a unique constraint on monthly_usage (clientId, month) (or on workspace if that’s the correct key).
+
+Ensure any code that increments monthly usage uses INSERT ... ON CONFLICT or an equivalent upsert logic consistent with this constraint.
+
+Where appropriate, add foreign key constraints between:
+
+bots and workspaces.
+
+sessions, leads, analytics and their owning bot / workspace.
+
+Do this carefully and only where the relationship is already assumed in code.
+
+Generate or update the Drizzle migration(s) accordingly.
+
+Make sure migrations are idempotent and don’t drop existing data.
+
+If needed, write a safe migration that backfills missing values or deduplicates monthly usage prior to adding the unique index.
+
+4. Authentication Hardening & Brute-Force Defense
+
+Goal: Strengthen login without changing UX drastically.
+
+In server auth routes (super admin and client admin logins):
+
+Add a simple login attempt limiter per IP + email/username.
+
+Use:
+
+Either express-rate-limit configured specifically for /login routes.
+
+Or a small in-memory / Redis/Postgres counter with “X attempts per 15 minutes” policy.
+
+On too many failures, return a clear message (e.g. “Too many attempts, please wait a few minutes”) without revealing whether the user exists.
+
+Add a password strength check when creating or updating passwords:
+
+Minimum length, no all-same-character passwords, etc.
+
+Keep it simple; the goal is to stop obviously weak passwords.
+
+Optionally add an audit log table or existing logging for admin logins (success + failure count) if it’s easy to integrate without breaking anything.
+
+5. Automated Tests – Add a Minimal but Useful Suite
+
+Goal: Create a basic but real test harness so regressions are caught early.
+
+Choose testing stack consistent with repo (likely Vitest or Jest).
+
+If none set up yet, add dev dependencies and a test script in package.json.
+
+Add a lightweight test config:
+
+Support TypeScript.
+
+Use Node test environment.
+
+Make it possible to run tests for server and shared logic.
+
+Write initial tests for the core backend logic (do NOT overcomplicate, just create a solid foundation):
+
+a. planLimits module tests:
+
+Verify per-plan usage limits, over-limit behavior, and increment logic.
+
+b. automations.ts tests:
+
+Test that:
+
+Keyword triggers match expected messages.
+
+Lead/event automations fire correct actions.
+
+Disabled automations don’t run.
+
+Use in-memory or mocked DB calls.
+
+c. conversationLogger.ts tests:
+
+Confirm that:
+
+Logs are written to the expected directory and filename pattern.
+
+Entries are valid JSON lines and contain required fields.
+
+d. API integration tests with supertest (or similar) for key endpoints:
+
+Auth login (success + failure).
+
+Widget chat endpoint (basic happy path).
+
+CSV export endpoint (returns CSV with correct headers).
+
+Update package.json scripts:
+
+"test": "vitest" (or Jest equivalent).
+
+If needed, add "test:watch".
+
+Run tests and ensure they pass before finishing.
+
+6. Seed Script for Demo Data
+
+Goal: Make spinning up new environments painless.
+
+Create a script (e.g. server/scripts/seed.ts or scripts/seed.ts) that:
+
+Connects to the DB via existing Drizzle config.
+
+Creates a “Treasure Coast AI Demo Workspace” with:
+
+One super admin (if appropriate).
+
+One or two client admin accounts.
+
+Inserts the 10 existing demo bot templates from the bots/ folder into the DB (bot_templates table or equivalent).
+
+Optionally seeds a few sample leads and conversations.
+
+Add an npm script:
+
+"seed": "tsx server/scripts/seed.ts" (or similar).
+
+Document how to run the seed script in the README/DEPLOYMENT docs.
+
+7. Docs – README & DEPLOYMENT
+
+Goal: Make the project understandable and deployable by someone who isn’t the original author.
+
+Add or update README.md at the repo root:
+
+Short description of the platform (multi-tenant SaaS chatbot with admin + client + demo hub).
+
+How to run locally:
+
+Clone, install dependencies.
+
+Create .env from env.example.
+
+Run migrations.
+
+Run npm run seed.
+
+Start dev server.
+
+Brief feature list (super admin, client dashboard, analytics, automations, widget, demo hub).
+
+Link to any other docs (replit.md, AUDIT_REPORT, DIAGNOSTIC_REPORT).
+
+Add a DEPLOYMENT.md:
+
+Steps to deploy on Replit (using existing .replit).
+
+Notes on deploying elsewhere (Render/Fly/VPS) with:
+
+Environment variables.
+
+Stripe webhook configuration.
+
+DB migrations in production.
+
+8. Logging & Error Handling Polish (Non-Breaking)
+
+Goal: Improve observability without changing external behavior.
+
+Keep the existing global error handler but:
+
+Ensure it never leaks stack traces or internal details to the client in production.
+
+Optionally add structured log output with a simple helper (log level, route, error code).
+
+Confirm:
+
+All major routes use try/catch or error-handling middleware correctly.
+
+Errors are logged with enough context (user/workspace ID when available).
+
+9. Final Verification
+
+After all modifications:
+
+Run:
+
+npm run build (if configured).
+
+npm test.
+
+Start the dev server and manually verify key flows:
+
+Super admin dashboard loads.
+
+Client dashboard (analytics, leads, inbox, settings) works.
+
+Chat widget still functions and captures leads.
+
+Demo hub /demos still loads all templates.
+
+Output a final summary including:
+
+Files changed/added.
+
+How to:
+
+Configure env vars.
+
+Run migrations.
+
+Seed data.
+
+Run tests.
+
+Start the app in dev.
+
+Follow these instructions carefully. Apply changes incrementally, keep existing functionality intact, and prioritize safety and clarity over over-engineering.
