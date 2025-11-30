@@ -1,0 +1,28 @@
+{
+  "botId": "bot_qa_test_restaurant_mim9o3e9",
+  "clientId": "client_mim9o3e9",
+  "name": "QA Test Restaurant Assistant",
+  "description": "AI assistant for QA Test Restaurant",
+  "businessProfile": {
+    "type": "restaurant",
+    "services": [
+      "Pizza Delivery"
+    ],
+    "hours": {
+      "officeHours": "Mon-Sun 11am-9pm"
+    },
+    "businessName": "QA Test Restaurant",
+    "location": "123 Test Ave, Testville",
+    "phone": "(555) 123-4567",
+    "email": "qa@example.com",
+    "website": ""
+  },
+  "systemPrompt": "You are a helpful assistant for a restaurant business.",
+  "faqs": [
+    {
+      "question": "What are your hours?",
+      "answer": "We are open Mon-Sun 11am-9pm."
+    }
+  ],
+  "rules": {}
+}

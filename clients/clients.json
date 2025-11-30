@@ -43,6 +43,16 @@
       ],
       "status": "active",
       "createdAt": "2025-11-30"
+    },
+    {
+      "id": "client_mim9o3e9",
+      "name": "QA Test Restaurant",
+      "type": "restaurant",
+      "bots": [
+        "bot_qa_test_restaurant_mim9o3e9"
+      ],
+      "status": "active",
+      "createdAt": "2025-11-30"
     }
   ]
 }

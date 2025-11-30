@@ -18,7 +18,7 @@ import {
   Users, Plus, Search, Phone, Mail, MessageSquare,
   Calendar, Tag, ChevronRight, ArrowLeft, Edit2, Trash2,
   Save, X, Filter, User, Clock, Star, Building2, RefreshCw,
-  CheckSquare, Square
+  CheckSquare, Square, Download
 } from "lucide-react";
 
 interface Lead {
@@ -229,6 +229,42 @@ export default function LeadsPage() {
     });
   };
 
+  const handleExportCSV = () => {
+    if (leads.length === 0) {
+      toast({ title: "No leads to export", description: "There are no leads to export.", variant: "destructive" });
+      return;
+    }
+    
+    const headers = ['Name', 'Email', 'Phone', 'Status', 'Priority', 'Source', 'Created At', 'Notes'];
+    const rows = leads.map(lead => [
+      lead.name || '',
+      lead.email || '',
+      lead.phone || '',
+      lead.status,
+      lead.priority,
+      lead.source,
+      format(new Date(lead.createdAt), 'yyyy-MM-dd HH:mm:ss'),
+      lead.notes || ''
+    ]);
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `leads-export-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast({ title: "Export Complete", description: `Exported ${leads.length} leads to CSV.` });
+  };
+
   const getStatusBadge = (status: string) => {
     const option = STATUS_OPTIONS.find(o => o.value === status);
     return option ? (
@@ -277,6 +313,16 @@ export default function LeadsPage() {
             data-testid="button-refresh"
           >
             <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleExportCSV}
+            disabled={leads.length === 0}
+            className="bg-white/5 border-white/10 text-white/85 hover:bg-white/10"
+            data-testid="button-export-csv"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
           </Button>
           <Button
             onClick={() => setShowCreateModal(true)}
