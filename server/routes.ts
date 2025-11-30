@@ -2756,33 +2756,27 @@ These suggestions should be relevant to what was just discussed and help guide t
         botId: defaultBotId,
         workspaceId: newWorkspace.id,
         name: `${businessName} Assistant`,
-        templateId: "generic",
-        status: "active",
-        settings: {
-          personality: {
-            tone: "friendly",
-            formality: 50,
-          },
+        botType: "generic",
+        businessProfile: {
+          businessName: businessName,
+          type: "generic",
+          phone: phone || "",
+          email: email,
         },
+        systemPrompt: `You are a helpful AI assistant for ${businessName}. Be friendly, professional, and help visitors with their questions.`,
+        theme: {
+          primaryColor: "#06b6d4",
+          welcomeMessage: `Welcome to ${businessName}! How can I help you today?`,
+        },
+        status: "active",
       });
 
       // Create default bot settings
       await db.insert(botSettings).values({
         botId: defaultBotId,
-        systemPrompt: `You are a helpful AI assistant for ${businessName}. Be friendly, professional, and help visitors with their questions.`,
-        welcomeMessage: `Welcome to ${businessName}! How can I help you today?`,
-        personality: {
-          tone: "friendly",
-          formality: 50,
-          empathy: 70,
-        },
-        businessInfo: {
-          name: businessName,
-          phone: phone || "",
-          email: email,
-        },
-        services: [],
         faqs: [],
+        rules: {},
+        automations: {},
       });
 
       // Create client settings for the new workspace
