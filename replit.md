@@ -140,6 +140,8 @@ All 10 sections verified with E2E Playwright tests:
 4. **Workspace Membership:** Added workspace_memberships record and updated seed script for demo_admin → faith_house
 5. **Appointment Routes:** Updated 5 routes to derive clientId from session instead of hardcoded value
 6. **Mobile Navigation:** Added `overflow-x-auto` to Quick Actions Bar for horizontal scroll on small screens
+7. **OpenAI Model Name:** Fixed invalid model name `gpt-4.1-mini` → `gpt-4o-mini` in server/routes.ts (5 instances)
+8. **Faith House Status:** Changed client status from `paused` → `active` in clients/clients.json to enable chat
 
 ### Production Readiness
 - All critical workflows validated end-to-end

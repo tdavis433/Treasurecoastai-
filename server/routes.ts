@@ -872,7 +872,7 @@ async function generateConversationSummary(sessionId: string, clientId: string =
     }
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
@@ -1337,7 +1337,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4.1-mini",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: systemPrompt },
           ...messages
@@ -1614,7 +1614,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4.1-mini",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: systemPrompt },
           ...messages
@@ -1812,7 +1812,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       // Create streaming completion
       const stream = await openai.chat.completions.create({
-        model: "gpt-4.1-mini",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: enhancedPrompt },
           ...messages
@@ -2299,7 +2299,7 @@ These suggestions should be relevant to what was just discussed and help guide t
             .join("\n");
           
           const completion = await openai.chat.completions.create({
-            model: "gpt-4.1-mini",
+            model: "gpt-4o-mini",
             messages: [
               {
                 role: "system",

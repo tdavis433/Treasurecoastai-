@@ -1,0 +1,28 @@
+{
+  "botId": "bot_test_restaurant_bhyfnr_mim75jxk",
+  "clientId": "client_mim75jxk",
+  "name": "Test Restaurant BHYFnr Assistant",
+  "description": "AI assistant for Test Restaurant BHYFnr",
+  "businessProfile": {
+    "type": "restaurant",
+    "services": [
+      "Test Service - Pizza Delivery"
+    ],
+    "hours": {
+      "officeHours": "Mon-Sun 9am-10pm"
+    },
+    "businessName": "Test Restaurant BHYFnr",
+    "location": "123 Test Street, Miami, FL",
+    "phone": "(555) 123-4567",
+    "email": "",
+    "website": ""
+  },
+  "systemPrompt": "You are a helpful assistant for a restaurant business.",
+  "faqs": [
+    {
+      "question": "What are your hours?",
+      "answer": "We are open Monday to Sunday from 9am to 10pm."
+    }
+  ],
+  "rules": {}
+}

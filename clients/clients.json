@@ -7,7 +7,7 @@
       "bots": [
         "faith_house_main"
       ],
-      "status": "paused",
+      "status": "active",
       "createdAt": "2025-11-27"
     },
     {
@@ -33,6 +33,16 @@
       ],
       "status": "active",
       "createdAt": "2025-11-29"
+    },
+    {
+      "id": "client_mim75jxk",
+      "name": "Test Restaurant BHYFnr",
+      "type": "restaurant",
+      "bots": [
+        "bot_test_restaurant_bhyfnr_mim75jxk"
+      ],
+      "status": "active",
+      "createdAt": "2025-11-30"
     }
   ]
 }
