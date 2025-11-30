@@ -226,15 +226,17 @@ export default function DemosPage() {
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
-            <Button 
-              size="lg" 
-              className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white px-8 py-6 text-lg gap-2 shadow-lg shadow-cyan-500/25"
-              data-testid="button-get-started"
-            >
-              <Bot className="h-5 w-5" />
-              Get Started Free
-              <ArrowRight className="h-5 w-5" />
-            </Button>
+            <Link href="/login">
+              <Button 
+                size="lg" 
+                className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white px-8 py-6 text-lg gap-2 shadow-lg shadow-cyan-500/25"
+                data-testid="button-get-started"
+              >
+                <Bot className="h-5 w-5" />
+                Get Started Free
+                <ArrowRight className="h-5 w-5" />
+              </Button>
+            </Link>
             <Link href="/faith-house">
               <Button 
                 size="lg" 
