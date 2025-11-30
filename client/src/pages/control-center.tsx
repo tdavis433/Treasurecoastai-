@@ -1221,11 +1221,11 @@ export default function ControlCenter() {
                                   >
                                     <SelectValue />
                                   </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="active">Active</SelectItem>
-                                    <SelectItem value="paused">Paused</SelectItem>
-                                    <SelectItem value="suspended">Suspended</SelectItem>
-                                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                                  <SelectContent className="bg-[#1a1f2e] border-white/10">
+                                    <SelectItem value="active" className="text-green-400 focus:bg-white/10 focus:text-green-400">Active</SelectItem>
+                                    <SelectItem value="paused" className="text-amber-400 focus:bg-white/10 focus:text-amber-400">Paused</SelectItem>
+                                    <SelectItem value="suspended" className="text-red-400 focus:bg-white/10 focus:text-red-400">Suspended</SelectItem>
+                                    <SelectItem value="cancelled" className="text-gray-400 focus:bg-white/10 focus:text-gray-400">Cancelled</SelectItem>
                                   </SelectContent>
                                 </Select>
                                 <DropdownMenu>
@@ -1811,14 +1811,14 @@ export default function ControlCenter() {
             <aside className="lg:min-w-[40%] lg:max-w-[50%] border-l border-white/10 bg-white/5 overflow-y-auto h-full">
               <div className="p-6">
                 {/* Panel Header with Close */}
-                <div className="flex items-start justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-xl bg-cyan-400/10 flex items-center justify-center">
+                <div className="flex items-start justify-between gap-2 mb-6">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="h-12 w-12 flex-shrink-0 rounded-xl bg-cyan-400/10 flex items-center justify-center">
                       <Building2 className="h-6 w-6 text-cyan-400" />
                     </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-white">{selectedBot.name || selectedBot.businessProfile?.businessName}</h2>
-                      <p className="text-sm text-white/55">
+                    <div className="min-w-0 flex-1">
+                      <h2 className="text-xl font-bold text-white truncate">{selectedBot.name || selectedBot.businessProfile?.businessName}</h2>
+                      <p className="text-sm text-white/55 truncate">
                         {getBusinessTypeLabel(selectedBot.businessProfile?.type)} • {selectedBot.botId}
                       </p>
                     </div>
@@ -1828,7 +1828,7 @@ export default function ControlCenter() {
                     size="icon"
                     onClick={() => setSelectedBotId(null)}
                     data-testid="button-close-detail"
-                    className="text-white/85 hover:bg-white/10 hover:text-white"
+                    className="text-white/85 hover:bg-white/10 hover:text-white flex-shrink-0"
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -2448,7 +2448,7 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
         </GlassCardHeader>
         <GlassCardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div>
+            <div className="min-w-0">
               <Label>Bot Name</Label>
               {isEditing ? (
                 <Input
@@ -2458,7 +2458,7 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/60"
                 />
               ) : (
-                <p className="text-sm mt-1">{formData.name || '-'}</p>
+                <p className="text-sm mt-1 truncate">{formData.name || '-'}</p>
               )}
             </div>
             <div>
@@ -2468,12 +2468,12 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                   value={formData.type}
                   onValueChange={(value) => setFormData({ ...formData, type: value })}
                 >
-                  <SelectTrigger data-testid="select-business-type">
+                  <SelectTrigger data-testid="select-business-type" className="bg-white/5 border-white/10 text-white">
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-[#1a1f2e] border-white/10 text-white">
                     {BUSINESS_TYPES.map(type => (
-                      <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                      <SelectItem key={type.value} value={type.value} className="text-white focus:bg-white/10 focus:text-white">{type.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -2482,7 +2482,7 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
               )}
             </div>
           </div>
-          <div>
+          <div className="min-w-0">
             <Label>Description</Label>
             {isEditing ? (
               <Textarea
@@ -2493,7 +2493,7 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                 className="bg-white/5 border-white/10 text-white placeholder:text-white/60"
               />
             ) : (
-              <p className="text-sm mt-1 text-white">{formData.description || '-'}</p>
+              <p className="text-sm mt-1 text-white line-clamp-2">{formData.description || '-'}</p>
             )}
           </div>
         </GlassCardContent>
@@ -2507,9 +2507,9 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
         </GlassCardHeader>
         <GlassCardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div>
+            <div className="min-w-0">
               <Label className="flex items-center gap-2">
-                <Building2 className="h-4 w-4" />
+                <Building2 className="h-4 w-4 flex-shrink-0" />
                 Business Name
               </Label>
               {isEditing ? (
@@ -2520,12 +2520,12 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/60"
                 />
               ) : (
-                <p className="text-sm mt-1">{formData.businessName || '-'}</p>
+                <p className="text-sm mt-1 truncate">{formData.businessName || '-'}</p>
               )}
             </div>
-            <div>
+            <div className="min-w-0">
               <Label className="flex items-center gap-2">
-                <Phone className="h-4 w-4" />
+                <Phone className="h-4 w-4 flex-shrink-0" />
                 Phone
               </Label>
               {isEditing ? (
@@ -2536,12 +2536,12 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/60"
                 />
               ) : (
-                <p className="text-sm mt-1">{formData.phone || '-'}</p>
+                <p className="text-sm mt-1 truncate">{formData.phone || '-'}</p>
               )}
             </div>
-            <div>
+            <div className="min-w-0">
               <Label className="flex items-center gap-2">
-                <Mail className="h-4 w-4" />
+                <Mail className="h-4 w-4 flex-shrink-0" />
                 Email
               </Label>
               {isEditing ? (
@@ -2552,12 +2552,12 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/60"
                 />
               ) : (
-                <p className="text-sm mt-1">{formData.email || '-'}</p>
+                <p className="text-sm mt-1 truncate">{formData.email || '-'}</p>
               )}
             </div>
-            <div>
+            <div className="min-w-0">
               <Label className="flex items-center gap-2">
-                <Globe className="h-4 w-4" />
+                <Globe className="h-4 w-4 flex-shrink-0" />
                 Website
               </Label>
               {isEditing ? (
@@ -2568,7 +2568,7 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/60"
                 />
               ) : (
-                <p className="text-sm mt-1">{formData.website || '-'}</p>
+                <p className="text-sm mt-1 truncate">{formData.website || '-'}</p>
               )}
             </div>
           </div>
@@ -2640,15 +2640,13 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                   value={formData.tone}
                   onValueChange={(value) => setFormData({ ...formData, tone: value })}
                 >
-                  <SelectTrigger data-testid="select-tone">
+                  <SelectTrigger data-testid="select-tone" className="bg-white/5 border-white/10 text-white">
                     <SelectValue placeholder="Select tone" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-[#1a1f2e] border-white/10 text-white">
                     {TONE_OPTIONS.map(option => (
-                      <SelectItem key={option.value} value={option.value}>
-                        <div className="flex flex-col">
-                          <span>{option.label}</span>
-                        </div>
+                      <SelectItem key={option.value} value={option.value} className="text-white focus:bg-white/10 focus:text-white">
+                        <span>{option.label}</span>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -2667,13 +2665,13 @@ function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: st
                   value={formData.responseLength}
                   onValueChange={(value) => setFormData({ ...formData, responseLength: value })}
                 >
-                  <SelectTrigger data-testid="select-response-length">
+                  <SelectTrigger data-testid="select-response-length" className="bg-white/5 border-white/10 text-white">
                     <SelectValue placeholder="Select length" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="brief">Brief (1-2 sentences)</SelectItem>
-                    <SelectItem value="medium">Medium (3-4 sentences)</SelectItem>
-                    <SelectItem value="detailed">Detailed (5+ sentences)</SelectItem>
+                  <SelectContent className="bg-[#1a1f2e] border-white/10 text-white">
+                    <SelectItem value="brief" className="text-white focus:bg-white/10 focus:text-white">Brief (1-2 sentences)</SelectItem>
+                    <SelectItem value="medium" className="text-white focus:bg-white/10 focus:text-white">Medium (3-4 sentences)</SelectItem>
+                    <SelectItem value="detailed" className="text-white focus:bg-white/10 focus:text-white">Detailed (5+ sentences)</SelectItem>
                   </SelectContent>
                 </Select>
               ) : (
