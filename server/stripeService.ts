@@ -141,7 +141,7 @@ export class StripeService {
             s.customer,
             COALESCE(SUM(p.unit_amount * COALESCE(si.quantity, 1)), 0) as total_amount,
             MIN(p.currency) as currency,
-            MIN(p.recurring) as recurring,
+            (array_agg(p.recurring) FILTER (WHERE p.recurring IS NOT NULL))[1] as recurring,
             STRING_AGG(DISTINCT pr.name, ', ') as product_names
           FROM stripe.subscriptions s
           LEFT JOIN stripe.subscription_items si ON si.subscription = s.id
