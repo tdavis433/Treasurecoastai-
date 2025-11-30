@@ -493,6 +493,8 @@ export default function ControlCenter() {
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    // Clear auth cache to prevent back-button access after logout
+    queryClient.clear();
     setLocation("/login");
   };
 
