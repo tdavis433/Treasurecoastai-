@@ -1,0 +1,383 @@
+ULTIMATE TORTURE-TEST QA PROMPT FOR REPLIT AGENT
+
+You are a principal-level QA engineer and UX reviewer testing a multi-tenant SaaS chatbot platform (including admin dashboards, client dashboards, a demo hub, and an embedded chat widget).
+
+Your mission: Push this platform to the absolute limit. Click every clickable element, create/edit/delete everything possible, verify every layout and graphic at multiple screen sizes, and find every defect, glitch, visual issue, missing feature, and broken flow. No aspect is too small to test. You are allowed to be obsessive and thorough – leave nothing untested.
+
+0. GLOBAL TESTING RULES
+
+Roles to simulate:
+	•	Super Admin – manages workspaces/tenants, users, bots, billing, demos, global settings.
+	•	Client Admin – manages their own workspace: bots, leads, inbox, automations, widget, analytics, settings.
+	•	End User / Visitor – interacts with the public chat widget on client websites and the demo hub.
+
+Scope: Test every page, dialog, card, button, link, toggle, dropdown, input, tab, icon, and widget in the platform. Every place that lets you create, add, update, duplicate, or delete any item must be tested with:
+	•	Normal data: Typical valid inputs as expected in normal use.
+	•	Bad data: Incorrect or malformed inputs (invalid formats, SQL injection strings, script tags, etc.) to check validation and security.
+	•	Edge-case data: Extremely long strings, emojis, special characters, high/low numerical values, non-ASCII text (Unicode), empty or null values, etc. to see how the system handles them.
+
+For each area you touch:
+	•	Run happy path tests (normal, expected usage that should succeed).
+	•	Run negative tests (invalid inputs, missing required fields, incorrect data types) to trigger validation errors and ensure graceful handling.
+	•	Run edge case scenarios:
+	•	Refresh the page mid-action (e.g., in the middle of filling a form or after submission).
+	•	Use browser back/forward navigation in the middle of a flow.
+	•	Open pages in new tabs or multiple windows to see if state is preserved or conflicts occur.
+	•	Open dialogs/modals then resize the window or rotate mobile orientation.
+	•	Try rapid interactions (double-click buttons, submit forms twice quickly, spam click toggles) to see if any race conditions or double-entries occur.
+
+Multi-browser and device: Use all major browsers – Chrome, Firefox, Safari, Edge – and test on both desktop and mobile (iOS Safari, Android Chrome). Ensure consistent behavior and layout across browsers. Pay attention to browser-specific issues (e.g., Safari flexbox quirks, Edge rendering differences). On mobile devices, verify touch interactions (taps, swipes) work correctly, and that the virtual keyboard opening/closing does not break layouts.
+
+Visual/UX checks (on every page): For every major screen or component:
+	•	Test at these viewport widths: ~360px (small phone), ~768px (tablet), ~1024px (small laptop), ~1440px (desktop).
+	•	At each size, verify no horizontal scrolling (unless intentionally required), no clipped or overlapping text, and no broken grids or misaligned components. The layout should adapt gracefully (responsive design).
+	•	Verify headers, footers, breadcrumbs, and navigation bars appear and behave correctly (e.g., collapsible sidebars should hide/show appropriately on small screens).
+	•	Open and close all modals, drawers, dropdowns, popovers, and tooltips. Check that they are positioned correctly, do not overflow the screen, and their open/close animations (if any) are smooth.
+	•	If the platform supports light/dark mode or different themes, test both. Ensure text is readable against backgrounds in each theme and there are no color contrast issues.
+	•	Theme consistency: Check that fonts, font sizes, colors, border radii, shadows, and spacing are consistent across similar components (e.g., all buttons should follow the same style guide).
+	•	No console errors: While interacting with each page, keep the browser console open. Watch for JavaScript errors or warnings, and note any that appear – even if functionality seems okay, an error could indicate a hidden issue.
+
+Bug / finding format: For every problem discovered, log a clear bug report with the following details:
+	•	Title: Short description of the problem.
+	•	Severity: Categorize as BLOCKER, MAJOR, MINOR, VISUAL, UX, or NICE-TO-HAVE.
+	•	Role & Context: Which user role were you using (Super Admin, Client Admin, End User) and on which page/route or component (e.g. Super Admin - Workspace List, Client Admin - Leads page, Chat Widget on demo page).
+	•	Screen Size / Device / Browser: e.g. Desktop 1440px on Chrome, iPhone X Safari, iPad Firefox.
+	•	Steps to Reproduce: Numbered step-by-step actions to reliably reproduce the issue.
+	•	Expected Result: What should happen if the system worked correctly.
+	•	Actual Result: What actually happened (include symptoms like error messages, broken layout, etc.).
+	•	Console/Network: Note any relevant console errors or network request failures at the time of the bug.
+	•	Screenshot: (If possible) Include or reference a screenshot highlighting the issue (with annotations if necessary, like circles or arrows to point out the bug).
+
+Positive confirmations: Also log successes for critical flows and features as test evidence. For each major feature that works correctly, record something like:
+	•	✅ Works as expected: [Role] [Page/Feature] – brief description of what was tested successfully.
+Example: ✅ Client Admin – Lead Creation: Able to add a new lead via the dashboard form, it appeared in the Leads table and was viewable in the Inbox.
+
+⸻
+
+1. AUTHENTICATION, NAVIGATION & GLOBAL LAYOUT
+
+1.1 Login / Logout / Session Management
+	•	Test login functionality for all user types: Verify that Super Admin and Client Admin can log in through the appropriate login page. Use valid credentials for each and confirm it redirects to the correct dashboard (super admin dashboard vs client workspace).
+	•	Invalid login attempts: Try logging in with incorrect email, wrong password, and empty fields. Ensure that clear error messages are displayed (e.g. “Invalid email or password”) and no sensitive information is exposed. The login form should not crash or clear non-erroneous fields unexpectedly.
+	•	Remember Me / Session Persistence: If a “Remember me” option exists, test that it keeps the user logged in across browser restarts. If no such option, verify that sessions persist at least for a reasonable time or until manual logout.
+	•	Logout behavior: Log out from each role. After logout, test that protected routes cannot be accessed: use the browser back button or enter a previously bookmarked internal URL (like /dashboard) – it should redirect back to the login page or show an access denied message.
+	•	Session timeout: If the app has an auto-logout or session expiration, simulate that (possibly by modifying token expiration or leaving the session idle if feasible) and ensure the user is forced to log in again and sees a friendly message (like “Session expired, please log in again”).
+
+1.2 Global Navigation & Layout
+	•	Navigation menu: For both Super Admin and Client Admin views, click every top-level navigation item and any submenu links. Verify the correct page loads and the content matches the menu name. The active page/menu item should be highlighted or indicated clearly.
+	•	Breadcrumbs & Page Titles: If breadcrumbs are displayed, ensure they match the navigation hierarchy and the page’s context. The page header or title should correspond to the menu clicked. No typos or incorrect casing in titles/breadcrumbs.
+	•	No broken links or 404s: Navigate through all links provided in the nav bar, dropdowns, footers, and within pages. None should lead to a 404 unless intentionally (like a placeholder page). If a feature is not yet implemented, it should be gracefully handled (e.g., hide the link or show a “coming soon” message rather than a raw 404).
+	•	Layout consistency: Ensure that the overall layout (header, sidebar, content area) is consistent across pages. The sidebar (if any) should collapse/expand smoothly on toggle. On smaller screens, the sidebar might turn into a hamburger menu – test that toggle. Ensure content is not hidden under a fixed header or off-screen when the nav is open/closed.
+	•	Global components: Click on any global icons or buttons present in the header (e.g., notifications bell, user profile menu, help icon). Verify:
+	•	Profile/Account menu can log out or navigate to profile settings.
+	•	Notification dropdowns (if present) show recent notifications without layout issues and links inside them work.
+	•	If there’s a global search bar, try searching (valid terms vs gibberish) and ensure results (or “no results”) show properly.
+	•	Multi-tab usage: Open the platform in multiple browser tabs as the same user. Perform different actions in each (for example, editing a bot in one tab and viewing analytics in another) to see if there are any conflicts or if one tab’s changes immediately reflect in the other (real-time updates or requiring manual refresh). Ensure no stale data is shown.
+
+2. SUPER ADMIN – WORKSPACES, USERS, BOTS, BILLING
+
+2.1 Workspaces / Tenants Management
+	•	Create new workspaces: As Super Admin, use the “create workspace/tenant” function. Create several workspaces with unique names, and vary settings like subdomain or industry if those are options. Use edge-case names (very long name, special characters) to see if allowed and handled.
+	•	Workspace listing: After creation, verify the new workspaces appear in the workspace list/grid. Check that information like name, status, and creation date display correctly without overflow.
+	•	Edit workspace details: For each workspace, try editing attributes (name change, domain, branding logo/color, status active/inactive). Save changes and confirm the list reflects updates immediately.
+	•	State-based behavior: If workspaces can be Active, Paused/Suspended, or Archived/Deleted, change a workspace through these states. For each state, confirm:
+	•	The workspace is labeled appropriately (e.g., a “Paused” tag or grayed out).
+	•	Client Admins of a suspended workspace cannot access their dashboard (perhaps a special message like “Your workspace is suspended”).
+	•	Deleted/Archived workspaces are removed from active lists (maybe moved to an archive list or no longer accessible).
+	•	Navigation between workspaces: If Super Admin can switch context into a workspace (impersonate or view as client admin), test that feature. Click into one workspace’s detail or “manage” link and ensure it brings you to the client admin view for that workspace. Switch between multiple workspaces rapidly and ensure data updates (no leakage of data between workspaces).
+	•	Persistence: Refresh the page after creating or editing a workspace. The changes should persist in the database (no reversion). Also test using the browser’s forward/back after creating a workspace to ensure no duplicate creation occurs (no double submission).
+	•	Error handling: Try to create a workspace with missing required fields or using an already-taken unique identifier (like duplicate workspace name or domain, if those must be unique). Verify the error message is clear (e.g., “Name already taken”) and the form highlights the problem field.
+	•	Stress test workspace creation: Rapidly create several workspaces in succession (if possible, by quickly re-opening the create dialog or using any “clone workspace” feature if available). Ensure the system handles it without crashes or data mix-up.
+
+2.2 Workspace Members / Users Management
+	•	Invite/Add users: Within a workspace management screen (either as Super Admin managing a workspace, or a Client Admin managing their team), add new users. If it’s done via invite email, simulate it by providing an email and role. If it’s an instant creation form, fill it out. Create multiple users including edge cases: one with a very long name, one with mixed-case email, one with a plus in email (test+alias@example.com), etc.
+	•	Role variations: If roles beyond admin exist (e.g., Admin, Editor, Viewer), ensure each can be selected and that the UI maybe explains the permissions. After creation, log in as each new user (if credentials are set) or ensure invitation emails are sent (check for an on-screen confirmation like “Invitation sent”).
+	•	Edit user info: Change a user’s name, role, or status (e.g., deactivate/activate). Verify changes reflect immediately in the user list and that the user’s permissions update accordingly (maybe check that a demoted user cannot access admin-only sections anymore).
+	•	Remove users: Deactivate or delete a user from the workspace. Confirm they disappear from the list or appear in a separate “inactive users” list as appropriate. Attempt to log in with a deactivated user’s credentials to ensure access is indeed blocked.
+	•	Validation: Try adding a user with an email that already exists in that workspace or in another workspace (depending on if emails must be unique globally or per workspace). The system should prevent duplicates appropriately. Also test an obviously invalid email (user@@example, missing TLD, etc.) – should not be accepted.
+	•	Concurrency: As Super Admin, try adding a user to a workspace at the same time a Client Admin is adding a user in their own team (if possible, coordinate two accounts in parallel). Ensure no data collisions (like one user entry accidentally appearing in the wrong workspace).
+
+2.3 Super Admin – Bot/Template Management
+	•	Bot creation: In the Super Admin panel, create multiple bot templates or global bots. Provide different combinations of settings: different industries, default prompt sets, toggle various options (if available). Use descriptive names and one with an extremely long name or unusual characters to test limits.
+	•	Bot listing: After creation, verify bots appear in the list/table of bots. Check that attributes (name, version, linked workspace or global) display properly. None should overflow the container or break layout.
+	•	Assign bots to workspaces: If the platform allows assigning or distributing bot templates to specific workspaces, test that: assign a bot to a couple of workspaces. Then log in as those client admins to confirm the bot is now available in their bot list or template selection.
+	•	Clone/Duplicate bot: If there’s a “duplicate bot” feature (to copy a bot configuration), use it. Ensure the new copy has a distinct name (perhaps “Copy of …”) and all the original settings duplicated. Then modify some settings in the clone and save – confirm the original bot remains unchanged (no cross-editing issues).
+	•	Edit bot settings: Change various properties of a bot template: name, description, default greeting message, fallback message, personality sliders, knowledge base links, etc. Save and verify changes persist. Check for edge cases like extremely long prompt text – does the UI allow scrolling or show a character count?
+	•	Delete bot: Delete or archive a bot from the super admin perspective. Confirm it’s removed from the list (or moved to an archive). Then check as a client admin of a workspace that had that bot assigned: the bot should no longer be accessible or visible. There should be no orphan references (like in a dropdown selection) to a deleted bot. Attempt to reassign or use a deleted bot ID via URL to ensure the system handles that gracefully (probably with an error or redirect).
+	•	Error handling: Try to create two bots with the same name (if not allowed) to see if validation catches it. If the platform uses API keys or tokens for bots, create a bot without required fields or with an invalid setting to see if any error is thrown.
+
+2.4 Billing & Plan Management
+	•	View current subscription: Navigate to the billing or subscription section in Super Admin. Confirm that plan details (plan name, allowed usage, billing period, price) are displayed correctly. If this platform tracks MRR or usage metrics, verify the numbers make sense and are up-to-date.
+	•	Plan changes: If available, simulate upgrading or downgrading a workspace’s plan. This might involve selecting a different plan tier or toggling certain features on/off. After initiating a change, verify that the UI updates to reflect the new plan (e.g., new limits or features unlock). If a confirmation email or invoice is supposed to be generated, check for on-screen confirmation messages.
+	•	Usage limits: If the plan imposes usage limits (like number of leads, number of bot sessions, etc.), simulate reaching a limit. For instance, if the free plan allows 100 chats, attempt to exceed that number. The system should either prevent further activity or show a warning/upgrade prompt. Ensure that this messaging is clear and appears at the right time.
+	•	Billing history: If a billing history or invoices list is present, open it. Check that invoice dates, amounts, and statuses (paid, due) are correct. Try downloading an invoice PDF if that’s a feature, ensuring the download works and the PDF content is correct (not blank or misformatted).
+	•	UI design: Check the layout of pricing tables or plan comparison charts at different screen sizes. On mobile, multi-column pricing options might stack vertically – ensure they are in a logical order and not cut off. Check that any currency symbols, decimal alignments, and fonts look professional.
+	•	Error/edge cases: Attempt to input invalid billing info if there’s a form for payment (like entering an expired credit card in test mode, or leaving required fields blank) to verify validation. If the platform integrates with Stripe or similar for billing, see if test card numbers work and how errors are displayed (like “card declined” messages).
+	•	Cancel subscription: If the workflow allows canceling or pausing a subscription, test that path. Ensure a confirmation dialog appears (“Are you sure?”). After cancellation, the workspace’s status might change – verify access is limited appropriately afterward.
+
+3. CLIENT DASHBOARD – ANALYTICS, LEADS, INBOX, BOTS, AUTOMATIONS, WIDGET
+
+(Repeat tests in this section for at least two different workspaces to ensure no single-workspace assumptions are hiding issues.)
+
+3.1 Dashboard Overview (Client Admin Home)
+	•	KPI cards and overview stats: On the client’s main dashboard page, identify key summary cards (e.g., Total Conversations, New Leads, Conversion Rate, etc.). Verify that each shows a number (no null/NaN). If there are icons or graphs in the cards, ensure they load correctly.
+	•	Date range filter: Change the dashboard’s date range (today, last 7 days, 30 days, custom range). Each time, confirm the stats and any charts update accordingly. Check that the date displayed matches what you selected. If using a custom range picker, test edge dates (end date before start date, or very large ranges) to see if the UI prevents or handles it.
+	•	Charts and graphs: If there are graphical elements (like a line chart of conversations over time, or a pie chart of lead sources), hover over data points to see if tooltips appear with details. Verify legends and axes labels are readable and not cut off. Try toggling any legend items if the chart library allows hiding series.
+	•	Empty state: For a brand-new workspace with no data, the dashboard should show friendly empty states (e.g., “No conversations yet” instead of broken charts). Ensure these messages are styled consistently and maybe provide guidance (like “Integrate the chat widget to start receiving conversations”).
+	•	Responsive layout: Shrink the window to mobile width. The KPI cards might stack vertically – check that they stack in a logical order and maintain equal width or proper spacing. Charts should either shrink to fit or be horizontally scrollable if too large (no overflow off screen). Text on cards should wrap or truncate cleanly (no half-visible text).
+	•	Interactions: If any dashboard elements are interactive (e.g., clicking a stat takes you to a detailed page like clicking “New Leads” jumps to the Leads section), test those links. Make sure they pass along any context (like the date filter) or at least open the correct page.
+
+3.2 Analytics Deep-Dive (Conversations, Leads, Sessions, Performance)
+	•	Navigate all analytics tabs: If the client dashboard has multiple analytics pages (e.g., Conversations Analytics, Lead Analytics, Session duration, Bot performance), click each tab or menu item. Verify the page loads without console errors and the content is relevant to the tab name.
+	•	Filters and segmentation: Within analytics pages, use any available filters (by date, by bot, by channel, etc.). For example, filter conversation analytics by a specific bot if multiple bots exist, or filter leads by source. Confirm that the data updates and the UI indicates the active filters. Try combinations of filters, and clearing filters, to see if anything breaks or if stale data remains (the results should go back to defaults after clearing).
+	•	Data accuracy: Cross-verify a few data points where possible. For instance, if the Leads analytics says “5 new leads today,” go to the Leads section, filter by today, and ensure you indeed see 5 leads. If a conversation funnel says X conversations, ensure the conversations list can show those X entries.
+	•	Export data: If an export (CSV download) button is present, use it for each analytics category. After downloading, open the CSV files to ensure:
+	•	The file is not corrupted and has proper headers.
+	•	The content matches what was in the UI (correct date ranges, counts, etc.).
+	•	Special characters (like user names with accents or emoji in lead messages) are properly encoded (no � replacement characters).
+	•	Visual checks on charts: Test charts on different browsers, since rendering might differ (especially Safari vs Chrome for canvas or SVG elements). Ensure no chart element (bar, line, tooltip) is visually cut off or misaligned. On very small screens, charts might be tough to read – check if perhaps a horizontal scroll or a simplified chart appears.
+	•	Performance: Some analytics pages might load a lot of data. Monitor if any page seems slow or causes high memory/CPU usage in the browser (open dev tools Performance monitor). This could indicate inefficient queries or rendering issues. If any page consistently lags, note it down.
+
+3.3 Leads Management
+	•	Lead creation via widget: Simulate the creation of leads by interacting with the chat widget as an end user (see section 5). Ensure that whenever a visitor provides their contact info or triggers a lead form, a new entry appears in the Leads section for the correct workspace.
+	•	Manual lead creation: If the client dashboard allows manual addition of leads (e.g., an “Add Lead” button or import CSV), use it. Fill out the form with various data: a normal lead (name, email, phone, etc.), then try edge cases (very long name, missing email, invalid phone number). Ensure validation catches errors (e.g., email must be valid format) and that a success message appears on valid save.
+	•	Leads list and details: Once leads exist, verify the list/table:
+	•	All columns (Name, Email, Status, Source, Assigned To, etc.) are populated correctly. Long text should either truncate with ellipsis or wrap in a controlled way.
+	•	Sorting and filtering: Click column headers to sort (if feature exists) and use any filters (by status like New, Contacted, Converted, etc.). Confirm they work (e.g., filter “New” only shows leads in new status).
+	•	Search: Use the search bar to find a lead by name or email. Try partial matches and case differences. Ensure it filters the list in real-time or on enter appropriately.
+	•	Lead detail view: Click on a specific lead to view details (or open a lead’s profile if the UI has a side panel or separate page). Check that all information collected appears (conversation transcript, tags, status history, notes, etc.). Edit some details:
+	•	Change the lead’s status (e.g., from New to Contacted). The change should be reflected both in the detail view and back in the main list (maybe the lead’s row or badge updates without a full page refresh, via AJAX).
+	•	Add or edit a note on the lead. Save and ensure it appears with a timestamp and possibly the user who added it.
+	•	Assign the lead to a team member (if that concept exists). The assignee field should update and maybe trigger a notification to that user (if the platform does that; check email or in-app notification if any).
+	•	Bulk actions: If the UI allows multi-select of leads (checkboxes on rows) and bulk operations, test these. For example, select multiple leads and change their status in one action, or assign all selected to a user, or delete multiple. Verify:
+	•	The bulk action applies to all selected (check a few entries to confirm).
+	•	If any selected lead cannot have the action (e.g., deleting a lead that’s already deleted by someone else), the system should handle gracefully (skip it with a warning or disable that option).
+	•	Pagination and large list performance: Create or simulate having many leads (hundreds). If you can’t realistically create that many manually, check if the frontend supports infinite scroll or page by page loading. Ensure that navigating to page 2, 3, etc., works and data is consistent. Look for any performance lag when scrolling a long list.
+	•	Empty state & First-use UX: For a brand-new workspace with no leads, ensure the Leads page shows an informative empty state (e.g., “No leads yet. Leads will appear here when visitors share their contact info.”) rather than just a blank table. Any “import leads” or tutorial link should work if present.
+	•	Data integrity: Delete a lead (either via individual delete or bulk delete). Confirm it’s removed from the list and cannot be found via search or direct link. Check that associated data (like their conversation in Inbox or analytics counts) updates appropriately (e.g., maybe conversation remains but marked as lead deleted).
+
+3.4 Inbox / Conversations (Client Admin)
+	•	Incoming conversations: Use the chat widget as an end user (or a script) to generate multiple distinct conversations (different visitors, different questions). As Client Admin, go to the Inbox or Conversations page and verify new conversations appear, typically with the latest message, the user’s name (if captured) or placeholder if anonymous, timestamp, and status (open/new).
+	•	View conversation thread: Click on a conversation to open the full thread. Scroll up to see the history from the start. Verify that messages are in correct order (oldest at top or bottom as per design). The user messages and bot responses should be clearly distinguished (different styling or alignment).
+	•	Replying and notes: Try typing a reply as the admin (if the platform allows the admin to jump into the conversation). Send a message – it should appear instantly in the thread with appropriate label (like “You” or agent name). Check the end user side if possible (if the chat is still open) to see that the reply comes through.
+	•	Add a private note in the conversation (many CRMs allow internal notes separate from the chat). These notes should be clearly visually distinct (perhaps a different color background) and not visible to the end user. After adding, ensure the note is timestamped and possibly labeled with the admin’s name.
+	•	If the platform supports assigning or transferring conversations, use that feature (assign the conversation to another team member or group). Verify the assignee changes and perhaps disappears from the original user’s inbox if filtering by “assigned to me”.
+	•	Conversation actions: Use options like mark as read/unread, close conversation (mark as resolved), reopen closed conversation. Each action should update the status in the UI (e.g., closed conversations might gray out or move to a “Closed” folder). Test filters: filter to show only unread, only open, only assigned to me, etc. Confirm the filtering logic works and that toggling filters doesn’t break the UI.
+	•	Multitasking and refresh: With one conversation open, see if new messages from other chats are indicated in the background (like an unread counter increment in the sidebar or a toast notification). Refresh the Inbox page while a conversation is open – ensure it either gracefully closes the detail view or persists it after reload (depending on design). There should be no duplicate messages or missing messages after refresh.
+	•	UI overflow: Send a very long message (several sentences or a large chunk of text) as both user and admin to see how the message bubble handles it. The text should wrap, and the bubble should expand, but not push critical UI off screen. The conversation window should allow scrolling. No text should overflow the bubble container.
+	•	Attachments (if supported): If the chat allows images or file attachments, test uploading a file as an end user and as an admin. Verify the file comes through, a thumbnail or link is shown, and clicking it opens or downloads the file. Try an unsupported file type or an oversized file to see if the system rejects it with an error.
+	•	Typing indicators and read receipts: If the UI shows when the bot or agent is typing (e.g., “Bot is typing…” or an animated ellipsis), ensure it appears appropriately and disappears after the message sends. If read receipts are shown (like checkmarks), test that they update when the admin/user reads the message.
+	•	Mobile view: Check the Inbox on a mobile device or using responsive mode. It may be a separate view or the conversation threads might use a full-screen modal. Ensure that it’s usable – you might have to have a hamburger menu for conversation list and full screen for messages. Test sending messages on mobile (keyboard may cover input; ensure the input box is not hidden and autoscrolls above the keyboard).
+
+3.5 Bot Configuration (Client Admin Perspective)
+	•	Create new bots (client-level): If the platform allows client admins to create or customize their own bots (as opposed to using a global template), test this. Use the “Create Bot” or “New Chatbot” flow: enter required info like name, select a base template or industry, and save. Do this multiple times to have several bots in one workspace. Use variations (one with a very short name, one with the maximum allowed length, one using non-English characters or emoji, if allowed).
+	•	Bot list management: Ensure the newly created bots appear in the bots list. The list should show key info (name, status, maybe last modified). Try reordering (if drag-and-drop ordering is allowed or if they list alphabetically, verify that).
+	•	Switching between bots: If the UI has a dropdown or selector to switch which bot you’re configuring (common if one workspace can have multiple bots), switch to each bot. Verify that the settings page updates to the selected bot’s info. Look out for bugs like after switching, fields still show previous bot’s data (stale form state).
+	•	Bot settings editing: For each bot, go through all configurable settings:
+	•	Basic info: Name, description, avatar image (if editable), default greeting message, etc. Try updating each and saving, then refreshing the page to ensure the changes stick. If an avatar upload is present, test uploading an image (valid image vs an invalid file) and check that it appears correctly (right size, cropped properly).
+	•	Knowledge base / FAQs: If bots have a knowledge base or FAQ entries, add a few Q&A pairs. Use special characters and long answers to test text areas. Save and then ask the bot (via widget or preview) one of those questions to confirm it pulls the answer.
+	•	Flows or decision trees: If there’s a visual flow builder or rules for the bot (like predefined conversation paths), engage with it. Create a simple flow, connect nodes, and save. Check for UI issues like connectors misaligning or the canvas not scrolling. Try a complex flow to see if the UI slows down or hits limits.
+	•	Integration toggles: Toggle features such as lead capture (on/off), email notification (should the bot send a notification when a lead comes in), hand-off to human, etc. Each toggle or option should enable/disable related sub-settings or fields accordingly. Verify that when a toggle is off, its fields are indeed disabled or hidden.
+	•	Delete bot: Remove a bot that you created. Confirm a confirmation step appears (“Are you sure?”). After deletion, the bot should disappear from the list and any references to it (like in analytics or widget settings) should handle it (either remove data or show as “[Deleted]”). Try deleting one bot while it’s currently selected for editing to see if the UI reverts to a safe state (perhaps default to another bot or to a “no bot selected” state).
+	•	Collaboration / concurrency: If multiple client users can edit bot settings, simulate two users editing the same bot concurrently (in two browsers or accounts). Check if there’s any locking mechanism or if last save wins (and if so, any warning). Make sure no weird errors or corrupted config if both edit at the same time.
+
+3.6 Automations (Client Admin)
+	•	Create automations: Go to the Automations/Workflows section. Create a variety of automation rules:
+	•	Keyword trigger: e.g., if user’s message contains “pricing”, then bot replies with a pricing info snippet and tags the conversation.
+	•	Lead event trigger: e.g., when a new lead is captured, send an internal email to sales or add the lead to a CRM via integration (if those actions exist).
+	•	Time-based or status-based triggers: e.g., if conversation is open for >5 minutes with no reply, notify an agent; or when a conversation is marked high priority, escalate it somehow.
+	•	Chaining actions: For each automation, if possible, configure multiple actions (e.g., send a chat reply and also send an email, or tag a lead and change lead status). Save the automation.
+	•	Test triggers live: Simulate the conditions for each automation:
+	•	For keyword triggers, as an end user send a message containing the keyword (try case differences, like “Pricing” vs “pricing”, to see if it’s case-insensitive). The bot’s automated reply should appear, and any side effects (tags or status changes) should reflect in the admin UI. Ensure the automated response doesn’t prevent the normal bot AI response unless intended (they should coexist or one should clearly override as per design).
+	•	For lead-based triggers, create a lead and then check if the actions happened (did an email get sent? Perhaps check the logs or an email testing inbox if configured, or see if an entry appears in some log page. If the platform doesn’t send real emails in test, at least ensure no errors and maybe a log entry).
+	•	For conversation event triggers (like inactivity), you may need to wait or manipulate time. If possible, simulate time passage (or set a very short threshold for test). Confirm the action fires (e.g., you see a notification or system message in the conversation).
+	•	Edit automations: Change conditions or actions of an existing automation. For example, broaden a keyword from “pricing” to “price” and save, or add a second keyword. Retest to ensure the new condition works and the old one doesn’t falsely trigger.
+	•	Disable and delete: Turn off an automation (most systems have an on/off toggle). Once disabled, repeat the trigger scenario to make sure it no longer executes. Then delete the automation rule entirely. Ensure it’s removed from the list and cannot be triggered. If you refresh the page after deletion, verify it’s truly gone.
+	•	Edge cases: Create two automation rules that could both trigger on the same event (like two different “new lead” automations). Does the system handle running both? If only one should run (due to priority or ordering), check that the right one wins. If both run, ensure they don’t conflict or cause duplicate actions.
+	•	UI and limits: If the UI supports, say, 20 automations, create a large number to see if the list scrolls or paginates. Ensure each entry displays clearly (trigger summary, a brief of actions). For very complex conditions or long names, make sure the text isn’t cut off or overlapping.
+
+3.7 Widget Customization (Client Admin)
+	•	Open customization settings: As a client admin, go to the Widget/Chatbot customization page. This typically has options for appearance and behavior of the chat widget. Ensure the preview (often a phone frame or an on-page demo widget) loads.
+	•	Appearance settings: Change colors (primary button color, header background, text color, etc.). Each time you change a color or theme, verify the preview updates immediately (if real-time) or after saving. Check edge cases: set some color to pure white #FFFFFF or pure black #000000 and ensure text or icon contrast is handled (e.g., if background is black, maybe the text auto-switches to white or there’s a warning about contrast).
+	•	Position and behavior: Toggle the widget position (left vs right side of screen) – preview should move it. Enable/disable options like: show the chat bubble vs. just an icon, whether the widget should auto-open on page load or not, etc. Each toggle should reflect in preview.
+	•	Texts and avatar: Edit the welcome message, the title text, subtitle, agent avatar or logo. Use very long text to test overflow (e.g., a subtitle that’s 100 characters). The preview’s widget interface should either wrap text or truncate with ellipsis gracefully. Upload a custom avatar image or company logo if possible; confirm it appears in the preview and is properly sized (not squished or pixelated).
+	•	Mobile view preview: If the preview offers a way to toggle to mobile view, use it. Otherwise, manually resize your browser while on this page – the preview widget might itself adapt. Ensure that the mobile view of the widget (in preview) still shows all changed settings.
+	•	Save and actual widget: After making customization changes, save them. Then navigate to an actual page where the widget is embedded (or use the public demo link for that bot) to see the live widget. Confirm all the customizations took effect in real usage: correct colors, texts, positioning, avatar, etc.
+	•	Reset to default: If there’s an option to reset customization to default or if you manually revert changes, ensure the widget goes back to the default style. No stale custom values should remain.
+	•	Multi-bot scenario: If a workspace has multiple bots, check how widget customization is handled. Are settings per bot, or global per workspace? If per bot, ensure switching between bots also switches the customization settings context. If global, ensure that’s clear in the UI (maybe the settings are under a general workspace settings, not tied to a particular bot). Test that customizing one bot doesn’t inadvertently change another’s widget if they are separate.
+
+3.8 Widget Embed & Token Behavior
+	•	Embed code snippet: Find the embed code or script tag provided to include the widget on client websites. Copy this snippet. In a test environment (like a blank Replit HTML page or a local HTML file), paste the snippet and load the page. Verify the widget appears and connects to the correct workspace/bot.
+	•	Token and ID validation: The embed snippet likely contains a workspace ID or bot token. Try tampering with it: e.g., use an invalid ID or change a few characters. The widget should fail to load or connect gracefully (maybe it doesn’t appear at all, or shows an error message like “Invalid widget configuration”). It should not load another tenant’s data or any unintended info.
+	•	Multiple widgets on one page: If supported, try embedding two different bot widgets on the same page (this is an edge case scenario). Ensure they both load (some systems might not support multiple instances, but if it does, verify no conflicts). If not supported, the second should probably fail gracefully or be ignored.
+	•	Loading performance: Observe how quickly the widget loads on a variety of network speeds. Use dev tools to throttle network to 3G and reload the page with the widget. The widget should still load reasonably, perhaps with a slight delay for the first message. Ensure there’s a loading indicator if it’s not instant (like a spinner or “…” in the chat bubble) so users know it’s initializing.
+	•	Security check: Ensure that the widget, when loading, does not expose sensitive info in the console or network logs. For example, it should use secure connections (wss/https). If any API keys or tokens are used in network calls, they should not be easily interceptable (likely they’ll use a short-term token or an ID that’s meaningless outside context).
+	•	Interaction test via embed: On the embedded widget in the test page, go through a full conversation as if you were an end user (this overlaps with section 5). Make sure the conversation flows the same as on the real site, and that leads created via the embedded widget still show up in the platform backend.
+
+4. DEMO HUB (PUBLIC FACING /demos SECTION)
+
+4.1 Demo List Page
+	•	Load the demos index: Navigate to the /demos page which lists various demo chatbot templates or industries. Ensure all expected demo entries are present (if the product advertises 10 demo bots, there should be 10 listed).
+	•	Visual consistency: Each demo card should have consistent styling – likely an image or icon, a title (e.g., “Real Estate Bot”), and a short description. Check that the text is not overflowing or cut off. On smaller screens, the cards might stack – ensure they align properly and each card is fully visible with appropriate margins.
+	•	Hover and focus states: If the cards have hover effects (like elevate or a shadow, or a highlight on the title), test those on desktop. On mobile, just ensure tapping is intuitive. If using keyboard navigation, tab through the cards to see if they get a focus outline (for accessibility).
+	•	Filter or category (if exists): Some demo hubs have filters (by industry for example). If present, click on a filter (like “E-commerce”, “Healthcare”) and ensure the list updates to show relevant demos. Test toggling filters on/off and a “All” or reset filter option.
+	•	Links and navigation: Click on each demo card or “View demo” button. It should open the specific demo page (likely /demos/[demo-id] or similar). Ensure it opens in the same tab or new tab as intended. If same tab, test the browser back button returning to the list. If new tab, closing it should reveal the list still there.
+
+4.2 Individual Demo Pages
+
+For each available demo (or at least a representative subset covering different industries or bot types):
+	•	Page content: Check the branding on the demo page – often it might have a header with the industry or company example, maybe some explanatory text. Ensure images or icons load correctly. The text describing the demo should not have typos and should be relevant.
+	•	Layout on devices: On desktop, the demo page might show a phone frame or a chat widget embedded. On mobile, the chat interface might just be full-screen. Verify that it’s usable on a phone (you may need to actually use a phone or simulator because if it shows a fake phone frame on desktop, that frame might not show on real mobile). Ensure nothing is cut off; if there’s a fixed header and the chat, make sure the chat isn’t pushed partly off screen.
+	•	Chat interactions: Click or open the chat widget on the demo page. Send a variety of queries that a user might ask for that industry. For example, if it’s a Real Estate Bot demo, ask “What listings do you have in New York?” or “Can I schedule a viewing?”. The bot should respond with context-appropriate answers (this is partially a content test: we want to ensure the AI or scripted bot has relevant answers, not just generic or nonsense answers).
+	•	Ask multiple questions in one conversation to test multi-turn handling. For instance, follow-up questions like “What price range?” after the bot lists something, to see if context is maintained.
+	•	Try an off-topic or unsupported question to see if the bot falls back gracefully (e.g., “What’s the weather?” – likely the bot should reply with a polite default fallback like “Sorry, I can help with real estate questions.”).
+	•	Call-to-action (CTA) testing: Many demo bots have CTAs such as “Book an appointment” or “Get a quote” that either open a form or redirect somewhere. Click every CTA the bot provides:
+	•	If it opens a form (like gathering contact info), fill out the form: test with valid info and submit – verify if it says thank you or triggers a lead entry. Try again with invalid inputs (wrong email format, missing required field) to see if inline validation appears.
+	•	If the CTA is supposed to navigate (like “Browse listings”), clicking it might simulate a link or the bot might just say “Sure, visit our listings page here: [link].” Ensure the link works or is not broken.
+	•	Ending or resetting demo: If there’s an option to restart the demo or end chat, use it. The chat should reset to the welcome message or the page should provide a way back (maybe a back arrow or just using browser back). Ensure that ending one demo chat doesn’t affect another if you open multiple.
+	•	Back to list: Use the in-page navigation (if provided) or browser back to return to the demo list. The transition should be smooth (no flash of unstyled content). If you had a filter set before, check if it persisted or cleared appropriately.
+
+5. END USER CHAT EXPERIENCE (WIDGET & CONVERSATION TORTURE TEST)
+
+This section focuses on the chat widget from the perspective of a visitor or end-user interacting with the chatbot. It’s partly covered by testing above, but here we specifically torture-test the conversation flows and AI responses.
+
+5.1 Conversation Scenarios and AI Behavior
+	•	Common questions: Ask the bot straightforward FAQs it’s expected to handle. The response should be correct and helpful (verify against known answers if possible, or at least not obviously wrong). For example, if the bot is for an e-commerce site: “What is your return policy?” should yield a coherent answer about returns.
+	•	Complex multi-turn dialog: Engage in a longer conversation. Start with a broad query then drill down. E.g., for a travel bot: “I want to book a flight.” Bot replies asking for details; provide details step by step (“to Paris”, then dates, etc.). Ensure the bot handles context correctly across multiple turns, and doesn’t forget what was said earlier.
+	•	Off-topic or nonsense input: Enter some irrelevant or nonsense messages – e.g., “blahblah” or “Tell me a joke” if not a joke bot. The bot should use a fallback or politely say it cannot help, rather than giving a jumbled or technical error. This tests the AI fallback and filters.
+	•	Rapid-fire messages: Send messages in quick succession (spam a few short questions back to back). The system should not break. Ideally, the bot processes one at a time, but check for any lost messages or if it queues them. Also verify the UI doesn’t glitch (like overlapping typing indicators).
+	•	Concurrent chats: If possible, simulate two users chatting with the bot at the same time (open two different browsers or incognito windows as separate “visitors”). Ensure the bot can handle concurrent sessions. Each conversation should remain independent (no cross-talk or data leakage). The platform’s real-time handling should not degrade with multiple simultaneous chats (listen for any delays or see if one chat’s activity affects the other’s performance).
+	•	Language and encoding: Try questions in another language (if not explicitly supported, the bot might or might not handle it). Also send messages with emojis or special characters to see if they render properly in the chat. If the platform is English-only, ensure foreign language input either gets a sensible default response or at least doesn’t crash anything.
+
+5.2 Lead Capture & Form Flows (End User)
+	•	Trigger lead capture: Many bots will at some point ask the user for contact info (to “lead capture”). Common triggers: user asks for a human, or at end of conversation it offers to email more info. Ensure these flows trigger appropriately:
+	•	e.g., If user says “Can I talk to a human?”, the bot should present a lead form or request for contact details.
+	•	If a demo bot has a “Get a Quote” flow, the conversation will shift into a sequence of asking for name, email, etc. Follow that flow.
+	•	Form validation (end user): When the chat bot asks for an email, give an obviously invalid one (“test@”). It should politely prompt that the email format seems wrong. Same for phone number if asked. If the form has required fields and you skip or say “no”, see how the bot handles it (some bots might insist until given or allow skipping; note the behavior).
+	•	Successful submission: Provide valid details for all fields and complete the lead form. The bot should respond with a confirmation message like “Thanks, we will reach out soon” or similar. Check on the admin side (Leads or Inbox) that the lead was indeed created with the info you gave, and linked to the conversation.
+	•	Duplicate attempt / multiple leads: Try triggering the lead form twice in one conversation (like after completing, ask for a quote again). The system should ideally recognize it has info already or just allow it but create a second lead depending on design. Ensure it doesn’t crash or loop infinitely.
+	•	Alternate paths: If the bot supports multiple types of forms (like Schedule Meeting vs Contact Us), trigger each kind. E.g., say “I want to schedule a demo” if that’s a keyword. Test any date pickers or time selection if the bot provides (some integrate with Calendly or similar; ensure the link works or the embedded calendar loads).
+	•	Edge cases: If you abandon the form halfway (e.g., close the widget after providing email but before phone), then reopen it, see if the bot remembers context or starts fresh. The conversation may time out – ensure it doesn’t resume in a weird state later or cause an orphan lead entry.
+
+5.3 Error Handling & Resilience
+	•	Network disruption: While chatting, simulate a network disconnect (you can do this via browser dev tools offline mode or simply turning off Wi-Fi for a moment). The chat widget should detect loss of connection and show a “Reconnecting…” or offline message. When network is restored, it should recover gracefully (maybe the user needs to resend the last message). Ensure no messages are lost silently.
+	•	Server errors / AI downtime: If there’s a way to simulate the AI or backend failing (maybe pointing the widget to an invalid endpoint or forcing an error via a special command), do so. The user-facing side should handle it gracefully – e.g., “Sorry, something went wrong. Please try again later.” and not expose raw error JSON or codes. Check the console for any unhandled promise errors.
+	•	Long sessions: Keep a chat session open and active for a long time (say 30+ minutes). Check memory usage in dev tools – see if the widget is continuously using more memory (memory leak) or remains stable. Ensure the performance remains okay (no significant lag after a long conversation).
+	•	Multiple concurrent messages: As an extension of rapid-fire, try sending a multi-line message or hitting enter several times quickly. The UI should ideally prevent sending empty messages or too many newlines. If shift+enter is used for newline (if supported), test that as well.
+	•	Malicious input: While you don’t want to actually attack the system, test for basic injection handling. For instance, send a message like <script>alert('xss')</script> from the user side. The chat display should render it as harmless text (escaped HTML) and not execute it. Similarly test sending a very long continuous string (like 10000 characters “aaaaaaaa…”) to see if it breaks the UI or input box.
+	•	Emoji and encoding: Send messages with various emoji, symbols, non-Latin characters to verify they appear correctly and don’t turn into tofu boxes or question marks. The bot’s reply to such input (if it doesn’t understand) should still be polite.
+	•	Cross-session consistency: Start a conversation, then close the widget (or refresh the page), then open the widget again. If the platform is set to persist sessions via cookies, the conversation might continue where it left off – check if that works. If it’s supposed to start fresh every time, ensure that truly a new conversation ID is generated and the old one is not accessible except in the admin archive.
+
+6. DATA EXPORTS, FILES, AND LOGS
+
+6.1 CSV/Excel Exports
+	•	Leads export: If the Leads page has an “Export” button, click it. Ensure a CSV or XLSX is downloaded. Open it and verify:
+	•	Column headers match the fields (Name, Email, etc., all present and labeled clearly).
+	•	Data in the file matches what was in the system (spot-check a couple of leads, including special characters or commas in names to ensure CSV is properly quoted).
+	•	If filtering was applied when exporting (e.g., export only “New” leads), ensure the file respects the filter or the system clarifies what it will export (some systems export all always, others export current view).
+	•	Conversations export: If the platform allows exporting conversations or transcripts, test that. Possibly an export on the Inbox or analytics page. Verify multi-line messages are properly contained in one cell (often JSON or some delimiter for line breaks). Ensure timestamps are included and formatted consistently.
+	•	Analytics export: For any analytics data export (like chat volumes per day), open the file and see if the data is structured (maybe a summary per day or per bot). Verify date formats (YYYY-MM-DD or locale-appropriate).
+	•	File integrity: Try opening exports in both a text editor and Excel/Google Sheets to see if encoding issues exist (especially if there are non-English characters). No gibberish or � characters.
+	•	Security: Ensure that export links or downloads require being logged in. (If you copy the download URL and paste in an incognito, it should not succeed.) Also, after logging out, ensure that clicking an old export link is denied.
+
+6.2 File Uploads & Downloads (General)
+	•	Profile or settings uploads: If any part of the platform involves file upload (user avatar, workspace logo, knowledge base file import), test those. Upload a small valid file (correct format) and ensure it succeeds (image appears or file listed). Then try:
+	•	A wrong file type (system should reject with an error like “Unsupported format”).
+	•	An excessively large file (if possible to simulate, to see if there’s a size validation).
+	•	If uploading the same file twice, check if it replaces the previous or creates duplicate entries (depending on context).
+	•	Download links: If the platform allows downloading any files (like a lead list, or conversation transcript, or invoice PDF as mentioned in billing), click those links. Ensure the file downloads and opens correctly. If the link opens in a new tab (like PDF preview), ensure it’s secured (should require auth if sensitive).
+	•	File storage checks: If you have access to a file management page or logs, verify that uploaded files have appropriate names (no path traversal in names, etc.). Not a deep security test, but just sanity.
+
+6.3 Audit Logs (if accessible)
+	•	View audit trails: If there’s an audit log page (maybe only for Super Admin), open it. This might list actions like “User X created Workspace Y” or “Admin A deleted Lead 123”. Ensure the list loads and is sorted by time.
+	•	Filter/search logs: Use any filter by user or action type if available. For example, filter logs to show only “delete” actions or only actions by a certain admin. Confirm filter works.
+	•	Log detail: If you can click on a log entry for details (some systems show the changed data in JSON or human-readable form), test a couple. Ensure sensitive info (like passwords) are not logged in plain text.
+	•	Volume handling: If you perform a lot of actions in the app during testing, the log should accumulate entries. Check performance or pagination on the log page when there are many entries. Does it still load quickly?
+	•	Security: Ensure that only authorized roles can see the audit log. Try accessing the audit log URL as a client admin (should be forbidden if intended only for super admin).
+
+7. RESPONSIVE DESIGN & VISUAL POLISH
+
+(Many visual and responsive checks have been done per page above; this section consolidates general UI/UX consistency tests.)
+	•	Consistent branding: Check that the platform’s branding (logo, app name) appears correctly on login page, main dashboards, and possibly browser tab titles. If the platform is white-labeled per workspace, ensure a client’s branding (logo/colors) carries through where it should (maybe in their dashboard header or widget) and doesn’t bleed into other tenants.
+	•	Component alignment: Do a sweep of forms and cards: labels should align with inputs, buttons in the same row should be aligned and consistently sized. Spacing between elements should be harmonious (no random large gaps or crowded elements). Use a designer’s eye – if something looks off-center or misaligned by a pixel, note it as a visual bug.
+	•	Text consistency: Check headings vs subheadings vs body text sizes. Ensure usage of bold/italics is consistent. All text should be easily readable (no tiny font on high DPI, for instance). Also check that dynamic text (like user-entered content) doesn’t break styling – e.g., a very long workspace name might overflow a header; see if it’s truncated with “…” or wraps to a new line neatly.
+	•	Buttons and links: All interactive elements should have proper hover/focus states. Buttons should change color or shadow on hover (unless material design ripple or etc. is used). Links should have a hover underline or color change. Ensure the cursor changes to pointer hand icon on hover for clickable elements (conversely, ensure non-clickable things do not show pointer).
+	•	Dark mode: If a dark theme is available, switch to it and recheck major pages. Look for issues like text that became invisible (e.g., if someone hard-coded a dark text that doesn’t invert). Ensure icons with transparent backgrounds still look good on dark (no weird white boxes unless intended).
+	•	Error and success states: Trigger a few intentional errors (like form validation, or 404 by going to a non-existent route) and examine the messages. They should be styled in the app’s theme (e.g., red text for errors, not unstyled default browser alerts). Success toasts or banners (like “Settings saved successfully”) should appear in a consistent location (usually top-right as a toast or top of form as a banner) and use consistent colors (green or blue for success, etc.). Ensure they disappear after a reasonable time or have a clear close button.
+	•	Icons and images: All icons should load (no broken image icons or missing SVGs). If using an icon font or library, ensure the correct icon is used in each place (no obviously wrong icons). Images (like user avatars or demo illustrations) should have alt text for accessibility and should scale properly on retina displays (not blurry).
+	•	Keyboard navigation: Try to navigate through the app using only the keyboard (Tab, Enter, Space, Arrow keys if applicable). You should be able to:
+	•	Open menu with keyboard (tab to it and hit enter or space).
+	•	Navigate inside a modal (focus should trap within the modal until closed).
+	•	Activate buttons and links with Enter/Space.
+	•	If a form has an obvious submit, pressing Enter in a field should submit it (or at least not do nothing, unless multiple forms are on the page).
+	•	No element should get “stuck” focus (where you can’t see where focus went, or focus goes behind a modal).
+	•	Tooltips & help text: Hover or click on any info (i) icons or help tooltips. Ensure they show helpful text, positioned near the icon, and on mobile either they are accessible via tap or those are replaced by always-visible help text (since hover doesn’t exist on touch).
+	•	Microcopy & grammar: Read the text in the UI critically. Ensure consistent terminology (e.g., sometimes it says “bot” vs “chatbot” vs “agent” – should ideally be consistent). Look for any placeholder text left in (like “Lorem ipsum” or “TODO”). Check for typos or awkward phrasing and list suggestions for improvement under UX issues.
+	•	Loading states: Identify places where data loads from the server (like when opening the analytics page or switching workspace). Ensure there are loading spinners or skeleton placeholders. The user should never stare at a blank screen with no indication. If you have slow network, these should be visible. If things load fast normally, simulate slow network to see them. Also ensure that once data loads, the loading indicator disappears.
+
+8. BROKEN LINKS, 404 PAGES, AND DIRECT URL ACCESS
+	•	All internal links: Systematically click every link or button that looks like it navigates to a different page (including in table rows, in settings sidebars, logos that go home, etc.). We covered nav and footers, but double-check any “Learn more” or contextual link. None should result in a React/JS error or a blank page. If any are supposed to be placeholders, they should handle it (maybe a proper “Coming soon” message).
+	•	External links: If any links lead to external pages (documentation, company website, social media), click them to verify they actually go to a valid page (and ideally open in a new tab). For example, a “Privacy Policy” link in the footer should open the correct policy page.
+	•	404 page design: Intentionally go to a non-existent route (like /randomgarbage) while logged in and while logged out. Ensure that the 404 page is user-friendly (has navigation options like “Go Home” or at least the main menu). It should carry the app’s branding (not a browser default 404).
+	•	Deep linking and refresh: Copy some URLs from within the app (for example, a specific lead’s detail page URL, or an analytics page with a filter query param) and paste them into a new browser tab or window. This simulates a user bookmarking a page or sharing a link. Verify:
+	•	If not logged in, the app should redirect to login, then after login possibly redirect to the intended page (if that’s a feature) or at least not show an error.
+	•	If logged in (session active), the page should load fully with all context (the specific lead or filtered state). If some state cannot be shared via URL (like unsaved filters), the app should handle it gracefully (maybe show default view if filter not in URL).
+	•	Back/forward navigation: While using the app, use the browser’s back and forward buttons frequently. For example, go to Leads, click a lead to view details, then press back. The app should show the Leads list again (ideally with the same scroll position or filters as before). Forward should return to detail. Ensure no “white screen” (common if the app doesn’t handle routing state well). Test back from a modal or drawer if those change URL hash – that should close the modal.
+
+9. SECURITY & PERMISSIONS ISOLATION (UI-Level Tests)
+	•	Cross-workspace data isolation: Log in as Client Admin of Workspace A in one browser, and Client Admin of Workspace B in another. Try to access data across them:
+	•	Manually craft or modify an URL: e.g., if lead detail pages are /workspace/:id/lead/:leadId, take a leadId from Workspace A and plug it into Workspace B’s URL. The app should prevent accessing it (either “not found” or redirect to an error). It must not show Workspace A’s lead to Workspace B’s user.
+	•	Try using search or any global feature to see data of another workspace – it should strictly limit to the current workspace.
+	•	Super Admin vs Client Admin UI: Ensure that a Client Admin cannot somehow access super admin pages. If you know a super admin route (like /admin/workspaces), try as a client admin user – should be denied (probably redirect to 404 or home). Conversely, ensure super admin can access everything expected.
+	•	File access control: If you have direct URLs to files (like an image you uploaded or an export link), verify that they require proper permission. A file from Workspace A should not be accessible if you are not logged in or if you are logged as a user from Workspace B.
+	•	Input sanitization: Throughout testing forms and chat inputs, ensure that any HTML/JS you tried inputting is not rendered as active. Also check if special characters in names or fields don’t break the page (e.g., a workspace named <Workspace> might display as just “” literally, not as a broken tag or causing elements to disappear).
+	•	Password security: When testing login or user creation, ensure passwords are never shown in URL or in any response. If there’s a “change password” form, check that the old password isn’t exposed and the new password input is of type password (masked). Also ensure the app doesn’t accept a weak password if there’s a policy (if no policy given, at least it should allow a decent length and maybe check common passwords).
+	•	Rate limiting / brute force (basic): Try a few rapid failed login attempts (though not too many to lock yourself out unless it’s a test account). See if there’s any obvious rate-limit message or captcha after many tries. If not visible, it’s fine, but note if unlimited attempts seem possible (could be a security concern to flag).
+	•	API keys or credentials: If the platform shows any secret keys (for integrations or bot API usage), ensure they are partially masked by default (common practice: show sk_live_****abcd with a reveal button). And test that the reveal button works and hides back when clicked again. Also ensure you cannot copy it unless it’s revealed (some UI block copying masked text which is good).
+
+10. LOAD, STRESS, AND PERFORMANCE TESTING
+
+(This is more difficult to do manually, but outline what to try or observe.)
+	•	Simulate concurrent usage: Open multiple instances of the app (different browsers, or one in normal window, one in incognito, plus maybe another machine if possible). Log in as different users or the same user in different sessions if allowed. Perform actions at the same time:
+	•	For example, two client admins in the same workspace both editing different leads or bots. See if any changes conflict or if real-time updates occur (like one user’s change appears for the other without refresh).
+	•	As mentioned, multiple end users chatting simultaneously (you might not realistically open dozens of windows manually, but try a few to simulate). The system should handle it without crashing or slowing dramatically.
+	•	High volume data: If possible, generate a large volume of test data. For instance, simulate 1000 leads (maybe via an import feature or API script if out-of-scope for UI, but at least do what you can). Then test how the UI copes:
+	•	Leads page with 1000 leads – does it paginate or get very slow? If infinite scroll, does it eventually lag the browser?
+	•	Analytics with a very long date range (e.g., 1 year if data available) – does the chart become unreadable or the request timeout?
+	•	Long running operations: Some actions might be heavy (like generating a big report, or training an AI model if that happens behind scenes). Trigger something like that and see if a loading indicator stays up and if it completes. If there’s a timeout, the UI should handle it (not stuck forever).
+	•	Memory leaks: Keep an eye on memory usage by the app (using the Performance monitor in dev tools). Navigate through many pages in a single session without full page reload (since this is likely a single-page app). See if memory continually increases without dropping – if so, note what actions caused it (could be event listeners not cleaned up).
+	•	CPU usage and client performance: If any page causes high CPU (the fan spins up), identify it. Possibly large animations or huge data tables without virtualization. Check on a lower-powered device (maybe an older phone or a slow laptop) to ensure it’s still usable.
+	•	Server-side performance (signs from client): If the app has an observable delay when doing something (like clicking a button to load data takes 5+ seconds), flag it. Use dev tools network tab to see if a particular request is very slow or large (maybe an inefficient API). While not something to “fix” as a QA, it’s good to note these as performance issues to optimize.
+	•	Stress tools (if available): If you have access to any, consider running a small script or using browser console to simulate multiple operations quickly (e.g., calling an API endpoint 50 times). But if not, just describe that such tests should be done to ensure stability under load.
+
+11. ACCESSIBILITY & COMPLIANCE
+	•	ARIA roles and labels: Inspect elements like modals, navigation, and form inputs to ensure they have appropriate ARIA attributes. For example, modals should have role="dialog" and an aria-labelledby that ties to the modal title. Icons that are just graphics should either be aria-hidden or have a label if they convey meaning.
+	•	Keyboard focus management: As mentioned, ensure focus order is logical. Also, when modals open, focus should move into the modal. When modals close, focus should return to a sensible place (like the button that opened it). No giant focus traps or invisible focus.
+	•	Screen reader testing: If possible, use a screen reader (NVDA, VoiceOver) or at least a browser plugin to see how it announces elements. Key things: All interactive controls (buttons, links) should have accessible names. For example, an icon-only button for “delete” should have aria-label="Delete" or similar. Form inputs should have associated <label> or aria-label.
+	•	Color contrast: Verify the color contrast of text vs background, especially for smaller text or placeholder text. Use a contrast checker if available. All text should ideally meet WCAG AA contrast. Pay attention to light gray text on white, or colored buttons text on colored button background. If any fail, note them as a visual/accessibility issue.
+	•	Zoom and scaling: In your browser, zoom to 200%. The layout should still be usable (responsive can help here). Text should resize (depending if they used relative units). No content should become inaccessible or require horizontal scroll at 200% zoom on desktop. On mobile, try device settings to increase font size or use pinch zoom if allowed – the app should not break (some SPAs disable zoom which is bad for accessibility, check if you can zoom or not).
+	•	Form hints and errors: Ensure that error messages are not only shown by color. E.g., if an input is invalid, it might outline in red and show a message. A color-blind user might not see red; the message text is crucial. Also ensure that error messages are programmatically tied to the input (via aria-describedby or similar) so screen readers know an input has an error.
+	•	Avoiding flashes or motion: Check if any part of the UI has flashing elements or auto-scrolling carousels. These can be problematic for accessibility (seizures, motion sickness). If present, ensure there’s a way to pause or it stops after a few cycles.
+
+12. FINAL QA & UX REPORT
+
+(This section outlines how to compile your findings; after testing, you would produce a report structured like below.)
+	•	Executive Summary: Provide a high-level overview of the platform’s quality. E.g., “Most core functionalities work as expected, and the application is stable under normal usage. Found X blocker issues and Y major bugs that need urgent fixing, as well as multiple minor and visual issues. The UX is generally intuitive, though a few workflows were confusing and could be improved.”
+	•	Key Risk Areas: Mention any modules that had a lot of issues or any patterns observed (e.g., “File upload features are unstable” or “Permissions checks need improvement across the board”).
+	•	Blocker Issues: List each blocker (things that prevent usage or corrupt data) with the full bug report format (Title, Steps, etc. as described above). These might include crashes, inability to login or save critical data, security breaches, etc.
+	•	Major Issues: List major bugs (significant problems but with workarounds or not affecting all users). This could be features not working as per requirements, severe visual breakage on common devices, data inconsistencies, etc. Provide details for each.
+	•	Minor & Visual Issues: Summarize the smaller bugs – UI misalignments, typos, minor glitches that don’t impede core usage. You can list them more succinctly, but still include where and what is wrong.
+	•	UX Improvement Suggestions: Provide suggestions for better user experience, such as: clearer error messages here, add a confirmation step there, improve loading feedback on a certain action, simplify a form flow, etc. These are not “bugs” per se, but things that would polish the product.
+	•	Security Concerns: Note any potential security issues found (e.g., “Password reset token is not invalidated after use” or “Found that user IDs are guessable and not checked”). For anything critical, highlight it in Blockers as well.
+	•	Performance Observations: If any actions were notably slow or heavy on the client, mention them here for the team to optimize. E.g., “Loading the full leads list of 1000 entries took 8 seconds and froze the UI – consider pagination or virtualization.”
+	•	Accessibility Review: Mention if the app meets basic accessibility standards or if there are major gaps (like “No screen reader labels on most buttons – will be very hard for visually impaired users to use.”).
+	•	Confirmed Working Features: It’s good to end on a positive note listing what was tested thoroughly and found to work well. For example:
+	•	✅ Login and Session Management: Remember-me and session timeout functions correctly for both admin types.
+	•	✅ Lead Capture to CRM Flow: Leads from the widget appeared in the dashboard and email notifications were received as expected.
+	•	✅ Multi-browser Support: Tested on Chrome, Firefox, Safari – all core features functional and layout consistent.
+	•	✅ Responsive Design: The app is generally responsive; the mobile experience for chat and admin dashboard is solid (aside from minor spacing issues noted).
+	•	Conclusion: End by reiterating that the test covered as much as possible (all major user journeys) and that fixing the found issues will greatly improve the platform’s stability and user satisfaction before launch. Encourage re-testing once fixes are applied, especially for the critical areas.
+
+⸻
+
+Use this Ultimate QA Torture-Test Prompt as your guide to rigorously test the platform. The goal is to identify anything and everything that’s not perfect, so the development team can fix issues and refine the user experience. Good luck, and break things (so the end-users won’t)!

@@ -1,0 +1,139 @@
+You are Replit Agent working inside a Replit project that hosts a multi-tenant SaaS chatbot platform (Treasure Coast AI) used for AI customer service, lead capture, and business automation.
+
+Your job is NOT just to read code. Your job is to:
+
+1. Turn the QA charter below into a concrete, exhaustive test plan.
+2. Actually run those tests against the running app (in dev) as far as Replit allows.
+3. Log every bug, broken flow, visual glitch, and missing core feature you discover.
+4. Immediately fix issues in the codebase (or config) as you find them, without breaking working features.
+5. Implement any clearly missing core features that the charter expects but the platform does not yet provide, in a minimal, stable, production-safe way.
+6. Re-run tests after changes to verify fixes.
+7. Produce a final QA + Fixes report at the end.
+
+Be extremely thorough and careful. Work incrementally. Prefer small, safe changes over massive refactors. Always preserve existing behavior unless it is clearly wrong or broken.
+
+---
+
+## CONTEXT ABOUT THE APP
+
+- The project is a multi-tenant SaaS chatbot platform with:
+  - Super Admin area (workspaces/tenants, users, bots, billing, demos, global settings)
+  - Client Admin dashboards (analytics, leads, inbox, automations, bots, widget customization, settings)
+  - Public demo hub (/demos) and embedded chat widget for end users
+- It is running on Replit, Node/TypeScript/React-style stack.
+- We want this platform ready for **real clients**, so both functionality and visual polish matter.
+
+Assume:
+- You can start the dev server, open it in the Replit browser, and interact with it.
+- You can add/edit tests (e.g., Playwright, Vitest/Jest, or minimal integration tests) IF that helps automate verification.
+- You must not introduce breaking changes to core flows that already work unless they’re clearly wrong or insecure.
+
+---
+
+## YOUR OBJECTIVES
+
+### 1. Build & Execute the Complete Test Plan from the QA Charter
+
+Below is a very detailed QA charter called `[[QA_CHARTER]]`. Treat it as your **master checklist**.
+
+[[QA_CHARTER]]
+
+Your job with this charter:
+
+1. Translate it into concrete test actions inside Replit:
+   - Start the dev server.
+   - Use the built-in browser to navigate every route and UI section described.
+   - Manually click through every clickable element the charter references.
+   - For things like “try invalid data”, actually try invalid data.
+   - For “different screen sizes”, simulate viewport changes via dev tools or the Replit browser if possible.
+   - For cross-role checks, log in as Super Admin, as at least one Client Admin, and as an end user via the widget.
+2. Where fully manual testing is too repetitive:
+   - If a test framework (like Vitest/Jest/Playwright) is already present, extend it with new tests based on the charter.
+   - If there is no test framework and it’s straightforward to add one, you may add a minimal, focused test setup to cover critical pieces (auth, chat endpoint, leads, widget token, automations).
+
+You must attempt to cover:
+
+- Authentication, navigation, login/logout, session handling.
+- Super Admin flows: workspaces, users, bots/templates, billing/plan limits.
+- Client Admin flows: dashboard overview, analytics, leads, inbox, bot configuration, automations, widget customization.
+- End user flows: chat widget behavior, lead capture, error/fallback behavior.
+- Demo hub (/demos) and each demo’s chat + CTA flows.
+- Data exports (CSV), logs/audit pages (if any).
+- Responsive layout and visual polish on different viewport sizes.
+- Broken links, 404 handling, direct URL access/bookmarking.
+- Basic security/isolation from the UI side (cross-tenant access, role boundaries).
+- Basic performance/stress signs (slow pages, heavy operations).
+- Accessibility basics (focus, keyboard navigation, labels, color contrast).
+
+### 2. For Every Issue You Find: Fix or Implement Immediately
+
+As you execute the charter, follow this loop:
+
+1. When you hit a bug, missing feature, UX glitch, layout issue, or security concern:
+   - Document it in your internal notes with:
+     - Title
+     - Severity (BLOCKER | MAJOR | MINOR | VISUAL | UX | NICE-TO-HAVE)
+     - Role
+     - Route / component
+     - Steps to reproduce
+     - Expected vs actual behavior
+     - Any console/network errors
+2. Then **fix it immediately** in the codebase, subject to these rules:
+   - Keep changes minimal and targeted.
+   - Do NOT rip out or refactor large architecture pieces unless absolutely necessary.
+   - Preserve valid behavior for other flows; don’t trade one working feature for another.
+   - For purely visual issues, update styles/layout to match the charter’s expectations (no overlap, no clipping, good alignment).
+   - For validation issues, add or correct validation so bad inputs are rejected gracefully.
+   - For missing states (empty states, error messages, spinners), implement them according to the charter.
+
+3. If the charter clearly expects a core feature that is missing entirely (e.g., missing empty state messaging, missing automation toggle, missing bulk action that UI hints at):
+   - Implement a reasonable, minimal version of that feature.
+   - Hook it into existing data structures, respecting multi-tenant boundaries.
+   - Ensure it’s fully wired front-end and back-end as needed.
+   - Add basic error handling and UX feedback (toasts, messages).
+
+4. After each non-trivial change:
+   - Rebuild / restart the dev server if needed.
+   - Re-run the relevant part of the test scenario that failed to confirm the fix.
+   - If tests exist, run them. If you added tests, run them too.
+
+If you discover a bug or missing feature that is too large or risky to implement fully in this session (for example, a huge architectural change is required), then:
+- Implement the safest possible minimal patch that mitigates the issue (e.g., disable a broken feature or guard against worst behavior).
+- Add a clear TODO comment in code describing what needs to be done later.
+
+### 3. Maintain Stability and Multi-Tenant Safety
+
+Throughout your edits:
+
+- Always respect workspace/tenant boundaries. Never allow Client Admin A to see data from Client Admin B.
+- Never expose secrets or sensitive information in the browser (no raw tokens, stack traces, etc.).
+- Ensure all changes keep the app deployable on Replit with the current structure.
+- Avoid introducing heavy dependencies unless absolutely necessary.
+
+### 4. Final Output: QA + Fixes Report
+
+When you are finished:
+
+1. Produce a structured **QA & Fixes Report** that includes:
+   - Summary of overall health (e.g. “X blockers, Y majors fixed, Z issues left as TODOs”).
+   - List of all **blocker** issues found and what you did to fix them.
+   - List of all **major** issues found and fixed.
+   - List of any remaining issues that you could not fully address, each with:
+     - Severity
+     - Location
+     - Suggested fix
+   - List of key features and flows you validated as working correctly, formatted like:
+     - ✅ [Role] [Route/Feature] – brief description.
+
+2. Also summarize any **tests you added or updated** (e.g., new Vitest/Jest/Playwright tests) and how to run them, for example:
+   - `npm test`
+   - `npm run e2e`
+   - or whatever scripts you added/used.
+
+3. Confirm that the project:
+   - Still starts in Replit without runtime errors.
+   - Still runs its critical flows end-to-end (login → dashboard → chat → lead capture → analytics).
+
+---
+
+Follow these instructions step-by-step. Use the full QA Charter in [[QA_CHARTER]] as your test blueprint. Be aggressive in finding faults and careful in fixing them so the platform becomes more stable, more polished, and production-ready with each change you make.
