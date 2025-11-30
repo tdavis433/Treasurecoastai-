@@ -3509,8 +3509,9 @@ function CreateFromTemplateModal({
             </DialogHeader>
             <div className="grid grid-cols-2 gap-3 mt-4 max-h-[400px] overflow-y-auto">
               {templates?.map((t) => (
-                <div
+                <button
                   key={t.botId}
+                  type="button"
                   className="cursor-pointer bg-white/5 border border-white/10 rounded-lg p-4 text-center hover:bg-white/10 transition-all"
                   onClick={() => handleSelectTemplate(t)}
                   data-testid={`template-select-${t.botId}`}
@@ -3519,7 +3520,7 @@ function CreateFromTemplateModal({
                   <p className="font-medium text-sm text-white capitalize">
                     {(t.metadata?.templateCategory || t.businessProfile?.type || t.name || '').replace(/_/g, ' ')}
                   </p>
-                </div>
+                </button>
               ))}
             </div>
           </>
