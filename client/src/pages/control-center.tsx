@@ -666,7 +666,7 @@ export default function ControlCenter() {
               </div>
 
               {/* Quick Actions Bar */}
-              <div className="flex items-center gap-3 mb-6 flex-wrap">
+              <div className="flex items-center gap-3 mb-6 overflow-x-auto pb-2 scrollbar-thin">
                 <Button
                   data-testid="button-section-overview"
                   variant={dashboardSection === 'overview' ? 'default' : 'outline'}
