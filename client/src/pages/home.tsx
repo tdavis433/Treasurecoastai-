@@ -50,12 +50,13 @@ export default function Home() {
             <div className="flex items-center gap-4">
               <Link href="/login">
                 <Button variant="ghost" className="text-white/80 hover:text-white" data-testid="link-login">
-                  Sign In
+                  Admin Login
                 </Button>
               </Link>
-              <Link href="/login">
-                <Button className="btn-gradient-primary rounded-xl px-6" data-testid="button-get-started-nav">
-                  Get Started
+              <Link href="/demos">
+                <Button className="btn-gradient-primary rounded-xl px-6 glow-cyan" data-testid="button-get-started-nav">
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Contact Us
                 </Button>
               </Link>
             </div>
@@ -86,13 +87,14 @@ export default function Home() {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/login">
+              <Link href="/demos">
                 <Button 
                   size="lg" 
-                  className="btn-gradient-primary rounded-xl px-8 py-6 text-lg group"
+                  className="btn-gradient-primary rounded-xl px-8 py-6 text-lg group glow-cyan-strong"
                   data-testid="button-get-started-hero"
                 >
-                  Start Building Free
+                  <MessageSquare className="w-5 h-5 mr-2" />
+                  Contact Us Today
                   <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
@@ -100,10 +102,11 @@ export default function Home() {
                 <Button 
                   size="lg" 
                   variant="outline" 
-                  className="rounded-xl px-8 py-6 text-lg border-white/10 text-white hover:bg-white/5"
+                  className="rounded-xl px-8 py-6 text-lg border-white/20 text-white hover:bg-white/10 hover:border-primary/50 transition-all duration-300"
                   data-testid="button-view-demos"
                 >
-                  View Demo Bots
+                  <Sparkles className="w-5 h-5 mr-2 text-primary" />
+                  See Live Demos
                 </Button>
               </Link>
             </div>
@@ -311,13 +314,14 @@ export default function Home() {
                 ))}
               </div>
 
-              <Link href="/login">
+              <Link href="/demos">
                 <Button 
                   size="lg" 
-                  className="btn-gradient-secondary rounded-xl px-10 py-6 text-lg group"
+                  className="btn-gradient-secondary rounded-xl px-10 py-6 text-lg group glow-purple-strong"
                   data-testid="button-start-free-trial"
                 >
-                  Start Free Trial
+                  <MessageSquare className="w-5 h-5 mr-2" />
+                  Get Your Custom Bot
                   <TrendingUp className="w-5 h-5 ml-2 group-hover:translate-y-[-2px] transition-transform" />
                 </Button>
               </Link>

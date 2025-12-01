@@ -226,22 +226,21 @@ export default function DemosPage() {
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
-            <Link href="/signup">
-              <Button 
-                size="lg" 
-                className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white px-8 py-6 text-lg gap-2 shadow-lg shadow-cyan-500/25"
-                data-testid="button-get-started"
-              >
-                <Bot className="h-5 w-5" />
-                Get Started Free
-                <ArrowRight className="h-5 w-5" />
-              </Button>
-            </Link>
+            <Button 
+              size="lg" 
+              className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white px-8 py-6 text-lg gap-2 shadow-lg shadow-cyan-500/25"
+              data-testid="button-get-started"
+              onClick={() => window.location.href = 'mailto:hello@treasurecoastai.com?subject=I want a custom AI chatbot'}
+            >
+              <MessageCircle className="h-5 w-5" />
+              Contact Us Now
+              <ArrowRight className="h-5 w-5" />
+            </Button>
             <Link href="/faith-house">
               <Button 
                 size="lg" 
                 variant="outline" 
-                className="border-white/20 text-white hover:bg-white/10 px-8 py-6 text-lg gap-2"
+                className="border-white/20 text-white hover:bg-white/10 px-8 py-6 text-lg gap-2 hover:border-cyan-400/50 transition-all"
                 data-testid="button-live-demo"
               >
                 <Heart className="h-5 w-5 text-rose-400" />
@@ -483,10 +482,12 @@ export default function DemosPage() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button 
                 size="lg" 
-                className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white px-8 py-6 text-lg gap-2 shadow-lg shadow-cyan-500/25"
+                className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white px-8 py-6 text-lg gap-2 shadow-lg shadow-cyan-500/25 glow-cyan-strong"
                 data-testid="button-cta-bottom"
+                onClick={() => window.location.href = 'mailto:hello@treasurecoastai.com?subject=I want a custom AI chatbot'}
               >
-                Start Building Today
+                <MessageCircle className="h-5 w-5" />
+                Get Your Custom Bot
                 <ArrowRight className="h-5 w-5" />
               </Button>
               <Link href="/login">
@@ -496,7 +497,7 @@ export default function DemosPage() {
                   className="text-white/70 hover:text-white hover:bg-white/5 px-8 py-6 text-lg"
                   data-testid="button-login"
                 >
-                  Sign In
+                  Admin Login
                 </Button>
               </Link>
             </div>
