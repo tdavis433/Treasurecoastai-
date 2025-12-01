@@ -174,16 +174,34 @@ shared/
   - Last activity timestamp shown on Activity card
 
 ## Control Center Features (Admin Only)
-The admin Control Center at `/super-admin` provides:
-- **Overview Tab:** Bot stats, conversations, leads, bookings
-- **Test Chat Tab:** Inline AI chat tester with real GPT-4o-mini responses
-- **Settings Tab:** Business profile, hours, FAQs, system prompt
-- **Billing Tab:** Stripe integration status
-- **Analytics Tab:** Charts and trends
-- **Logs Tab:** Conversation logs
-- **Automations Tab:** Keyword triggers
-- **Widget Tab:** Customization settings
-- **Install Tab:** Embed code generator
+The admin Control Center at `/super-admin` provides comprehensive "god mode" platform management:
+
+### Dashboard Sections
+- **Overview Tab:** Platform-wide metrics with 7/30 day toggle, activity trends chart, top-performing assistants, platform status
+- **Clients Tab:** Client list with search/filter, status badges (Active/Paused/Trial), plan info, "View as Client" impersonation
+- **Assistants Tab:** Global assistant view with filters by client/status, duplicate/pause/activate, bulk actions, key metrics
+- **Templates Tab:** Template gallery with 6 niche categories (Restaurant, Barber, Auto Shop, Home Services, Gym, Sober Living), create-from-template flow
+- **Knowledge Tab:** Global knowledge management filtered by client/assistant, FAQ counts, bulk reindex/remove actions
+- **Integrations Tab:** API keys hub showing OpenAI, Stripe status with Connected/Not Configured/Error badges
+- **Billing Tab:** Plan management with Starter/Professional/Enterprise tiers, assign plans to clients, revenue overview, usage vs limits
+- **Analytics Tab:** Charts and trends, export to CSV
+- **System Tab:** System health & logs with multi-dimensional filtering (level, status, source, client), critical issues alert
+- **Users Tab:** Role hierarchy management (SUPER_ADMIN, AGENCY_USER, CLIENT_OWNER, CLIENT_USER), invite flow, permissions display
+
+### Assistant Editor (Bot Builder)
+- **Overview:** Bot stats and quick actions
+- **Persona & System Prompt:** AI personality, tone, behavior customization
+- **Knowledge/Content:** FAQs, scraped content, custom knowledge base
+- **Automations/Flows:** Keyword triggers, booking suggestions
+- **Channels & Embeds:** Widget customization, embed code generator
+- **Testing Sandbox:** Inline chat tester with raw request/response debugging
+- **Advanced AI Settings:** Model selection, temperature, safety layers
+
+### Backend API Enhancements
+- Client impersonation: `POST /api/super-admin/impersonate/:clientId`, `POST /api/super-admin/end-impersonation`
+- Workspace plan management: `PATCH /api/super-admin/workspaces/:slug/plan`
+- Template cloning: `POST /api/super-admin/clients/from-template`
+- Global knowledge view, bulk operations, and more
 
 ## What This Platform Is & Is NOT
 ✅ **Should be:**
