@@ -4,11 +4,19 @@
 This project is a multi-tenant AI chatbot platform providing customizable, AI-driven conversational agents for various businesses. It offers templated bots for diverse industries, administrative tools, analytics, and robust security features, with a strong emphasis on privacy and data protection. The platform aims to be a leading solution for AI-powered customer interaction.
 
 ## User Preferences
-- **Current Mode:** Database-backed multi-tenant platform (Phase 1-3 complete)
+- **Current Mode:** Database-backed multi-tenant platform (Phases 1A-1E in progress)
 - **Real Tenant:** Faith House Sober Living (migrated to database)
 - **Bot Templates:** 10 industry templates stored in database (restaurant, barber, gym, auto_shop, home_services, med_spa, real_estate, tattoo, sober_living, generic)
 - **Super-Admin Access:** Password-protected settings management for business configuration
 - Privacy-first approach with PII protection
+
+## Development Roadmap Progress
+### Phase 1: Flow Engine & Visual Bot Builder
+- **Phase 1A (Complete):** Multi-channel conversation schema (channels, conversations, messages, participants, attachments)
+- **Phase 1B (Complete):** Channel connector architecture (BaseConnector, ChatWidgetConnector, EmailConnector, ChannelService)
+- **Phase 1C (Complete):** Flow engine schema (bot_flows, bot_flow_versions, flow_sessions)
+- **Phase 1D (Complete):** Flow interpreter service with 11 node types (start, message, question, condition, ai_answer, action, set_variable, delay, api_call, handoff, end)
+- **Phase 1E (In Progress):** Visual bot builder UI with React Flow
 
 ## System Architecture
 The system is built with a React, TypeScript, Tailwind CSS, and shadcn/ui frontend, and an Express, Node.js backend.
@@ -25,6 +33,7 @@ The system is built with a React, TypeScript, Tailwind CSS, and shadcn/ui fronte
 - **Workspaces:** `GET /api/workspaces`, `GET /api/workspaces/:slug`, `GET /api/workspaces/:id/bots` (super admin only).
 - **Platform Management:** APIs for managing clients, bots, and accessing logs.
 - **Admin & Client Dashboards:** Dedicated APIs for analytics, leads, inbox, and configuration.
+- **Flow Builder:** `GET/POST /api/flows`, `GET/PUT/DELETE /api/flows/:flowId`, `POST /api/flows/:flowId/versions`, `POST /api/flows/:flowId/publish` for visual bot builder.
 
 ### Frontend
 - **Demo Hub (`/demos`):** Showcases available bot templates.

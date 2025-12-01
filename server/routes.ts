@@ -75,6 +75,7 @@ import {
   getStaffCredentials
 } from './env';
 import { registerChannelRoutes } from './channelRoutes';
+import flowRoutes from './flowRoutes';
 
 // =============================================
 // PHASE 2.4: SIGNED WIDGET TOKENS
@@ -6544,6 +6545,9 @@ These suggestions should be relevant to what was just discussed and help guide t
 
   // Register channel routes for multi-channel inbox
   registerChannelRoutes(app, requireAuth);
+  
+  // Register flow builder routes
+  app.use(flowRoutes);
 
   const httpServer = createServer(app);
   return httpServer;
