@@ -70,7 +70,7 @@ import {
   TrendingUp, Users2, AlertCircle, Activity, RefreshCw, Download, Layers,
   Shield, FileWarning, CheckCircle2, XCircle, Filter, Calendar, UserPlus,
   MoreVertical, MoreHorizontal, Workflow, Palette, ChevronDown, SendHorizontal, MessageCircle,
-  CheckCircle, PauseCircle, LayoutGrid, List
+  CheckCircle, PauseCircle, LayoutGrid, List, Crown, User, HelpCircle
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -187,7 +187,7 @@ export default function ControlCenter() {
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [dashboardSection, setDashboardSection] = useState<'overview' | 'workspaces' | 'assistants' | 'templates' | 'knowledge' | 'integrations' | 'billing' | 'analytics' | 'logs' | 'users'>('overview');
-  const [logFilters, setLogFilters] = useState({ level: 'all', source: '', isResolved: 'all' });
+  const [logFilters, setLogFilters] = useState({ level: 'all', source: 'all', isResolved: 'all', clientId: 'all' });
   const [analyticsRange, setAnalyticsRange] = useState<number>(7);
   const [selectedBots, setSelectedBots] = useState<Set<string>>(new Set());
   const [workspaceSearch, setWorkspaceSearch] = useState('');
@@ -346,9 +346,10 @@ export default function ControlCenter() {
     queryFn: async () => {
       const params = new URLSearchParams();
       if (logFilters.level && logFilters.level !== 'all') params.append('level', logFilters.level);
-      if (logFilters.source) params.append('source', logFilters.source);
+      if (logFilters.source && logFilters.source !== 'all') params.append('source', logFilters.source);
       if (logFilters.isResolved && logFilters.isResolved !== 'all') params.append('isResolved', logFilters.isResolved);
-      params.append('limit', '50');
+      if (logFilters.clientId && logFilters.clientId !== 'all') params.append('clientId', logFilters.clientId);
+      params.append('limit', '100');
       const response = await fetch(`/api/super-admin/system/logs?${params}`, { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch logs");
       return response.json();
@@ -2013,36 +2014,114 @@ export default function ControlCenter() {
               {/* System Logs Section */}
               {dashboardSection === 'logs' && (
                 <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-white">System Logs</h2>
-                    <div className="flex items-center gap-2">
-                      <Select value={logFilters.level} onValueChange={(v) => setLogFilters({...logFilters, level: v})}>
-                        <SelectTrigger className="w-32 bg-white/5 border-white/10 text-white text-sm">
-                          <SelectValue placeholder="All Levels" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-[#1a1d24] border-white/10">
-                          <SelectItem value="all" className="text-white">All Levels</SelectItem>
-                          <SelectItem value="debug" className="text-white">Debug</SelectItem>
-                          <SelectItem value="info" className="text-white">Info</SelectItem>
-                          <SelectItem value="warn" className="text-white">Warning</SelectItem>
-                          <SelectItem value="error" className="text-white">Error</SelectItem>
-                          <SelectItem value="critical" className="text-white">Critical</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Select value={logFilters.isResolved} onValueChange={(v) => setLogFilters({...logFilters, isResolved: v})}>
-                        <SelectTrigger className="w-32 bg-white/5 border-white/10 text-white text-sm">
-                          <SelectValue placeholder="All Status" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-[#1a1d24] border-white/10">
-                          <SelectItem value="all" className="text-white">All Status</SelectItem>
-                          <SelectItem value="false" className="text-white">Unresolved</SelectItem>
-                          <SelectItem value="true" className="text-white">Resolved</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Button variant="ghost" size="icon" onClick={() => refetchLogs()} className="text-white/55 hover:text-white hover:bg-white/10">
-                        <RefreshCw className="h-4 w-4" />
-                      </Button>
+                  {/* Header */}
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                      <h2 className="text-xl font-semibold text-white">System Health & Logs</h2>
+                      <p className="text-sm text-white/55">Monitor platform activity and resolve issues</p>
                     </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => refetchLogs()} 
+                      className="text-white/70 hover:text-white hover:bg-white/10"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Refresh
+                    </Button>
+                  </div>
+
+                  {/* Critical Issues Alert */}
+                  {systemLogs?.logs?.some(log => log.level === 'critical' && !log.isResolved) && (
+                    <GlassCard className="border-red-500/30 bg-red-500/5">
+                      <GlassCardContent className="py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-lg bg-red-500/20 flex items-center justify-center animate-pulse">
+                            <AlertCircle className="h-5 w-5 text-red-400" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium text-red-400">Critical Issues Detected</p>
+                            <p className="text-sm text-white/70">
+                              {systemLogs.logs.filter(l => l.level === 'critical' && !l.isResolved).length} critical issue(s) require immediate attention
+                            </p>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setLogFilters({...logFilters, level: 'critical', isResolved: 'false'})}
+                            className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                          >
+                            View Critical
+                          </Button>
+                        </div>
+                      </GlassCardContent>
+                    </GlassCard>
+                  )}
+
+                  {/* Filters Row */}
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <Select value={logFilters.level} onValueChange={(v) => setLogFilters({...logFilters, level: v})}>
+                      <SelectTrigger className="w-[130px] bg-white/5 border-white/10 text-white text-sm" data-testid="select-log-level">
+                        <SelectValue placeholder="All Levels" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#1a1d24] border-white/10">
+                        <SelectItem value="all" className="text-white">All Levels</SelectItem>
+                        <SelectItem value="debug" className="text-white">Debug</SelectItem>
+                        <SelectItem value="info" className="text-white">Info</SelectItem>
+                        <SelectItem value="warn" className="text-white">Warning</SelectItem>
+                        <SelectItem value="error" className="text-white">Error</SelectItem>
+                        <SelectItem value="critical" className="text-white">Critical</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={logFilters.isResolved} onValueChange={(v) => setLogFilters({...logFilters, isResolved: v})}>
+                      <SelectTrigger className="w-[130px] bg-white/5 border-white/10 text-white text-sm" data-testid="select-log-status">
+                        <SelectValue placeholder="All Status" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#1a1d24] border-white/10">
+                        <SelectItem value="all" className="text-white">All Status</SelectItem>
+                        <SelectItem value="false" className="text-white">Unresolved</SelectItem>
+                        <SelectItem value="true" className="text-white">Resolved</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={logFilters.source} onValueChange={(v) => setLogFilters({...logFilters, source: v})}>
+                      <SelectTrigger className="w-[140px] bg-white/5 border-white/10 text-white text-sm" data-testid="select-log-source">
+                        <SelectValue placeholder="All Sources" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#1a1d24] border-white/10">
+                        <SelectItem value="all" className="text-white">All Sources</SelectItem>
+                        <SelectItem value="api" className="text-white">API</SelectItem>
+                        <SelectItem value="chat" className="text-white">Chat</SelectItem>
+                        <SelectItem value="webhook" className="text-white">Webhook</SelectItem>
+                        <SelectItem value="scraper" className="text-white">Scraper</SelectItem>
+                        <SelectItem value="stripe" className="text-white">Stripe</SelectItem>
+                        <SelectItem value="auth" className="text-white">Auth</SelectItem>
+                        <SelectItem value="system" className="text-white">System</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={logFilters.clientId} onValueChange={(v) => setLogFilters({...logFilters, clientId: v})}>
+                      <SelectTrigger className="w-[160px] bg-white/5 border-white/10 text-white text-sm" data-testid="select-log-client">
+                        <SelectValue placeholder="All Clients" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#1a1d24] border-white/10">
+                        <SelectItem value="all" className="text-white">All Clients</SelectItem>
+                        {(workspacesData?.workspaces || []).map(ws => (
+                          <SelectItem key={ws.slug} value={ws.slug} className="text-white">
+                            {ws.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {(logFilters.level !== 'all' || logFilters.isResolved !== 'all' || logFilters.source !== 'all' || logFilters.clientId !== 'all') && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setLogFilters({ level: 'all', source: 'all', isResolved: 'all', clientId: 'all' })}
+                        className="text-white/55 hover:text-white"
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Clear Filters
+                      </Button>
+                    )}
                   </div>
 
                   {/* Stats Summary */}
@@ -2158,169 +2237,15 @@ export default function ControlCenter() {
 
               {/* Users Section */}
               {dashboardSection === 'users' && (
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-white">Admin Users</h2>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="border-white/10 text-white/85 hover:bg-white/10"
-                      onClick={() => setShowCreateUserModal(true)}
-                      data-testid="button-add-user"
-                    >
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Add User
-                    </Button>
-                  </div>
-
-                  {/* Create User Modal */}
-                  <AlertDialog open={showCreateUserModal} onOpenChange={setShowCreateUserModal}>
-                    <AlertDialogContent className="bg-[#1a1d24] border-white/10">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle className="text-white">Create New User</AlertDialogTitle>
-                        <AlertDialogDescription className="text-white/55">
-                          Add a new admin user to the platform.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                          <label className="text-sm text-white/85">Username</label>
-                          <input
-                            type="text"
-                            value={newUserForm.username}
-                            onChange={(e) => setNewUserForm(f => ({ ...f, username: e.target.value }))}
-                            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-cyan-400/50"
-                            placeholder="Enter username"
-                            data-testid="input-new-username"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm text-white/85">Password</label>
-                          <input
-                            type="password"
-                            value={newUserForm.password}
-                            onChange={(e) => setNewUserForm(f => ({ ...f, password: e.target.value }))}
-                            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-cyan-400/50"
-                            placeholder="Enter password"
-                            data-testid="input-new-password"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm text-white/85">Role</label>
-                          <Select
-                            value={newUserForm.role}
-                            onValueChange={(value) => setNewUserForm(f => ({ ...f, role: value as 'super_admin' | 'client_admin' }))}
-                          >
-                            <SelectTrigger className="w-full bg-white/5 border-white/10 text-white" data-testid="select-new-role">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="bg-[#1a1d24] border-white/10">
-                              <SelectItem value="client_admin" className="text-white">Client Admin</SelectItem>
-                              <SelectItem value="super_admin" className="text-white">Super Admin</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        {newUserForm.role === 'client_admin' && (
-                          <div className="space-y-2">
-                            <label className="text-sm text-white/85">Client ID (optional)</label>
-                            <input
-                              type="text"
-                              value={newUserForm.clientId}
-                              onChange={(e) => setNewUserForm(f => ({ ...f, clientId: e.target.value }))}
-                              className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-cyan-400/50"
-                              placeholder="e.g. faith_house"
-                              data-testid="input-new-clientid"
-                            />
-                          </div>
-                        )}
-                      </div>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-transparent border-white/10 text-white hover:bg-white/10">
-                          Cancel
-                        </AlertDialogCancel>
-                        <Button
-                          onClick={() => createUserMutation.mutate(newUserForm)}
-                          disabled={!newUserForm.username || !newUserForm.password || createUserMutation.isPending}
-                          className="bg-cyan-500 hover:bg-cyan-600 text-white"
-                          data-testid="button-create-user-confirm"
-                        >
-                          {createUserMutation.isPending ? "Creating..." : "Create User"}
-                        </Button>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-
-                  {usersLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <div className="h-8 w-8 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
-                    </div>
-                  ) : !adminUsers?.length ? (
-                    <GlassCard>
-                      <GlassCardContent className="py-12 text-center">
-                        <Shield className="h-12 w-12 mx-auto mb-3 text-white/30" />
-                        <p className="text-white/55">No admin users found</p>
-                      </GlassCardContent>
-                    </GlassCard>
-                  ) : (
-                    <div className="grid gap-4">
-                      {adminUsers.map((user) => (
-                        <GlassCard key={user.id} data-testid={`card-user-${user.id}`}>
-                          <GlassCardContent className="py-4">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
-                                  user.role === 'super_admin' ? 'bg-purple-500/10' : 'bg-cyan-500/10'
-                                }`}>
-                                  <Shield className={`h-5 w-5 ${user.role === 'super_admin' ? 'text-purple-400' : 'text-cyan-400'}`} />
-                                </div>
-                                <div>
-                                  <p className="font-medium text-white">{user.username}</p>
-                                  <div className="flex items-center gap-2">
-                                    <Badge className={user.role === 'super_admin' ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'}>
-                                      {user.role === 'super_admin' ? 'Super Admin' : 'Client Admin'}
-                                    </Badge>
-                                    {user.clientId && <span className="text-xs text-white/40">Client: {user.clientId}</span>}
-                                  </div>
-                                </div>
-                              </div>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="text-white/55 hover:text-white hover:bg-white/10" data-testid={`button-user-menu-${user.id}`}>
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="bg-[#1a1d24] border-white/10">
-                                  <DropdownMenuItem 
-                                    className="text-white hover:bg-white/10"
-                                    onClick={() => {
-                                      const newRole = user.role === 'super_admin' ? 'client_admin' : 'super_admin';
-                                      updateUserMutation.mutate({ id: String(user.id), role: newRole });
-                                    }}
-                                    data-testid={`button-toggle-role-${user.id}`}
-                                  >
-                                    {user.role === 'super_admin' ? 'Demote to Client Admin' : 'Promote to Super Admin'}
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator className="bg-white/10" />
-                                  <DropdownMenuItem 
-                                    className="text-red-400 hover:bg-red-500/10"
-                                    onClick={() => {
-                                      if (confirm(`Are you sure you want to delete user "${user.username}"?`)) {
-                                        deleteUserMutation.mutate(String(user.id));
-                                      }
-                                    }}
-                                    data-testid={`button-delete-user-${user.id}`}
-                                  >
-                                    Delete User
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </GlassCardContent>
-                        </GlassCard>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <UsersSectionPanel 
+                  users={adminUsers || []}
+                  isLoading={usersLoading}
+                  workspaces={workspacesData?.workspaces || []}
+                  onCreateUser={(data) => createUserMutation.mutate(data)}
+                  onUpdateRole={(userId, newRole) => updateUserMutation.mutate({ id: userId, role: newRole })}
+                  onDeleteUser={(userId) => deleteUserMutation.mutate(userId)}
+                  isCreating={createUserMutation.isPending}
+                />
               )}
 
               {/* Assistants Section - Global bot management */}
@@ -8153,6 +8078,500 @@ function BillingSectionPanel({ workspaces }: { workspaces: Workspace[] }) {
               ) : (
                 'Confirm Change'
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// Role definitions for the enhanced Users & Roles section
+const ROLE_DEFINITIONS = [
+  {
+    id: 'super_admin',
+    name: 'Super Admin',
+    description: 'Full platform access. Can manage all clients, users, billing, and system settings.',
+    permissions: ['All permissions', 'Manage billing', 'Create super admins', 'System configuration'],
+    color: 'purple',
+    icon: Crown,
+  },
+  {
+    id: 'agency_user',
+    name: 'Agency User',
+    description: 'Agency team member. Can manage clients and assistants but cannot access billing or system settings.',
+    permissions: ['Manage clients', 'Create assistants', 'View analytics', 'Template management'],
+    color: 'cyan',
+    icon: Users,
+  },
+  {
+    id: 'client_owner',
+    name: 'Client Owner',
+    description: 'Business owner. Has full access to their own dashboard, conversations, leads, and settings.',
+    permissions: ['View dashboard', 'Manage leads', 'View conversations', 'Update business info'],
+    color: 'green',
+    icon: Building2,
+  },
+  {
+    id: 'client_user',
+    name: 'Client User',
+    description: 'Team member at a client business. Read-only access to dashboard and conversations.',
+    permissions: ['View dashboard', 'View conversations', 'View leads'],
+    color: 'blue',
+    icon: User,
+  },
+];
+
+interface UsersSectionPanelProps {
+  users: Array<{
+    id: number;
+    username: string;
+    role: string;
+    clientId?: string | null;
+    email?: string | null;
+    lastLogin?: string | null;
+    createdAt?: string | null;
+  }>;
+  isLoading: boolean;
+  workspaces: Workspace[];
+  onCreateUser: (data: { username: string; password: string; role: string; clientId?: string; email?: string }) => void;
+  onUpdateRole: (userId: string, newRole: string) => void;
+  onDeleteUser: (userId: string) => void;
+  isCreating: boolean;
+}
+
+function UsersSectionPanel({ 
+  users, 
+  isLoading, 
+  workspaces,
+  onCreateUser,
+  onUpdateRole,
+  onDeleteUser,
+  isCreating
+}: UsersSectionPanelProps) {
+  const { toast } = useToast();
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showRolesInfo, setShowRolesInfo] = useState(false);
+  const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [inviteForm, setInviteForm] = useState({
+    email: '',
+    username: '',
+    password: '',
+    role: 'client_owner',
+    clientId: '',
+  });
+
+  const filteredUsers = users?.filter(user => {
+    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+    const matchesSearch = !searchQuery || 
+      user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesRole && matchesSearch;
+  }) || [];
+
+  const getRoleInfo = (roleId: string) => {
+    return ROLE_DEFINITIONS.find(r => r.id === roleId) || ROLE_DEFINITIONS[3];
+  };
+
+  const handleInvite = () => {
+    if (!inviteForm.username || !inviteForm.password) {
+      toast({ title: 'Error', description: 'Username and password are required', variant: 'destructive' });
+      return;
+    }
+    onCreateUser({
+      username: inviteForm.username,
+      password: inviteForm.password,
+      role: inviteForm.role,
+      clientId: inviteForm.clientId || undefined,
+      email: inviteForm.email || undefined,
+    });
+    setShowInviteModal(false);
+    setInviteForm({ email: '', username: '', password: '', role: 'client_owner', clientId: '' });
+  };
+
+  const usersByRole = {
+    super_admin: users?.filter(u => u.role === 'super_admin').length || 0,
+    agency_user: users?.filter(u => u.role === 'agency_user').length || 0,
+    client_owner: users?.filter(u => u.role === 'client_owner' || u.role === 'client_admin').length || 0,
+    client_user: users?.filter(u => u.role === 'client_user').length || 0,
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-xl font-semibold text-white">Users & Roles</h2>
+          <p className="text-sm text-white/55">Manage platform users and their permissions</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowRolesInfo(true)}
+            className="text-white/70 hover:text-white hover:bg-white/10"
+            data-testid="button-view-roles"
+          >
+            <HelpCircle className="h-4 w-4 mr-2" />
+            Role Guide
+          </Button>
+          <Button
+            onClick={() => setShowInviteModal(true)}
+            className="bg-cyan-500 hover:bg-cyan-600 text-white"
+            data-testid="button-invite-user"
+          >
+            <UserPlus className="h-4 w-4 mr-2" />
+            Invite User
+          </Button>
+        </div>
+      </div>
+
+      {/* Role Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {ROLE_DEFINITIONS.map(role => {
+          const count = role.id === 'client_owner' 
+            ? usersByRole.client_owner 
+            : usersByRole[role.id as keyof typeof usersByRole] || 0;
+          const Icon = role.icon;
+          const colorClasses: Record<string, string> = {
+            purple: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+            cyan: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
+            green: 'bg-green-500/10 text-green-400 border-green-500/20',
+            blue: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+          };
+          return (
+            <GlassCard 
+              key={role.id} 
+              className={`cursor-pointer transition-all ${roleFilter === role.id ? 'ring-1 ring-cyan-500/50' : ''}`}
+              onClick={() => setRoleFilter(roleFilter === role.id ? 'all' : role.id)}
+            >
+              <GlassCardContent className="py-4">
+                <div className="flex items-center gap-3">
+                  <div className={`h-10 w-10 rounded-lg flex items-center justify-center border ${colorClasses[role.color]}`}>
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-white">{count}</p>
+                    <p className="text-xs text-white/55">{role.name}s</p>
+                  </div>
+                </div>
+              </GlassCardContent>
+            </GlassCard>
+          );
+        })}
+      </div>
+
+      {/* Search and Filter */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+          <input
+            type="text"
+            placeholder="Search by username or email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/40 focus:outline-none focus:border-cyan-400/50"
+            data-testid="input-search-users"
+          />
+        </div>
+        <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <SelectTrigger className="w-[180px] bg-white/5 border-white/10 text-white" data-testid="select-role-filter">
+            <SelectValue placeholder="Filter by role" />
+          </SelectTrigger>
+          <SelectContent className="bg-[#1a1d24] border-white/10">
+            <SelectItem value="all" className="text-white">All Roles</SelectItem>
+            {ROLE_DEFINITIONS.map(role => (
+              <SelectItem key={role.id} value={role.id} className="text-white">
+                {role.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {roleFilter !== 'all' && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setRoleFilter('all')}
+            className="text-white/55 hover:text-white"
+          >
+            <X className="h-4 w-4 mr-1" />
+            Clear Filter
+          </Button>
+        )}
+      </div>
+
+      {/* Users List */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="h-8 w-8 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
+        </div>
+      ) : filteredUsers.length === 0 ? (
+        <GlassCard>
+          <GlassCardContent className="py-12 text-center">
+            <Users className="h-12 w-12 mx-auto mb-3 text-white/30" />
+            <p className="text-white/55">
+              {searchQuery || roleFilter !== 'all' ? 'No users match your filters' : 'No users found'}
+            </p>
+          </GlassCardContent>
+        </GlassCard>
+      ) : (
+        <div className="space-y-3">
+          {filteredUsers.map(user => {
+            const roleInfo = getRoleInfo(user.role === 'client_admin' ? 'client_owner' : user.role);
+            const Icon = roleInfo.icon;
+            const colorClasses: Record<string, { bg: string; text: string; badge: string }> = {
+              purple: { bg: 'bg-purple-500/10', text: 'text-purple-400', badge: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
+              cyan: { bg: 'bg-cyan-500/10', text: 'text-cyan-400', badge: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
+              green: { bg: 'bg-green-500/10', text: 'text-green-400', badge: 'bg-green-500/20 text-green-400 border-green-500/30' },
+              blue: { bg: 'bg-blue-500/10', text: 'text-blue-400', badge: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+            };
+            const colors = colorClasses[roleInfo.color];
+
+            return (
+              <GlassCard key={user.id} data-testid={`card-user-${user.id}`}>
+                <GlassCardContent className="py-4">
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div className="flex items-center gap-3">
+                      <div className={`h-12 w-12 rounded-lg flex items-center justify-center ${colors.bg}`}>
+                        <Icon className={`h-6 w-6 ${colors.text}`} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium text-white">{user.username}</p>
+                          <Badge className={colors.badge}>
+                            {roleInfo.name}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-white/50 mt-1">
+                          {user.email && (
+                            <span className="flex items-center gap-1">
+                              <Mail className="h-3 w-3" />
+                              {user.email}
+                            </span>
+                          )}
+                          {user.clientId && (
+                            <span className="flex items-center gap-1">
+                              <Building2 className="h-3 w-3" />
+                              {user.clientId}
+                            </span>
+                          )}
+                          {user.lastLogin && (
+                            <span>Last login: {new Date(user.lastLogin).toLocaleDateString()}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="text-white/55 hover:text-white hover:bg-white/10" data-testid={`button-user-actions-${user.id}`}>
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-[#1a1d24] border-white/10 min-w-[180px]">
+                        <DropdownMenuLabel className="text-white/55">Change Role</DropdownMenuLabel>
+                        {ROLE_DEFINITIONS.filter(r => r.id !== user.role && r.id !== 'client_owner' || user.role === 'client_admin').map(role => (
+                          <DropdownMenuItem
+                            key={role.id}
+                            className="text-white hover:bg-white/10"
+                            onClick={() => onUpdateRole(String(user.id), role.id)}
+                            data-testid={`button-set-role-${role.id}-${user.id}`}
+                          >
+                            <role.icon className="h-4 w-4 mr-2 text-white/50" />
+                            Set as {role.name}
+                          </DropdownMenuItem>
+                        ))}
+                        <DropdownMenuSeparator className="bg-white/10" />
+                        <DropdownMenuItem
+                          className="text-red-400 hover:bg-red-500/10"
+                          onClick={() => {
+                            if (confirm(`Delete user "${user.username}"? This cannot be undone.`)) {
+                              onDeleteUser(String(user.id));
+                            }
+                          }}
+                          data-testid={`button-delete-user-${user.id}`}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete User
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </GlassCardContent>
+              </GlassCard>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Invite User Modal */}
+      <Dialog open={showInviteModal} onOpenChange={setShowInviteModal}>
+        <DialogContent className="bg-[#1a1d24] border-white/10">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-cyan-400" />
+              Invite User
+            </DialogTitle>
+            <DialogDescription className="text-white/55">
+              Create a new user account or send an invitation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm text-white/85">Username *</label>
+                <input
+                  type="text"
+                  value={inviteForm.username}
+                  onChange={(e) => setInviteForm(f => ({ ...f, username: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-cyan-400/50"
+                  placeholder="Enter username"
+                  data-testid="input-invite-username"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-white/85">Email (optional)</label>
+                <input
+                  type="email"
+                  value={inviteForm.email}
+                  onChange={(e) => setInviteForm(f => ({ ...f, email: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-cyan-400/50"
+                  placeholder="user@example.com"
+                  data-testid="input-invite-email"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm text-white/85">Temporary Password *</label>
+              <input
+                type="password"
+                value={inviteForm.password}
+                onChange={(e) => setInviteForm(f => ({ ...f, password: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-cyan-400/50"
+                placeholder="Set a temporary password"
+                data-testid="input-invite-password"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm text-white/85">Role</label>
+              <Select
+                value={inviteForm.role}
+                onValueChange={(value) => setInviteForm(f => ({ ...f, role: value }))}
+              >
+                <SelectTrigger className="w-full bg-white/5 border-white/10 text-white" data-testid="select-invite-role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1a1d24] border-white/10">
+                  {ROLE_DEFINITIONS.map(role => (
+                    <SelectItem key={role.id} value={role.id} className="text-white">
+                      <div className="flex items-center gap-2">
+                        <role.icon className="h-4 w-4 text-white/50" />
+                        {role.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-white/40 mt-1">
+                {getRoleInfo(inviteForm.role).description}
+              </p>
+            </div>
+            {(inviteForm.role === 'client_owner' || inviteForm.role === 'client_user') && (
+              <div className="space-y-2">
+                <label className="text-sm text-white/85">Assign to Client</label>
+                <Select
+                  value={inviteForm.clientId}
+                  onValueChange={(value) => setInviteForm(f => ({ ...f, clientId: value }))}
+                >
+                  <SelectTrigger className="w-full bg-white/5 border-white/10 text-white" data-testid="select-invite-client">
+                    <SelectValue placeholder="Select a client..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1a1d24] border-white/10">
+                    {workspaces.map(ws => (
+                      <SelectItem key={ws.slug} value={ws.slug} className="text-white">
+                        {ws.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowInviteModal(false)} className="text-white/70">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleInvite}
+              disabled={!inviteForm.username || !inviteForm.password || isCreating}
+              className="bg-cyan-500 hover:bg-cyan-600 text-white"
+              data-testid="button-confirm-invite"
+            >
+              {isCreating ? (
+                <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Creating...</>
+              ) : (
+                <>Create User</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Role Guide Modal */}
+      <Dialog open={showRolesInfo} onOpenChange={setShowRolesInfo}>
+        <DialogContent className="bg-[#1a1d24] border-white/10 max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <Shield className="h-5 w-5 text-cyan-400" />
+              Role Hierarchy & Permissions
+            </DialogTitle>
+            <DialogDescription className="text-white/55">
+              Understanding the different user roles and their capabilities.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+            {ROLE_DEFINITIONS.map((role, index) => {
+              const Icon = role.icon;
+              const colorClasses: Record<string, string> = {
+                purple: 'border-purple-500/30 bg-purple-500/5',
+                cyan: 'border-cyan-500/30 bg-cyan-500/5',
+                green: 'border-green-500/30 bg-green-500/5',
+                blue: 'border-blue-500/30 bg-blue-500/5',
+              };
+              const textColors: Record<string, string> = {
+                purple: 'text-purple-400',
+                cyan: 'text-cyan-400',
+                green: 'text-green-400',
+                blue: 'text-blue-400',
+              };
+              return (
+                <div key={role.id} className={`p-4 rounded-lg border ${colorClasses[role.color]}`}>
+                  <div className="flex items-start gap-3">
+                    <div className={`h-10 w-10 rounded-lg flex items-center justify-center bg-white/5`}>
+                      <Icon className={`h-5 w-5 ${textColors[role.color]}`} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className={`font-semibold ${textColors[role.color]}`}>{role.name}</h3>
+                        {index === 0 && <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 text-xs">Highest</Badge>}
+                      </div>
+                      <p className="text-sm text-white/70 mt-1">{role.description}</p>
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {role.permissions.map(perm => (
+                          <Badge key={perm} variant="outline" className="text-xs text-white/60 border-white/20 bg-white/5">
+                            {perm}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setShowRolesInfo(false)} className="bg-cyan-500 hover:bg-cyan-600 text-white">
+              Got it
             </Button>
           </DialogFooter>
         </DialogContent>

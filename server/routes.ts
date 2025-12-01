@@ -6420,6 +6420,14 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(400).json({ error: `Invalid plan. Must be one of: ${validPlans.join(', ')}` });
       }
       
+      // Get workspace first
+      const workspace = await getWorkspaceBySlug(slug);
+      if (!workspace) {
+        return res.status(404).json({ error: "Workspace not found" });
+      }
+      
+      const previousPlan = (workspace as any).plan || 'starter';
+      
       // Update workspace plan in database
       const result = await updateWorkspacePlan(slug, plan);
       if (!result.success) {
@@ -6432,13 +6440,99 @@ These suggestions should be relevant to what was just discussed and help guide t
         source: 'super-admin',
         message: `Workspace ${slug} plan changed to ${plan}`,
         workspaceId: (workspace as any).id,
-        details: { previousPlan: (workspace as any).plan || 'starter', newPlan: plan },
+        details: { previousPlan, newPlan: plan },
       });
       
       res.json({ success: true, slug, plan });
     } catch (error) {
       console.error("Update workspace plan error:", error);
       res.status(500).json({ error: "Failed to update workspace plan" });
+    }
+  });
+
+  // Client impersonation - Start impersonation session
+  app.post("/api/super-admin/impersonate/:clientId", requireSuperAdmin, async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      const superAdminId = req.session.userId;
+      
+      // Verify client exists
+      const workspace = await getWorkspaceBySlug(clientId);
+      if (!workspace) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      // Store original session data and set impersonation
+      req.session.originalUserId = superAdminId;
+      req.session.originalRole = req.session.userRole;
+      req.session.isImpersonating = true;
+      req.session.clientId = clientId;
+      req.session.userRole = 'client_admin';
+      
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+      
+      // Log impersonation
+      await storage.createSystemLog({
+        level: 'info',
+        source: 'super-admin',
+        message: `Admin started impersonation of client ${clientId}`,
+        workspaceId: (workspace as any).id,
+        details: { adminId: superAdminId },
+      });
+      
+      res.json({ 
+        success: true, 
+        clientId,
+        clientName: (workspace as any).name,
+        message: `Now viewing as ${(workspace as any).name}`
+      });
+    } catch (error) {
+      console.error("Impersonation error:", error);
+      res.status(500).json({ error: "Failed to start impersonation" });
+    }
+  });
+
+  // End client impersonation
+  app.post("/api/super-admin/end-impersonation", async (req, res) => {
+    try {
+      if (!req.session.isImpersonating || !req.session.originalUserId) {
+        return res.status(400).json({ error: "Not currently impersonating" });
+      }
+      
+      const clientId = req.session.clientId;
+      
+      // Restore original session
+      req.session.userId = req.session.originalUserId;
+      req.session.userRole = req.session.originalRole || 'super_admin';
+      req.session.clientId = null;
+      req.session.isImpersonating = false;
+      req.session.originalUserId = undefined;
+      req.session.originalRole = undefined;
+      
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+      
+      // Log end of impersonation
+      await storage.createSystemLog({
+        level: 'info',
+        source: 'super-admin',
+        message: `Admin ended impersonation of client ${clientId}`,
+        details: { adminId: req.session.userId },
+      });
+      
+      res.json({ success: true, message: "Returned to admin view" });
+    } catch (error) {
+      console.error("End impersonation error:", error);
+      res.status(500).json({ error: "Failed to end impersonation" });
     }
   });
 
