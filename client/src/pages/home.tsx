@@ -1,336 +1,352 @@
-import { useState, useEffect } from "react";
-import ChatBubble from "@/components/ChatBubble";
-import ChatWindow from "@/components/ChatWindow";
-import AppointmentFlow from "@/components/AppointmentFlow";
-import PreIntakeFlow, { PreIntakeData } from "@/components/PreIntakeFlow";
-import CrisisSupport from "@/components/CrisisSupport";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { 
+  Bot, 
+  Sparkles, 
+  Globe, 
+  MessageSquare, 
+  BarChart3, 
+  Zap, 
+  Shield, 
+  ArrowRight,
+  Check,
+  Users,
+  TrendingUp
+} from "lucide-react";
 
-interface Message {
-  role: "assistant" | "user";
-  content: string;
-}
-
-interface AppointmentData {
-  name: string;
-  contact: string;
-  preferredTime: string;
-  notes: string;
-  appointmentType?: string;
-  lookingFor?: string;
-  sobrietyStatus?: string;
-  hasSupport?: string;
-  timeline?: string;
-}
-
-const WELCOME_MESSAGES = {
-  en: "Hi, I'm HopeLine Assistant for The Faith House. I can help you with:\n- Basic questions about the program\n- Requirements, pricing, and availability\n- Seeing if you might qualify\n- Requesting a phone call or tour\n\nHow can I help you today?",
-  es: "Hola, soy HopeLine Assistant de The Faith House. Puedo ayudarte con:\n- Preguntas básicas sobre el programa\n- Requisitos, precios y disponibilidad\n- Ver si podrías calificar\n- Pedir una llamada o un tour\n\n¿En qué puedo ayudarte hoy?"
+const fadeInUp = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.5 }
 };
 
-const MENU_RESPONSES: Record<string, string> = {
-  about: "The Faith House is a structured sober-living environment designed to support individuals in their recovery journey. We provide:\n\n• Safe, structured housing with accountability\n• Mandatory attendance at recovery meetings\n• Supportive community environment\n• Job search assistance\n• Clear expectations and house rules\n\nWould you like to know more about our requirements or pricing?",
-  
-  requirements: "To live at The Faith House, residents must:\n\n• Maintain complete sobriety (no alcohol or drugs)\n• Attend required recovery meetings regularly\n• Respect curfew times\n• Respect all staff and fellow residents\n• Maintain cleanliness in personal and common areas\n• Work or actively seek employment\n• Follow all house rules and guidelines\n\nWould you like information about pricing or how to apply?",
-  
-  availability: "Availability varies depending on current openings. The best way to check current availability is to contact our staff directly. Would you like to request a tour or call to discuss availability?",
-  
-  pricing: "Our pricing covers housing, utilities, and support services. Exact pricing can vary based on individual circumstances and current availability. For specific pricing details, please contact our staff or request a call. Would you like to schedule a tour or call?",
-  
-  apply: "Our application process typically involves:\n\n• Providing personal information\n• Background details\n• Emergency contact information\n• Agreement to follow all house rules\n\nWould you like to request a tour or call to begin the application process?",
-  
-  contact: "You can reach The Faith House staff:\n\n• Phone: Contact us to get current phone number\n• Request a tour or call through this assistant\n• Visit our facility (address available during tour scheduling)\n\nWould you like to request a tour or call?"
+const staggerContainer = {
+  animate: {
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
 };
 
 export default function Home() {
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [language, setLanguage] = useState("en");
-  const [sessionId, setSessionId] = useState(() => `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
-  const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: WELCOME_MESSAGES.en }
-  ]);
-  const [showMenu, setShowMenu] = useState(true);
-  const [showAppointmentFlow, setShowAppointmentFlow] = useState(false);
-  const [showPreIntakeFlow, setShowPreIntakeFlow] = useState(false);
-  const [showCrisis, setShowCrisis] = useState(false);
-  const [preIntakeData, setPreIntakeData] = useState<PreIntakeData | null>(null);
-  const { toast } = useToast();
-  
-  const handleResetChat = () => {
-    setSessionId(`session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
-    setMessages([{ role: "assistant", content: WELCOME_MESSAGES[language as keyof typeof WELCOME_MESSAGES] }]);
-    setShowMenu(true);
-    setShowAppointmentFlow(false);
-    setShowPreIntakeFlow(false);
-    setShowCrisis(false);
-    setPreIntakeData(null);
-  };
-  
-  useEffect(() => {
-    if (messages.length === 1 && messages[0].role === "assistant") {
-      setMessages([{ role: "assistant", content: WELCOME_MESSAGES[language as keyof typeof WELCOME_MESSAGES] }]);
-    }
-  }, [language]);
-
-  const chatMutation = useMutation({
-    mutationFn: async (userMessage: string) => {
-      const response = await apiRequest("POST", "/api/chat", {
-        messages: [
-          ...messages.filter(m => !showCrisis && !showAppointmentFlow),
-          { role: "user", content: userMessage }
-        ],
-        sessionId,
-        language
-      });
-      return response.json();
-    },
-    onSuccess: (data: any) => {
-      setMessages(prev => [...prev, { role: "assistant", content: data.reply }]);
-      setShowMenu(true);
-      
-      if (data.showAppointmentFlow) {
-        setTimeout(() => {
-          setShowAppointmentFlow(true);
-          setShowMenu(false);
-        }, 500);
-      }
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to send message. Please try again.",
-        variant: "destructive"
-      });
-    }
-  });
-
-  const appointmentMutation = useMutation({
-    mutationFn: async (appointmentData: AppointmentData) => {
-      const response = await apiRequest("POST", "/api/appointment", {
-        ...appointmentData,
-        sessionId,
-        conversationHistory: messages
-      });
-      return response.json();
-    },
-    onSuccess: () => {
-      setMessages(prev => [
-        ...prev.filter(m => m.role !== "user" || !m.content.includes("appointment")),
-        {
-          role: "assistant",
-          content: "Thank you! Your tour/call request has been submitted. Our staff will contact you soon at the information you provided. Is there anything else I can help you with?"
-        }
-      ]);
-      setShowAppointmentFlow(false);
-      setShowMenu(true);
-      toast({
-        title: "Request Submitted",
-        description: "We'll be in touch soon!",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to submit request. Please try again.",
-        variant: "destructive"
-      });
-    }
-  });
-
-  const handleSendMessage = (message: string) => {
-    if (showAppointmentFlow || showCrisis || showPreIntakeFlow) return;
-    
-    setMessages(prev => [...prev, { role: "user", content: message }]);
-    setShowMenu(false);
-    chatMutation.mutate(message);
-  };
-
-  const handleMenuClick = (option: string) => {
-    setShowMenu(false);
-    setShowCrisis(false);
-    setShowAppointmentFlow(false);
-    setShowPreIntakeFlow(false);
-
-    if (option === "crisis") {
-      setShowCrisis(true);
-      return;
-    }
-
-    if (option === "tour") {
-      setMessages(prev => [
-        ...prev,
-        { role: "user", content: language === "es" ? "Me gustaría solicitar un tour o llamada" : "I'd like to request a tour or call" },
-        { role: "assistant", content: language === "es" 
-          ? "¡Genial! Te ayudaré a programar un tour o llamada. Déjame recopilar información." 
-          : "Great! I'll help you schedule a tour or call. Let me gather some information." }
-      ]);
-      setShowAppointmentFlow(true);
-      return;
-    }
-
-    if (option === "qualify") {
-      setMessages(prev => [
-        ...prev,
-        { role: "user", content: language === "es" ? "Me gustaría ver si podría calificar" : "I'd like to see if I might qualify" },
-        { role: "assistant", content: language === "es"
-          ? "¡Perfecto! Déjame hacerte algunas preguntas breves para entender mejor tu situación. Esto nos ayudará a determinar si The Faith House podría ser adecuado para ti."
-          : "Perfect! Let me ask you a few quick questions to better understand your situation. This will help us determine if The Faith House might be a good fit for you." }
-      ]);
-      setShowPreIntakeFlow(true);
-      return;
-    }
-
-    if (option === "question") {
-      setMessages(prev => [
-        ...prev,
-        { role: "assistant", content: language === "es"
-          ? "Por supuesto, estoy aquí para responder tus preguntas. ¿Qué te gustaría saber sobre The Faith House?"
-          : "Of course, I'm here to answer your questions. What would you like to know about The Faith House?" }
-      ]);
-      setShowMenu(true);
-      return;
-    }
-
-    const response = MENU_RESPONSES[option];
-    if (response) {
-      setMessages(prev => [
-        ...prev,
-        { role: "user", content: menuOptionToText(option) },
-        { role: "assistant", content: response }
-      ]);
-      setShowMenu(true);
-    }
-  };
-
-  const menuOptionToText = (option: string): string => {
-    const mapping: Record<string, string> = {
-      about: "Tell me about The Faith House",
-      requirements: "What are the requirements?",
-      availability: "What's the availability?",
-      pricing: "What's the pricing?",
-      apply: "How do I apply?",
-      contact: "How can I contact you?"
-    };
-    return mapping[option] || option;
-  };
-
-  const handlePreIntakeComplete = (data: PreIntakeData) => {
-    setPreIntakeData(data);
-    setShowPreIntakeFlow(false);
-    setMessages(prev => [
-      ...prev,
-      { role: "assistant", content: language === "es"
-        ? "Gracias por compartir esta información. Basándome en lo que me has contado, The Faith House podría ser una buena opción. ¿Te gustaría programar un tour o llamada para hablar con nuestro personal y obtener más detalles?"
-        : "Thank you for sharing this information. Based on what you've told me, The Faith House could be a good fit. Would you like to schedule a tour or call to speak with our staff and get more details?" }
-    ]);
-    setShowMenu(true);
-  };
-
-  const handlePreIntakeCancel = () => {
-    setShowPreIntakeFlow(false);
-    setMessages(prev => [
-      ...prev,
-      { role: "assistant", content: language === "es"
-        ? "No hay problema. Si tienes alguna otra pregunta, estoy aquí para ayudarte."
-        : "No problem. If you have any other questions, I'm here to help." }
-    ]);
-    setShowMenu(true);
-  };
-
-  const handleAppointmentComplete = (data: AppointmentData) => {
-    const fullData = {
-      ...data,
-      ...(preIntakeData || {})
-    };
-    appointmentMutation.mutate(fullData);
-  };
-
-  const handleAppointmentCancel = () => {
-    setShowAppointmentFlow(false);
-    setMessages(prev => [
-      ...prev.filter(m => !m.content.includes("schedule a tour")),
-      { role: "assistant", content: "No problem! Is there anything else I can help you with?" }
-    ]);
-    setShowMenu(true);
-  };
-
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-16">
-        <div className="max-w-4xl mx-auto text-center space-y-8">
-          <h1 className="text-5xl font-bold text-foreground">
-            Welcome to The Faith House
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            A structured, supportive environment for individuals on their recovery journey. 
-            We provide the foundation, accountability, and community to help you build a better future.
-          </p>
-          
-          <div className="grid md:grid-cols-3 gap-6 mt-12">
-            <div className="p-6 bg-card rounded-xl border border-card-border">
-              <h3 className="text-lg font-semibold text-card-foreground mb-2">Structured Support</h3>
-              <p className="text-sm text-muted-foreground">
-                Clear expectations, accountability, and guidance throughout your recovery
-              </p>
+    <div className="min-h-screen bg-background overflow-hidden">
+      {/* Hero Section */}
+      <section className="relative min-h-screen flex items-center justify-center hero-mesh">
+        {/* Gradient orbs */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-secondary/15 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        
+        {/* Navigation */}
+        <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-black/40 backdrop-blur-xl">
+          <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center glow-cyan">
+                <Bot className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-xl font-bold text-white" data-testid="text-logo">Treasure Coast AI</span>
             </div>
-            <div className="p-6 bg-card rounded-xl border border-card-border">
-              <h3 className="text-lg font-semibold text-card-foreground mb-2">Safe Environment</h3>
-              <p className="text-sm text-muted-foreground">
-                Sober living space with supportive peers who understand your journey
-              </p>
-            </div>
-            <div className="p-6 bg-card rounded-xl border border-card-border">
-              <h3 className="text-lg font-semibold text-card-foreground mb-2">Community Focus</h3>
-              <p className="text-sm text-muted-foreground">
-                Build meaningful connections and develop life skills for lasting success
-              </p>
+            <div className="flex items-center gap-4">
+              <Link href="/login">
+                <Button variant="ghost" className="text-white/80 hover:text-white" data-testid="link-login">
+                  Sign In
+                </Button>
+              </Link>
+              <Link href="/login">
+                <Button className="btn-gradient-primary rounded-xl px-6" data-testid="button-get-started-nav">
+                  Get Started
+                </Button>
+              </Link>
             </div>
           </div>
+        </nav>
 
-          <div className="mt-12 p-6 bg-accent/20 rounded-xl border border-accent/30">
-            <p className="text-lg text-foreground mb-2">
-              Have questions? Need support?
+        {/* Hero Content */}
+        <div className="relative z-10 max-w-6xl mx-auto px-6 text-center pt-20">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-card mb-8">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <span className="text-sm text-white/80">Powered by GPT-4</span>
+            </div>
+
+            <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight" data-testid="text-hero-title">
+              AI Chatbots That
+              <span className="text-gradient-cyan-purple block mt-2">Actually Convert</span>
+            </h1>
+
+            <p className="text-xl md:text-2xl text-white/70 max-w-3xl mx-auto mb-10 leading-relaxed">
+              World-class AI assistants for your business. 
+              Capture leads, book appointments, and delight customers 24/7 — 
+              all while you sleep.
             </p>
-            <p className="text-muted-foreground">
-              Click the chat button in the bottom right to connect with our HopeLine Assistant
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link href="/login">
+                <Button 
+                  size="lg" 
+                  className="btn-gradient-primary rounded-xl px-8 py-6 text-lg group"
+                  data-testid="button-get-started-hero"
+                >
+                  Start Building Free
+                  <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </Link>
+              <Link href="/demos">
+                <Button 
+                  size="lg" 
+                  variant="outline" 
+                  className="rounded-xl px-8 py-6 text-lg border-white/10 text-white hover:bg-white/5"
+                  data-testid="button-view-demos"
+                >
+                  View Demo Bots
+                </Button>
+              </Link>
+            </div>
+          </motion.div>
+
+          {/* Stats */}
+          <motion.div 
+            className="grid grid-cols-3 gap-8 mt-20 max-w-2xl mx-auto"
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.3 }}
+          >
+            {[
+              { value: "24/7", label: "Availability" },
+              { value: "10x", label: "More Leads" },
+              { value: "95%", label: "Response Rate" }
+            ].map((stat, i) => (
+              <div key={i} className="text-center">
+                <div className="text-3xl md:text-4xl font-bold text-primary mb-1" data-testid={`stat-value-${i}`}>{stat.value}</div>
+                <div className="text-sm text-white/50">{stat.label}</div>
+              </div>
+            ))}
+          </motion.div>
+        </div>
+
+        {/* Scroll indicator */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
+          <motion.div 
+            className="w-6 h-10 rounded-full border-2 border-white/20 flex items-start justify-center p-2"
+            animate={{ y: [0, 8, 0] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+          >
+            <div className="w-1 h-2 rounded-full bg-white/40" />
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-32 px-6 relative">
+        <div className="absolute inset-0 gradient-radial-glow opacity-50" />
+        <div className="max-w-7xl mx-auto relative z-10">
+          <motion.div 
+            className="text-center mb-20"
+            {...fadeInUp}
+            viewport={{ once: true }}
+            whileInView="animate"
+            initial="initial"
+          >
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4" data-testid="text-features-title">
+              Everything You Need to
+              <span className="text-gradient-cyan-purple"> Win</span>
+            </h2>
+            <p className="text-xl text-white/60 max-w-2xl mx-auto">
+              Built for agencies who demand the best. Create stunning AI chatbots that work as hard as you do.
             </p>
+          </motion.div>
+
+          <motion.div 
+            className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
+            variants={staggerContainer}
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+          >
+            {[
+              {
+                icon: Globe,
+                title: "Website Scraper",
+                description: "Paste a URL and watch AI extract all business info, FAQs, services, and more. Instant bot setup."
+              },
+              {
+                icon: Sparkles,
+                title: "GPT-4 Powered",
+                description: "World-class AI that handles any question brilliantly. Your customers won't believe it's a bot."
+              },
+              {
+                icon: MessageSquare,
+                title: "Lead Capture",
+                description: "Automatically detect and save lead information. Never miss a potential customer again."
+              },
+              {
+                icon: BarChart3,
+                title: "Rich Analytics",
+                description: "See every conversation, lead, and booking. Know exactly how your bot performs."
+              },
+              {
+                icon: Zap,
+                title: "Instant Deploy",
+                description: "Copy-paste embed code and your bot goes live. Works on any website instantly."
+              },
+              {
+                icon: Shield,
+                title: "Enterprise Ready",
+                description: "Bank-level security, 99.9% uptime, and dedicated support for your peace of mind."
+              }
+            ].map((feature, i) => (
+              <motion.div
+                key={i}
+                variants={fadeInUp}
+                className="glass-card glass-card-hover p-8 group cursor-default"
+                data-testid={`card-feature-${i}`}
+              >
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mb-6 group-hover:glow-cyan transition-all duration-300">
+                  <feature.icon className="w-7 h-7 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold text-white mb-3">{feature.title}</h3>
+                <p className="text-white/60 leading-relaxed">{feature.description}</p>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* How It Works */}
+      <section className="py-32 px-6 bg-gradient-to-b from-transparent via-primary/5 to-transparent">
+        <div className="max-w-7xl mx-auto">
+          <motion.div 
+            className="text-center mb-20"
+            {...fadeInUp}
+            viewport={{ once: true }}
+            whileInView="animate"
+            initial="initial"
+          >
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4" data-testid="text-howitworks-title">
+              Live in <span className="text-primary">Minutes</span>, Not Months
+            </h2>
+            <p className="text-xl text-white/60 max-w-2xl mx-auto">
+              From zero to deployed AI chatbot in three simple steps
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                step: "01",
+                title: "Paste Website URL",
+                description: "Our AI scrapes your client's website and extracts all the business information automatically."
+              },
+              {
+                step: "02",
+                title: "Customize & Train",
+                description: "Tweak the personality, add FAQs, set up lead capture rules. Make it perfect."
+              },
+              {
+                step: "03",
+                title: "Deploy & Profit",
+                description: "Copy the embed code, add it to the website, and watch leads roll in 24/7."
+              }
+            ].map((item, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: i * 0.15 }}
+                className="relative"
+                data-testid={`card-step-${i}`}
+              >
+                <div className="text-8xl font-bold text-white/5 absolute -top-4 left-0">{item.step}</div>
+                <div className="relative pt-12 pl-4">
+                  <h3 className="text-2xl font-semibold text-white mb-4">{item.title}</h3>
+                  <p className="text-white/60 leading-relaxed">{item.description}</p>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
-      </div>
+      </section>
 
-      <ChatBubble onClick={() => setIsChatOpen(true)} />
-      
-      <ChatWindow
-        isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
-        messages={messages}
-        onSendMessage={handleSendMessage}
-        onMenuClick={handleMenuClick}
-        isLoading={chatMutation.isPending || appointmentMutation.isPending}
-        showMenu={showMenu && !showAppointmentFlow && !showCrisis && !showPreIntakeFlow}
-        language={language}
-        onLanguageToggle={() => setLanguage(lang => lang === "en" ? "es" : "en")}
-        onResetChat={handleResetChat}
-        flowContent={
-          showCrisis ? (
-            <CrisisSupport />
-          ) : showPreIntakeFlow ? (
-            <PreIntakeFlow
-              onComplete={handlePreIntakeComplete}
-              onCancel={handlePreIntakeCancel}
-              language={language}
-            />
-          ) : showAppointmentFlow ? (
-            <AppointmentFlow
-              onComplete={handleAppointmentComplete}
-              onCancel={handleAppointmentCancel}
-              language={language}
-            />
-          ) : null
-        }
-      />
+      {/* Social Proof */}
+      <section className="py-32 px-6">
+        <div className="max-w-7xl mx-auto">
+          <motion.div 
+            className="glass-card p-12 md:p-20 text-center relative overflow-hidden"
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            {/* Background accents */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/10 rounded-full blur-3xl" />
+            
+            <div className="relative z-10">
+              <div className="flex items-center justify-center gap-4 mb-8">
+                <Users className="w-8 h-8 text-primary" />
+                <span className="text-lg text-white/60">Trusted by agencies worldwide</span>
+              </div>
+              
+              <h2 className="text-4xl md:text-5xl font-bold text-white mb-8" data-testid="text-cta-title">
+                Ready to 10x Your Client Results?
+              </h2>
+
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-12">
+                {[
+                  "Unlimited bots",
+                  "GPT-4 powered",
+                  "White-label ready",
+                  "Priority support"
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Check className="w-5 h-5 text-primary" />
+                    <span className="text-white/80">{item}</span>
+                  </div>
+                ))}
+              </div>
+
+              <Link href="/login">
+                <Button 
+                  size="lg" 
+                  className="btn-gradient-secondary rounded-xl px-10 py-6 text-lg group"
+                  data-testid="button-start-free-trial"
+                >
+                  Start Free Trial
+                  <TrendingUp className="w-5 h-5 ml-2 group-hover:translate-y-[-2px] transition-transform" />
+                </Button>
+              </Link>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="py-12 px-6 border-t border-white/5">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+              <Bot className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-semibold text-white">Treasure Coast AI</span>
+          </div>
+          
+          <p className="text-white/40 text-sm">
+            &copy; {new Date().getFullYear()} Treasure Coast AI. All rights reserved.
+          </p>
+          
+          <div className="flex items-center gap-6">
+            <a href="#" className="text-white/40 hover:text-white transition-colors text-sm" data-testid="link-privacy">Privacy</a>
+            <a href="#" className="text-white/40 hover:text-white transition-colors text-sm" data-testid="link-terms">Terms</a>
+            <a href="#" className="text-white/40 hover:text-white transition-colors text-sm" data-testid="link-contact">Contact</a>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
