@@ -71,6 +71,17 @@ interface ClientStats {
     totalConversations: number;
     totalMessages: number;
     weeklyConversations: number;
+    totalLeads: number;
+    newLeads: number;
+  } | null;
+  rangeStats: {
+    days: number;
+    conversations: number;
+    leads: number;
+    newLeads: number;
+    bookings: number;
+    pendingBookings: number;
+    completedBookings: number;
   } | null;
 }
 
@@ -150,6 +161,7 @@ export default function ClientDashboard() {
   const [copied, setCopied] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [conversationsDateRange, setConversationsDateRange] = useState<'all' | '7' | '30'>('all');
+  const [statsRange, setStatsRange] = useState<'all' | '7' | '30'>('7');
 
   const { data: currentUser, isLoading: authLoading } = useQuery<AuthUser>({
     queryKey: ["/api/auth/me"],
@@ -172,9 +184,18 @@ export default function ClientDashboard() {
     enabled: !!currentUser,
   });
 
-  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useQuery<ClientStats>({
-    queryKey: ["/api/client/stats"],
+  const { data: stats, isLoading: statsLoading, isFetching: statsFetching, refetch: refetchStats } = useQuery<ClientStats>({
+    queryKey: ["/api/client/stats", statsRange],
+    queryFn: async () => {
+      const url = statsRange !== 'all' 
+        ? `/api/client/stats?days=${statsRange}` 
+        : '/api/client/stats';
+      const response = await fetch(url, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch stats");
+      return response.json();
+    },
     enabled: !!currentUser,
+    placeholderData: undefined,
   });
 
   const { data: appointmentsData, isLoading: appointmentsLoading } = useQuery<{
@@ -265,12 +286,37 @@ export default function ClientDashboard() {
   const businessType = profile?.businessInfo?.type || stats?.businessType || "business";
   const botId = profile?.botId || stats?.botId || '';
 
+  // Use rangeStats when a specific range is selected, otherwise use all-time stats
+  const useRangeStats = statsRange !== 'all' && stats?.rangeStats;
+  const displayConversations = useRangeStats 
+    ? stats.rangeStats!.conversations 
+    : (stats?.dbStats?.totalConversations || stats?.logStats?.totalConversations || 0);
+  const displayLeads = useRangeStats 
+    ? stats.rangeStats!.leads 
+    : (stats?.dbStats?.totalLeads || leadsData?.total || 0);
+  const displayNewLeads = useRangeStats 
+    ? stats.rangeStats!.newLeads 
+    : (stats?.dbStats?.newLeads || leadsData?.leads?.filter((l: any) => l.status === 'new').length || 0);
+  const displayBookings = useRangeStats 
+    ? stats.rangeStats!.bookings 
+    : (stats?.dbStats?.totalAppointments || 0);
+  const displayPendingBookings = useRangeStats 
+    ? stats.rangeStats!.pendingBookings 
+    : (stats?.dbStats?.pendingAppointments || 0);
+  const displayCompletedBookings = useRangeStats 
+    ? stats.rangeStats!.completedBookings 
+    : (stats?.dbStats?.completedAppointments || 0);
+  
+  // All-time stats (for comparison or "all time" mode)
   const totalConversations = stats?.dbStats?.totalConversations || stats?.logStats?.totalConversations || 0;
   const weeklyConversations = stats?.dbStats?.weeklyConversations || 0;
   const totalLeads = leadsData?.total || 0;
   const newLeads = leadsData?.leads?.filter((l: any) => l.status === 'new').length || 0;
   const pendingBookings = stats?.dbStats?.pendingAppointments || 0;
   const completedBookings = stats?.dbStats?.completedAppointments || 0;
+  
+  // Range label for display
+  const rangeLabel = statsRange === '7' ? 'last 7 days' : statsRange === '30' ? 'last 30 days' : 'all time';
 
   const sidebarStyle = {
     "--sidebar-width": "16rem",
@@ -289,11 +335,42 @@ export default function ClientDashboard() {
               Here's how your AI assistant has been helping your business. Everything is running smoothly.
             </p>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/20 border border-green-400/40">
-            <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
-            <span className="text-sm font-medium text-green-400">
-              Assistant Active
-            </span>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-1 p-1 rounded-lg bg-white/5 border border-white/10">
+              <Button
+                size="sm"
+                variant={statsRange === '7' ? "default" : "ghost"}
+                className={statsRange === '7' ? "bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30" : "text-white/60 hover:text-white hover:bg-white/10"}
+                onClick={() => setStatsRange('7')}
+                data-testid="button-stats-7days"
+              >
+                7 Days
+              </Button>
+              <Button
+                size="sm"
+                variant={statsRange === '30' ? "default" : "ghost"}
+                className={statsRange === '30' ? "bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30" : "text-white/60 hover:text-white hover:bg-white/10"}
+                onClick={() => setStatsRange('30')}
+                data-testid="button-stats-30days"
+              >
+                30 Days
+              </Button>
+              <Button
+                size="sm"
+                variant={statsRange === 'all' ? "default" : "ghost"}
+                className={statsRange === 'all' ? "bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30" : "text-white/60 hover:text-white hover:bg-white/10"}
+                onClick={() => setStatsRange('all')}
+                data-testid="button-stats-all"
+              >
+                All Time
+              </Button>
+            </div>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/20 border border-green-400/40">
+              <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
+              <span className="text-sm font-medium text-green-400">
+                Assistant Active
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -307,9 +384,13 @@ export default function ClientDashboard() {
               </div>
               <ArrowUpRight className="h-4 w-4 text-white/40" />
             </div>
-            <div className="text-3xl font-bold text-white mb-1">{totalConversations}</div>
-            <p className="text-sm text-white/60">Total Conversations</p>
-            <p className="text-xs text-cyan-400 mt-2">+{weeklyConversations} this week</p>
+            {statsFetching ? (
+              <div className="h-8 w-16 bg-white/10 rounded animate-pulse mb-1" />
+            ) : (
+              <div className="text-3xl font-bold text-white mb-1">{displayConversations}</div>
+            )}
+            <p className="text-sm text-white/60">Conversations</p>
+            <p className="text-xs text-cyan-400 mt-2">{rangeLabel}</p>
           </GlassCardContent>
         </GlassCard>
 
@@ -319,13 +400,17 @@ export default function ClientDashboard() {
               <div className="h-12 w-12 rounded-xl bg-green-500/20 flex items-center justify-center">
                 <Users className="h-6 w-6 text-green-400" />
               </div>
-              {newLeads > 0 && (
-                <Badge className="bg-green-500/20 text-green-400 border-green-400/40">{newLeads} new</Badge>
+              {!statsFetching && displayNewLeads > 0 && (
+                <Badge className="bg-green-500/20 text-green-400 border-green-400/40">{displayNewLeads} new</Badge>
               )}
             </div>
-            <div className="text-3xl font-bold text-white mb-1">{totalLeads}</div>
+            {statsFetching ? (
+              <div className="h-8 w-16 bg-white/10 rounded animate-pulse mb-1" />
+            ) : (
+              <div className="text-3xl font-bold text-white mb-1">{displayLeads}</div>
+            )}
             <p className="text-sm text-white/60">Leads Captured</p>
-            <p className="text-xs text-green-400 mt-2">People who shared their info</p>
+            <p className="text-xs text-green-400 mt-2">{rangeLabel}</p>
           </GlassCardContent>
         </GlassCard>
 
@@ -335,13 +420,21 @@ export default function ClientDashboard() {
               <div className="h-12 w-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
                 <Calendar className="h-6 w-6 text-purple-400" />
               </div>
-              {pendingBookings > 0 && (
-                <Badge className="bg-amber-500/20 text-amber-400 border-amber-400/40">{pendingBookings} pending</Badge>
+              {!statsFetching && displayPendingBookings > 0 && (
+                <Badge className="bg-amber-500/20 text-amber-400 border-amber-400/40">{displayPendingBookings} pending</Badge>
               )}
             </div>
-            <div className="text-3xl font-bold text-white mb-1">{pendingBookings + completedBookings}</div>
+            {statsFetching ? (
+              <div className="h-8 w-16 bg-white/10 rounded animate-pulse mb-1" />
+            ) : (
+              <div className="text-3xl font-bold text-white mb-1">{displayBookings}</div>
+            )}
             <p className="text-sm text-white/60">Booking Requests</p>
-            <p className="text-xs text-purple-400 mt-2">{completedBookings} confirmed</p>
+            {statsFetching ? (
+              <div className="h-4 w-24 bg-white/10 rounded animate-pulse mt-2" />
+            ) : (
+              <p className="text-xs text-purple-400 mt-2">{displayCompletedBookings} confirmed · {rangeLabel}</p>
+            )}
           </GlassCardContent>
         </GlassCard>
 
@@ -352,7 +445,11 @@ export default function ClientDashboard() {
                 <TrendingUp className="h-6 w-6 text-blue-400" />
               </div>
             </div>
-            <div className="text-3xl font-bold text-white mb-1">{weeklyConversations}</div>
+            {statsFetching ? (
+              <div className="h-8 w-16 bg-white/10 rounded animate-pulse mb-1" />
+            ) : (
+              <div className="text-3xl font-bold text-white mb-1">{weeklyConversations}</div>
+            )}
             <p className="text-sm text-white/60">This Week</p>
             <p className="text-xs text-blue-400 mt-2">New conversations</p>
           </GlassCardContent>

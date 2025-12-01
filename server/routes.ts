@@ -4138,6 +4138,10 @@ These suggestions should be relevant to what was just discussed and help guide t
     try {
       const clientId = (req as any).effectiveClientId;
       
+      // Parse optional days parameter (7, 30, or all)
+      const daysParam = req.query.days as string | undefined;
+      const days = daysParam === '7' ? 7 : daysParam === '30' ? 30 : null;
+      
       // Get bot config for this client
       const allBots = getAllBotConfigs();
       const botConfig = allBots.find(bot => bot.clientId === clientId);
@@ -4152,11 +4156,28 @@ These suggestions should be relevant to what was just discussed and help guide t
       // Get database stats for any valid client
       const appointments = await storage.getAllAppointments(clientId);
       const analytics = await storage.getAnalytics(clientId);
+      const leadsData = await storage.getLeads(clientId);
+      const leads = leadsData?.leads || [];
       
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const weekAgo = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const cutoffDate = days ? new Date(todayStart.getTime() - days * 24 * 60 * 60 * 1000) : null;
       
+      // Calculate filtered stats based on date range
+      const filterByDate = (items: any[], dateField: string = 'createdAt') => {
+        if (!cutoffDate) return items;
+        return items.filter((item: any) => {
+          const itemDate = item[dateField] ? new Date(item[dateField]) : null;
+          return itemDate && itemDate >= cutoffDate;
+        });
+      };
+      
+      const filteredAppointments = filterByDate(appointments);
+      const filteredLeads = filterByDate(leads);
+      const filteredAnalytics = filterByDate(analytics);
+      
+      // All-time stats (always returned)
       const dbStats = {
         totalAppointments: appointments.length,
         pendingAppointments: appointments.filter((a: any) => a.status === "new" || a.status === "pending").length,
@@ -4164,7 +4185,20 @@ These suggestions should be relevant to what was just discussed and help guide t
         totalConversations: new Set(analytics.map((a: any) => a.sessionId)).size,
         totalMessages: analytics.length,
         weeklyConversations: new Set(analytics.filter((a: any) => new Date(a.createdAt) > weekAgo).map((a: any) => a.sessionId)).size,
+        totalLeads: leads.length,
+        newLeads: leads.filter((l: any) => l.status === 'new').length,
       };
+      
+      // Range-filtered stats (null if no range specified)
+      const rangeStats = cutoffDate ? {
+        days,
+        conversations: new Set(filteredAnalytics.map((a: any) => a.sessionId)).size,
+        leads: filteredLeads.length,
+        newLeads: filteredLeads.filter((l: any) => l.status === 'new').length,
+        bookings: filteredAppointments.length,
+        pendingBookings: filteredAppointments.filter((a: any) => a.status === "new" || a.status === "pending").length,
+        completedBookings: filteredAppointments.filter((a: any) => a.status === "confirmed" || a.status === "completed").length,
+      } : null;
 
       res.json({
         clientId,
@@ -4173,6 +4207,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         businessType: botConfig.businessProfile?.type,
         logStats,
         dbStats,
+        rangeStats,
       });
     } catch (error) {
       console.error("Get client stats error:", error);
