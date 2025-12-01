@@ -46,6 +46,7 @@ import {
   ArrowUpRight,
   Eye,
   Search,
+  Download,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useLocation } from "wouter";
@@ -139,7 +140,7 @@ const SIDEBAR_ITEMS = [
   { id: 'conversations' as SectionType, label: 'Conversations', icon: MessageSquare, description: 'Chat history' },
   { id: 'leads' as SectionType, label: 'Leads', icon: Users, description: 'Captured contacts' },
   { id: 'bookings' as SectionType, label: 'Bookings', icon: Calendar, description: 'Appointments' },
-  { id: 'settings' as SectionType, label: 'Settings', icon: Settings, description: 'Your preferences' },
+  { id: 'settings' as SectionType, label: 'Settings', icon: Settings, description: 'View your info' },
 ];
 
 export default function ClientDashboard() {
@@ -148,6 +149,7 @@ export default function ClientDashboard() {
   const [activeSection, setActiveSection] = useState<SectionType>('overview');
   const [copied, setCopied] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [conversationsDateRange, setConversationsDateRange] = useState<'all' | '7' | '30'>('all');
 
   const { data: currentUser, isLoading: authLoading } = useQuery<AuthUser>({
     queryKey: ["/api/auth/me"],
@@ -287,13 +289,11 @@ export default function ClientDashboard() {
               Here's how your AI assistant has been helping your business. Everything is running smoothly.
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/20 border border-green-400/40">
-              <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
-              <span className="text-sm font-medium text-green-400">
-                Assistant Active
-              </span>
-            </div>
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/20 border border-green-400/40">
+            <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
+            <span className="text-sm font-medium text-green-400">
+              Assistant Active
+            </span>
           </div>
         </div>
       </div>
@@ -549,7 +549,18 @@ export default function ClientDashboard() {
     </div>
   );
 
-  const renderConversationsSection = () => (
+  const renderConversationsSection = () => {
+    const filterSessionsByDate = (sessions: ChatSession[] | undefined) => {
+      if (!sessions || conversationsDateRange === 'all') return sessions || [];
+      const daysAgo = conversationsDateRange === '7' ? 7 : 30;
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
+      return sessions.filter(s => new Date(s.startedAt) >= cutoffDate);
+    };
+    
+    const filteredSessions = filterSessionsByDate(sessionsData?.sessions);
+    
+    return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-white mb-2">Conversations</h2>
@@ -563,9 +574,38 @@ export default function ClientDashboard() {
               <MessageSquare className="h-5 w-5 text-cyan-400" />
               All Conversations
             </GlassCardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1 p-1 rounded-lg bg-white/5 border border-white/10">
+                <Button
+                  size="sm"
+                  variant={conversationsDateRange === 'all' ? "default" : "ghost"}
+                  className={conversationsDateRange === 'all' ? "bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30" : "text-white/60 hover:text-white hover:bg-white/10"}
+                  onClick={() => setConversationsDateRange('all')}
+                  data-testid="button-filter-all"
+                >
+                  All
+                </Button>
+                <Button
+                  size="sm"
+                  variant={conversationsDateRange === '7' ? "default" : "ghost"}
+                  className={conversationsDateRange === '7' ? "bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30" : "text-white/60 hover:text-white hover:bg-white/10"}
+                  onClick={() => setConversationsDateRange('7')}
+                  data-testid="button-filter-7days"
+                >
+                  7 Days
+                </Button>
+                <Button
+                  size="sm"
+                  variant={conversationsDateRange === '30' ? "default" : "ghost"}
+                  className={conversationsDateRange === '30' ? "bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30" : "text-white/60 hover:text-white hover:bg-white/10"}
+                  onClick={() => setConversationsDateRange('30')}
+                  data-testid="button-filter-30days"
+                >
+                  30 Days
+                </Button>
+              </div>
               <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-400/40">
-                {sessionsData?.total || 0} total
+                {filteredSessions.length} {conversationsDateRange === 'all' ? 'total' : `in ${conversationsDateRange} days`}
               </Badge>
             </div>
           </div>
@@ -577,10 +617,10 @@ export default function ClientDashboard() {
                 <div key={i} className="h-20 bg-white/10 rounded-lg animate-pulse" />
               ))}
             </div>
-          ) : sessionsData?.sessions && sessionsData.sessions.length > 0 ? (
+          ) : filteredSessions && filteredSessions.length > 0 ? (
             <ScrollArea className="h-[500px]">
               <div className="space-y-3">
-                {sessionsData.sessions.map((session) => (
+                {filteredSessions.map((session) => (
                   <div
                     key={session.id}
                     className="p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors cursor-pointer"
@@ -635,6 +675,7 @@ export default function ClientDashboard() {
       </GlassCard>
     </div>
   );
+  };
 
   const renderLeadsSection = () => {
     const filteredLeads = leadsData?.leads?.filter((lead: any) => {
@@ -646,6 +687,72 @@ export default function ClientDashboard() {
         lead.phone?.includes(query)
       );
     }) || [];
+
+    const exportLeadsToCSV = () => {
+      if (!filteredLeads || filteredLeads.length === 0) {
+        toast({
+          title: "No leads to export",
+          description: "There are no leads matching your current filter.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const escapeCSVField = (field: string | null | undefined): string => {
+        const str = String(field ?? '');
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      };
+
+      const formatDate = (dateStr: string | null | undefined): string => {
+        if (!dateStr) return '';
+        try {
+          return format(new Date(dateStr), 'yyyy-MM-dd HH:mm');
+        } catch {
+          return '';
+        }
+      };
+
+      const headers = ['Name', 'Email', 'Phone', 'Status', 'Captured Date'];
+      const csvData = filteredLeads.map((lead: any) => [
+        escapeCSVField(lead.name),
+        escapeCSVField(lead.email),
+        escapeCSVField(lead.phone),
+        escapeCSVField(lead.status ?? 'new'),
+        escapeCSVField(formatDate(lead.createdAt))
+      ]);
+
+      const csvContent = [
+        headers.join(','),
+        ...csvData.map((row: string[]) => row.join(','))
+      ].join('\n');
+
+      try {
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `leads-export-${format(new Date(), 'yyyy-MM-dd')}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        toast({
+          title: "Export complete",
+          description: `${filteredLeads.length} leads exported to CSV.`
+        });
+      } catch (error) {
+        toast({
+          title: "Export failed",
+          description: "There was an error exporting the leads. Please try again.",
+          variant: "destructive"
+        });
+      }
+    };
 
     return (
       <div className="space-y-6">
@@ -672,6 +779,16 @@ export default function ClientDashboard() {
                     data-testid="input-search-leads"
                   />
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportLeadsToCSV}
+                  className="border-white/10 text-white/70 hover:text-white hover:bg-white/10"
+                  data-testid="button-export-leads"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Export CSV
+                </Button>
                 <Badge className="bg-green-500/20 text-green-400 border-green-400/40">
                   {leadsData?.total || 0} total
                 </Badge>

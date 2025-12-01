@@ -1,0 +1,139 @@
+You are a senior UX/product engineer reviewing the CLIENT DASHBOARD of a multi-tenant SaaS system called **Treasure Coast AI**.
+
+Your task:
+Perform a complete audit and improvement pass on the ENTIRE client dashboard to ensure it perfectly aligns with the Treasure Coast AI company goal:
+
+**Treasure Coast AI Vision**
+- The agency (super-admin) builds and manages AI assistants.
+- Clients DO NOT build bots; they only view results and adjust simple safe settings.
+- Clients should have a clean, beautiful, stress-free dashboard showing them:
+  - Conversations
+  - Leads captured
+  - Bookings (if supported)
+  - Key analytics (7/30 days)
+  - Bot ON/OFF toggle
+  - Knowledge base (simple FAQ editing)
+  - Widget options (color + install code)
+- No technical settings, no overwhelming options, no developer jargon.
+
+Your assignment is to:
+1. **Review the ENTIRE current client dashboard UI and codebase.**
+2. Identify anything that:
+   - Should be added for a better customer experience.
+   - Should be removed because it’s too technical or irrelevant.
+   - Should be renamed for clarity and simplicity.
+   - Should be reorganized for better flow.
+   - Should be modernized visually.
+   - Should be polished for consistency.
+3. Compare every screen and component against the Treasure Coast AI platform goal and fix anything that does not match the vision.
+4. Make recommendations AND implement changes directly in the code.
+
+----------------------------------------
+SPECIFIC REVIEW REQUIREMENTS
+----------------------------------------
+
+Audit the dashboard across these areas:
+
+### 1) Navigation Structure
+- Verify the main sections are simple and intuitive:
+  - Overview
+  - Conversations
+  - Leads
+  - Bookings (if supported)
+  - Knowledge Base
+  - Settings
+  - Billing (if applicable)
+- Remove anything not necessary for clients.
+- Rename tabs for clarity (e.g., “Bot Config” → “Assistant Settings” should not exist for clients).
+
+### 2) Overview Page
+- Ensure it shows the most important high-level stats:
+  - Total conversations (7/30 days)
+  - New leads (7/30 days)
+  - Bookings (7/30 days)
+  - Assistant status (Active / Paused)
+- Add or fix cards, charts, and copy as needed.
+- Remove any developer metrics or irrelevant data.
+
+### 3) Conversations
+- Check if conversations are easy to read and search.
+- Ensure transcript view is clean.
+- Add filters (date range, “Lead captured”, etc.) if missing.
+- Remove debugging logs or raw event data if present.
+
+### 4) Leads / Contacts
+- Make sure fields are clean: name, phone, email, timestamp, notes.
+- Add search/filter if missing.
+- Ensure exported CSVs (if present) look clean.
+
+### 5) Bookings
+- If bookings exist, ensure:
+  - Clean table
+  - Clear status labels
+  - Customer info visible
+- If bookings are NOT implemented, hide this tab entirely.
+
+### 6) Knowledge Base
+- Ensure the FAQ editor is extremely simple:
+  - Question
+  - Answer
+  - Optional category
+- Remove any deep system prompt or developer-level fields.
+- Make sure UI is pleasant and client-friendly.
+
+### 7) Settings
+- Verify the ONLY client-safe settings appear:
+  - Business info (name, contact)
+  - Bot ON/OFF toggle
+  - Welcome message
+  - Widget customization (color, position, snippet)
+  - Notification preferences
+- Hide/remove:
+  - API keys
+  - Model settings
+  - Temperature/top_p
+  - System prompts
+  - Any backend-only controls
+
+### 8) Visuals & UX Polish
+- Improve spacing, layout, and readability.
+- Fix inconsistent cards, buttons, or headers.
+- Enhance descriptions and labels for clarity.
+- Make the dashboard feel clean, modern, and premium.
+
+### 9) Code Consistency
+- Clean unused components and dead code.
+- Ensure all API calls are tenant-safe.
+- Add comments where the future may require expansion.
+
+----------------------------------------
+AFTER THE REVIEW — IMPLEMENT CHANGES
+----------------------------------------
+Once your review is complete:
+
+1. Produce a list of recommended changes.
+2. Apply the changes directly in the code:
+   - Add missing features if simple.
+   - Remove or hide technical sections.
+   - Fix labels, routes, spacing, and component structures.
+   - Improve data formatting and UI consistency.
+3. Ensure no client gets access to super-admin or advanced features.
+4. Run through the entire dashboard end-to-end as if you were a real business owner and fix anything confusing.
+
+----------------------------------------
+CONSTRAINTS
+----------------------------------------
+- DO NOT modify the super-admin dashboard in this task.
+- DO NOT expose advanced AI settings to clients.
+- Keep everything clean, simple, and client-friendly.
+- Use the existing component library and design system.
+- Maintain strict tenant isolation.
+
+----------------------------------------
+GOAL
+----------------------------------------
+Deliver a polished, professional client dashboard experience that:
+- Matches the Treasure Coast AI vision perfectly.
+- Gives clients exactly what they need.
+- Removes anything that confuses or overwhelms them.
+- Looks beautiful, modern, and trustworthy.
