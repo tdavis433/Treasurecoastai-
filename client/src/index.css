@@ -2,7 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
-/* LIGHT MODE - Treasure Coast AI Brand Colors */
+/* ============================================
+   TREASURE COAST AI - DARK LUXURY SAAS THEME
+   Premium glassmorphism with neon accents
+   ============================================ */
+
+/* LIGHT MODE - Clean Premium */
 :root {
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
@@ -18,35 +23,35 @@
   --sidebar: 220 14% 96%;
   --sidebar-foreground: 0 0% 10%;
   --sidebar-border: 220 13% 88%;
-  --sidebar-primary: 219 100% 52%;
+  --sidebar-primary: 174 100% 40%;
   --sidebar-primary-foreground: 0 0% 100%;
   --sidebar-accent: 220 14% 92%;
   --sidebar-accent-foreground: 0 0% 10%;
-  --sidebar-ring: 219 100% 52%;
+  --sidebar-ring: 174 100% 40%;
   --popover: 0 0% 100%;
   --popover-foreground: 0 0% 10%;
   --popover-border: 220 13% 88%;
-  --primary: 219 100% 52%;
+  --primary: 174 100% 40%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 220 14% 92%;
-  --secondary-foreground: 0 0% 10%;
+  --secondary: 283 89% 65%;
+  --secondary-foreground: 0 0% 100%;
   --muted: 220 14% 94%;
   --muted-foreground: 220 9% 46%;
-  --accent: 174 100% 38%;
+  --accent: 283 89% 65%;
   --accent-foreground: 0 0% 100%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
   --input: 220 13% 82%;
-  --ring: 219 100% 52%;
-  --chart-1: 219 100% 52%;
-  --chart-2: 174 100% 38%;
+  --ring: 174 100% 40%;
+  --chart-1: 174 100% 40%;
+  --chart-2: 283 89% 65%;
   --chart-3: 160 84% 40%;
   --chart-4: 38 92% 50%;
   --chart-5: 0 84% 60%;
   --font-sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: "JetBrains Mono", Menlo, monospace;
-  --radius: .5rem;
+  --radius: .625rem;
   --shadow-2xs: 0px 2px 0px 0px hsl(210 15% 50% / 0.02);
   --shadow-xs: 0px 2px 0px 0px hsl(210 15% 50% / 0.03);
   --shadow-sm: 0px 2px 0px 0px hsl(210 15% 50% / 0.03), 0px 1px 2px -1px hsl(210 15% 50% / 0.08);
@@ -57,111 +62,119 @@
   --shadow-2xl: 0px 2px 0px 0px hsl(210 15% 50% / 0.12);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
+  
+  /* Neon glow colors */
+  --glow-cyan: rgba(0, 229, 204, 0.15);
+  --glow-purple: rgba(168, 85, 247, 0.15);
 
-/* Fallback for older browsers */
+  /* Fallback for older browsers */
   --sidebar-primary-border: hsl(var(--sidebar-primary));
   --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --sidebar-accent-border: hsl(var(--sidebar-accent));
   --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --primary-border: hsl(var(--primary));
   --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --secondary-border: hsl(var(--secondary));
   --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --muted-border: hsl(var(--muted));
   --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --accent-border: hsl(var(--accent));
   --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --destructive-border: hsl(var(--destructive));
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
-/* DARK MODE - Treasure Coast AI Brand Colors */
+/* DARK MODE - Stunning Dark Luxury */
 .dark {
   --button-outline: rgba(255,255,255, .10);
   --badge-outline: rgba(255,255,255, .05);
-  --opaque-button-border-intensity: 9;
+  --opaque-button-border-intensity: 12;
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
-  --background: 220 20% 8%;
-  --foreground: 0 0% 95%;
-  --border: 220 15% 18%;
-  --card: 220 18% 10%;
-  --card-foreground: 0 0% 95%;
-  --card-border: 220 15% 14%;
-  --sidebar: 220 16% 12%;
-  --sidebar-foreground: 0 0% 95%;
-  --sidebar-border: 220 15% 16%;
-  --sidebar-primary: 219 100% 58%;
+  
+  /* Deep dark backgrounds */
+  --background: 220 25% 4%;
+  --foreground: 0 0% 98%;
+  --border: 220 15% 12%;
+  
+  /* Glass card surfaces */
+  --card: 220 20% 6%;
+  --card-foreground: 0 0% 98%;
+  --card-border: 220 15% 10%;
+  
+  /* Sidebar - deeper dark */
+  --sidebar: 220 25% 5%;
+  --sidebar-foreground: 0 0% 96%;
+  --sidebar-border: 220 15% 10%;
+  --sidebar-primary: 174 100% 45%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 220 12% 18%;
-  --sidebar-accent-foreground: 0 0% 90%;
-  --sidebar-ring: 219 100% 58%;
-  --popover: 220 16% 12%;
-  --popover-foreground: 0 0% 95%;
-  --popover-border: 220 15% 18%;
-  --primary: 219 100% 58%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 220 10% 18%;
-  --secondary-foreground: 0 0% 90%;
-  --muted: 220 10% 20%;
-  --muted-foreground: 220 8% 65%;
-  --accent: 174 100% 42%;
+  --sidebar-accent: 220 15% 12%;
+  --sidebar-accent-foreground: 0 0% 92%;
+  --sidebar-ring: 174 100% 45%;
+  
+  /* Popover */
+  --popover: 220 20% 6%;
+  --popover-foreground: 0 0% 98%;
+  --popover-border: 220 15% 12%;
+  
+  /* Primary - Vibrant Cyan */
+  --primary: 174 100% 45%;
+  --primary-foreground: 0 0% 5%;
+  
+  /* Secondary - Electric Purple */
+  --secondary: 283 89% 65%;
+  --secondary-foreground: 0 0% 100%;
+  
+  /* Muted states */
+  --muted: 220 15% 12%;
+  --muted-foreground: 220 8% 60%;
+  
+  /* Accent - Electric Purple */
+  --accent: 283 89% 65%;
   --accent-foreground: 0 0% 100%;
+  
+  /* Destructive */
   --destructive: 0 84% 55%;
   --destructive-foreground: 0 0% 100%;
-  --input: 220 15% 28%;
-  --ring: 219 100% 58%;
-  --chart-1: 219 100% 62%;
-  --chart-2: 174 100% 48%;
+  
+  /* Input */
+  --input: 220 15% 15%;
+  --ring: 174 100% 45%;
+  
+  /* Charts */
+  --chart-1: 174 100% 45%;
+  --chart-2: 283 89% 65%;
   --chart-3: 160 84% 50%;
   --chart-4: 38 92% 55%;
   --chart-5: 0 84% 55%;
-  --shadow-2xs: 0px 2px 0px 0px hsl(210 15% 10% / 0.15);
-  --shadow-xs: 0px 2px 0px 0px hsl(210 15% 10% / 0.20);
-  --shadow-sm: 0px 2px 0px 0px hsl(210 15% 10% / 0.20), 0px 1px 2px -1px hsl(210 15% 10% / 0.30);
-  --shadow: 0px 2px 0px 0px hsl(210 15% 10% / 0.25), 0px 1px 2px -1px hsl(210 15% 10% / 0.35);
-  --shadow-md: 0px 2px 0px 0px hsl(210 15% 10% / 0.30), 0px 2px 4px -1px hsl(210 15% 10% / 0.40);
-  --shadow-lg: 0px 2px 0px 0px hsl(210 15% 10% / 0.35), 0px 4px 6px -1px hsl(210 15% 10% / 0.45);
-  --shadow-xl: 0px 2px 0px 0px hsl(210 15% 10% / 0.40), 0px 8px 10px -1px hsl(210 15% 10% / 0.50);
-  --shadow-2xl: 0px 2px 0px 0px hsl(210 15% 10% / 0.50);
+  
+  /* Premium shadows */
+  --shadow-2xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.15);
+  --shadow-xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.20);
+  --shadow-sm: 0px 2px 0px 0px hsl(0 0% 0% / 0.25), 0px 1px 2px -1px hsl(0 0% 0% / 0.35);
+  --shadow: 0px 2px 0px 0px hsl(0 0% 0% / 0.30), 0px 1px 2px -1px hsl(0 0% 0% / 0.40);
+  --shadow-md: 0px 2px 0px 0px hsl(0 0% 0% / 0.35), 0px 4px 8px -1px hsl(0 0% 0% / 0.50);
+  --shadow-lg: 0px 2px 0px 0px hsl(0 0% 0% / 0.40), 0px 8px 16px -2px hsl(0 0% 0% / 0.55);
+  --shadow-xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.50), 0px 16px 32px -4px hsl(0 0% 0% / 0.60);
+  --shadow-2xl: 0px 4px 0px 0px hsl(0 0% 0% / 0.60), 0px 24px 48px -8px hsl(0 0% 0% / 0.70);
+  
+  /* Neon glow colors */
+  --glow-cyan: rgba(0, 229, 204, 0.25);
+  --glow-purple: rgba(168, 85, 247, 0.25);
 
-/* Fallback for older browsers */
+  /* Fallback for older browsers */
   --sidebar-primary-border: hsl(var(--sidebar-primary));
   --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --sidebar-accent-border: hsl(var(--sidebar-accent));
   --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --primary-border: hsl(var(--primary));
   --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --secondary-border: hsl(var(--secondary));
   --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --muted-border: hsl(var(--muted));
   --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --accent-border: hsl(var(--accent));
   --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --destructive-border: hsl(var(--destructive));
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
@@ -174,31 +187,15 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
+  
+  /* Default to dark mode for premium feel */
+  html {
+    @apply dark;
+  }
 }
 
-/**
- * Using the elevate system.
- * Automatic contrast adjustment.
- *
- * <element className="hover-elevate" />
- * <element className="active-elevate-2" />
- *
- * // Using the tailwind utility when a data attribute is "on"
- * <element className="toggle-elevate data-[state=on]:toggle-elevated" />
- * // Or manually controlling the toggle state
- * <element className="toggle-elevate toggle-elevated" />
- *
- * Elevation systems have to handle many states.
- * - not-hovered, vs. hovered vs. active  (three mutually exclusive states)
- * - toggled or not
- * - focused or not (this is not handled with these utilities)
- *
- * Even without handling focused or not, this is six possible combinations that
- * need to be distinguished from eachother visually.
- */
 @layer utilities {
-
-  /* Hide ugly search cancel button in Chrome until we can style it properly */
+  /* Hide ugly search cancel button in Chrome */
   input[type="search"]::-webkit-search-cancel-button {
     @apply hidden;
   }
@@ -210,42 +207,30 @@
     pointer-events: none;
   }
 
-  /* .no-default-hover-elevate/no-default-active-elevate is an escape hatch so consumers of
-   * buttons/badges can remove the automatic brightness adjustment on interactions
-   * and program their own. */
+  /* Elevation escape hatches */
   .no-default-hover-elevate {}
-
   .no-default-active-elevate {}
 
-
-  /**
-   * Toggleable backgrounds go behind the content. Hoverable/active goes on top.
-   * This way they can stack/compound. Both will overlap the parent's borders!
-   * So borders will be automatically adjusted both on toggle, and hover/active,
-   * and they will be compounded.
-   */
+  /* Toggle elevate system */
   .toggle-elevate::before,
   .toggle-elevate-2::before {
     content: "";
     pointer-events: none;
     position: absolute;
     inset: 0px;
-    /*border-radius: inherit;   match rounded corners */
     border-radius: inherit;
     z-index: -1;
-    /* sits behind content but above backdrop */
   }
 
   .toggle-elevate.toggle-elevated::before {
     background-color: var(--elevate-2);
   }
 
-  /* If there's a 1px border, adjust the inset so that it covers that parent's border */
   .border.toggle-elevate::before {
     inset: -1px;
   }
 
-  /* Does not work on elements with overflow:hidden! */
+  /* Hover/Active elevation system */
   .hover-elevate:not(.no-default-hover-elevate),
   .active-elevate:not(.no-default-active-elevate),
   .hover-elevate-2:not(.no-default-hover-elevate),
@@ -262,10 +247,8 @@
     pointer-events: none;
     position: absolute;
     inset: 0px;
-    /*border-radius: inherit;   match rounded corners */
     border-radius: inherit;
     z-index: 999;
-    /* sits in front of content */
   }
 
   .hover-elevate:hover:not(.no-default-hover-elevate)::after,
@@ -278,16 +261,156 @@
     background-color: var(--elevate-2);
   }
 
-  /* If there's a 1px border, adjust the inset so that it covers that parent's border */
   .border.hover-elevate:not(.no-hover-interaction-elevate)::after,
   .border.active-elevate:not(.no-active-interaction-elevate)::after,
   .border.hover-elevate-2:not(.no-hover-interaction-elevate)::after,
-  .border.active-elevate-2:not(.no-active-interaction-elevate)::after,
-  .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
+  .border.active-elevate-2:not(.no-active-interaction-elevate)::after {
     inset: -1px;
   }
 
-  /* Responsive chat positioning */
+  /* ============================================
+     PREMIUM GLASSMORPHISM UTILITIES
+     ============================================ */
+  
+  .glass-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+  }
+  
+  .glass-card-hover:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+  
+  .glass-surface {
+    background: rgba(255, 255, 255, 0.02);
+    backdrop-filter: blur(12px);
+  }
+  
+  /* Neon Glow Effects */
+  .glow-cyan {
+    box-shadow: 0 0 20px rgba(0, 229, 204, 0.15), 0 0 40px rgba(0, 229, 204, 0.08);
+  }
+  
+  .glow-cyan-strong {
+    box-shadow: 0 0 30px rgba(0, 229, 204, 0.25), 0 0 60px rgba(0, 229, 204, 0.12);
+  }
+  
+  .glow-purple {
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.15), 0 0 40px rgba(168, 85, 247, 0.08);
+  }
+  
+  .glow-purple-strong {
+    box-shadow: 0 0 30px rgba(168, 85, 247, 0.25), 0 0 60px rgba(168, 85, 247, 0.12);
+  }
+  
+  /* Gradient backgrounds */
+  .gradient-cyan-purple {
+    background: linear-gradient(135deg, hsl(174 100% 45%), hsl(283 89% 65%));
+  }
+  
+  .gradient-dark-fade {
+    background: linear-gradient(180deg, hsl(220 25% 6%) 0%, hsl(220 25% 4%) 100%);
+  }
+  
+  .gradient-radial-glow {
+    background: radial-gradient(ellipse at center, rgba(0, 229, 204, 0.08) 0%, transparent 70%);
+  }
+  
+  /* Text with glow */
+  .text-glow-cyan {
+    text-shadow: 0 0 20px rgba(0, 229, 204, 0.5);
+  }
+  
+  .text-glow-purple {
+    text-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
+  }
+  
+  /* Gradient text */
+  .text-gradient-cyan-purple {
+    background: linear-gradient(135deg, #00E5CC, #A855F7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  /* Premium button styles */
+  .btn-gradient-primary {
+    background: linear-gradient(135deg, #00E5CC, #00C2B3);
+    color: white;
+    font-weight: 600;
+    transition: all 0.2s ease;
+  }
+  
+  .btn-gradient-primary:hover {
+    box-shadow: 0 0 30px rgba(0, 229, 204, 0.35);
+    transform: translateY(-1px);
+  }
+  
+  .btn-gradient-secondary {
+    background: linear-gradient(135deg, #A855F7, #7C3AED);
+    color: white;
+    font-weight: 600;
+    transition: all 0.2s ease;
+  }
+  
+  .btn-gradient-secondary:hover {
+    box-shadow: 0 0 30px rgba(168, 85, 247, 0.35);
+    transform: translateY(-1px);
+  }
+  
+  /* Status Badge Utilities */
+  .status-active {
+    background-color: rgba(16, 185, 129, 0.15);
+    color: #34D399;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+  }
+  
+  .status-demo {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #60A5FA;
+    border: 1px solid rgba(59, 130, 246, 0.4);
+  }
+  
+  .status-on-hold {
+    background-color: rgba(239, 68, 68, 0.15);
+    color: #F87171;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+  }
+  
+  .status-paused {
+    background-color: rgba(245, 158, 11, 0.15);
+    color: #FBBF24;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+  }
+  
+  .status-success {
+    background-color: rgba(16, 185, 129, 0.15);
+    color: #34D399;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+  }
+  
+  .status-info {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #60A5FA;
+    border: 1px solid rgba(59, 130, 246, 0.4);
+  }
+  
+  .status-warning {
+    background-color: rgba(245, 158, 11, 0.15);
+    color: #FBBF24;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+  }
+  
+  .status-error {
+    background-color: rgba(239, 68, 68, 0.15);
+    color: #F87171;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+  }
+
+  /* Chat widget positioning */
   .chat-bubble-position {
     bottom: 24px;
     right: 24px;
@@ -296,19 +419,19 @@
   .chat-window-position {
     bottom: 24px;
     right: 24px;
-    width: min(360px, calc(100vw - 48px));
+    width: min(380px, calc(100vw - 48px));
   }
 
   @media (min-width: 640px) {
     .chat-bubble-position {
-      bottom: 40px;
-      right: 100px;
+      bottom: 32px;
+      right: 32px;
     }
 
     .chat-window-position {
-      bottom: 40px;
-      right: 100px;
-      width: 360px;
+      bottom: 32px;
+      right: 32px;
+      width: 380px;
     }
   }
 
@@ -318,105 +441,146 @@
     text-align: center;
     font-size: 10px;
     padding: 4px 0 6px;
-    color: #9ca3af;
+    color: rgba(255, 255, 255, 0.4);
     background: hsl(var(--background));
-    border-top: 1px solid hsl(var(--border));
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
     user-select: none;
   }
 
   .powered-footer strong {
     font-weight: 600;
-    color: hsl(var(--foreground));
-  }
-
-  /* Status Badge Utilities */
-  .status-active {
-    background-color: #D1FAE5;
-    color: #059669;
-  }
-  .status-demo {
-    background-color: #DBEAFE;
-    color: #0A5CFF;
-  }
-  .status-on-hold {
-    background-color: #FEE2E2;
-    color: #DC2626;
-  }
-  .status-paused {
-    background-color: #FEF3C7;
-    color: #D97706;
+    color: rgba(255, 255, 255, 0.7);
   }
   
-  .dark .status-active {
-    background-color: rgba(16, 185, 129, 0.2);
-    color: #34D399;
+  /* Skeleton loading animation */
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.03) 0%,
+      rgba(255, 255, 255, 0.08) 50%,
+      rgba(255, 255, 255, 0.03) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
   }
-  .dark .status-demo {
-    background-color: rgba(10, 92, 255, 0.2);
-    color: #60A5FA;
+  
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
   }
-  .dark .status-on-hold {
-    background-color: rgba(220, 38, 38, 0.2);
-    color: #F87171;
+  
+  /* Pulse glow animation */
+  .pulse-glow {
+    animation: pulseGlow 2s infinite ease-in-out;
   }
-  .dark .status-paused {
-    background-color: rgba(245, 158, 11, 0.2);
-    color: #FBBF24;
+  
+  @keyframes pulseGlow {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+  
+  /* Float animation for icons */
+  .float-subtle {
+    animation: floatSubtle 3s infinite ease-in-out;
+  }
+  
+  @keyframes floatSubtle {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+  
+  /* Entrance animation */
+  .animate-in-up {
+    animation: animateInUp 0.4s ease-out forwards;
+  }
+  
+  @keyframes animateInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* Staggered children animation */
+  .stagger-children > * {
+    opacity: 0;
+    animation: animateInUp 0.4s ease-out forwards;
+  }
+  
+  .stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+  .stagger-children > *:nth-child(2) { animation-delay: 80ms; }
+  .stagger-children > *:nth-child(3) { animation-delay: 160ms; }
+  .stagger-children > *:nth-child(4) { animation-delay: 240ms; }
+  .stagger-children > *:nth-child(5) { animation-delay: 320ms; }
+  .stagger-children > *:nth-child(6) { animation-delay: 400ms; }
+  
+  /* Spinning loader with gradient */
+  .spin-gradient {
+    border: 2px solid transparent;
+    border-top-color: #00E5CC;
+    border-right-color: #A855F7;
+    border-radius: 50%;
+    animation: spinGradient 0.8s linear infinite;
+  }
+  
+  @keyframes spinGradient {
+    to { transform: rotate(360deg); }
   }
 }
 
-/* ==========================================
-   FUTURISTIC ADMIN THEME
-   Hybrid of Concept A & C - Glassmorphism
-   ========================================== */
+/* ============================================
+   ADMIN FUTURISTIC THEME
+   Premium glassmorphism dashboard styling
+   ============================================ */
 
 .admin-futuristic {
-  --admin-bg: #0B0E13;
-  --admin-glass: rgba(255, 255, 255, 0.04);
-  --admin-glass-hover: rgba(255, 255, 255, 0.08);
-  --admin-border: rgba(255, 255, 255, 0.10);
-  --admin-border-hover: rgba(255, 255, 255, 0.20);
-  --admin-neon-blue: #4FC3F7;
-  --admin-neon-cyan: #2FE2FF;
+  --admin-bg: hsl(220 25% 4%);
+  --admin-glass: rgba(255, 255, 255, 0.03);
+  --admin-glass-hover: rgba(255, 255, 255, 0.06);
+  --admin-border: rgba(255, 255, 255, 0.08);
+  --admin-border-hover: rgba(255, 255, 255, 0.15);
+  --admin-neon-cyan: #00E5CC;
+  --admin-neon-purple: #A855F7;
   --admin-text: #FFFFFF;
+  --admin-text-secondary: rgba(255, 255, 255, 0.85);
   --admin-text-muted: rgba(255, 255, 255, 0.55);
-  --admin-text-soft: rgba(255, 255, 255, 0.85);
-  --admin-shadow: 0px 4px 20px rgba(0, 0, 0, 0.45);
+  --admin-text-faint: rgba(255, 255, 255, 0.35);
+  --admin-shadow: 0px 8px 40px rgba(0, 0, 0, 0.6);
 
   background: var(--admin-bg);
   color: var(--admin-text);
   min-height: 100vh;
 }
 
-/* Admin Sidebar - 72px minimalistic */
+/* Admin Sidebar */
 .admin-futuristic .admin-sidebar {
-  width: 72px;
+  width: 280px;
   background: rgba(255, 255, 255, 0.02);
   border-right: 1px solid var(--admin-border);
-  backdrop-filter: blur(12px);
-}
-
-.admin-futuristic .admin-sidebar.expanded {
-  width: 240px;
+  backdrop-filter: blur(16px);
 }
 
 /* Sidebar nav items */
 .admin-futuristic .sidebar-item {
-  color: rgba(255, 255, 255, 0.70);
+  color: var(--admin-text-muted);
   transition: all 0.2s ease;
   position: relative;
   border-radius: 12px;
-  padding: 12px;
+  padding: 12px 16px;
 }
 
 .admin-futuristic .sidebar-item:hover {
-  color: #FFFFFF;
-  background: rgba(255, 255, 255, 0.08);
+  color: var(--admin-text);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .admin-futuristic .sidebar-item.active {
   color: var(--admin-neon-cyan);
-  background: rgba(47, 226, 255, 0.08);
+  background: rgba(0, 229, 204, 0.08);
 }
 
 .admin-futuristic .sidebar-item.active::before {
@@ -427,77 +591,108 @@
   transform: translateY(-50%);
   width: 3px;
   height: 24px;
-  background: linear-gradient(180deg, var(--admin-neon-blue), var(--admin-neon-cyan));
+  background: linear-gradient(180deg, var(--admin-neon-cyan), var(--admin-neon-purple));
   border-radius: 0 4px 4px 0;
   box-shadow: 0 0 12px var(--admin-neon-cyan);
 }
 
-/* Top bar - transparent with blur */
+/* Top bar */
 .admin-futuristic .admin-topbar {
-  background: rgba(11, 14, 19, 0.8);
-  backdrop-filter: blur(12px);
+  background: rgba(10, 10, 15, 0.85);
+  backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--admin-border);
   height: 64px;
 }
 
-/* Glass card styling */
+/* Glass panel styling */
 .admin-futuristic .glass-panel {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--admin-glass);
+  border: 1px solid var(--admin-border);
   border-radius: 16px;
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
   box-shadow: var(--admin-shadow);
+  transition: all 0.3s ease;
 }
 
 .admin-futuristic .glass-panel:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.18);
+  background: var(--admin-glass-hover);
+  border-color: var(--admin-border-hover);
 }
 
 /* Neon glow effects */
 .admin-futuristic .neon-glow {
-  box-shadow: 0 0 20px rgba(79, 195, 247, 0.15);
+  box-shadow: 0 0 30px rgba(0, 229, 204, 0.2);
 }
 
 .admin-futuristic .neon-text {
   color: var(--admin-neon-cyan);
-  text-shadow: 0 0 10px rgba(47, 226, 255, 0.5);
+  text-shadow: 0 0 15px rgba(0, 229, 204, 0.6);
 }
 
-/* Form inputs - dark glass style */
+/* Form inputs */
 .admin-futuristic .glass-input {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: var(--admin-text);
   transition: all 0.2s ease;
+  padding: 12px 16px;
 }
 
 .admin-futuristic .glass-input:focus {
   border-color: var(--admin-neon-cyan);
-  box-shadow: 0 0 0 2px rgba(47, 226, 255, 0.15);
+  box-shadow: 0 0 0 3px rgba(0, 229, 204, 0.15), 0 0 20px rgba(0, 229, 204, 0.1);
   outline: none;
 }
 
 .admin-futuristic .glass-input::placeholder {
-  color: rgba(255, 255, 255, 0.40);
+  color: var(--admin-text-faint);
 }
 
 /* Neon toggle switch */
 .admin-futuristic .neon-switch[data-state="checked"] {
-  background: linear-gradient(135deg, var(--admin-neon-blue), var(--admin-neon-cyan));
-  box-shadow: 0 0 12px rgba(47, 226, 255, 0.4);
+  background: linear-gradient(135deg, var(--admin-neon-cyan), var(--admin-neon-purple));
+  box-shadow: 0 0 16px rgba(0, 229, 204, 0.5);
 }
 
-/* Chart styling */
+/* Chart container */
 .admin-futuristic .chart-container {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
   backdrop-filter: blur(8px);
 }
 
-/* Scrollbar styling for admin */
+/* Stat card with gradient icon */
+.admin-futuristic .stat-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 24px;
+  transition: all 0.3s ease;
+}
+
+.admin-futuristic .stat-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-2px);
+}
+
+.admin-futuristic .stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(0, 229, 204, 0.15), rgba(168, 85, 247, 0.15));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-futuristic .stat-icon svg {
+  color: var(--admin-neon-cyan);
+}
+
+/* Custom scrollbar */
 .admin-futuristic ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -508,12 +703,12 @@
 }
 
 .admin-futuristic ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 3px;
 }
 
 .admin-futuristic ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* Responsive adjustments */
@@ -528,4 +723,86 @@
   .admin-futuristic .admin-sidebar.expanded {
     width: 280px;
   }
+}
+
+/* ============================================
+   SPECIAL COMPONENT STYLES
+   ============================================ */
+
+/* Hero mesh background */
+.hero-mesh {
+  background: 
+    radial-gradient(ellipse at 20% 20%, rgba(0, 229, 204, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(168, 85, 247, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0.4) 0%, transparent 100%),
+    hsl(220 25% 4%);
+}
+
+/* Data table styling */
+.data-table thead {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.data-table thead th {
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.data-table tbody tr {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 0.15s ease;
+}
+
+.data-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.data-table tbody td {
+  padding: 16px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Empty state styling */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.empty-state-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(0, 229, 204, 0.1), rgba(168, 85, 247, 0.1));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.empty-state-icon svg {
+  width: 40px;
+  height: 40px;
+  color: #00E5CC;
+}
+
+.empty-state-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 8px;
+}
+
+.empty-state-description {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.5);
+  max-width: 300px;
 }
