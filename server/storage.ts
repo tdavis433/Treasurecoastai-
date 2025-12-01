@@ -31,6 +31,12 @@ import {
   type InsertSessionState,
   type SystemLog,
   type InsertSystemLog,
+  type KnowledgeSource,
+  type InsertKnowledgeSource,
+  type KnowledgeDocument,
+  type InsertKnowledgeDocument,
+  type KnowledgeChunk,
+  type InsertKnowledgeChunk,
   appointments,
   clientSettings,
   conversationAnalytics,
@@ -55,6 +61,9 @@ import {
   conversationActivities,
   messageAttachments,
   channels,
+  knowledgeSources,
+  knowledgeDocuments,
+  knowledgeChunks,
 } from "@shared/schema";
 import * as schema from "@shared/schema";
 import { drizzle } from "drizzle-orm/neon-serverless";
@@ -162,6 +171,25 @@ export interface IStorage {
   
   // Health check
   healthCheck?(): Promise<{ status: string; latencyMs?: number }>;
+  
+  // Knowledge Base (Phase 2A)
+  createKnowledgeSource(source: InsertKnowledgeSource): Promise<KnowledgeSource>;
+  getKnowledgeSources(workspaceId: string, botId?: string): Promise<KnowledgeSource[]>;
+  getKnowledgeSourceById(id: string): Promise<KnowledgeSource | undefined>;
+  updateKnowledgeSource(id: string, updates: Partial<KnowledgeSource>): Promise<KnowledgeSource>;
+  deleteKnowledgeSource(id: string): Promise<void>;
+  
+  createKnowledgeDocument(document: InsertKnowledgeDocument): Promise<KnowledgeDocument>;
+  getKnowledgeDocuments(sourceId: string): Promise<KnowledgeDocument[]>;
+  getKnowledgeDocumentById(id: string): Promise<KnowledgeDocument | undefined>;
+  updateKnowledgeDocument(id: string, updates: Partial<KnowledgeDocument>): Promise<KnowledgeDocument>;
+  deleteKnowledgeDocument(id: string): Promise<void>;
+  
+  createKnowledgeChunk(chunk: InsertKnowledgeChunk): Promise<KnowledgeChunk>;
+  getKnowledgeChunks(documentId: string): Promise<KnowledgeChunk[]>;
+  getKnowledgeChunksBySource(sourceId: string): Promise<KnowledgeChunk[]>;
+  deleteKnowledgeChunks(documentId: string): Promise<void>;
+  searchKnowledgeChunks(workspaceId: string, query: string, limit?: number): Promise<KnowledgeChunk[]>;
   
   // System logs (Super Admin)
   createSystemLog(log: InsertSystemLog): Promise<SystemLog>;
@@ -1377,6 +1405,188 @@ export class DbStorage implements IStorage {
     }
     
     return { status, errorCount, lastError };
+  }
+
+  // =============================================
+  // KNOWLEDGE BASE (Phase 2A)
+  // =============================================
+
+  async createKnowledgeSource(source: InsertKnowledgeSource): Promise<KnowledgeSource> {
+    const result = await db
+      .insert(knowledgeSources)
+      .values(source as any)
+      .returning();
+    return result[0];
+  }
+
+  async getKnowledgeSources(workspaceId: string, botId?: string): Promise<KnowledgeSource[]> {
+    const conditions = [eq(knowledgeSources.workspaceId, workspaceId)];
+    if (botId) {
+      conditions.push(eq(knowledgeSources.botId, botId));
+    }
+    return db
+      .select()
+      .from(knowledgeSources)
+      .where(and(...conditions))
+      .orderBy(desc(knowledgeSources.createdAt));
+  }
+
+  async getKnowledgeSourceById(id: string): Promise<KnowledgeSource | undefined> {
+    const result = await db
+      .select()
+      .from(knowledgeSources)
+      .where(eq(knowledgeSources.id, id))
+      .limit(1);
+    return result[0];
+  }
+
+  async updateKnowledgeSource(id: string, updates: Partial<KnowledgeSource>): Promise<KnowledgeSource> {
+    const result = await db
+      .update(knowledgeSources)
+      .set({ ...updates, updatedAt: new Date() } as any)
+      .where(eq(knowledgeSources.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteKnowledgeSource(id: string): Promise<void> {
+    await db.delete(knowledgeChunks).where(eq(knowledgeChunks.sourceId, id));
+    await db.delete(knowledgeDocuments).where(eq(knowledgeDocuments.sourceId, id));
+    await db.delete(knowledgeSources).where(eq(knowledgeSources.id, id));
+  }
+
+  async createKnowledgeDocument(document: InsertKnowledgeDocument): Promise<KnowledgeDocument> {
+    const result = await db
+      .insert(knowledgeDocuments)
+      .values(document as any)
+      .returning();
+    
+    await db
+      .update(knowledgeSources)
+      .set({ 
+        documentCount: sql`${knowledgeSources.documentCount} + 1`,
+        updatedAt: new Date() 
+      } as any)
+      .where(eq(knowledgeSources.id, document.sourceId));
+    
+    return result[0];
+  }
+
+  async getKnowledgeDocuments(sourceId: string): Promise<KnowledgeDocument[]> {
+    return db
+      .select()
+      .from(knowledgeDocuments)
+      .where(eq(knowledgeDocuments.sourceId, sourceId))
+      .orderBy(desc(knowledgeDocuments.createdAt));
+  }
+
+  async getKnowledgeDocumentById(id: string): Promise<KnowledgeDocument | undefined> {
+    const result = await db
+      .select()
+      .from(knowledgeDocuments)
+      .where(eq(knowledgeDocuments.id, id))
+      .limit(1);
+    return result[0];
+  }
+
+  async updateKnowledgeDocument(id: string, updates: Partial<KnowledgeDocument>): Promise<KnowledgeDocument> {
+    const result = await db
+      .update(knowledgeDocuments)
+      .set({ ...updates, updatedAt: new Date() } as any)
+      .where(eq(knowledgeDocuments.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteKnowledgeDocument(id: string): Promise<void> {
+    const doc = await this.getKnowledgeDocumentById(id);
+    if (!doc) return;
+    
+    await db.delete(knowledgeChunks).where(eq(knowledgeChunks.documentId, id));
+    await db.delete(knowledgeDocuments).where(eq(knowledgeDocuments.id, id));
+    
+    await db
+      .update(knowledgeSources)
+      .set({ 
+        documentCount: sql`GREATEST(${knowledgeSources.documentCount} - 1, 0)`,
+        chunkCount: sql`GREATEST(${knowledgeSources.chunkCount} - ${doc.chunkCount}, 0)`,
+        updatedAt: new Date() 
+      } as any)
+      .where(eq(knowledgeSources.id, doc.sourceId));
+  }
+
+  async createKnowledgeChunk(chunk: InsertKnowledgeChunk): Promise<KnowledgeChunk> {
+    const result = await db
+      .insert(knowledgeChunks)
+      .values(chunk as any)
+      .returning();
+    
+    await db
+      .update(knowledgeDocuments)
+      .set({ 
+        chunkCount: sql`${knowledgeDocuments.chunkCount} + 1`,
+        updatedAt: new Date() 
+      } as any)
+      .where(eq(knowledgeDocuments.id, chunk.documentId));
+    
+    await db
+      .update(knowledgeSources)
+      .set({ 
+        chunkCount: sql`${knowledgeSources.chunkCount} + 1`,
+        updatedAt: new Date() 
+      } as any)
+      .where(eq(knowledgeSources.id, chunk.sourceId));
+    
+    return result[0];
+  }
+
+  async getKnowledgeChunks(documentId: string): Promise<KnowledgeChunk[]> {
+    return db
+      .select()
+      .from(knowledgeChunks)
+      .where(eq(knowledgeChunks.documentId, documentId))
+      .orderBy(knowledgeChunks.chunkIndex);
+  }
+
+  async getKnowledgeChunksBySource(sourceId: string): Promise<KnowledgeChunk[]> {
+    return db
+      .select()
+      .from(knowledgeChunks)
+      .where(eq(knowledgeChunks.sourceId, sourceId))
+      .orderBy(knowledgeChunks.chunkIndex);
+  }
+
+  async deleteKnowledgeChunks(documentId: string): Promise<void> {
+    const doc = await this.getKnowledgeDocumentById(documentId);
+    if (!doc) return;
+    
+    const chunkCount = doc.chunkCount;
+    await db.delete(knowledgeChunks).where(eq(knowledgeChunks.documentId, documentId));
+    
+    await db
+      .update(knowledgeDocuments)
+      .set({ chunkCount: 0, updatedAt: new Date() } as any)
+      .where(eq(knowledgeDocuments.id, documentId));
+    
+    await db
+      .update(knowledgeSources)
+      .set({ 
+        chunkCount: sql`GREATEST(${knowledgeSources.chunkCount} - ${chunkCount}, 0)`,
+        updatedAt: new Date() 
+      } as any)
+      .where(eq(knowledgeSources.id, doc.sourceId));
+  }
+
+  async searchKnowledgeChunks(workspaceId: string, query: string, limit: number = 10): Promise<KnowledgeChunk[]> {
+    const searchTerm = `%${query}%`;
+    return db
+      .select()
+      .from(knowledgeChunks)
+      .where(and(
+        eq(knowledgeChunks.workspaceId, workspaceId),
+        like(knowledgeChunks.content, searchTerm)
+      ))
+      .limit(limit);
   }
 }
 

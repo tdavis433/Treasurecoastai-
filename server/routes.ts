@@ -76,6 +76,7 @@ import {
 } from './env';
 import { registerChannelRoutes } from './channelRoutes';
 import flowRoutes from './flowRoutes';
+import { registerKnowledgeRoutes } from './knowledgeRoutes';
 
 // =============================================
 // PHASE 2.4: SIGNED WIDGET TOKENS
@@ -6548,6 +6549,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   
   // Register flow builder routes
   app.use(flowRoutes);
+  
+  // Register knowledge base routes (Phase 2A)
+  registerKnowledgeRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;

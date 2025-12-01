@@ -11,12 +11,15 @@ This project is a multi-tenant AI chatbot platform providing customizable, AI-dr
 - Privacy-first approach with PII protection
 
 ## Development Roadmap Progress
-### Phase 1: Flow Engine & Visual Bot Builder
+### Phase 1: Flow Engine & Visual Bot Builder (Complete)
 - **Phase 1A (Complete):** Multi-channel conversation schema (channels, conversations, messages, participants, attachments)
 - **Phase 1B (Complete):** Channel connector architecture (BaseConnector, ChatWidgetConnector, EmailConnector, ChannelService)
 - **Phase 1C (Complete):** Flow engine schema (bot_flows, bot_flow_versions, flow_sessions)
 - **Phase 1D (Complete):** Flow interpreter service with 11 node types (start, message, question, condition, ai_answer, action, set_variable, delay, api_call, handoff, end)
-- **Phase 1E (In Progress):** Visual bot builder UI with React Flow
+- **Phase 1E (Complete):** Visual bot builder UI with React Flow (FlowBuilder, NodePalette, PropertyEditor, FlowListPage)
+
+### Phase 2: Knowledge Hub & AI Enhancements
+- **Phase 2A (Complete):** Knowledge base schema (knowledge_sources, knowledge_documents, knowledge_chunks) with full CRUD API and workspace isolation
 
 ## System Architecture
 The system is built with a React, TypeScript, Tailwind CSS, and shadcn/ui frontend, and an Express, Node.js backend.
@@ -34,6 +37,7 @@ The system is built with a React, TypeScript, Tailwind CSS, and shadcn/ui fronte
 - **Platform Management:** APIs for managing clients, bots, and accessing logs.
 - **Admin & Client Dashboards:** Dedicated APIs for analytics, leads, inbox, and configuration.
 - **Flow Builder:** `GET/POST /api/flows`, `GET/PUT/DELETE /api/flows/:flowId`, `POST /api/flows/:flowId/versions`, `POST /api/flows/:flowId/publish` for visual bot builder.
+- **Knowledge Base:** `GET/POST /api/knowledge/sources`, `GET/PUT/DELETE /api/knowledge/sources/:sourceId`, `GET/POST /api/knowledge/documents`, `GET/PUT/DELETE /api/knowledge/documents/:documentId`, `GET/POST /api/knowledge/chunks`, `GET /api/knowledge/search` for AI knowledge management.
 
 ### Frontend
 - **Demo Hub (`/demos`):** Showcases available bot templates.
