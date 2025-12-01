@@ -214,6 +214,34 @@ export default function ControlCenter() {
     refetchInterval: 60000,
   });
 
+  // Per-bot analytics for ranking top performers
+  const { data: botAnalyticsData } = useQuery<{
+    totals: {
+      totalConversations: number;
+      totalMessages: number;
+      appointmentRequests: number;
+    };
+    bots: Array<{
+      clientId: string;
+      botId: string;
+      businessName: string;
+      businessType: string;
+      totalConversations: number;
+      totalMessages: number;
+      appointmentRequests: number;
+    }>;
+    totalBots: number;
+  }>({
+    queryKey: ["/api/super-admin/analytics/overview", { days: analyticsRange }],
+    queryFn: async () => {
+      const response = await fetch(`/api/super-admin/analytics/overview?days=${analyticsRange}`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch bot analytics");
+      return response.json();
+    },
+    enabled: currentUser?.role === "super_admin",
+    refetchInterval: 60000,
+  });
+
   // System Status
   const { data: systemStatus, isLoading: statusLoading } = useQuery<{
     status: 'operational' | 'degraded' | 'incident';
@@ -320,6 +348,26 @@ export default function ControlCenter() {
     bot.botId.toLowerCase().includes(searchQuery.toLowerCase()) ||
     bot.businessProfile?.businessName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Sort bots by performance (conversations + appointments weighted)
+  // Reconcile analytics data with bot configs for complete info
+  const topPerformingBots = (botAnalyticsData?.bots || [])
+    .map(bot => {
+      const botConfig = clientBots.find(b => b.botId === bot.botId);
+      const client = clients.find(c => c.id === bot.clientId);
+      return {
+        ...bot,
+        // Use botConfig data as fallback for missing fields
+        businessName: bot.businessName || botConfig?.businessProfile?.businessName || botConfig?.name || 'Unknown Bot',
+        businessType: bot.businessType || botConfig?.businessProfile?.type || 'general',
+        clientName: client?.name || 'Client',
+        performanceScore: (bot.totalConversations || 0) + (bot.appointmentRequests || 0) * 2,
+        hasValidConfig: !!botConfig
+      };
+    })
+    .filter(bot => bot.totalConversations > 0 || bot.appointmentRequests > 0) // Only show bots with activity
+    .sort((a, b) => b.performanceScore - a.performanceScore)
+    .slice(0, 5);
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ clientId, status }: { clientId: string; status: string }) => {
@@ -845,7 +893,53 @@ export default function ControlCenter() {
 
               {dashboardSection === 'overview' && (
               <>
-              {/* Platform Stats - Key Metrics */}
+              {/* Time Range Toggle & Quick Actions */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2 p-1 bg-white/5 rounded-lg border border-white/10">
+                  <Button
+                    data-testid="button-range-7d"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setAnalyticsRange(7)}
+                    className={analyticsRange === 7 ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
+                  >
+                    7 Days
+                  </Button>
+                  <Button
+                    data-testid="button-range-30d"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setAnalyticsRange(30)}
+                    className={analyticsRange === 30 ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
+                  >
+                    30 Days
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    data-testid="button-quick-new-client"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowCreateWorkspaceModal(true)}
+                    className="border-white/20 text-white hover:bg-white/10"
+                  >
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    New Client
+                  </Button>
+                  <Button
+                    data-testid="button-quick-new-bot"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowCreateModal(true)}
+                    className="border-white/20 text-white hover:bg-white/10"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Bot
+                  </Button>
+                </div>
+              </div>
+
+              {/* Platform Stats - Key Metrics with Time Range */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <GlassCard hover data-testid="card-stat-conversations">
                   <GlassCardContent className="pt-6">
@@ -853,7 +947,7 @@ export default function ControlCenter() {
                       <div className="h-10 w-10 rounded-lg bg-cyan-500/20 flex items-center justify-center">
                         <MessageSquare className="h-5 w-5 text-cyan-400" />
                       </div>
-                      <Badge className="bg-cyan-500/10 text-cyan-400 text-xs">Last 7 days</Badge>
+                      <Badge className="bg-cyan-500/10 text-cyan-400 text-xs">Last {analyticsRange} days</Badge>
                     </div>
                     <p className="text-3xl font-bold text-white">{globalAnalytics?.summary?.totalConversations || 0}</p>
                     <p className="text-sm text-white/55 mt-1">Total Conversations</p>
@@ -899,35 +993,235 @@ export default function ControlCenter() {
                 </GlassCard>
               </div>
 
-              {/* Quick Status Row */}
-              <div className="grid grid-cols-3 gap-3 mb-8">
-                <div className="p-3 rounded-lg bg-green-500/10 border border-green-400/20 flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full bg-green-500/20 flex items-center justify-center">
-                    <Play className="h-4 w-4 text-green-400" />
+              {/* Activity Trends Chart */}
+              <GlassCard className="mb-6" data-testid="card-trends-chart">
+                <GlassCardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <GlassCardTitle>Activity Trends</GlassCardTitle>
+                      <GlassCardDescription>Conversations, Leads & Bookings over time</GlassCardDescription>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const csvContent = "Date,Conversations,Leads,Bookings\n" + 
+                          (globalAnalytics?.dailyTrends || []).map(t => `${t.date},${t.conversations},${t.leads},${t.appointments}`).join('\n');
+                        const blob = new Blob([csvContent], { type: 'text/csv' });
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `activity-trends-${analyticsRange}d.csv`;
+                        a.click();
+                      }}
+                      className="text-white/55 hover:text-white hover:bg-white/10"
+                      data-testid="button-export-trends"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Export CSV
+                    </Button>
                   </div>
-                  <div>
-                    <p className="text-lg font-semibold text-white">{clients.filter(c => c.status === 'active').length}</p>
-                    <p className="text-xs text-green-400">Active Clients</p>
+                </GlassCardHeader>
+                <GlassCardContent>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={globalAnalytics?.dailyTrends || []}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                        <XAxis 
+                          dataKey="date" 
+                          stroke="#666"
+                          tick={{ fill: '#999', fontSize: 11 }}
+                          tickFormatter={(value) => {
+                            const d = new Date(value);
+                            return `${d.getMonth()+1}/${d.getDate()}`;
+                          }}
+                        />
+                        <YAxis stroke="#666" tick={{ fill: '#999', fontSize: 11 }} />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'rgba(0,0,0,0.9)', 
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: '8px'
+                          }}
+                          labelStyle={{ color: '#fff' }}
+                        />
+                        <Line type="monotone" dataKey="conversations" stroke="#00E5CC" strokeWidth={2} dot={false} name="Conversations" />
+                        <Line type="monotone" dataKey="leads" stroke="#22c55e" strokeWidth={2} dot={false} name="Leads" />
+                        <Line type="monotone" dataKey="appointments" stroke="#A855F7" strokeWidth={2} dot={false} name="Bookings" />
+                      </LineChart>
+                    </ResponsiveContainer>
                   </div>
-                </div>
-                <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-400/20 flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center">
-                    <Eye className="h-4 w-4 text-blue-400" />
+                  <div className="flex items-center justify-center gap-6 mt-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-cyan-400" />
+                      <span className="text-sm text-white/70">Conversations</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-green-500" />
+                      <span className="text-sm text-white/70">Leads</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-purple-500" />
+                      <span className="text-sm text-white/70">Bookings</span>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-lg font-semibold text-white">{clientBots.filter(b => b.metadata?.isDemo).length}</p>
-                    <p className="text-xs text-blue-400">Demo Bots</p>
-                  </div>
-                </div>
-                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-400/20 flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full bg-amber-500/20 flex items-center justify-center">
-                    <Pause className="h-4 w-4 text-amber-400" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-semibold text-white">{clients.filter(c => c.status === 'paused').length}</p>
-                    <p className="text-xs text-amber-400">Paused</p>
-                  </div>
-                </div>
+                </GlassCardContent>
+              </GlassCard>
+
+              {/* Two Column Layout: Top Performers & Quick Status */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                {/* Top Performing Assistants - Using Real Analytics */}
+                <GlassCard data-testid="card-top-performers">
+                  <GlassCardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <GlassCardTitle>Top Performing Assistants</GlassCardTitle>
+                        <GlassCardDescription>Ranked by activity (last {analyticsRange} days)</GlassCardDescription>
+                      </div>
+                      {topPerformingBots.length > 0 && (
+                        <Badge className="bg-green-500/10 text-green-400 text-xs">
+                          <Activity className="h-3 w-3 mr-1" />
+                          Live
+                        </Badge>
+                      )}
+                    </div>
+                  </GlassCardHeader>
+                  <GlassCardContent>
+                    <div className="space-y-3">
+                      {topPerformingBots.map((bot, idx) => (
+                        <div 
+                          key={bot.botId}
+                          className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+                          onClick={() => {
+                            if (bot.hasValidConfig) {
+                              setSelectedBotId(bot.botId);
+                              setActiveTab('overview');
+                            }
+                          }}
+                          data-testid={`row-top-bot-${bot.botId}`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                              idx === 0 ? 'bg-amber-500/20 text-amber-400' :
+                              idx === 1 ? 'bg-gray-300/20 text-gray-300' :
+                              idx === 2 ? 'bg-orange-700/20 text-orange-600' :
+                              'bg-white/10 text-white/50'
+                            }`}>
+                              <span className="text-sm font-bold">#{idx + 1}</span>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-white">{bot.businessName}</p>
+                              <p className="text-xs text-white/50">{bot.clientName}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge className="bg-cyan-500/10 text-cyan-400 text-xs" title="Conversations">
+                              <MessageSquare className="h-3 w-3 mr-1" />
+                              {bot.totalConversations}
+                            </Badge>
+                            {bot.appointmentRequests > 0 && (
+                              <Badge className="bg-purple-500/10 text-purple-400 text-xs" title="Appointment Requests">
+                                <Calendar className="h-3 w-3 mr-1" />
+                                {bot.appointmentRequests}
+                              </Badge>
+                            )}
+                            {bot.hasValidConfig && <ChevronRight className="h-4 w-4 text-white/30" />}
+                          </div>
+                        </div>
+                      ))}
+                      {topPerformingBots.length === 0 && clientBots.length > 0 && (
+                        <div className="text-center py-6">
+                          <Activity className="h-8 w-8 text-white/30 mx-auto mb-2" />
+                          <p className="text-sm text-white/50">No activity in this period</p>
+                          <p className="text-xs text-white/40 mt-1">Bots with conversations will appear here</p>
+                        </div>
+                      )}
+                      {clientBots.length === 0 && (
+                        <div className="text-center py-6">
+                          <Bot className="h-8 w-8 text-white/30 mx-auto mb-2" />
+                          <p className="text-sm text-white/50">No assistants yet</p>
+                        </div>
+                      )}
+                    </div>
+                  </GlassCardContent>
+                </GlassCard>
+
+                {/* Quick Status & Recent Activity */}
+                <GlassCard data-testid="card-quick-status">
+                  <GlassCardHeader>
+                    <GlassCardTitle>Platform Status</GlassCardTitle>
+                    <GlassCardDescription>Current system health and activity</GlassCardDescription>
+                  </GlassCardHeader>
+                  <GlassCardContent>
+                    <div className="space-y-3">
+                      <div className="p-3 rounded-lg bg-green-500/10 border border-green-400/20 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                            <Play className="h-4 w-4 text-green-400" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-white">Active Clients</p>
+                            <p className="text-xs text-white/50">Currently running</p>
+                          </div>
+                        </div>
+                        <span className="text-2xl font-bold text-green-400">{clients.filter(c => c.status === 'active').length}</span>
+                      </div>
+                      <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-400/20 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center">
+                            <Eye className="h-4 w-4 text-blue-400" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-white">Demo Bots</p>
+                            <p className="text-xs text-white/50">Showcase assistants</p>
+                          </div>
+                        </div>
+                        <span className="text-2xl font-bold text-blue-400">{clientBots.filter(b => b.metadata?.isDemo).length}</span>
+                      </div>
+                      <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-400/20 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-full bg-amber-500/20 flex items-center justify-center">
+                            <Pause className="h-4 w-4 text-amber-400" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-white">Paused Clients</p>
+                            <p className="text-xs text-white/50">Temporarily inactive</p>
+                          </div>
+                        </div>
+                        <span className="text-2xl font-bold text-amber-400">{clients.filter(c => c.status === 'paused').length}</span>
+                      </div>
+                      <div className={`p-3 rounded-lg flex items-center justify-between ${
+                        systemStatus?.status === 'operational' ? 'bg-green-500/10 border border-green-400/20' :
+                        systemStatus?.status === 'degraded' ? 'bg-amber-500/10 border border-amber-400/20' :
+                        'bg-red-500/10 border border-red-400/20'
+                      }`}>
+                        <div className="flex items-center gap-3">
+                          <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                            systemStatus?.status === 'operational' ? 'bg-green-500/20' :
+                            systemStatus?.status === 'degraded' ? 'bg-amber-500/20' : 'bg-red-500/20'
+                          }`}>
+                            {systemStatus?.status === 'operational' ? (
+                              <CheckCircle2 className="h-4 w-4 text-green-400" />
+                            ) : systemStatus?.status === 'degraded' ? (
+                              <AlertTriangle className="h-4 w-4 text-amber-400" />
+                            ) : (
+                              <XCircle className="h-4 w-4 text-red-400" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-white">System Status</p>
+                            <p className="text-xs text-white/50 capitalize">{systemStatus?.status || 'Checking...'}</p>
+                          </div>
+                        </div>
+                        {systemStatus?.errorCount ? (
+                          <Badge className="bg-red-500/20 text-red-400">{systemStatus.errorCount} errors</Badge>
+                        ) : (
+                          <Badge className="bg-green-500/20 text-green-400">All Clear</Badge>
+                        )}
+                      </div>
+                    </div>
+                  </GlassCardContent>
+                </GlassCard>
               </div>
 
               {/* Bot Cards Grid with Bulk Actions */}
