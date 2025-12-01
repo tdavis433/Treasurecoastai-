@@ -7399,146 +7399,347 @@ function KnowledgeSectionPanel({ bots, clients }: { bots: BotConfig[]; clients: 
 
 // Integrations Section Panel - API keys and external connections
 function IntegrationsSectionPanel() {
-  const { data: envStatus } = useQuery<{
-    openaiConfigured: boolean;
-    stripeConfigured: boolean;
-    databaseConnected: boolean;
-  }>({
+  const { toast } = useToast();
+  const [testingIntegration, setTestingIntegration] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, { success: boolean; latencyMs: number; error?: string }>>({});
+  
+  interface IntegrationStatus {
+    openai: { configured: boolean; status: string; baseUrl: string | null };
+    stripe: { configured: boolean; status: string };
+    database: { configured: boolean; status: string; latencyMs?: number };
+    email: { configured: boolean; status: string };
+    sms: { configured: boolean; status: string };
+    timestamp: string;
+  }
+  
+  const { data: status, isLoading, refetch } = useQuery<IntegrationStatus>({
     queryKey: ["/api/super-admin/integrations/status"],
     queryFn: async () => {
-      try {
-        const response = await fetch("/api/super-admin/integrations/status", { credentials: "include" });
-        if (!response.ok) return { openaiConfigured: true, stripeConfigured: true, databaseConnected: true };
-        return response.json();
-      } catch {
-        return { openaiConfigured: true, stripeConfigured: true, databaseConnected: true };
-      }
+      const response = await fetch("/api/super-admin/integrations/status", { credentials: "include" });
+      if (!response.ok) throw new Error('Failed to fetch');
+      return response.json();
     },
   });
+
+  const handleTestIntegration = async (integrationId: string) => {
+    setTestingIntegration(integrationId);
+    try {
+      const response = await fetch(`/api/super-admin/integrations/test/${integrationId}`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const result = await response.json();
+      setTestResults(prev => ({ ...prev, [integrationId]: result }));
+      
+      if (result.success) {
+        toast({
+          title: 'Connection Successful',
+          description: `${integrationId.toUpperCase()} responded in ${result.latencyMs}ms`,
+        });
+      } else {
+        toast({
+          title: 'Connection Failed',
+          description: result.error || 'Unable to connect',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Test Failed',
+        description: 'Unable to test integration',
+        variant: 'destructive',
+      });
+    } finally {
+      setTestingIntegration(null);
+    }
+  };
+
+  const getStatusBadge = (integrationStatus: string | undefined) => {
+    switch (integrationStatus) {
+      case 'connected':
+        return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Connected</Badge>;
+      case 'error':
+        return <Badge className="bg-red-500/20 text-red-400 border-red-500/30">Error</Badge>;
+      default:
+        return <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">Not Configured</Badge>;
+    }
+  };
 
   const integrations = [
     {
       id: 'openai',
       name: 'OpenAI',
-      description: 'GPT-4 powered conversations',
+      description: 'GPT-4 powered AI conversations',
       icon: Zap,
-      status: envStatus?.openaiConfigured !== false ? 'connected' : 'not_configured',
-      colorClass: 'bg-cyan-500/20 text-cyan-400'
+      status: status?.openai?.status,
+      configured: status?.openai?.configured,
+      colorClass: 'bg-cyan-500/20 text-cyan-400',
+      details: status?.openai?.baseUrl ? `Using ${new URL(status.openai.baseUrl).hostname}` : null,
+      canTest: true,
     },
     {
       id: 'stripe',
       name: 'Stripe',
       description: 'Payment processing and billing',
       icon: CreditCard,
-      status: envStatus?.stripeConfigured !== false ? 'connected' : 'not_configured',
-      colorClass: 'bg-purple-500/20 text-purple-400'
+      status: status?.stripe?.status,
+      configured: status?.stripe?.configured,
+      colorClass: 'bg-purple-500/20 text-purple-400',
+      details: null,
+      canTest: true,
     },
     {
       id: 'database',
       name: 'PostgreSQL',
       description: 'Data persistence and storage',
       icon: Layers,
-      status: envStatus?.databaseConnected !== false ? 'connected' : 'not_configured',
-      colorClass: 'bg-green-500/20 text-green-400'
-    }
+      status: status?.database?.status,
+      configured: status?.database?.configured,
+      colorClass: 'bg-green-500/20 text-green-400',
+      details: status?.database?.latencyMs ? `Latency: ${status.database.latencyMs}ms` : null,
+      canTest: true,
+    },
+    {
+      id: 'email',
+      name: 'Email (Coming Soon)',
+      description: 'SendGrid / Mailgun notifications',
+      icon: Mail,
+      status: status?.email?.status,
+      configured: status?.email?.configured,
+      colorClass: 'bg-blue-500/20 text-blue-400',
+      details: null,
+      canTest: false,
+    },
+    {
+      id: 'sms',
+      name: 'SMS (Coming Soon)',
+      description: 'Twilio text messaging',
+      icon: MessageSquare,
+      status: status?.sms?.status,
+      configured: status?.sms?.configured,
+      colorClass: 'bg-orange-500/20 text-orange-400',
+      details: null,
+      canTest: false,
+    },
   ];
 
   return (
     <div className="space-y-6">
       {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-white">Integrations Hub</h2>
+          <p className="text-sm text-white/55">Manage API connections, credentials, and external services</p>
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => refetch()}
+          className="border-white/20 text-white/70"
+          data-testid="button-refresh-integrations"
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          Refresh Status
+        </Button>
+      </div>
+
+      {/* Core Integrations */}
       <div>
-        <h2 className="text-lg font-semibold text-white">Integrations</h2>
-        <p className="text-sm text-white/55">Manage API connections and external services</p>
-      </div>
-
-      {/* Integration Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {integrations.map(integration => (
-          <GlassCard key={integration.id} data-testid={`card-integration-${integration.id}`}>
-            <GlassCardContent className="p-5">
-              <div className="flex items-start justify-between mb-4">
-                <div className={`h-10 w-10 rounded-lg ${integration.colorClass.split(' ')[0]} flex items-center justify-center`}>
-                  <integration.icon className={`h-5 w-5 ${integration.colorClass.split(' ')[1]}`} />
+        <h3 className="text-sm font-medium text-white/70 mb-3">Core Services</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {integrations.slice(0, 3).map(integration => (
+            <GlassCard key={integration.id} data-testid={`card-integration-${integration.id}`}>
+              <GlassCardContent className="p-5">
+                <div className="flex items-start justify-between mb-4">
+                  <div className={`h-10 w-10 rounded-lg ${integration.colorClass.split(' ')[0]} flex items-center justify-center`}>
+                    <integration.icon className={`h-5 w-5 ${integration.colorClass.split(' ')[1]}`} />
+                  </div>
+                  {getStatusBadge(integration.status)}
                 </div>
-                <Badge className={
-                  integration.status === 'connected' 
-                    ? 'bg-green-500/20 text-green-400 border-green-500/30' 
-                    : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-                }>
-                  {integration.status === 'connected' ? 'Connected' : 'Not Configured'}
-                </Badge>
-              </div>
-              <h3 className="font-medium text-white">{integration.name}</h3>
-              <p className="text-sm text-white/55 mt-1">{integration.description}</p>
-            </GlassCardContent>
-          </GlassCard>
-        ))}
+                <h3 className="font-medium text-white">{integration.name}</h3>
+                <p className="text-sm text-white/55 mt-1">{integration.description}</p>
+                {integration.details && (
+                  <p className="text-xs text-white/40 mt-2">{integration.details}</p>
+                )}
+                {testResults[integration.id] && (
+                  <div className={`mt-3 p-2 rounded text-xs ${testResults[integration.id].success ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                    {testResults[integration.id].success 
+                      ? `Connected (${testResults[integration.id].latencyMs}ms)` 
+                      : `Failed: ${testResults[integration.id].error}`}
+                  </div>
+                )}
+                {integration.canTest && integration.configured && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleTestIntegration(integration.id)}
+                    disabled={testingIntegration === integration.id}
+                    className="mt-3 w-full text-white/70 hover:text-white border border-white/10"
+                    data-testid={`button-test-${integration.id}`}
+                  >
+                    {testingIntegration === integration.id ? (
+                      <><RefreshCw className="h-3 w-3 mr-2 animate-spin" /> Testing...</>
+                    ) : (
+                      <><Activity className="h-3 w-3 mr-2" /> Test Connection</>
+                    )}
+                  </Button>
+                )}
+              </GlassCardContent>
+            </GlassCard>
+          ))}
+        </div>
       </div>
 
-      {/* API Usage Stats */}
+      {/* Future Integrations */}
+      <div>
+        <h3 className="text-sm font-medium text-white/70 mb-3">Future Integrations</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {integrations.slice(3).map(integration => (
+            <GlassCard key={integration.id} className="opacity-60" data-testid={`card-integration-${integration.id}`}>
+              <GlassCardContent className="p-4">
+                <div className="flex items-center gap-4">
+                  <div className={`h-10 w-10 rounded-lg ${integration.colorClass.split(' ')[0]} flex items-center justify-center`}>
+                    <integration.icon className={`h-5 w-5 ${integration.colorClass.split(' ')[1]}`} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium text-white">{integration.name}</h3>
+                    <p className="text-sm text-white/55">{integration.description}</p>
+                  </div>
+                  <Badge className="bg-white/10 text-white/50 border-white/20">Coming Soon</Badge>
+                </div>
+              </GlassCardContent>
+            </GlassCard>
+          ))}
+        </div>
+      </div>
+
+      {/* API Configuration Details */}
       <GlassCard>
         <GlassCardHeader>
-          <GlassCardTitle>API Configuration</GlassCardTitle>
-          <GlassCardDescription>Environment variables and secrets</GlassCardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <GlassCardTitle>Environment Variables</GlassCardTitle>
+              <GlassCardDescription>Required secrets and configuration</GlassCardDescription>
+            </div>
+            <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30">
+              {[status?.openai?.configured, status?.stripe?.configured, status?.database?.configured].filter(Boolean).length}/3 Configured
+            </Badge>
+          </div>
         </GlassCardHeader>
         <GlassCardContent>
           <div className="space-y-3">
             <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10">
               <div className="flex items-center gap-3">
                 <Zap className="h-4 w-4 text-cyan-400" />
-                <span className="text-sm text-white">OPENAI_API_KEY</span>
+                <div>
+                  <span className="text-sm text-white block">OPENAI_API_KEY</span>
+                  <span className="text-xs text-white/40">Powers AI conversations</span>
+                </div>
               </div>
-              <Badge className={envStatus?.openaiConfigured !== false ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>
-                {envStatus?.openaiConfigured !== false ? 'Set' : 'Missing'}
+              <Badge className={status?.openai?.configured ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>
+                {status?.openai?.configured ? 'Configured' : 'Missing'}
               </Badge>
             </div>
             <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10">
               <div className="flex items-center gap-3">
                 <CreditCard className="h-4 w-4 text-purple-400" />
-                <span className="text-sm text-white">STRIPE_SECRET_KEY</span>
+                <div>
+                  <span className="text-sm text-white block">STRIPE_SECRET_KEY</span>
+                  <span className="text-xs text-white/40">Payment processing</span>
+                </div>
               </div>
-              <Badge className={envStatus?.stripeConfigured !== false ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>
-                {envStatus?.stripeConfigured !== false ? 'Set' : 'Missing'}
+              <Badge className={status?.stripe?.configured ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>
+                {status?.stripe?.configured ? 'Configured' : 'Missing'}
               </Badge>
             </div>
             <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10">
               <div className="flex items-center gap-3">
                 <Layers className="h-4 w-4 text-green-400" />
-                <span className="text-sm text-white">DATABASE_URL</span>
+                <div>
+                  <span className="text-sm text-white block">DATABASE_URL</span>
+                  <span className="text-xs text-white/40">PostgreSQL connection</span>
+                </div>
               </div>
-              <Badge className={envStatus?.databaseConnected !== false ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>
-                {envStatus?.databaseConnected !== false ? 'Connected' : 'Not Connected'}
+              <Badge className={status?.database?.configured ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>
+                {status?.database?.configured ? 'Connected' : 'Not Connected'}
               </Badge>
             </div>
           </div>
         </GlassCardContent>
       </GlassCard>
 
-      {/* Webhook Configuration */}
+      {/* Active Webhooks */}
       <GlassCard>
         <GlassCardHeader>
-          <GlassCardTitle>Webhook Endpoints</GlassCardTitle>
-          <GlassCardDescription>External service callbacks</GlassCardDescription>
+          <GlassCardTitle>Active Webhooks & Endpoints</GlassCardTitle>
+          <GlassCardDescription>External service callbacks and embed endpoints</GlassCardDescription>
         </GlassCardHeader>
         <GlassCardContent>
           <div className="space-y-3">
             <div className="p-3 bg-white/5 rounded-lg border border-white/10">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-white">Stripe Webhook</span>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-purple-400" />
+                  <span className="text-sm font-medium text-white">Stripe Webhook</span>
+                </div>
                 <Badge className="bg-green-500/20 text-green-400">Active</Badge>
               </div>
-              <code className="text-xs text-white/40 mt-1 block">/api/stripe/webhook</code>
+              <div className="flex items-center gap-2">
+                <code className="text-xs text-white/60 bg-white/5 px-2 py-1 rounded flex-1">/api/stripe/webhook</code>
+                <Button variant="ghost" size="sm" className="h-7 px-2 text-white/50" onClick={() => {
+                  navigator.clipboard.writeText(`${window.location.origin}/api/stripe/webhook`);
+                  toast({ title: 'Copied', description: 'Webhook URL copied to clipboard' });
+                }}>
+                  <Copy className="h-3 w-3" />
+                </Button>
+              </div>
             </div>
             <div className="p-3 bg-white/5 rounded-lg border border-white/10">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-white">Widget Embed</span>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Code className="h-4 w-4 text-cyan-400" />
+                  <span className="text-sm font-medium text-white">Widget Embed Script</span>
+                </div>
                 <Badge className="bg-green-500/20 text-green-400">Active</Badge>
               </div>
-              <code className="text-xs text-white/40 mt-1 block">/widget/embed.js</code>
+              <div className="flex items-center gap-2">
+                <code className="text-xs text-white/60 bg-white/5 px-2 py-1 rounded flex-1">/widget/embed.js</code>
+                <Button variant="ghost" size="sm" className="h-7 px-2 text-white/50" onClick={() => {
+                  navigator.clipboard.writeText(`${window.location.origin}/widget/embed.js`);
+                  toast({ title: 'Copied', description: 'Embed URL copied to clipboard' });
+                }}>
+                  <Copy className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+            <div className="p-3 bg-white/5 rounded-lg border border-white/10">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-green-400" />
+                  <span className="text-sm font-medium text-white">Chat API Endpoint</span>
+                </div>
+                <Badge className="bg-green-500/20 text-green-400">Active</Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                <code className="text-xs text-white/60 bg-white/5 px-2 py-1 rounded flex-1">/api/chat/:clientId/:botId</code>
+                <Button variant="ghost" size="sm" className="h-7 px-2 text-white/50" onClick={() => {
+                  navigator.clipboard.writeText(`${window.location.origin}/api/chat/{clientId}/{botId}`);
+                  toast({ title: 'Copied', description: 'Chat API URL copied to clipboard' });
+                }}>
+                  <Copy className="h-3 w-3" />
+                </Button>
+              </div>
             </div>
           </div>
         </GlassCardContent>
       </GlassCard>
+
+      {/* Last Updated */}
+      {status?.timestamp && (
+        <p className="text-xs text-white/30 text-center">
+          Last updated: {new Date(status.timestamp).toLocaleString()}
+        </p>
+      )}
     </div>
   );
 }

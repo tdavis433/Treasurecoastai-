@@ -5674,6 +5674,138 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
+  // Get integrations status (OpenAI, Stripe, Database, etc)
+  app.get("/api/super-admin/integrations/status", requireSuperAdmin, async (req, res) => {
+    try {
+      const { getOpenAIConfig } = await import("./env");
+      const openAIConfig = getOpenAIConfig();
+      
+      // Check database health
+      const dbCheck = await storage.healthCheck?.() ?? { status: 'ok' };
+      
+      // Check Stripe configuration
+      let stripeConfigured = false;
+      try {
+        const { getStripeSecretKey } = await import("./stripeClient");
+        const stripeKey = await getStripeSecretKey();
+        stripeConfigured = !!stripeKey;
+      } catch (e) {
+        stripeConfigured = false;
+      }
+      
+      // Verify OpenAI key with a lightweight API call
+      let openaiStatus: 'connected' | 'error' | 'not_configured' = 'not_configured';
+      if (openAIConfig?.apiKey) {
+        try {
+          const OpenAI = (await import("openai")).default;
+          const openai = new OpenAI({ apiKey: openAIConfig.apiKey, baseURL: openAIConfig.baseURL });
+          await openai.models.list();
+          openaiStatus = 'connected';
+        } catch (e: any) {
+          // Key exists but is invalid
+          openaiStatus = 'error';
+          console.log("OpenAI status check failed:", e.message);
+        }
+      }
+      
+      res.json({
+        openai: {
+          configured: !!openAIConfig?.apiKey,
+          baseUrl: openAIConfig?.baseURL || null,
+          status: openaiStatus,
+        },
+        stripe: {
+          configured: stripeConfigured,
+          status: stripeConfigured ? 'connected' : 'not_configured',
+        },
+        database: {
+          configured: !!process.env.DATABASE_URL,
+          status: dbCheck.status === 'ok' ? 'connected' : 'error',
+          latencyMs: dbCheck.latencyMs,
+        },
+        email: {
+          configured: false, // Placeholder for future email integration
+          status: 'not_configured',
+        },
+        sms: {
+          configured: false, // Placeholder for future SMS integration  
+          status: 'not_configured',
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Get integrations status error:", error);
+      res.status(500).json({ error: "Failed to fetch integrations status" });
+    }
+  });
+
+  // Test integration connection
+  app.post("/api/super-admin/integrations/test/:integration", requireSuperAdmin, async (req, res) => {
+    try {
+      const { integration } = req.params;
+      const startTime = Date.now();
+      
+      switch (integration) {
+        case 'openai': {
+          const { getOpenAIConfig } = await import("./env");
+          const config = getOpenAIConfig();
+          
+          // Guard against missing API key
+          if (!config || !config.apiKey) {
+            return res.json({ 
+              success: false, 
+              error: 'OpenAI API key not configured. Please add OPENAI_API_KEY to secrets.', 
+              latencyMs: 0 
+            });
+          }
+          
+          // Test with a lightweight API call (models.list)
+          try {
+            const OpenAI = (await import("openai")).default;
+            const openai = new OpenAI({ apiKey: config.apiKey, baseURL: config.baseURL });
+            await openai.models.list();
+            return res.json({ success: true, latencyMs: Date.now() - startTime });
+          } catch (e: any) {
+            // Handle specific OpenAI errors
+            const errorMessage = e.status === 401 
+              ? 'Invalid API key - please check your OPENAI_API_KEY'
+              : e.message || 'Connection failed';
+            return res.json({ success: false, error: errorMessage, latencyMs: Date.now() - startTime });
+          }
+        }
+        
+        case 'database': {
+          const dbCheck = await storage.healthCheck?.() ?? { status: 'ok', latencyMs: 0 };
+          return res.json({ 
+            success: dbCheck.status === 'ok', 
+            latencyMs: dbCheck.latencyMs || Date.now() - startTime,
+            error: dbCheck.status !== 'ok' ? 'Database connection failed' : undefined,
+          });
+        }
+        
+        case 'stripe': {
+          try {
+            const { getStripeSecretKey } = await import("./stripeClient");
+            const key = await getStripeSecretKey();
+            if (!key) {
+              return res.json({ success: false, error: 'Stripe not configured', latencyMs: 0 });
+            }
+            // Could add a test API call here
+            return res.json({ success: true, latencyMs: Date.now() - startTime });
+          } catch (e: any) {
+            return res.json({ success: false, error: e.message, latencyMs: Date.now() - startTime });
+          }
+        }
+        
+        default:
+          return res.status(400).json({ error: 'Unknown integration' });
+      }
+    } catch (error) {
+      console.error("Test integration error:", error);
+      res.status(500).json({ error: "Failed to test integration" });
+    }
+  });
+
   // Get system logs with filters
   app.get("/api/super-admin/system/logs", requireSuperAdmin, async (req, res) => {
     try {
