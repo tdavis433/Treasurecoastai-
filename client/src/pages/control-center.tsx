@@ -2354,6 +2354,7 @@ export default function ControlCenter() {
               {dashboardSection === 'templates' && (
                 <TemplatesSectionPanel 
                   templates={templates}
+                  clients={workspaces}
                   onCreateFromTemplate={(template) => {
                     setSelectedTemplate(template);
                     setShowCreateModal(true);
@@ -6442,20 +6443,202 @@ function AssistantsSectionPanel({
   );
 }
 
+// Template categories with icons and descriptions
+const TEMPLATE_CATEGORIES = [
+  { id: 'all', label: 'All Templates', icon: LayoutGrid, color: 'text-white' },
+  { id: 'sober_living', label: 'Sober Living', icon: Shield, color: 'text-emerald-400' },
+  { id: 'barber', label: 'Barber & Salon', icon: Users2, color: 'text-amber-400' },
+  { id: 'gym', label: 'Gym & Fitness', icon: Activity, color: 'text-rose-400' },
+  { id: 'restaurant', label: 'Restaurant', icon: Building2, color: 'text-orange-400' },
+  { id: 'auto', label: 'Auto Shop', icon: Settings, color: 'text-blue-400' },
+  { id: 'home_services', label: 'Home Services', icon: Building2, color: 'text-teal-400' },
+  { id: 'medical', label: 'Medical & Dental', icon: Shield, color: 'text-cyan-400' },
+  { id: 'real_estate', label: 'Real Estate', icon: Building2, color: 'text-purple-400' },
+  { id: 'retail', label: 'Retail', icon: CreditCard, color: 'text-pink-400' },
+  { id: 'other', label: 'Other', icon: FileText, color: 'text-white/70' },
+];
+
+// Built-in starter templates for when no templates exist
+const STARTER_TEMPLATES: Template[] = [
+  {
+    botId: 'starter-sober-living',
+    clientId: 'system',
+    name: 'Sober Living Home Assistant',
+    description: 'Compassionate AI assistant for sober living facilities. Handles admissions inquiries, insurance questions, facility tours, and provides 24/7 support information.',
+    metadata: { isTemplate: true, templateCategory: 'sober_living', version: '1.0' },
+    businessProfile: {
+      businessName: 'Serenity House',
+      type: 'sober_living',
+      services: ['Structured Living', 'Group Therapy', 'Job Placement', 'Alumni Support', 'Family Programs'],
+    },
+    systemPrompt: 'You are a compassionate admissions counselor for a sober living facility. Be warm, non-judgmental, and supportive. Focus on helping callers understand options and next steps.',
+    faqs: [
+      { question: 'What insurance do you accept?', answer: 'We work with most major insurance providers including PPO plans. Contact us for a free verification.' },
+      { question: 'How long is the typical stay?', answer: 'Most residents stay 90 days to 6 months, depending on individual needs and recovery goals.' },
+      { question: 'Can family visit?', answer: 'Yes! We encourage family involvement. Visiting hours are Saturday and Sunday afternoons.' },
+    ],
+  },
+  {
+    botId: 'starter-barber',
+    clientId: 'system',
+    name: 'Barber Shop Assistant',
+    description: 'Friendly assistant for barber shops and salons. Books appointments, shares service menus, answers pricing questions, and showcases work portfolios.',
+    metadata: { isTemplate: true, templateCategory: 'barber', version: '1.0' },
+    businessProfile: {
+      businessName: 'The Gentleman\'s Cut',
+      type: 'barber',
+      services: ['Classic Cuts', 'Fades', 'Beard Trims', 'Hot Towel Shave', 'Kids Cuts'],
+    },
+    systemPrompt: 'You are a friendly front-desk assistant for an upscale barber shop. Be casual but professional. Help customers book appointments and learn about services.',
+    faqs: [
+      { question: 'Do you take walk-ins?', answer: 'Yes! Walk-ins are welcome, but appointments guarantee your spot. Book online for the best experience.' },
+      { question: 'How much is a haircut?', answer: 'Classic cuts start at $25. Fades are $35, and beard trims are $15. Check our full menu online!' },
+      { question: 'What are your hours?', answer: 'We\'re open Tuesday-Saturday 9am-7pm, closed Sunday and Monday.' },
+    ],
+  },
+  {
+    botId: 'starter-gym',
+    clientId: 'system',
+    name: 'Fitness Center Assistant',
+    description: 'Energetic AI for gyms and fitness studios. Handles membership inquiries, class schedules, personal training info, and facility questions.',
+    metadata: { isTemplate: true, templateCategory: 'gym', version: '1.0' },
+    businessProfile: {
+      businessName: 'Peak Performance Fitness',
+      type: 'gym',
+      services: ['24/7 Gym Access', 'Personal Training', 'Group Classes', 'Nutrition Coaching', 'Recovery Zone'],
+    },
+    systemPrompt: 'You are an enthusiastic fitness consultant. Be motivating and helpful. Guide potential members through options and help them take the first step in their fitness journey.',
+    faqs: [
+      { question: 'How much is a membership?', answer: 'Memberships start at $29/month for basic access. Premium memberships with classes are $49/month. We have no signup fees this month!' },
+      { question: 'Do you offer personal training?', answer: 'Absolutely! We have certified trainers available. Your first session is complimentary with any membership.' },
+      { question: 'What classes do you offer?', answer: 'We offer 50+ weekly classes including yoga, HIIT, spin, boxing, and more. Check our app for the full schedule.' },
+    ],
+  },
+  {
+    botId: 'starter-restaurant',
+    clientId: 'system',
+    name: 'Restaurant Concierge',
+    description: 'Welcoming assistant for restaurants. Handles reservations, menu inquiries, dietary accommodations, catering requests, and special event bookings.',
+    metadata: { isTemplate: true, templateCategory: 'restaurant', version: '1.0' },
+    businessProfile: {
+      businessName: 'The Local Table',
+      type: 'restaurant',
+      services: ['Dine-In', 'Takeout', 'Private Events', 'Catering', 'Happy Hour'],
+    },
+    systemPrompt: 'You are a warm, professional restaurant host. Help guests with reservations, answer menu questions, and accommodate special requests with hospitality.',
+    faqs: [
+      { question: 'Do you take reservations?', answer: 'Yes! You can book online or call us. We recommend reservations for parties of 4 or more, especially on weekends.' },
+      { question: 'Do you have vegetarian options?', answer: 'Absolutely! About a third of our menu is vegetarian, and we can modify many dishes. Let your server know about any dietary needs.' },
+      { question: 'Do you have a private room?', answer: 'Yes! Our Garden Room seats up to 25 guests for private events. Contact us for custom menus and availability.' },
+    ],
+  },
+  {
+    botId: 'starter-auto',
+    clientId: 'system',
+    name: 'Auto Shop Service Advisor',
+    description: 'Knowledgeable assistant for auto repair shops. Schedules service appointments, provides estimates, explains repairs, and handles warranty questions.',
+    metadata: { isTemplate: true, templateCategory: 'auto', version: '1.0' },
+    businessProfile: {
+      businessName: 'Precision Auto Care',
+      type: 'auto',
+      services: ['Oil Changes', 'Brake Service', 'Engine Diagnostics', 'Tire Service', 'A/C Repair'],
+    },
+    systemPrompt: 'You are a friendly, trustworthy auto service advisor. Explain repairs in simple terms, be transparent about pricing, and help customers schedule service.',
+    faqs: [
+      { question: 'How much is an oil change?', answer: 'Conventional oil changes start at $39.99, synthetic at $69.99. We\'ll also do a free multi-point inspection.' },
+      { question: 'Do you offer loaner cars?', answer: 'We provide free shuttle service within 10 miles. For longer repairs, we have rental car partnerships.' },
+      { question: 'Do you work on all makes?', answer: 'Yes! We service all makes and models. Our techs are ASE certified with specialized training.' },
+    ],
+  },
+  {
+    botId: 'starter-home',
+    clientId: 'system',
+    name: 'Home Services Assistant',
+    description: 'Professional assistant for contractors and home service providers. Handles quote requests, scheduling, service areas, and emergency availability.',
+    metadata: { isTemplate: true, templateCategory: 'home_services', version: '1.0' },
+    businessProfile: {
+      businessName: 'Reliable Home Pros',
+      type: 'home_services',
+      services: ['Plumbing', 'HVAC', 'Electrical', 'Handyman', 'Appliance Repair'],
+    },
+    systemPrompt: 'You are a professional service coordinator. Be helpful and efficient. Gather job details, check service availability, and help homeowners get the help they need.',
+    faqs: [
+      { question: 'Do you offer free estimates?', answer: 'Yes! We provide free estimates for most jobs. There\'s a small diagnostic fee for complex issues, applied to your repair if you proceed.' },
+      { question: 'What areas do you serve?', answer: 'We serve a 25-mile radius from downtown. Enter your zip code and we\'ll confirm coverage.' },
+      { question: 'Do you offer emergency service?', answer: 'Yes! We have 24/7 emergency service for plumbing and HVAC. Call our emergency line for immediate dispatch.' },
+    ],
+  },
+];
+
 // Templates Section Panel - Template gallery with categories
 function TemplatesSectionPanel({ 
   templates,
-  onCreateFromTemplate
+  onCreateFromTemplate,
+  clients
 }: { 
   templates: Template[];
   onCreateFromTemplate: (template: Template) => void;
+  clients: Client[];
 }) {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
+  const [createFromTemplate, setCreateFromTemplate] = useState<Template | null>(null);
+  const [newBotName, setNewBotName] = useState('');
+  const [selectedClientId, setSelectedClientId] = useState('');
+  const { toast } = useToast();
   
-  const categories = ['all', ...new Set(templates.map(t => t.metadata?.templateCategory || 'other'))];
-  const filteredTemplates = selectedCategory === 'all' 
-    ? templates 
-    : templates.filter(t => t.metadata?.templateCategory === selectedCategory);
+  // Combine saved templates with starter templates if none exist
+  const allTemplates = templates.length > 0 ? templates : STARTER_TEMPLATES;
+  
+  // Get unique categories from templates
+  const existingCategories = new Set(allTemplates.map(t => t.metadata?.templateCategory || 'other'));
+  const categories = TEMPLATE_CATEGORIES.filter(c => c.id === 'all' || existingCategories.has(c.id));
+  
+  // Filter templates
+  const filteredTemplates = allTemplates.filter(t => {
+    const matchesCategory = selectedCategory === 'all' || t.metadata?.templateCategory === selectedCategory;
+    const matchesSearch = !searchQuery || 
+      t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.description.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  const createBotMutation = useMutation({
+    mutationFn: async ({ template, clientId, name }: { template: Template; clientId: string; name: string }) => {
+      return apiRequest('/api/super-admin/bots/from-template', {
+        method: 'POST',
+        body: JSON.stringify({
+          templateBotId: template.botId,
+          clientId,
+          name,
+        }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/super-admin'] });
+      setCreateFromTemplate(null);
+      setNewBotName('');
+      setSelectedClientId('');
+      toast({ title: 'Success', description: 'Bot created from template successfully!' });
+    },
+    onError: (error) => {
+      toast({ title: 'Error', description: 'Failed to create bot from template', variant: 'destructive' });
+    }
+  });
+
+  const handleCreateFromTemplate = () => {
+    if (!createFromTemplate || !selectedClientId || !newBotName.trim()) return;
+    createBotMutation.mutate({
+      template: createFromTemplate,
+      clientId: selectedClientId,
+      name: newBotName.trim(),
+    });
+  };
+
+  const getCategoryInfo = (categoryId: string) => {
+    return TEMPLATE_CATEGORIES.find(c => c.id === categoryId) || TEMPLATE_CATEGORIES[0];
+  };
 
   return (
     <div className="space-y-6">
@@ -6463,93 +6646,353 @@ function TemplatesSectionPanel({
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h2 className="text-lg font-semibold text-white">Bot Templates</h2>
-          <p className="text-sm text-white/55">Pre-configured templates for quick deployment</p>
+          <p className="text-sm text-white/55">Pre-configured playbooks for quick client deployment</p>
         </div>
-        <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
-          {templates.length} Templates
-        </Badge>
+        <div className="flex items-center gap-3">
+          <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
+            {allTemplates.length} Templates
+          </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-white/20 text-white/70 hover:text-white hover:bg-white/10"
+            data-testid="button-create-template"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create Template
+          </Button>
+        </div>
+      </div>
+
+      {/* Search and Filter Bar */}
+      <div className="flex items-center gap-4 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/40" />
+          <Input
+            placeholder="Search templates..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/40"
+            data-testid="input-search-templates"
+          />
+        </div>
       </div>
 
       {/* Category Tabs */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {categories.map(cat => (
-          <Button
-            key={cat}
-            variant="ghost"
-            size="sm"
-            onClick={() => setSelectedCategory(cat)}
-            className={selectedCategory === cat 
-              ? 'bg-purple-500/20 text-purple-400' 
-              : 'text-white/70 hover:text-white hover:bg-white/10'}
-            data-testid={`button-category-${cat}`}
-          >
-            {cat.charAt(0).toUpperCase() + cat.slice(1).replace(/_/g, ' ')}
-          </Button>
-        ))}
-      </div>
+      <ScrollArea className="w-full">
+        <div className="flex items-center gap-2 pb-2">
+          {categories.map(cat => {
+            const Icon = cat.icon;
+            const count = cat.id === 'all' 
+              ? allTemplates.length 
+              : allTemplates.filter(t => t.metadata?.templateCategory === cat.id).length;
+            return (
+              <Button
+                key={cat.id}
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedCategory(cat.id)}
+                className={`flex items-center gap-2 whitespace-nowrap ${
+                  selectedCategory === cat.id 
+                    ? 'bg-purple-500/20 text-purple-400' 
+                    : 'text-white/70 hover:text-white hover:bg-white/10'
+                }`}
+                data-testid={`button-category-${cat.id}`}
+              >
+                <Icon className={`h-4 w-4 ${selectedCategory === cat.id ? cat.color : ''}`} />
+                {cat.label}
+                <Badge className="bg-white/10 text-white/60 text-xs px-1.5 ml-1">{count}</Badge>
+              </Button>
+            );
+          })}
+        </div>
+      </ScrollArea>
 
       {/* Templates Grid */}
       {filteredTemplates.length === 0 ? (
         <GlassCard>
           <GlassCardContent className="py-12 text-center">
             <FileText className="h-12 w-12 mx-auto mb-3 text-white/30" />
-            <p className="text-white/55">No templates in this category</p>
+            <p className="text-white/55">No templates match your search</p>
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-2 text-cyan-400"
+                onClick={() => setSearchQuery('')}
+              >
+                Clear search
+              </Button>
+            )}
           </GlassCardContent>
         </GlassCard>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTemplates.map(template => (
-            <GlassCard key={template.botId} hover data-testid={`card-template-${template.botId}`}>
-              <GlassCardContent className="p-4">
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="h-10 w-10 rounded-lg bg-purple-500/20 flex items-center justify-center flex-shrink-0">
-                    <FileText className="h-5 w-5 text-purple-400" />
+          {filteredTemplates.map(template => {
+            const catInfo = getCategoryInfo(template.metadata?.templateCategory || 'other');
+            const CatIcon = catInfo.icon;
+            return (
+              <GlassCard key={template.botId} hover data-testid={`card-template-${template.botId}`}>
+                <GlassCardContent className="p-4">
+                  {/* Header */}
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className={`h-10 w-10 rounded-lg bg-gradient-to-br from-purple-500/20 to-cyan-500/20 flex items-center justify-center flex-shrink-0`}>
+                      <CatIcon className={`h-5 w-5 ${catInfo.color}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-white truncate">{template.name}</h3>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <Badge className="bg-white/10 text-white/60 text-xs">
+                          {template.metadata?.templateCategory?.replace(/_/g, ' ')}
+                        </Badge>
+                        {template.metadata?.version && (
+                          <span className="text-xs text-white/40">v{template.metadata.version}</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-white truncate">{template.name}</h3>
-                    <p className="text-xs text-white/55">{template.metadata?.templateCategory?.replace(/_/g, ' ')}</p>
+                  
+                  {/* Description */}
+                  <p className="text-sm text-white/55 line-clamp-2 mb-4">{template.description}</p>
+                  
+                  {/* Stats Row */}
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="flex items-center gap-1 text-xs text-white/50">
+                      <MessageSquare className="h-3 w-3" />
+                      <span className="text-cyan-400">{template.faqs?.length || 0}</span>
+                      <span>FAQs</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-white/50">
+                      <Layers className="h-3 w-3" />
+                      <span className="text-purple-400">{template.businessProfile?.services?.length || 0}</span>
+                      <span>Services</span>
+                    </div>
                   </div>
-                </div>
-                <p className="text-sm text-white/55 line-clamp-2 mb-4">{template.description}</p>
-                <div className="flex items-center justify-between">
+                  
+                  {/* Actions */}
                   <div className="flex items-center gap-2">
-                    <Badge className="bg-white/10 text-white/70 text-xs">{template.faqs?.length || 0} FAQs</Badge>
-                    <Badge className="bg-white/10 text-white/70 text-xs">{template.businessProfile?.services?.length || 0} Services</Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setPreviewTemplate(template)}
+                      className="flex-1 text-white/70 hover:text-white hover:bg-white/10"
+                      data-testid={`button-preview-template-${template.botId}`}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      Preview
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setCreateFromTemplate(template);
+                        setNewBotName(template.name);
+                      }}
+                      className="flex-1 bg-purple-500 hover:bg-purple-600 text-white"
+                      data-testid={`button-use-template-${template.botId}`}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Use Template
+                    </Button>
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={() => onCreateFromTemplate(template)}
-                    className="bg-purple-500 hover:bg-purple-600 text-white"
-                    data-testid={`button-use-template-${template.botId}`}
-                  >
-                    Use Template
-                  </Button>
-                </div>
-              </GlassCardContent>
-            </GlassCard>
-          ))}
+                </GlassCardContent>
+              </GlassCard>
+            );
+          })}
         </div>
       )}
 
       {/* Template Features Info */}
       <GlassCard>
         <GlassCardContent className="p-4">
-          <div className="flex items-start gap-3">
-            <div className="h-8 w-8 rounded-lg bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
-              <Zap className="h-4 w-4 text-cyan-400" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex items-start gap-3">
+              <div className="h-8 w-8 rounded-lg bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
+                <Bot className="h-4 w-4 text-cyan-400" />
+              </div>
+              <div>
+                <h4 className="font-medium text-white text-sm">Pre-Built AI Persona</h4>
+                <p className="text-xs text-white/55 mt-1">Industry-tuned personality, tone, and conversation style</p>
+              </div>
             </div>
-            <div>
-              <h4 className="font-medium text-white text-sm">Templates include pre-configured:</h4>
-              <ul className="text-xs text-white/55 mt-1 space-y-1">
-                <li>Business profile and service offerings</li>
-                <li>Industry-specific FAQs and responses</li>
-                <li>AI personality and conversation style</li>
-                <li>Widget styling matched to industry</li>
-              </ul>
+            <div className="flex items-start gap-3">
+              <div className="h-8 w-8 rounded-lg bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+                <MessageSquare className="h-4 w-4 text-purple-400" />
+              </div>
+              <div>
+                <h4 className="font-medium text-white text-sm">Starter FAQs</h4>
+                <p className="text-xs text-white/55 mt-1">Common questions and answers ready to customize</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="h-8 w-8 rounded-lg bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                <Palette className="h-4 w-4 text-amber-400" />
+              </div>
+              <div>
+                <h4 className="font-medium text-white text-sm">Industry Styling</h4>
+                <p className="text-xs text-white/55 mt-1">Widget colors and design matched to the niche</p>
+              </div>
             </div>
           </div>
         </GlassCardContent>
       </GlassCard>
+
+      {/* Preview Template Dialog */}
+      <Dialog open={!!previewTemplate} onOpenChange={() => setPreviewTemplate(null)}>
+        <DialogContent className="bg-[#0a0a0f] border-white/10 text-white max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              {previewTemplate && (() => {
+                const catInfo = getCategoryInfo(previewTemplate.metadata?.templateCategory || 'other');
+                const CatIcon = catInfo.icon;
+                return (
+                  <>
+                    <div className="h-10 w-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                      <CatIcon className={`h-5 w-5 ${catInfo.color}`} />
+                    </div>
+                    <div>
+                      <span>{previewTemplate.name}</span>
+                      <Badge className="ml-2 bg-white/10 text-white/60 text-xs">
+                        {previewTemplate.metadata?.templateCategory?.replace(/_/g, ' ')}
+                      </Badge>
+                    </div>
+                  </>
+                );
+              })()}
+            </DialogTitle>
+            <DialogDescription className="text-white/55">
+              {previewTemplate?.description}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {previewTemplate && (
+            <div className="space-y-6 mt-4">
+              {/* Services */}
+              {previewTemplate.businessProfile?.services && previewTemplate.businessProfile.services.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-white mb-2">Included Services</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {previewTemplate.businessProfile.services.map((service, idx) => (
+                      <Badge key={idx} className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30">{service}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Sample FAQs */}
+              {previewTemplate.faqs && previewTemplate.faqs.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-white mb-2">Sample FAQs ({previewTemplate.faqs.length})</h4>
+                  <div className="space-y-2">
+                    {previewTemplate.faqs.slice(0, 3).map((faq, idx) => (
+                      <div key={idx} className="bg-white/5 rounded-lg p-3 border border-white/10">
+                        <p className="text-sm text-white font-medium">Q: {faq.question}</p>
+                        <p className="text-sm text-white/55 mt-1">A: {faq.answer}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* System Prompt Preview */}
+              {previewTemplate.systemPrompt && (
+                <div>
+                  <h4 className="text-sm font-medium text-white mb-2">AI Personality</h4>
+                  <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                    <p className="text-sm text-white/70">{previewTemplate.systemPrompt}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <DialogFooter className="mt-6">
+            <Button variant="ghost" onClick={() => setPreviewTemplate(null)} className="text-white/70">
+              Close
+            </Button>
+            <Button 
+              onClick={() => {
+                setPreviewTemplate(null);
+                if (previewTemplate) {
+                  setCreateFromTemplate(previewTemplate);
+                  setNewBotName(previewTemplate.name);
+                }
+              }}
+              className="bg-purple-500 hover:bg-purple-600 text-white"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Use This Template
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create from Template Dialog */}
+      <Dialog open={!!createFromTemplate} onOpenChange={() => setCreateFromTemplate(null)}>
+        <DialogContent className="bg-[#0a0a0f] border-white/10 text-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5 text-purple-400" />
+              Create Bot from Template
+            </DialogTitle>
+            <DialogDescription className="text-white/55">
+              Creating a new bot based on "{createFromTemplate?.name}"
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label className="text-white/70">Bot Name</Label>
+              <Input
+                value={newBotName}
+                onChange={(e) => setNewBotName(e.target.value)}
+                placeholder="Enter bot name..."
+                className="mt-1.5 bg-white/5 border-white/10 text-white"
+                data-testid="input-new-bot-name"
+              />
+            </div>
+            
+            <div>
+              <Label className="text-white/70">Assign to Client</Label>
+              <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                <SelectTrigger className="mt-1.5 bg-white/5 border-white/10 text-white" data-testid="select-client-for-template">
+                  <SelectValue placeholder="Select a client..." />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1a1d24] border-white/10">
+                  {clients.map(client => (
+                    <SelectItem key={client.id} value={client.id} className="text-white">
+                      {client.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <DialogFooter className="mt-6">
+            <Button variant="ghost" onClick={() => setCreateFromTemplate(null)} className="text-white/70">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateFromTemplate}
+              disabled={!selectedClientId || !newBotName.trim() || createBotMutation.isPending}
+              className="bg-purple-500 hover:bg-purple-600 text-white"
+              data-testid="button-confirm-create-from-template"
+            >
+              {createBotMutation.isPending ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Create Bot
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

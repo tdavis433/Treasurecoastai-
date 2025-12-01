@@ -3164,6 +3164,157 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
+  // Create bot from template for existing client
+  app.post("/api/super-admin/bots/from-template", requireSuperAdmin, (req, res) => {
+    try {
+      const { templateBotId, clientId, name } = req.body;
+      
+      if (!templateBotId || !clientId || !name) {
+        return res.status(400).json({ error: "templateBotId, clientId, and name are required" });
+      }
+      
+      // Check if client exists
+      const client = getClientById(clientId);
+      if (!client) {
+        return res.status(404).json({ error: `Client not found: ${clientId}` });
+      }
+      
+      // Get template config - check both real templates and starter templates
+      let templateConfig = getBotConfigByBotId(templateBotId);
+      
+      // If not found in database, check if it's a starter template
+      if (!templateConfig && templateBotId.startsWith('starter-')) {
+        // Create a default template config based on the starter template ID
+        const starterTemplates: Record<string, Partial<BotConfig>> = {
+          'starter-sober-living': {
+            businessProfile: {
+              businessName: 'Serenity House',
+              type: 'sober_living',
+              services: ['Structured Living', 'Group Therapy', 'Job Placement', 'Alumni Support', 'Family Programs'],
+            },
+            systemPrompt: 'You are a compassionate admissions counselor for a sober living facility. Be warm, non-judgmental, and supportive.',
+            faqs: [
+              { question: 'What insurance do you accept?', answer: 'We work with most major insurance providers including PPO plans. Contact us for a free verification.' },
+              { question: 'How long is the typical stay?', answer: 'Most residents stay 90 days to 6 months, depending on individual needs and recovery goals.' },
+            ],
+          },
+          'starter-barber': {
+            businessProfile: {
+              businessName: 'The Gentleman\'s Cut',
+              type: 'barber',
+              services: ['Classic Cuts', 'Fades', 'Beard Trims', 'Hot Towel Shave', 'Kids Cuts'],
+            },
+            systemPrompt: 'You are a friendly front-desk assistant for an upscale barber shop. Be casual but professional.',
+            faqs: [
+              { question: 'Do you take walk-ins?', answer: 'Yes! Walk-ins are welcome, but appointments guarantee your spot.' },
+              { question: 'How much is a haircut?', answer: 'Classic cuts start at $25. Fades are $35, and beard trims are $15.' },
+            ],
+          },
+          'starter-gym': {
+            businessProfile: {
+              businessName: 'Peak Performance Fitness',
+              type: 'gym',
+              services: ['24/7 Gym Access', 'Personal Training', 'Group Classes', 'Nutrition Coaching'],
+            },
+            systemPrompt: 'You are an enthusiastic fitness consultant. Be motivating and helpful.',
+            faqs: [
+              { question: 'How much is a membership?', answer: 'Memberships start at $29/month for basic access. Premium memberships are $49/month.' },
+            ],
+          },
+          'starter-restaurant': {
+            businessProfile: {
+              businessName: 'The Local Table',
+              type: 'restaurant',
+              services: ['Dine-In', 'Takeout', 'Private Events', 'Catering'],
+            },
+            systemPrompt: 'You are a warm, professional restaurant host. Help guests with reservations and menu questions.',
+            faqs: [
+              { question: 'Do you take reservations?', answer: 'Yes! You can book online or call us.' },
+            ],
+          },
+          'starter-auto': {
+            businessProfile: {
+              businessName: 'Precision Auto Care',
+              type: 'auto',
+              services: ['Oil Changes', 'Brake Service', 'Engine Diagnostics', 'Tire Service'],
+            },
+            systemPrompt: 'You are a friendly, trustworthy auto service advisor. Explain repairs in simple terms.',
+            faqs: [
+              { question: 'How much is an oil change?', answer: 'Conventional oil changes start at $39.99, synthetic at $69.99.' },
+            ],
+          },
+          'starter-home': {
+            businessProfile: {
+              businessName: 'Reliable Home Pros',
+              type: 'home_services',
+              services: ['Plumbing', 'HVAC', 'Electrical', 'Handyman'],
+            },
+            systemPrompt: 'You are a professional service coordinator. Be helpful and efficient.',
+            faqs: [
+              { question: 'Do you offer free estimates?', answer: 'Yes! We provide free estimates for most jobs.' },
+            ],
+          },
+        };
+        
+        const starterData = starterTemplates[templateBotId];
+        if (starterData) {
+          templateConfig = {
+            botId: templateBotId,
+            clientId: 'system',
+            name: name,
+            description: `AI assistant based on ${templateBotId}`,
+            ...starterData,
+          } as BotConfig;
+        }
+      }
+      
+      if (!templateConfig) {
+        return res.status(404).json({ error: `Template not found: ${templateBotId}` });
+      }
+      
+      // Generate new bot ID
+      const timestamp = Date.now().toString(36);
+      const random = Math.random().toString(36).substring(2, 8);
+      const newBotId = `bot_${timestamp}_${random}`;
+      
+      // Create new bot config from template
+      const newConfig: BotConfig = {
+        ...templateConfig,
+        botId: newBotId,
+        clientId: clientId,
+        name: name,
+        description: templateConfig.description || `AI assistant for ${name}`,
+        businessProfile: {
+          ...templateConfig.businessProfile,
+          businessName: name,
+        },
+        metadata: {
+          isDemo: false,
+          isTemplate: false,
+          clonedFrom: templateBotId,
+          createdAt: new Date().toISOString(),
+          version: '1.0',
+        },
+        status: 'active',
+      };
+      
+      const success = saveBotConfig(newBotId, newConfig);
+      
+      if (success) {
+        // Add bot to client's bot list
+        if (client.bots && !client.bots.includes(newBotId)) {
+          client.bots.push(newBotId);
+        }
+        res.json(newConfig);
+      } else {
+        res.status(500).json({ error: "Failed to create bot from template" });
+      }
+    } catch (error) {
+      console.error("Create bot from template error:", error);
+      res.status(500).json({ error: "Failed to create bot from template" });
+    }
+  });
+
   // Update bot status (pause/activate)
   app.patch("/api/super-admin/bots/:botId/status", requireSuperAdmin, (req, res) => {
     try {
