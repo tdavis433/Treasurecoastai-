@@ -21,9 +21,10 @@ import {
   ChevronRight, Search, CreditCard, ExternalLink, Building2, Code, Copy, Check,
   TrendingUp, Users2, AlertCircle, Activity, RefreshCw, Download, Layers,
   Shield, FileWarning, CheckCircle2, XCircle, Filter, Calendar, UserPlus,
-  MoreVertical, Workflow, Palette, ChevronDown, SendHorizontal, MessageCircle
+  MoreVertical, Workflow, Palette, ChevronDown, SendHorizontal, MessageCircle,
+  CheckCircle, PauseCircle
 } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -141,6 +142,7 @@ export default function ControlCenter() {
   const [analyticsRange, setAnalyticsRange] = useState<number>(7);
   const [selectedBots, setSelectedBots] = useState<Set<string>>(new Set());
   const [workspaceSearch, setWorkspaceSearch] = useState('');
+  const [workspaceStatusFilter, setWorkspaceStatusFilter] = useState<'all' | 'active' | 'paused' | 'suspended'>('all');
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [newUserForm, setNewUserForm] = useState({ username: '', password: '', role: 'client_admin' as 'super_admin' | 'client_admin', clientId: '' });
   const [editingUser, setEditingUser] = useState<{ id: string; username: string; role: string } | null>(null);
@@ -1414,55 +1416,123 @@ export default function ControlCenter() {
               </>
               )}
 
-              {dashboardSection === 'workspaces' && (
+              {dashboardSection === 'workspaces' && (() => {
+                // Helper to normalize workspace status to filter categories
+                // API returns: active, paused, trial, suspended, cancelled
+                // Filter pills: all, active, paused, suspended
+                const normalizeStatus = (status: string): 'active' | 'paused' | 'suspended' => {
+                  if (status === 'active' || status === 'trial') return 'active'; // Trial is still an active client
+                  if (status === 'paused') return 'paused';
+                  return 'suspended'; // suspended, cancelled, or any other status
+                };
+
+                // Count workspaces by normalized status
+                const statusCounts = {
+                  all: workspacesData?.workspaces?.length || 0,
+                  active: workspacesData?.workspaces?.filter(w => normalizeStatus(w.status) === 'active').length || 0,
+                  paused: workspacesData?.workspaces?.filter(w => normalizeStatus(w.status) === 'paused').length || 0,
+                  suspended: workspacesData?.workspaces?.filter(w => normalizeStatus(w.status) === 'suspended').length || 0,
+                };
+
+                // Filter workspaces by status and search
+                const filteredWorkspaces = (workspacesData?.workspaces || []).filter(workspace => {
+                  // Apply status filter
+                  if (workspaceStatusFilter !== 'all') {
+                    if (normalizeStatus(workspace.status) !== workspaceStatusFilter) return false;
+                  }
+                  // Apply search filter
+                  if (workspaceSearch) {
+                    return workspace.name.toLowerCase().includes(workspaceSearch.toLowerCase()) ||
+                      workspace.slug.toLowerCase().includes(workspaceSearch.toLowerCase());
+                  }
+                  return true;
+                });
+
+                return (
                 <div className="space-y-6">
-                  {/* Clients Header with Search and Export */}
-                  <div className="flex items-center justify-between flex-wrap gap-4">
-                    <div>
-                      <h2 className="text-lg font-semibold text-white">Client Management</h2>
-                      <p className="text-sm text-white/50 mt-0.5">Manage all your business clients and their AI assistants</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/40" />
-                        <Input
-                          data-testid="input-workspace-search"
-                          placeholder="Search clients..."
-                          value={workspaceSearch}
-                          onChange={(e) => setWorkspaceSearch(e.target.value)}
-                          className="pl-9 w-56 bg-white/5 border-white/10 text-white placeholder:text-white/40"
-                        />
+                  {/* Clients Header with Search, Filters and Actions */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between flex-wrap gap-4">
+                      <div>
+                        <h2 className="text-lg font-semibold text-white">Client Management</h2>
+                        <p className="text-sm text-white/50 mt-0.5">Manage all your business clients and their AI assistants</p>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const csv = `Name,Slug,Status,Plan,Bots,Conversations,Last Active\n${
-                            (workspacesData?.workspaces || []).map(w => 
-                              `"${w.name}",${w.slug},${w.status},${w.plan},${w.botsCount},${w.totalConversations},${w.lastActive || 'Never'}`
-                            ).join('\n')
-                          }`;
-                          const blob = new Blob([csv], { type: 'text/csv' });
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = `clients-${new Date().toISOString().split('T')[0]}.csv`;
-                          a.click();
-                          toast({ title: "Export Complete", description: "Clients data exported to CSV." });
-                        }}
-                        className="border-white/10 text-white/85 hover:bg-white/10"
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Export
-                      </Button>
-                      <Button
-                        onClick={() => setShowCreateWorkspaceModal(true)}
-                        className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white"
-                        data-testid="button-add-workspace"
-                      >
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        Add Client
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          onClick={() => setShowCreateWorkspaceModal(true)}
+                          className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white"
+                          data-testid="button-add-workspace"
+                        >
+                          <UserPlus className="h-4 w-4 mr-2" />
+                          Add Client
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Search and Filters Row */}
+                    <div className="flex items-center justify-between flex-wrap gap-3">
+                      {/* Status Filter Pills */}
+                      <div className="flex items-center gap-1 p-1 rounded-lg bg-white/5 border border-white/10">
+                        {[
+                          { value: 'all', label: 'All', count: statusCounts.all },
+                          { value: 'active', label: 'Active', count: statusCounts.active },
+                          { value: 'paused', label: 'Paused', count: statusCounts.paused },
+                          { value: 'suspended', label: 'Suspended', count: statusCounts.suspended },
+                        ].map(filter => (
+                          <Button
+                            key={filter.value}
+                            variant="ghost"
+                            size="sm"
+                            data-testid={`button-filter-${filter.value}`}
+                            onClick={() => setWorkspaceStatusFilter(filter.value as typeof workspaceStatusFilter)}
+                            className={`text-xs px-3 gap-1.5 ${workspaceStatusFilter === filter.value 
+                              ? 'bg-cyan-500/20 text-cyan-400' 
+                              : 'text-white/55 hover:text-white hover:bg-white/10'}`}
+                          >
+                            {filter.label}
+                            <Badge className={`text-[10px] px-1.5 ${workspaceStatusFilter === filter.value 
+                              ? 'bg-cyan-400/20 text-cyan-400' 
+                              : 'bg-white/10 text-white/55'}`}>
+                              {filter.count}
+                            </Badge>
+                          </Button>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/40" />
+                          <Input
+                            data-testid="input-workspace-search"
+                            placeholder="Search clients..."
+                            value={workspaceSearch}
+                            onChange={(e) => setWorkspaceSearch(e.target.value)}
+                            className="pl-9 w-56 bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                          />
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const csv = `Name,Slug,Status,Plan,Bots,Conversations,Last Active\n${
+                              (workspacesData?.workspaces || []).map(w => 
+                                `"${w.name}",${w.slug},${w.status},${w.plan},${w.botsCount},${w.totalConversations},${w.lastActive || 'Never'}`
+                              ).join('\n')
+                            }`;
+                            const blob = new Blob([csv], { type: 'text/csv' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `clients-${new Date().toISOString().split('T')[0]}.csv`;
+                            a.click();
+                            toast({ title: "Export Complete", description: "Clients data exported to CSV." });
+                          }}
+                          className="border-white/10 text-white/85 hover:bg-white/10"
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Export
+                        </Button>
+                      </div>
                     </div>
                   </div>
 
@@ -1529,98 +1599,142 @@ export default function ControlCenter() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                      {workspacesData?.workspaces.filter(workspace =>
-                        !workspaceSearch || 
-                        workspace.name.toLowerCase().includes(workspaceSearch.toLowerCase()) ||
-                        workspace.slug.toLowerCase().includes(workspaceSearch.toLowerCase())
-                      ).map(workspace => (
+                      {filteredWorkspaces.map(workspace => (
                         <GlassCard key={workspace.id} hover data-testid={`card-workspace-${workspace.slug}`}>
                           <GlassCardHeader className="pb-3">
                             <div className="flex items-start justify-between gap-2">
                               <div className="min-w-0 flex-1">
-                                <GlassCardTitle className="text-sm truncate">{workspace.name}</GlassCardTitle>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <GlassCardTitle className="text-sm truncate">{workspace.name}</GlassCardTitle>
+                                  {/* Status Badge */}
+                                  <Badge className={`text-[10px] px-1.5 ${
+                                    workspace.status === 'active' ? "bg-green-500/20 text-green-400 border-green-500/30" :
+                                    workspace.status === 'suspended' ? "bg-red-500/20 text-red-400 border-red-500/30" :
+                                    workspace.status === 'cancelled' ? "bg-gray-500/20 text-gray-400 border-gray-500/30" :
+                                    "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                                  }`}>
+                                    {workspace.status.charAt(0).toUpperCase() + workspace.status.slice(1)}
+                                  </Badge>
+                                </div>
                                 <GlassCardDescription className="text-xs">{workspace.slug}</GlassCardDescription>
                               </div>
-                              <div className="flex items-center gap-1">
-                                <Select
-                                  value={workspace.status}
-                                  onValueChange={(value) => updateWorkspaceStatusMutation.mutate({ slug: workspace.slug, status: value })}
-                                >
-                                  <SelectTrigger 
-                                    data-testid={`select-workspace-status-${workspace.slug}`}
-                                    className={`w-[90px] h-7 text-xs ${
-                                      workspace.status === 'active' ? "bg-green-500/20 text-green-400 border-green-500/30" :
-                                      workspace.status === 'suspended' ? "bg-red-500/20 text-red-400 border-red-500/30" :
-                                      workspace.status === 'cancelled' ? "bg-gray-500/20 text-gray-400 border-gray-500/30" :
-                                      "bg-amber-500/20 text-amber-400 border-amber-500/30"
-                                    }`}
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-white/55 hover:text-white hover:bg-white/10" data-testid={`button-workspace-menu-${workspace.slug}`}>
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="bg-[#1a1d24] border-white/10 min-w-[160px]">
+                                  <DropdownMenuItem 
+                                    className="text-cyan-400 hover:bg-cyan-500/10 gap-2"
+                                    onClick={() => {
+                                      window.open(`/client/dashboard?impersonate=${workspace.slug}`, '_blank');
+                                    }}
+                                    data-testid={`button-view-as-client-${workspace.slug}`}
                                   >
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent className="bg-[#1a1f2e] border-white/10">
-                                    <SelectItem value="active" className="text-green-400 focus:bg-white/10 focus:text-green-400">Active</SelectItem>
-                                    <SelectItem value="paused" className="text-amber-400 focus:bg-white/10 focus:text-amber-400">Paused</SelectItem>
-                                    <SelectItem value="suspended" className="text-red-400 focus:bg-white/10 focus:text-red-400">Suspended</SelectItem>
-                                    <SelectItem value="cancelled" className="text-gray-400 focus:bg-white/10 focus:text-gray-400">Cancelled</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-white/55 hover:text-white hover:bg-white/10" data-testid={`button-workspace-menu-${workspace.slug}`}>
-                                      <MoreVertical className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="bg-[#1a1d24] border-white/10">
+                                    <Eye className="h-4 w-4" />
+                                    View as Client
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    className="text-white hover:bg-white/10 gap-2"
+                                    onClick={() => setEditingWorkspace({ slug: workspace.slug, name: workspace.name, plan: workspace.plan })}
+                                    data-testid={`button-edit-workspace-${workspace.slug}`}
+                                  >
+                                    <Settings className="h-4 w-4" />
+                                    Edit Client
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator className="bg-white/10" />
+                                  {/* Quick Status Changes */}
+                                  <DropdownMenuLabel className="text-white/40 text-xs">Change Status</DropdownMenuLabel>
+                                  {workspace.status !== 'active' && (
                                     <DropdownMenuItem 
-                                      className="text-white hover:bg-white/10"
-                                      onClick={() => setEditingWorkspace({ slug: workspace.slug, name: workspace.name, plan: workspace.plan })}
-                                      data-testid={`button-edit-workspace-${workspace.slug}`}
+                                      className="text-green-400 hover:bg-green-500/10 gap-2"
+                                      onClick={() => updateWorkspaceStatusMutation.mutate({ slug: workspace.slug, status: 'active' })}
                                     >
-                                      Edit Workspace
+                                      <CheckCircle className="h-4 w-4" />
+                                      Activate
                                     </DropdownMenuItem>
-                                    <DropdownMenuSeparator className="bg-white/10" />
+                                  )}
+                                  {workspace.status !== 'paused' && (
                                     <DropdownMenuItem 
-                                      className="text-red-400 hover:bg-red-500/10"
-                                      onClick={() => {
-                                        if (confirm(`Are you sure you want to delete "${workspace.name}"? This will also delete all ${workspace.botsCount} bots in this workspace.`)) {
-                                          deleteWorkspaceMutation.mutate(workspace.slug);
-                                        }
-                                      }}
-                                      data-testid={`button-delete-workspace-${workspace.slug}`}
+                                      className="text-amber-400 hover:bg-amber-500/10 gap-2"
+                                      onClick={() => updateWorkspaceStatusMutation.mutate({ slug: workspace.slug, status: 'paused' })}
                                     >
-                                      Delete Workspace
+                                      <PauseCircle className="h-4 w-4" />
+                                      Pause
                                     </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </div>
+                                  )}
+                                  <DropdownMenuSeparator className="bg-white/10" />
+                                  <DropdownMenuItem 
+                                    className="text-red-400 hover:bg-red-500/10 gap-2"
+                                    onClick={() => {
+                                      if (confirm(`Are you sure you want to delete "${workspace.name}"? This will also delete all ${workspace.botsCount} bots in this workspace.`)) {
+                                        deleteWorkspaceMutation.mutate(workspace.slug);
+                                      }
+                                    }}
+                                    data-testid={`button-delete-workspace-${workspace.slug}`}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                    Delete Client
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </GlassCardHeader>
                           <GlassCardContent className="pb-4">
+                            {/* Plan Badge Row */}
+                            <div className="flex items-center gap-2 mb-3">
+                              <Badge className={`text-xs ${
+                                workspace.plan === 'enterprise' ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' :
+                                workspace.plan === 'pro' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' :
+                                workspace.plan === 'starter' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
+                                'bg-gray-500/20 text-gray-400 border-gray-500/30'
+                              }`}>
+                                {workspace.plan.charAt(0).toUpperCase() + workspace.plan.slice(1)} Plan
+                              </Badge>
+                              <Badge className="bg-white/10 text-white/70 text-xs">
+                                <Bot className="h-3 w-3 mr-1" />
+                                {workspace.botsCount} {workspace.botsCount === 1 ? 'Assistant' : 'Assistants'}
+                              </Badge>
+                            </div>
+                            {/* Stats Grid */}
                             <div className="grid grid-cols-2 gap-3 text-xs">
-                              <div>
-                                <span className="text-white/55">Bots</span>
-                                <p className="text-white font-medium">{workspace.botsCount}</p>
+                              <div className="bg-white/5 rounded-lg p-2.5">
+                                <div className="flex items-center gap-1.5 text-white/55 mb-1">
+                                  <MessageSquare className="h-3 w-3" />
+                                  <span>Conversations</span>
+                                </div>
+                                <p className="text-white font-semibold text-lg">{workspace.totalConversations}</p>
                               </div>
-                              <div>
-                                <span className="text-white/55">Conversations</span>
-                                <p className="text-white font-medium">{workspace.totalConversations}</p>
-                              </div>
-                              <div>
-                                <span className="text-white/55">Plan</span>
-                                <p className="text-white font-medium capitalize">{workspace.plan}</p>
-                              </div>
-                              <div>
-                                <span className="text-white/55">Last Active</span>
+                              <div className="bg-white/5 rounded-lg p-2.5">
+                                <div className="flex items-center gap-1.5 text-white/55 mb-1">
+                                  <Clock className="h-3 w-3" />
+                                  <span>Last Active</span>
+                                </div>
                                 <p className="text-white font-medium">{workspace.lastActive ? new Date(workspace.lastActive).toLocaleDateString() : 'Never'}</p>
                               </div>
                             </div>
                           </GlassCardContent>
                         </GlassCard>
                       ))}
+
+                      {/* Empty State */}
+                      {filteredWorkspaces.length === 0 && (
+                        <div className="col-span-full py-12 text-center">
+                          <div className="h-12 w-12 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-3">
+                            <Users2 className="h-6 w-6 text-white/40" />
+                          </div>
+                          <p className="text-white/55 text-sm">No clients found</p>
+                          <p className="text-white/40 text-xs mt-1">
+                            {workspaceSearch ? 'Try a different search term' : workspaceStatusFilter !== 'all' ? 'No clients with this status' : 'Add your first client to get started'}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              )}
+              );
+              })()}
 
               {dashboardSection === 'analytics' && (
                 <div className="space-y-6">
