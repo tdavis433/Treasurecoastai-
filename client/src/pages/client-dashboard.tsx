@@ -288,10 +288,10 @@ export default function ClientDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${botActive ? 'bg-green-500/20 border border-green-400/40' : 'bg-white/10 border border-white/20'}`}>
-              <div className={`h-2 w-2 rounded-full ${botActive ? 'bg-green-400 animate-pulse' : 'bg-white/40'}`} />
-              <span className={`text-sm font-medium ${botActive ? 'text-green-400' : 'text-white/60'}`}>
-                {botActive ? 'Assistant Active' : 'Assistant Paused'}
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/20 border border-green-400/40">
+              <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
+              <span className="text-sm font-medium text-green-400">
+                Assistant Active
               </span>
             </div>
           </div>
