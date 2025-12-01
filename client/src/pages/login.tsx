@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Bot, Lock, Mail, ArrowLeft, Sparkles } from "lucide-react";
+import { TreasureCoastLogo } from "@/components/treasure-coast-logo";
+import { Lock, Mail, ArrowLeft, Sparkles } from "lucide-react";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -72,11 +73,8 @@ export default function Login() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/">
-            <div className="inline-flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center glow-cyan">
-                <Bot className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-2xl font-bold text-white" data-testid="text-logo">Treasure Coast AI</span>
+            <div className="inline-flex items-center justify-center mb-6" data-testid="text-logo">
+              <TreasureCoastLogo size="lg" />
             </div>
           </Link>
         </div>

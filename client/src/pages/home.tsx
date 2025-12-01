@@ -1,8 +1,8 @@
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { TreasureCoastLogo } from "@/components/treasure-coast-logo";
 import { 
-  Bot, 
   Sparkles, 
   Globe, 
   MessageSquare, 
@@ -41,11 +41,8 @@ export default function Home() {
         {/* Navigation */}
         <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-black/40 backdrop-blur-xl">
           <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center glow-cyan">
-                <Bot className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold text-white" data-testid="text-logo">Treasure Coast AI</span>
+            <div className="flex items-center" data-testid="text-logo">
+              <TreasureCoastLogo size="md" />
             </div>
             <div className="flex items-center gap-4">
               <Link href="/login">
@@ -333,12 +330,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="py-12 px-6 border-t border-white/5">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-              <Bot className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-semibold text-white">Treasure Coast AI</span>
-          </div>
+          <TreasureCoastLogo size="sm" />
           
           <p className="text-white/40 text-sm">
             &copy; {new Date().getFullYear()} Treasure Coast AI. All rights reserved.

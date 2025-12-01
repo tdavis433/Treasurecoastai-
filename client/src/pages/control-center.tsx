@@ -53,6 +53,7 @@ function useSaveLock() {
 }
 import { Button } from "@/components/ui/button";
 import { GlassCard, GlassCardHeader, GlassCardTitle, GlassCardDescription, GlassCardContent } from "@/components/ui/glass-card";
+import { TreasureCoastLogo } from "@/components/treasure-coast-logo";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -644,14 +645,8 @@ export default function ControlCenter() {
     <div className="h-screen bg-[#0B0E13] text-white flex flex-col overflow-hidden">
       {/* Header */}
       <header className="h-14 border-b border-white/10 bg-[#0d1117]/80 backdrop-blur-md flex items-center justify-between px-6 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-cyan-500 via-blue-500 to-purple-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-            <Zap className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <span className="font-bold text-lg text-white">Treasure Coast AI</span>
-            <span className="text-white/40 ml-2 text-sm">Agency Dashboard</span>
-          </div>
+        <div className="flex items-center">
+          <TreasureCoastLogo size="md" showSubtitle subtitle="Agency Dashboard" />
         </div>
         <div className="flex items-center gap-4">
           <Badge 

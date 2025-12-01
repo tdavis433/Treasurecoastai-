@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TreasureCoastLogo } from "@/components/treasure-coast-logo";
 import {
   SidebarProvider,
   Sidebar,
@@ -1563,9 +1564,7 @@ export default function ClientDashboard() {
         <Sidebar className="border-r border-white/10 bg-[#0d1117]">
           <SidebarHeader className="p-4 border-b border-white/10">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-                <Bot className="h-5 w-5 text-white" />
-              </div>
+              <TreasureCoastLogo variant="icon" size="md" />
               <div className="flex-1 min-w-0">
                 <h2 className="text-sm font-semibold text-white truncate" data-testid="text-sidebar-business-name">
                   {businessName}
