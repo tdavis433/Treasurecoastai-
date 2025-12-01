@@ -3079,26 +3079,30 @@ function PersonaPanel({ bot, clientType }: { bot: BotConfig; clientType?: string
     },
   });
 
+  // Re-sync form data when bot changes (including after other panel saves)
   useEffect(() => {
-    setFormData({
-      systemPrompt: bot.systemPrompt || '',
-      tone: (bot as any).tone || 'professional',
-      responseLength: (bot as any).responseLength || 'medium',
-      personality: {
-        formality: (bot as any).personality?.formality || 50,
-        warmth: (bot as any).personality?.warmth || 70,
-        enthusiasm: (bot as any).personality?.enthusiasm || 60,
-      },
-    });
-    setIsEditing(false);
-  }, [bot.botId]);
+    if (!isEditing) {
+      setFormData({
+        systemPrompt: bot.systemPrompt || '',
+        tone: (bot as any).tone || 'professional',
+        responseLength: (bot as any).responseLength || 'medium',
+        personality: {
+          formality: (bot as any).personality?.formality || 50,
+          warmth: (bot as any).personality?.warmth || 70,
+          enthusiasm: (bot as any).personality?.enthusiasm || 60,
+        },
+      });
+    }
+  }, [bot, isEditing]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      // Fetch latest bot data to avoid overwriting other panels' changes
-      const latestBots = await fetch('/api/super-admin/bots').then(r => r.json()) as BotConfig[];
-      const latestBot = latestBots.find(b => b.botId === bot.botId) || bot;
+      // Fetch latest bot data first to avoid overwriting other panels' changes
+      const response = await fetch('/api/super-admin/bots');
+      const allBots = await response.json() as BotConfig[];
+      const latestBot = allBots.find(b => b.botId === bot.botId) || bot;
       
+      // Merge our fields with the latest data
       const updatedBot = {
         ...latestBot,
         systemPrompt: formData.systemPrompt,
@@ -3106,8 +3110,8 @@ function PersonaPanel({ bot, clientType }: { bot: BotConfig; clientType?: string
         responseLength: formData.responseLength,
         personality: formData.personality,
       };
-      const response = await apiRequest("PUT", `/api/super-admin/bots/${bot.botId}`, updatedBot);
-      return response.json();
+      const saveResponse = await apiRequest("PUT", `/api/super-admin/bots/${bot.botId}`, updatedBot);
+      return saveResponse.json();
     },
     onSuccess: () => {
       toast({ title: "Saved", description: "Persona settings have been updated." });
@@ -3332,29 +3336,33 @@ function KnowledgePanel({ bot, clientType }: { bot: BotConfig; clientType?: stri
     services: bot.businessProfile?.services?.join(', ') || '',
   });
 
+  // Re-sync form data when bot changes (including after other panel saves)
   useEffect(() => {
-    setFormData({
-      businessName: bot.businessProfile?.businessName || '',
-      type: bot.businessProfile?.type || '',
-      phone: bot.businessProfile?.phone || '',
-      email: bot.businessProfile?.email || '',
-      website: bot.businessProfile?.website || '',
-      location: bot.businessProfile?.location || '',
-      hours: formatHoursForDisplay(bot.businessProfile?.hours),
-      services: bot.businessProfile?.services?.join(', ') || '',
-    });
-    setFaqs(bot.faqs || []);
-    setIsEditing(false);
-    setEditingFaqIndex(null);
-    setShowAddFaq(false);
-  }, [bot.botId]);
+    if (!isEditing) {
+      setFormData({
+        businessName: bot.businessProfile?.businessName || '',
+        type: bot.businessProfile?.type || '',
+        phone: bot.businessProfile?.phone || '',
+        email: bot.businessProfile?.email || '',
+        website: bot.businessProfile?.website || '',
+        location: bot.businessProfile?.location || '',
+        hours: formatHoursForDisplay(bot.businessProfile?.hours),
+        services: bot.businessProfile?.services?.join(', ') || '',
+      });
+      setFaqs(bot.faqs || []);
+      setEditingFaqIndex(null);
+      setShowAddFaq(false);
+    }
+  }, [bot, isEditing]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      // Fetch latest bot data to avoid overwriting other panels' changes
-      const latestBots = await fetch('/api/super-admin/bots').then(r => r.json()) as BotConfig[];
-      const latestBot = latestBots.find(b => b.botId === bot.botId) || bot;
+      // Fetch latest bot data first to avoid overwriting other panels' changes
+      const response = await fetch('/api/super-admin/bots');
+      const allBots = await response.json() as BotConfig[];
+      const latestBot = allBots.find(b => b.botId === bot.botId) || bot;
       
+      // Merge our fields with the latest data
       const updatedBot = {
         ...latestBot,
         businessProfile: {
@@ -3370,8 +3378,8 @@ function KnowledgePanel({ bot, clientType }: { bot: BotConfig; clientType?: stri
         },
         faqs: faqs,
       };
-      const response = await apiRequest("PUT", `/api/super-admin/bots/${bot.botId}`, updatedBot);
-      return response.json();
+      const saveResponse = await apiRequest("PUT", `/api/super-admin/bots/${bot.botId}`, updatedBot);
+      return saveResponse.json();
     },
     onSuccess: () => {
       toast({ title: "Saved", description: "Knowledge base has been updated." });
@@ -3621,6 +3629,47 @@ function KnowledgePanel({ bot, clientType }: { bot: BotConfig; clientType?: stri
 function ChannelsPanel({ bot, client }: { bot: BotConfig; client: Client }) {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [widgetSettings, setWidgetSettings] = useState({
+    primaryColor: (bot as any).widgetSettings?.primaryColor || '#00E5CC',
+    position: (bot as any).widgetSettings?.position || 'bottom-right',
+    greeting: (bot as any).widgetSettings?.greeting || 'Hi! How can I help you today?',
+    showAvatar: (bot as any).widgetSettings?.showAvatar !== false,
+  });
+
+  useEffect(() => {
+    if (!isEditing) {
+      setWidgetSettings({
+        primaryColor: (bot as any).widgetSettings?.primaryColor || '#00E5CC',
+        position: (bot as any).widgetSettings?.position || 'bottom-right',
+        greeting: (bot as any).widgetSettings?.greeting || 'Hi! How can I help you today?',
+        showAvatar: (bot as any).widgetSettings?.showAvatar !== false,
+      });
+    }
+  }, [bot, isEditing]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/super-admin/bots');
+      const allBots = await response.json() as BotConfig[];
+      const latestBot = allBots.find(b => b.botId === bot.botId) || bot;
+      
+      const updatedBot = {
+        ...latestBot,
+        widgetSettings: widgetSettings,
+      };
+      const saveResponse = await apiRequest("PUT", `/api/super-admin/bots/${bot.botId}`, updatedBot);
+      return saveResponse.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Saved", description: "Widget settings have been updated." });
+      setIsEditing(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/bots"] });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to save widget settings.", variant: "destructive" });
+    },
+  });
 
   const embedCode = `<script src="${window.location.origin}/widget/embed.js" data-bot-id="${bot.botId}"></script>`;
 
@@ -3633,24 +3682,116 @@ function ChannelsPanel({ bot, client }: { bot: BotConfig; client: Client }) {
 
   return (
     <div className="space-y-6">
-      {/* Widget Preview */}
+      {/* Action Bar */}
+      <div className="flex justify-end gap-2">
+        {isEditing ? (
+          <>
+            <Button variant="outline" size="sm" onClick={() => setIsEditing(false)} data-testid="button-cancel-widget">
+              <X className="h-4 w-4 mr-2" />
+              Cancel
+            </Button>
+            <Button size="sm" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} data-testid="button-save-widget">
+              <Save className="h-4 w-4 mr-2" />
+              {saveMutation.isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </>
+        ) : (
+          <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} data-testid="button-edit-widget">
+            <Edit2 className="h-4 w-4 mr-2" />
+            Edit Widget
+          </Button>
+        )}
+      </div>
+
+      {/* Widget Configuration */}
       <GlassCard>
         <GlassCardHeader>
           <GlassCardTitle className="text-lg flex items-center gap-2">
             <Palette className="h-5 w-5 text-cyan-400" />
-            Widget Preview
+            Widget Appearance
+          </GlassCardTitle>
+          <GlassCardDescription>Customize how the chat widget looks</GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-white/70">Primary Color</Label>
+              {isEditing ? (
+                <div className="flex gap-2 mt-1">
+                  <input
+                    type="color"
+                    value={widgetSettings.primaryColor}
+                    onChange={(e) => setWidgetSettings({ ...widgetSettings, primaryColor: e.target.value })}
+                    className="h-9 w-12 rounded border border-white/10 cursor-pointer"
+                  />
+                  <Input
+                    value={widgetSettings.primaryColor}
+                    onChange={(e) => setWidgetSettings({ ...widgetSettings, primaryColor: e.target.value })}
+                    className="bg-white/5 border-white/10 text-white flex-1"
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="h-6 w-6 rounded" style={{ backgroundColor: widgetSettings.primaryColor }} />
+                  <span className="text-sm text-white">{widgetSettings.primaryColor}</span>
+                </div>
+              )}
+            </div>
+            <div>
+              <Label className="text-white/70">Position</Label>
+              {isEditing ? (
+                <Select value={widgetSettings.position} onValueChange={(v) => setWidgetSettings({ ...widgetSettings, position: v })}>
+                  <SelectTrigger className="bg-white/5 border-white/10 text-white mt-1" data-testid="select-widget-position">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1a1d24] border-white/10">
+                    <SelectItem value="bottom-right" className="text-white">Bottom Right</SelectItem>
+                    <SelectItem value="bottom-left" className="text-white">Bottom Left</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-sm mt-1 text-white">{widgetSettings.position === 'bottom-right' ? 'Bottom Right' : 'Bottom Left'}</p>
+              )}
+            </div>
+          </div>
+          <div>
+            <Label className="text-white/70">Greeting Message</Label>
+            {isEditing ? (
+              <Input
+                value={widgetSettings.greeting}
+                onChange={(e) => setWidgetSettings({ ...widgetSettings, greeting: e.target.value })}
+                className="bg-white/5 border-white/10 text-white mt-1"
+                placeholder="Hi! How can I help you today?"
+              />
+            ) : (
+              <p className="text-sm mt-1 text-white">{widgetSettings.greeting}</p>
+            )}
+          </div>
+        </GlassCardContent>
+      </GlassCard>
+
+      {/* Widget Preview */}
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="text-lg flex items-center gap-2">
+            <Eye className="h-5 w-5 text-purple-400" />
+            Preview
           </GlassCardTitle>
           <GlassCardDescription>How the chat widget appears on client websites</GlassCardDescription>
         </GlassCardHeader>
         <GlassCardContent>
           <div className="flex justify-center py-8">
             <div className="relative">
-              {/* Mock widget button */}
-              <div className="h-14 w-14 rounded-full bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center shadow-lg cursor-pointer hover:scale-105 transition-transform">
+              <div 
+                className="h-14 w-14 rounded-full flex items-center justify-center shadow-lg cursor-pointer hover:scale-105 transition-transform"
+                style={{ backgroundColor: widgetSettings.primaryColor }}
+              >
                 <MessageCircle className="h-6 w-6 text-white" />
               </div>
-              {/* Pulse animation */}
-              <div className="absolute inset-0 rounded-full bg-cyan-500/30 animate-ping" />
+              <div 
+                className="absolute inset-0 rounded-full animate-ping opacity-30"
+                style={{ backgroundColor: widgetSettings.primaryColor }}
+              />
             </div>
           </div>
           <div className="text-center mt-4">
@@ -3666,7 +3807,7 @@ function ChannelsPanel({ bot, client }: { bot: BotConfig; client: Client }) {
       <GlassCard>
         <GlassCardHeader>
           <GlassCardTitle className="text-lg flex items-center gap-2">
-            <Code className="h-5 w-5 text-purple-400" />
+            <Code className="h-5 w-5 text-cyan-400" />
             Embed Code
           </GlassCardTitle>
           <GlassCardDescription>Add this code to your client's website to enable the chat widget</GlassCardDescription>
@@ -3690,7 +3831,7 @@ function ChannelsPanel({ bot, client }: { bot: BotConfig; client: Client }) {
             <ol className="text-sm text-white/55 space-y-1 list-decimal list-inside">
               <li>Copy the embed code above</li>
               <li>Paste it before the closing <code className="text-cyan-400">&lt;/body&gt;</code> tag on your website</li>
-              <li>The widget will appear in the bottom-right corner</li>
+              <li>The widget will appear in the {widgetSettings.position === 'bottom-right' ? 'bottom-right' : 'bottom-left'} corner</li>
               <li>Test it by clicking the chat bubble</li>
             </ol>
           </div>
