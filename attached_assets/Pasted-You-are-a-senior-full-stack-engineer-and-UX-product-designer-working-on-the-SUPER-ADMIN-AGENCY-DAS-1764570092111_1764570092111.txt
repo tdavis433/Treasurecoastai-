@@ -1,0 +1,287 @@
+You are a senior full-stack engineer and UX/product designer working on the SUPER-ADMIN / AGENCY DASHBOARD of a multi-tenant SaaS platform called **Treasure Coast AI**.
+
+Context:
+- Tech stack: Next.js + React + TypeScript + Tailwind (or similar).
+- Multi-tenant model:
+  - SUPER-ADMIN / AGENCY DASHBOARD → for me (the agency owner).
+  - CLIENT DASHBOARD → for each business (simple, read-only-ish).
+- Company vision:
+  - I create and manage AI assistants for local businesses.
+  - Clients only view results and basic safe settings.
+  - I need a “god mode” control center where I can create, edit, duplicate, debug, and scale assistants with no real limits.
+
+Your task in THIS prompt:
+Perform a full review and improvement pass on the **SUPER-ADMIN / AGENCY DASHBOARD** and upgrade it so it is:
+- Powerful and efficient for me as the operator.
+- Clean, organized, and fast to use.
+- Deep enough to let me build very advanced assistants, templates, and automations.
+- 100% aligned with the Treasure Coast AI platform vision.
+
+You must:
+1. Review ALL existing super-admin routes, pages, tabs, components, and layouts.
+2. Identify anything that should be:
+   - Added to give me more control/power.
+   - Removed because it’s clutter, redundant, or badly placed.
+   - Renamed for clarity.
+   - Reorganized into a cleaner flow.
+   - Redesigned visually for a better experience.
+3. Compare everything against the platform’s goal and then IMPLEMENT the improvements directly in code.
+
+----------------------------------------
+PLATFORM GOAL (ADMIN PERSPECTIVE)
+----------------------------------------
+
+Treasure Coast AI from my (admin) point of view:
+
+- I should be able to:
+  - Manage all clients.
+  - Create and configure multiple assistants per client.
+  - Adjust any AI behavior, prompts, knowledge, flows, integrations, etc.
+  - See global stats (across all clients and assistants).
+  - Debug issues quickly.
+  - Use templates to spin up new assistants fast.
+  - Control billing/plans and usage limits.
+
+- The admin dashboard SHOULD:
+  - Feel like a pro “command center” for an agency.
+  - Make managing 1 → 10 → 100 clients possible without headaches.
+  - Keep all advanced/technical stuff on MY side, not the client side.
+
+- The admin dashboard should NOT:
+  - Mix client views with admin views.
+  - Hide critical AI/automation settings from me.
+  - Force me to dig through raw code to do basic operations.
+
+----------------------------------------
+REVIEW SCOPE — SUPER-ADMIN / AGENCY DASHBOARD
+----------------------------------------
+
+Audit and improve the super-admin UI around these main areas. If these sections don’t exist yet, create them and/or reshape existing ones into this structure.
+
+### 1) Home / Command Center
+- Review the current landing page for the admin.
+- Ensure it shows:
+  - Total clients
+  - Total assistants
+  - Conversations over last 7/30 days
+  - Leads over last 7/30 days
+  - Bookings (if supported)
+  - List of top-performing assistants and/or clients
+- Add or improve:
+  - Clear metrics cards.
+  - Simple charts/graphs.
+  - “Quick actions” (Create client, Create assistant, Open recent).
+- Remove anything noisy or low value.
+- Make this page feel like a true “at-a-glance” health view for the whole platform.
+
+### 2) Clients List
+- Review the current client management screen.
+- Ensure the table includes:
+  - Business name
+  - Primary contact
+  - Email
+  - Status (Active / Paused / Trial)
+  - Number of assistants
+  - Plan
+- Verify actions:
+  - Open client detail (admin view).
+  - Impersonate / “View as client” (open their dashboard as them).
+  - Edit client info.
+  - Pause/resume client (which affects all their assistants).
+- Improve:
+  - Filtering and search by name/email/status.
+  - Layout, spacing, and labels.
+- Remove:
+  - Any clutter that doesn’t help manage clients efficiently.
+
+### 3) Client Detail (Admin View)
+- For each client, review their detail page.
+- Verify there are tabs or sections like:
+  - Overview (metrics for this client)
+  - Assistants
+  - Conversations (optional global view)
+  - Leads/Bookings
+  - Billing & Plan
+  - Users
+  - Settings
+- Improve:
+  - Overview: make sure stats are meaningful (conversations, leads, bookings, etc.).
+  - Navigation between tabs: fast and obvious.
+- Remove:
+  - Technical junk the client doesn’t need to know (logs, raw JSON, etc.) from this view.
+  - Anything that should live in a deeper “System Logs” section instead.
+
+### 4) Assistants / Bots (Global)
+- Review the global assistants list.
+- Ensure the list has:
+  - Assistant name
+  - Client name
+  - Status (Active / Paused / Demo)
+  - Type (website widget, SMS, etc. if available)
+  - Key metrics (conversations, leads)
+- Add / improve:
+  - Filters by client, status, type.
+  - Quick actions: open in editor, duplicate, pause/activate.
+- Clean up:
+  - Any confusing columns.
+  - Inconsistent naming between different pages.
+
+### 5) Assistant Editor (God Mode)
+- This is the heart of your power. Review all assistant-editing pages/components.
+- Make sure the editor supports at least these sections:
+
+  [Overview]
+  - Shows client, channels, status, basic stats.
+
+  [Persona & System Prompt]
+  - Assistant name, description.
+  - Persona settings (tone, style).
+  - System prompt / core instructions in a large, well-labeled editor.
+  - Any helper UI that makes editing prompts safer and clearer.
+
+  [Knowledge / Content]
+  - Ability to attach:
+    - FAQ sets
+    - Scraped website content
+    - Documents (if supported)
+  - Clear indicators if knowledge is in sync or needs reindexing.
+
+  [Automations / Flows]
+  - Trigger → Action rules (keywords/intents → actions).
+  - Data structure (e.g. JSON stored in DB).
+  - Make the UI structured and easy to scan/edit.
+
+  [Channels & Embeds]
+  - Enable/disable website widget, SMS, etc.
+  - Provide embed snippet for the widget.
+  - Basic channel-specific options.
+
+  [Testing / Sandbox]
+  - A built-in test chat panel:
+    - Send test messages using current settings.
+    - Optionally view raw request/response (for admin debugging).
+
+  [Advanced AI Settings]
+  - Model selection, temperature, max tokens, safety behavior, etc.
+  - Only visible in the admin dashboard.
+  - Organized and clearly labeled (no random input fields).
+
+- Improve:
+  - Group related settings.
+  - Consistent input styling.
+  - Clear “Save” and “Revert” controls.
+- Remove:
+  - Dead/experimental fields.
+  - Any duplication across tabs.
+
+### 6) Templates / Playbooks
+- Review current templates (if any).
+- Ensure:
+  - There’s a clear templates section for common niches (sober living, barber, gym, etc.).
+  - Each template includes default persona, prompts, FAQs, automations.
+- Improve:
+  - Template list UI.
+  - Flow: “Create client from template” and/or “Create assistant for client from template.”
+- Remove:
+  - Half-broken template code or unused sample data.
+
+### 7) Knowledge Management (Global)
+- If there’s a global knowledge view, make sure it’s useful:
+  - Filter by client and assistant.
+  - Show counts of FAQ entries, docs, sources.
+- Improve:
+  - Any bulk actions (reindex, remove stale source).
+- Remove:
+  - Confusing or redundant views that don’t add clear value.
+
+### 8) Integrations & API Keys
+- Review the integrations/settings pages.
+- Ensure:
+  - There’s a clear place for OpenAI/LLM provider keys.
+  - Other integrations (email, SMS, Stripe, etc.) are grouped here.
+- Improve:
+  - Form layout, error states, and status badges (Connected / Not Configured / Error).
+- Ensure:
+  - Keys are never shown on client side.
+- Remove:
+  - Any unused integration stubs without at least a clear TODO.
+
+### 9) Billing & Plans (Admin)
+- Review the billing admin screens (if any).
+- Make sure you can:
+  - Define plans (name, price, limits).
+  - Assign plans to clients.
+  - See plan status per client.
+- Improve:
+  - UI clarity around limits and current usage (if available).
+- Add TODO comments if deeper Stripe integration is needed later.
+
+### 10) Users & Roles
+- Review user management in the admin.
+- Confirm:
+  - User model supports roles (SUPER_ADMIN, AGENCY_USER, CLIENT_OWNER, CLIENT_USER).
+  - You can invite, edit, disable users.
+- Improve:
+  - Role labels and descriptions.
+  - Layout of user lists.
+- Remove:
+  - Any legacy role logic that conflicts with the multi-tenant model.
+
+### 11) System Health & Logs
+- Review any existing logs/error screens.
+- Improve:
+  - Make it easy to see which clients/assistants are having issues.
+- Ensure:
+  - This page is admin-only.
+- Remove:
+  - Raw, unreadable dumps; instead show organized tables.
+
+----------------------------------------
+IMPLEMENTATION GUIDELINES
+----------------------------------------
+
+After reviewing the whole admin dashboard:
+
+1. **List improvements** (mentally/inline) and then implement them in code:
+   - Add missing pages/sections where needed.
+   - Restructure navigation to match the layout above (or close to it).
+   - Clean up labels, copy, and button text.
+   - Fix layouts that feel cramped or inconsistent.
+
+2. **Refactor for clarity and maintainability**:
+   - Extract reusable components (cards, tables, forms).
+   - Remove dead code and unused imports/components.
+   - Keep TypeScript types accurate and strict.
+
+3. **Respect multi-tenant security**:
+   - Super-admin can see everything.
+   - Client users can see only their tenant’s data (this is enforced in APIs and queries).
+   - No cross-tenant data leaks.
+
+4. **Do an end-to-end admin UX pass**:
+   - Simulate being me (agency owner) and:
+     - Add a client.
+     - Create an assistant from a template.
+     - Configure its persona, knowledge, automations.
+     - Grab the widget snippet.
+     - Check stats in the command center.
+     - Impersonate the client.
+   - Fix any friction you encounter.
+
+----------------------------------------
+CONSTRAINTS
+----------------------------------------
+- Do NOT break or weaken tenant isolation.
+- Do NOT expose API keys or internal secrets in client views.
+- Keep the client dashboard separate and simpler; this prompt is ONLY for the super-admin side.
+- Use existing design system and components where possible.
+- Keep everything production-ready, clean, and well-organized.
+
+----------------------------------------
+GOAL
+----------------------------------------
+Deliver a **super-admin / agency dashboard** that:
+- Feels like a powerful “god mode” control center.
+- Makes it easy to manage many clients and assistants.
+- Gives me deep control over AI behavior, knowledge, and automations.
+- Stays aligned with the Treasure Coast AI platform vision at all times.
