@@ -81,8 +81,13 @@ interface Client {
   id: string;
   name: string;
   type?: string;
-  status: 'active' | 'paused' | 'demo';
-  bots: string[];
+  status: string;
+  bots?: string[];
+  slug?: string;
+  plan?: string;
+  botsCount?: number;
+  totalConversations?: number;
+  lastActive?: string | null;
 }
 
 interface BotConfig {
@@ -90,7 +95,7 @@ interface BotConfig {
   clientId: string;
   name: string;
   description: string;
-  status?: 'active' | 'paused';
+  status?: 'active' | 'paused' | 'demo';
   metadata?: {
     isDemo?: boolean;
     isTemplate?: boolean;
@@ -6543,13 +6548,10 @@ function TemplatesSectionPanel({
 
   const createBotMutation = useMutation({
     mutationFn: async ({ template, clientId, name }: { template: Template; clientId: string; name: string }) => {
-      return apiRequest('/api/super-admin/bots/from-template', {
-        method: 'POST',
-        body: JSON.stringify({
-          templateBotId: template.botId,
-          clientId,
-          name,
-        }),
+      return apiRequest('POST', '/api/super-admin/bots/from-template', {
+        templateBotId: template.botId,
+        clientId,
+        name,
       });
     },
     onSuccess: () => {
@@ -7683,13 +7685,16 @@ function IntegrationsSectionPanel() {
 
 // Billing & Plans Section Panel
 interface Workspace {
-  id: number;
+  id: number | string;
   name: string;
   slug: string;
   status: string;
   plan?: string;
   billingEmail?: string;
-  createdAt: string;
+  createdAt?: string;
+  botsCount?: number;
+  totalConversations?: number;
+  lastActive?: string | null;
 }
 
 interface PlanDefinition {
@@ -7742,9 +7747,10 @@ function BillingSectionPanel({ workspaces }: { workspaces: Workspace[] }) {
   const [isUpdatingPlan, setIsUpdatingPlan] = useState(false);
 
   // Usage data - would be from real API in production
-  const getUsageForWorkspace = (workspaceId: number) => {
+  const getUsageForWorkspace = (workspaceId: number | string) => {
     // Use consistent seed based on workspace ID for demo purposes
-    const seed = workspaceId * 123;
+    const numericId = typeof workspaceId === 'string' ? parseInt(workspaceId, 10) || 0 : workspaceId;
+    const seed = numericId * 123;
     return {
       conversations: (seed % 800) + 50,
       leads: (seed % 150) + 10,
