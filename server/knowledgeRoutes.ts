@@ -6,6 +6,14 @@ import {
   insertKnowledgeDocumentSchema, 
   insertKnowledgeChunkSchema 
 } from "@shared/schema";
+import { 
+  semanticSearch, 
+  processDocumentChunks, 
+  reindexSource,
+  createChunkWithEmbedding,
+  isOpenAIConfigured,
+  MissingApiKeyError
+} from "./embeddings";
 
 const requireAuth = (req: Request, res: Response, next: NextFunction) => {
   if (!(req as any).session?.user?.id) {
@@ -428,6 +436,177 @@ export function registerKnowledgeRoutes(app: Express): void {
     } catch (error) {
       console.error("Search knowledge error:", error);
       res.status(500).json({ error: "Failed to search knowledge base" });
+    }
+  });
+
+  const semanticSearchSchema = z.object({
+    workspaceId: z.string().min(1),
+    query: z.string().min(1).max(1000),
+    limit: z.coerce.number().int().min(1).max(50).optional(),
+    threshold: z.coerce.number().min(0).max(1).optional(),
+    sourceId: z.string().optional(),
+    documentId: z.string().optional(),
+  });
+
+  app.get("/api/knowledge/semantic-search", requireAuth, async (req, res) => {
+    try {
+      if (!isOpenAIConfigured()) {
+        return res.status(422).json({ 
+          error: "OpenAI API key not configured",
+          message: "Semantic search requires an OpenAI API key. Please configure OPENAI_API_KEY."
+        });
+      }
+      
+      const userId = (req as any).session.user.id;
+      const parsed = semanticSearchSchema.safeParse(req.query);
+      
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid search query", details: parsed.error.errors });
+      }
+      
+      const { workspaceId, query, limit, threshold, sourceId, documentId } = parsed.data;
+      
+      if (!(await canAccessWorkspace(userId, workspaceId))) {
+        return res.status(403).json({ error: "Access denied to this workspace" });
+      }
+      
+      const results = await semanticSearch(workspaceId, query, {
+        limit,
+        threshold,
+        sourceId,
+        documentId,
+      });
+      
+      res.json({ query, results, count: results.length });
+    } catch (error) {
+      console.error("Semantic search error:", error);
+      if (error instanceof MissingApiKeyError) {
+        return res.status(422).json({ error: error.message });
+      }
+      res.status(500).json({ error: "Failed to perform semantic search" });
+    }
+  });
+
+  app.post("/api/knowledge/documents/:documentId/process", requireAuth, async (req, res) => {
+    try {
+      if (!isOpenAIConfigured()) {
+        return res.status(422).json({ 
+          error: "OpenAI API key not configured",
+          message: "Document processing requires an OpenAI API key for embeddings."
+        });
+      }
+      
+      const userId = (req as any).session.user.id;
+      const { documentId } = req.params;
+      const { chunkSize, overlap } = req.body;
+      
+      const document = await storage.getKnowledgeDocumentById(documentId);
+      if (!document) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+      
+      if (!(await canAccessWorkspace(userId, document.workspaceId))) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const chunksCreated = await processDocumentChunks(documentId, {
+        chunkSize: chunkSize || 1000,
+        overlap: overlap || 200,
+      });
+      
+      res.json({ 
+        success: true, 
+        documentId, 
+        chunksCreated,
+        message: `Created ${chunksCreated} chunks with embeddings` 
+      });
+    } catch (error) {
+      console.error("Process document error:", error);
+      if (error instanceof MissingApiKeyError) {
+        return res.status(422).json({ error: error.message });
+      }
+      res.status(500).json({ error: "Failed to process document" });
+    }
+  });
+
+  app.post("/api/knowledge/sources/:sourceId/reindex", requireAuth, async (req, res) => {
+    try {
+      if (!isOpenAIConfigured()) {
+        return res.status(422).json({ 
+          error: "OpenAI API key not configured",
+          message: "Reindexing requires an OpenAI API key for embeddings."
+        });
+      }
+      
+      const userId = (req as any).session.user.id;
+      const { sourceId } = req.params;
+      
+      if (!(await canAccessSource(userId, sourceId))) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      await storage.updateKnowledgeSource(sourceId, { status: "processing" });
+      
+      const result = await reindexSource(sourceId);
+      
+      res.json({
+        success: true,
+        sourceId,
+        documentsProcessed: result.documentsProcessed,
+        chunksCreated: result.chunksCreated,
+        message: `Reindexed ${result.documentsProcessed} documents with ${result.chunksCreated} chunks`
+      });
+    } catch (error) {
+      console.error("Reindex source error:", error);
+      if (error instanceof MissingApiKeyError) {
+        return res.status(422).json({ error: error.message });
+      }
+      res.status(500).json({ error: "Failed to reindex source" });
+    }
+  });
+
+  const createChunkWithEmbeddingSchema = z.object({
+    documentId: z.string().min(1),
+    sourceId: z.string().min(1),
+    workspaceId: z.string().min(1),
+    content: z.string().min(1),
+    chunkIndex: z.number().int().min(0),
+    tokenCount: z.number().int().optional(),
+    metadata: z.object({
+      heading: z.string().optional(),
+      section: z.string().optional(),
+      pageNumber: z.number().optional(),
+    }).passthrough().optional(),
+  });
+
+  app.post("/api/knowledge/chunks/with-embedding", requireAuth, async (req, res) => {
+    try {
+      if (!isOpenAIConfigured()) {
+        return res.status(422).json({ 
+          error: "OpenAI API key not configured",
+          message: "Creating chunks with embeddings requires an OpenAI API key."
+        });
+      }
+      
+      const userId = (req as any).session.user.id;
+      const parsed = createChunkWithEmbeddingSchema.safeParse(req.body);
+      
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid chunk data", details: parsed.error.errors });
+      }
+      
+      if (!(await canAccessWorkspace(userId, parsed.data.workspaceId))) {
+        return res.status(403).json({ error: "Access denied to this workspace" });
+      }
+      
+      const chunkId = await createChunkWithEmbedding(parsed.data);
+      res.status(201).json({ id: chunkId, hasEmbedding: true });
+    } catch (error) {
+      console.error("Create chunk with embedding error:", error);
+      if (error instanceof MissingApiKeyError) {
+        return res.status(422).json({ error: error.message });
+      }
+      res.status(500).json({ error: "Failed to create chunk with embedding" });
     }
   });
 }

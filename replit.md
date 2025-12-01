@@ -20,6 +20,7 @@ This project is a multi-tenant AI chatbot platform providing customizable, AI-dr
 
 ### Phase 2: Knowledge Hub & AI Enhancements
 - **Phase 2A (Complete):** Knowledge base schema (knowledge_sources, knowledge_documents, knowledge_chunks) with full CRUD API and workspace isolation
+- **Phase 2B (Complete):** Vector search with pgvector - OpenAI embeddings (ada-002), semantic search API, document chunking with overlap, source reindexing
 
 ## System Architecture
 The system is built with a React, TypeScript, Tailwind CSS, and shadcn/ui frontend, and an Express, Node.js backend.
