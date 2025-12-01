@@ -2073,6 +2073,91 @@ export const knowledgeChunksRelations = relations(knowledgeChunks, ({ one }) => 
   }),
 }));
 
+// =============================================
+// WEBSITE SCRAPER - Scraped website data
+// =============================================
+
+export const scrapedWebsites = pgTable("scraped_websites", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull(),
+  botId: varchar("bot_id"),
+  
+  // Source URL
+  url: text("url").notNull(),
+  domain: text("domain").notNull(),
+  
+  // Scraping status
+  status: text("status").notNull().default("pending"), // pending, processing, completed, failed
+  errorMessage: text("error_message"),
+  
+  // Raw scraped content
+  rawHtml: text("raw_html"),
+  rawText: text("raw_text"),
+  pageTitle: text("page_title"),
+  metaDescription: text("meta_description"),
+  
+  // AI-extracted structured data
+  extractedData: json("extracted_data").$type<{
+    businessName?: string;
+    tagline?: string;
+    description?: string;
+    services?: Array<{ name: string; description?: string; price?: string }>;
+    products?: Array<{ name: string; description?: string; price?: string }>;
+    faqs?: Array<{ question: string; answer: string }>;
+    contactInfo?: {
+      phone?: string;
+      email?: string;
+      address?: string;
+      hours?: Record<string, string>;
+    };
+    socialLinks?: Record<string, string>;
+    teamMembers?: Array<{ name: string; role?: string; bio?: string }>;
+    testimonials?: Array<{ text: string; author?: string; rating?: number }>;
+    keyFeatures?: string[];
+    pricing?: Array<{ plan: string; price: string; features?: string[] }>;
+    aboutContent?: string;
+    missionStatement?: string;
+  }>().default({}),
+  
+  // Processing metadata
+  pagesScraped: integer("pages_scraped").default(1),
+  tokensUsed: integer("tokens_used").default(0),
+  processingTimeMs: integer("processing_time_ms"),
+  
+  // Applied to bot
+  appliedToBotAt: timestamp("applied_to_bot_at"),
+  appliedByUserId: varchar("applied_by_user_id"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  workspaceIdx: index("scraped_websites_workspace_id_idx").on(table.workspaceId),
+  botIdx: index("scraped_websites_bot_id_idx").on(table.botId),
+  statusIdx: index("scraped_websites_status_idx").on(table.status),
+  domainIdx: index("scraped_websites_domain_idx").on(table.domain),
+}));
+
+export const insertScrapedWebsiteSchema = createInsertSchema(scrapedWebsites).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertScrapedWebsite = z.infer<typeof insertScrapedWebsiteSchema>;
+export type ScrapedWebsite = typeof scrapedWebsites.$inferSelect;
+
+// Scraped websites relations
+export const scrapedWebsitesRelations = relations(scrapedWebsites, ({ one }) => ({
+  workspace: one(workspaces, {
+    fields: [scrapedWebsites.workspaceId],
+    references: [workspaces.id],
+  }),
+  bot: one(bots, {
+    fields: [scrapedWebsites.botId],
+    references: [bots.botId],
+  }),
+}));
+
 // Audit logs relations (uses existing auditLogs table)
 export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
   user: one(adminUsers, {
