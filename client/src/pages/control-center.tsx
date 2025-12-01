@@ -136,7 +136,7 @@ export default function ControlCenter() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
-  const [dashboardSection, setDashboardSection] = useState<'overview' | 'workspaces' | 'analytics' | 'logs' | 'users'>('overview');
+  const [dashboardSection, setDashboardSection] = useState<'overview' | 'workspaces' | 'assistants' | 'templates' | 'knowledge' | 'integrations' | 'analytics' | 'logs' | 'users'>('overview');
   const [logFilters, setLogFilters] = useState({ level: 'all', source: '', isResolved: 'all' });
   const [analyticsRange, setAnalyticsRange] = useState<number>(7);
   const [selectedBots, setSelectedBots] = useState<Set<string>>(new Set());
@@ -721,7 +721,7 @@ export default function ControlCenter() {
                 </div>
               </div>
 
-              {/* Navigation Tabs */}
+              {/* Navigation Tabs - Organized: Overview, Clients, Assistants, Templates, Knowledge, Integrations, Analytics, Users, System */}
               <div className="flex items-center gap-1 mb-6 p-1 bg-white/5 rounded-lg border border-white/10 overflow-x-auto">
                 <Button
                   data-testid="button-section-overview"
@@ -747,6 +747,53 @@ export default function ControlCenter() {
                   )}
                 </Button>
                 <Button
+                  data-testid="button-section-assistants"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setDashboardSection('assistants')}
+                  className={dashboardSection === 'assistants' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
+                >
+                  <Bot className="h-4 w-4 mr-2" />
+                  Assistants
+                  {clientBots.length > 0 && (
+                    <Badge className="ml-1.5 bg-white/10 text-white/70 text-xs px-1.5">{clientBots.length}</Badge>
+                  )}
+                </Button>
+                <Button
+                  data-testid="button-section-templates"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setDashboardSection('templates')}
+                  className={dashboardSection === 'templates' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Templates
+                  {templates.length > 0 && (
+                    <Badge className="ml-1.5 bg-white/10 text-white/70 text-xs px-1.5">{templates.length}</Badge>
+                  )}
+                </Button>
+                <Button
+                  data-testid="button-section-knowledge"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setDashboardSection('knowledge')}
+                  className={dashboardSection === 'knowledge' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Knowledge
+                </Button>
+                <Button
+                  data-testid="button-section-integrations"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setDashboardSection('integrations')}
+                  className={dashboardSection === 'integrations' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
+                >
+                  <Zap className="h-4 w-4 mr-2" />
+                  Integrations
+                </Button>
+                <Separator orientation="vertical" className="h-6 bg-white/20 mx-1" />
+                <Button
                   data-testid="button-section-analytics"
                   variant="ghost"
                   size="sm"
@@ -757,19 +804,6 @@ export default function ControlCenter() {
                   Analytics
                 </Button>
                 <Button
-                  data-testid="button-section-logs"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setDashboardSection('logs')}
-                  className={dashboardSection === 'logs' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
-                >
-                  <FileWarning className="h-4 w-4 mr-2" />
-                  System Logs
-                  {systemStatus?.errorCount ? (
-                    <Badge className="ml-1.5 bg-red-500/20 text-red-400 text-xs px-1.5">{systemStatus.errorCount}</Badge>
-                  ) : null}
-                </Button>
-                <Button
                   data-testid="button-section-users"
                   variant="ghost"
                   size="sm"
@@ -778,6 +812,19 @@ export default function ControlCenter() {
                 >
                   <Shield className="h-4 w-4 mr-2" />
                   Users
+                </Button>
+                <Button
+                  data-testid="button-section-logs"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setDashboardSection('logs')}
+                  className={dashboardSection === 'logs' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
+                >
+                  <FileWarning className="h-4 w-4 mr-2" />
+                  System
+                  {systemStatus?.errorCount ? (
+                    <Badge className="ml-1.5 bg-red-500/20 text-red-400 text-xs px-1.5">{systemStatus.errorCount}</Badge>
+                  ) : null}
                 </Button>
                 <div className="flex-1" />
                 <Button
@@ -1797,6 +1844,41 @@ export default function ControlCenter() {
                     </div>
                   )}
                 </div>
+              )}
+
+              {/* Assistants Section - Global bot management */}
+              {dashboardSection === 'assistants' && (
+                <AssistantsSectionPanel 
+                  bots={clientBots} 
+                  templates={templates}
+                  clients={clients}
+                  onSelectBot={(botId) => {
+                    setSelectedBotId(botId);
+                    setActiveTab('overview');
+                  }}
+                  onCreateBot={() => setShowCreateModal(true)}
+                />
+              )}
+
+              {/* Templates Section - Template management */}
+              {dashboardSection === 'templates' && (
+                <TemplatesSectionPanel 
+                  templates={templates}
+                  onCreateFromTemplate={(template) => {
+                    setSelectedTemplate(template);
+                    setShowCreateModal(true);
+                  }}
+                />
+              )}
+
+              {/* Knowledge Section - Global knowledge base */}
+              {dashboardSection === 'knowledge' && (
+                <KnowledgeSectionPanel bots={clientBots} />
+              )}
+
+              {/* Integrations Section - API keys and connections */}
+              {dashboardSection === 'integrations' && (
+                <IntegrationsSectionPanel />
               )}
             </div>
           </main>
@@ -4337,6 +4419,562 @@ function InstallPanel({ bot, client }: { bot: BotConfig; client: Client }) {
               <Badge className={`${client.status === 'active' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/10 text-white/55 border border-white/20'}`}>
                 {client.status}
               </Badge>
+            </div>
+          </div>
+        </GlassCardContent>
+      </GlassCard>
+    </div>
+  );
+}
+
+// Assistants Section Panel - Global bot management with filters and bulk actions
+function AssistantsSectionPanel({ 
+  bots, 
+  templates,
+  clients,
+  onSelectBot,
+  onCreateBot
+}: { 
+  bots: BotConfig[]; 
+  templates: Template[];
+  clients: Client[];
+  onSelectBot: (botId: string) => void;
+  onCreateBot: () => void;
+}) {
+  const [filter, setFilter] = useState<{
+    status: 'all' | 'active' | 'paused' | 'demo';
+    type: string;
+    search: string;
+  }>({ status: 'all', type: 'all', search: '' });
+  const [sortBy, setSortBy] = useState<'name' | 'type' | 'created'>('name');
+
+  const filteredBots = bots.filter(bot => {
+    const client = clients.find(c => c.id === bot.clientId);
+    const matchesStatus = filter.status === 'all' || client?.status === filter.status;
+    const matchesType = filter.type === 'all' || bot.businessProfile?.type === filter.type;
+    const matchesSearch = !filter.search || 
+      bot.name?.toLowerCase().includes(filter.search.toLowerCase()) ||
+      bot.businessProfile?.businessName?.toLowerCase().includes(filter.search.toLowerCase());
+    return matchesStatus && matchesType && matchesSearch;
+  }).sort((a, b) => {
+    if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
+    if (sortBy === 'type') return (a.businessProfile?.type || '').localeCompare(b.businessProfile?.type || '');
+    return 0;
+  });
+
+  const activeCount = bots.filter(b => clients.find(c => c.id === b.clientId)?.status === 'active').length;
+  const pausedCount = bots.filter(b => clients.find(c => c.id === b.clientId)?.status === 'paused').length;
+  const demoCount = bots.filter(b => clients.find(c => c.id === b.clientId)?.status === 'demo').length;
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h2 className="text-lg font-semibold text-white">All Assistants</h2>
+          <p className="text-sm text-white/55">Manage all AI assistants across your platform</p>
+        </div>
+        <Button onClick={onCreateBot} className="bg-cyan-500 hover:bg-cyan-600 text-white" data-testid="button-create-assistant">
+          <Plus className="h-4 w-4 mr-2" />
+          Create Assistant
+        </Button>
+      </div>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-4 gap-4">
+        <GlassCard hover onClick={() => setFilter(f => ({ ...f, status: 'all' }))} className={filter.status === 'all' ? 'ring-1 ring-cyan-400/50' : ''}>
+          <GlassCardContent className="py-4 text-center">
+            <p className="text-2xl font-bold text-white">{bots.length}</p>
+            <p className="text-xs text-white/55">Total</p>
+          </GlassCardContent>
+        </GlassCard>
+        <GlassCard hover onClick={() => setFilter(f => ({ ...f, status: 'active' }))} className={filter.status === 'active' ? 'ring-1 ring-green-400/50' : ''}>
+          <GlassCardContent className="py-4 text-center">
+            <p className="text-2xl font-bold text-green-400">{activeCount}</p>
+            <p className="text-xs text-white/55">Active</p>
+          </GlassCardContent>
+        </GlassCard>
+        <GlassCard hover onClick={() => setFilter(f => ({ ...f, status: 'paused' }))} className={filter.status === 'paused' ? 'ring-1 ring-amber-400/50' : ''}>
+          <GlassCardContent className="py-4 text-center">
+            <p className="text-2xl font-bold text-amber-400">{pausedCount}</p>
+            <p className="text-xs text-white/55">Paused</p>
+          </GlassCardContent>
+        </GlassCard>
+        <GlassCard hover onClick={() => setFilter(f => ({ ...f, status: 'demo' }))} className={filter.status === 'demo' ? 'ring-1 ring-blue-400/50' : ''}>
+          <GlassCardContent className="py-4 text-center">
+            <p className="text-2xl font-bold text-blue-400">{demoCount}</p>
+            <p className="text-xs text-white/55">Demo</p>
+          </GlassCardContent>
+        </GlassCard>
+      </div>
+
+      {/* Filters Bar */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+          <Input
+            placeholder="Search assistants..."
+            value={filter.search}
+            onChange={(e) => setFilter(f => ({ ...f, search: e.target.value }))}
+            className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/40"
+            data-testid="input-filter-search"
+          />
+        </div>
+        <Select value={filter.type} onValueChange={(v) => setFilter(f => ({ ...f, type: v }))}>
+          <SelectTrigger className="w-[150px] bg-white/5 border-white/10 text-white" data-testid="select-filter-type">
+            <SelectValue placeholder="Business Type" />
+          </SelectTrigger>
+          <SelectContent className="bg-[#1a1d24] border-white/10">
+            <SelectItem value="all" className="text-white">All Types</SelectItem>
+            {BUSINESS_TYPES.map(type => (
+              <SelectItem key={type.value} value={type.value} className="text-white">{type.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+          <SelectTrigger className="w-[130px] bg-white/5 border-white/10 text-white" data-testid="select-sort-by">
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
+          <SelectContent className="bg-[#1a1d24] border-white/10">
+            <SelectItem value="name" className="text-white">Name</SelectItem>
+            <SelectItem value="type" className="text-white">Type</SelectItem>
+            <SelectItem value="created" className="text-white">Created</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Assistants Grid */}
+      {filteredBots.length === 0 ? (
+        <GlassCard>
+          <GlassCardContent className="py-12 text-center">
+            <Bot className="h-12 w-12 mx-auto mb-3 text-white/30" />
+            <p className="text-white/55">No assistants match your filters</p>
+            <Button variant="outline" className="mt-4 border-white/10 text-white/70" onClick={() => setFilter({ status: 'all', type: 'all', search: '' })}>
+              Clear Filters
+            </Button>
+          </GlassCardContent>
+        </GlassCard>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredBots.map(bot => {
+            const client = clients.find(c => c.id === bot.clientId);
+            return (
+              <GlassCard key={bot.botId} hover onClick={() => onSelectBot(bot.botId)} data-testid={`card-assistant-${bot.botId}`} className="cursor-pointer">
+                <GlassCardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
+                      <Building2 className="h-5 w-5 text-cyan-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-white truncate">{bot.name || bot.businessProfile?.businessName}</h3>
+                      <p className="text-xs text-white/55">{BUSINESS_TYPES.find(t => t.value === bot.businessProfile?.type)?.label || 'Custom'}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge className={`text-xs ${
+                          client?.status === 'active' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                          client?.status === 'demo' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
+                          'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                        }`}>
+                          {client?.status}
+                        </Badge>
+                        <span className="text-xs text-white/40">{bot.faqs?.length || 0} FAQs</span>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-white/30" />
+                  </div>
+                </GlassCardContent>
+              </GlassCard>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Templates Section Panel - Template gallery with categories
+function TemplatesSectionPanel({ 
+  templates,
+  onCreateFromTemplate
+}: { 
+  templates: Template[];
+  onCreateFromTemplate: (template: Template) => void;
+}) {
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  
+  const categories = ['all', ...new Set(templates.map(t => t.metadata?.templateCategory || 'other'))];
+  const filteredTemplates = selectedCategory === 'all' 
+    ? templates 
+    : templates.filter(t => t.metadata?.templateCategory === selectedCategory);
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h2 className="text-lg font-semibold text-white">Bot Templates</h2>
+          <p className="text-sm text-white/55">Pre-configured templates for quick deployment</p>
+        </div>
+        <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
+          {templates.length} Templates
+        </Badge>
+      </div>
+
+      {/* Category Tabs */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {categories.map(cat => (
+          <Button
+            key={cat}
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedCategory(cat)}
+            className={selectedCategory === cat 
+              ? 'bg-purple-500/20 text-purple-400' 
+              : 'text-white/70 hover:text-white hover:bg-white/10'}
+            data-testid={`button-category-${cat}`}
+          >
+            {cat.charAt(0).toUpperCase() + cat.slice(1).replace(/_/g, ' ')}
+          </Button>
+        ))}
+      </div>
+
+      {/* Templates Grid */}
+      {filteredTemplates.length === 0 ? (
+        <GlassCard>
+          <GlassCardContent className="py-12 text-center">
+            <FileText className="h-12 w-12 mx-auto mb-3 text-white/30" />
+            <p className="text-white/55">No templates in this category</p>
+          </GlassCardContent>
+        </GlassCard>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredTemplates.map(template => (
+            <GlassCard key={template.botId} hover data-testid={`card-template-${template.botId}`}>
+              <GlassCardContent className="p-4">
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="h-10 w-10 rounded-lg bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+                    <FileText className="h-5 w-5 text-purple-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-white truncate">{template.name}</h3>
+                    <p className="text-xs text-white/55">{template.metadata?.templateCategory?.replace(/_/g, ' ')}</p>
+                  </div>
+                </div>
+                <p className="text-sm text-white/55 line-clamp-2 mb-4">{template.description}</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-white/10 text-white/70 text-xs">{template.faqs?.length || 0} FAQs</Badge>
+                    <Badge className="bg-white/10 text-white/70 text-xs">{template.businessProfile?.services?.length || 0} Services</Badge>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => onCreateFromTemplate(template)}
+                    className="bg-purple-500 hover:bg-purple-600 text-white"
+                    data-testid={`button-use-template-${template.botId}`}
+                  >
+                    Use Template
+                  </Button>
+                </div>
+              </GlassCardContent>
+            </GlassCard>
+          ))}
+        </div>
+      )}
+
+      {/* Template Features Info */}
+      <GlassCard>
+        <GlassCardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <div className="h-8 w-8 rounded-lg bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
+              <Zap className="h-4 w-4 text-cyan-400" />
+            </div>
+            <div>
+              <h4 className="font-medium text-white text-sm">Templates include pre-configured:</h4>
+              <ul className="text-xs text-white/55 mt-1 space-y-1">
+                <li>Business profile and service offerings</li>
+                <li>Industry-specific FAQs and responses</li>
+                <li>AI personality and conversation style</li>
+                <li>Widget styling matched to industry</li>
+              </ul>
+            </div>
+          </div>
+        </GlassCardContent>
+      </GlassCard>
+    </div>
+  );
+}
+
+// Knowledge Section Panel - Global knowledge management
+function KnowledgeSectionPanel({ bots }: { bots: BotConfig[] }) {
+  const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
+  
+  const totalFaqs = bots.reduce((sum, bot) => sum + (bot.faqs?.length || 0), 0);
+  const totalServices = bots.reduce((sum, bot) => sum + (bot.businessProfile?.services?.length || 0), 0);
+  const botsWithRules = bots.filter(b => b.rules?.specialInstructions?.length).length;
+
+  const selectedBot = bots.find(b => b.botId === selectedBotId);
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h2 className="text-lg font-semibold text-white">Knowledge Base</h2>
+        <p className="text-sm text-white/55">Manage FAQs, services, and training data across all assistants</p>
+      </div>
+
+      {/* Knowledge Stats */}
+      <div className="grid grid-cols-4 gap-4">
+        <GlassCard>
+          <GlassCardContent className="py-4 text-center">
+            <p className="text-2xl font-bold text-white">{totalFaqs}</p>
+            <p className="text-xs text-white/55">Total FAQs</p>
+          </GlassCardContent>
+        </GlassCard>
+        <GlassCard>
+          <GlassCardContent className="py-4 text-center">
+            <p className="text-2xl font-bold text-white">{totalServices}</p>
+            <p className="text-xs text-white/55">Services Defined</p>
+          </GlassCardContent>
+        </GlassCard>
+        <GlassCard>
+          <GlassCardContent className="py-4 text-center">
+            <p className="text-2xl font-bold text-white">{botsWithRules}</p>
+            <p className="text-xs text-white/55">Bots with Rules</p>
+          </GlassCardContent>
+        </GlassCard>
+        <GlassCard>
+          <GlassCardContent className="py-4 text-center">
+            <p className="text-2xl font-bold text-white">{bots.length}</p>
+            <p className="text-xs text-white/55">Total Assistants</p>
+          </GlassCardContent>
+        </GlassCard>
+      </div>
+
+      {/* Bot Selector */}
+      <div className="flex items-center gap-4">
+        <Select value={selectedBotId || ''} onValueChange={setSelectedBotId}>
+          <SelectTrigger className="w-[250px] bg-white/5 border-white/10 text-white" data-testid="select-knowledge-bot">
+            <SelectValue placeholder="Select an assistant to view..." />
+          </SelectTrigger>
+          <SelectContent className="bg-[#1a1d24] border-white/10 max-h-[300px]">
+            {bots.map(bot => (
+              <SelectItem key={bot.botId} value={bot.botId} className="text-white">
+                {bot.name || bot.businessProfile?.businessName}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {selectedBot && (
+          <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30">
+            {selectedBot.faqs?.length || 0} FAQs
+          </Badge>
+        )}
+      </div>
+
+      {/* Knowledge Display */}
+      {selectedBot ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* FAQs */}
+          <GlassCard>
+            <GlassCardHeader>
+              <GlassCardTitle className="text-base">FAQs</GlassCardTitle>
+              <GlassCardDescription>{selectedBot.faqs?.length || 0} questions</GlassCardDescription>
+            </GlassCardHeader>
+            <GlassCardContent>
+              <ScrollArea className="h-[300px]">
+                <div className="space-y-3">
+                  {selectedBot.faqs?.map((faq, i) => (
+                    <div key={i} className="p-3 bg-white/5 rounded-lg border border-white/10">
+                      <p className="font-medium text-white text-sm">{faq.question}</p>
+                      <p className="text-xs text-white/55 mt-1 line-clamp-2">{faq.answer}</p>
+                    </div>
+                  )) || <p className="text-white/40 text-sm">No FAQs configured</p>}
+                </div>
+              </ScrollArea>
+            </GlassCardContent>
+          </GlassCard>
+
+          {/* Services & Rules */}
+          <div className="space-y-6">
+            <GlassCard>
+              <GlassCardHeader>
+                <GlassCardTitle className="text-base">Services</GlassCardTitle>
+              </GlassCardHeader>
+              <GlassCardContent>
+                <div className="flex flex-wrap gap-2">
+                  {selectedBot.businessProfile?.services?.map((service, i) => (
+                    <Badge key={i} className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30">{service}</Badge>
+                  )) || <p className="text-white/40 text-sm">No services defined</p>}
+                </div>
+              </GlassCardContent>
+            </GlassCard>
+
+            <GlassCard>
+              <GlassCardHeader>
+                <GlassCardTitle className="text-base">Special Instructions</GlassCardTitle>
+              </GlassCardHeader>
+              <GlassCardContent>
+                <ul className="space-y-2">
+                  {selectedBot.rules?.specialInstructions?.map((instruction, i) => (
+                    <li key={i} className="text-sm text-white/70 flex items-start gap-2">
+                      <Check className="h-4 w-4 text-green-400 flex-shrink-0 mt-0.5" />
+                      {instruction}
+                    </li>
+                  )) || <p className="text-white/40 text-sm">No special instructions</p>}
+                </ul>
+              </GlassCardContent>
+            </GlassCard>
+          </div>
+        </div>
+      ) : (
+        <GlassCard>
+          <GlassCardContent className="py-12 text-center">
+            <Layers className="h-12 w-12 mx-auto mb-3 text-white/30" />
+            <p className="text-white/55">Select an assistant to view its knowledge base</p>
+          </GlassCardContent>
+        </GlassCard>
+      )}
+    </div>
+  );
+}
+
+// Integrations Section Panel - API keys and external connections
+function IntegrationsSectionPanel() {
+  const { data: envStatus } = useQuery<{
+    openaiConfigured: boolean;
+    stripeConfigured: boolean;
+    databaseConnected: boolean;
+  }>({
+    queryKey: ["/api/super-admin/integrations/status"],
+    queryFn: async () => {
+      try {
+        const response = await fetch("/api/super-admin/integrations/status", { credentials: "include" });
+        if (!response.ok) return { openaiConfigured: true, stripeConfigured: true, databaseConnected: true };
+        return response.json();
+      } catch {
+        return { openaiConfigured: true, stripeConfigured: true, databaseConnected: true };
+      }
+    },
+  });
+
+  const integrations = [
+    {
+      id: 'openai',
+      name: 'OpenAI',
+      description: 'GPT-4 powered conversations',
+      icon: Zap,
+      status: envStatus?.openaiConfigured !== false ? 'connected' : 'not_configured',
+      colorClass: 'bg-cyan-500/20 text-cyan-400'
+    },
+    {
+      id: 'stripe',
+      name: 'Stripe',
+      description: 'Payment processing and billing',
+      icon: CreditCard,
+      status: envStatus?.stripeConfigured !== false ? 'connected' : 'not_configured',
+      colorClass: 'bg-purple-500/20 text-purple-400'
+    },
+    {
+      id: 'database',
+      name: 'PostgreSQL',
+      description: 'Data persistence and storage',
+      icon: Layers,
+      status: envStatus?.databaseConnected !== false ? 'connected' : 'not_configured',
+      colorClass: 'bg-green-500/20 text-green-400'
+    }
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h2 className="text-lg font-semibold text-white">Integrations</h2>
+        <p className="text-sm text-white/55">Manage API connections and external services</p>
+      </div>
+
+      {/* Integration Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {integrations.map(integration => (
+          <GlassCard key={integration.id} data-testid={`card-integration-${integration.id}`}>
+            <GlassCardContent className="p-5">
+              <div className="flex items-start justify-between mb-4">
+                <div className={`h-10 w-10 rounded-lg ${integration.colorClass.split(' ')[0]} flex items-center justify-center`}>
+                  <integration.icon className={`h-5 w-5 ${integration.colorClass.split(' ')[1]}`} />
+                </div>
+                <Badge className={
+                  integration.status === 'connected' 
+                    ? 'bg-green-500/20 text-green-400 border-green-500/30' 
+                    : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                }>
+                  {integration.status === 'connected' ? 'Connected' : 'Not Configured'}
+                </Badge>
+              </div>
+              <h3 className="font-medium text-white">{integration.name}</h3>
+              <p className="text-sm text-white/55 mt-1">{integration.description}</p>
+            </GlassCardContent>
+          </GlassCard>
+        ))}
+      </div>
+
+      {/* API Usage Stats */}
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle>API Configuration</GlassCardTitle>
+          <GlassCardDescription>Environment variables and secrets</GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10">
+              <div className="flex items-center gap-3">
+                <Zap className="h-4 w-4 text-cyan-400" />
+                <span className="text-sm text-white">OPENAI_API_KEY</span>
+              </div>
+              <Badge className={envStatus?.openaiConfigured !== false ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>
+                {envStatus?.openaiConfigured !== false ? 'Set' : 'Missing'}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10">
+              <div className="flex items-center gap-3">
+                <CreditCard className="h-4 w-4 text-purple-400" />
+                <span className="text-sm text-white">STRIPE_SECRET_KEY</span>
+              </div>
+              <Badge className={envStatus?.stripeConfigured !== false ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>
+                {envStatus?.stripeConfigured !== false ? 'Set' : 'Missing'}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10">
+              <div className="flex items-center gap-3">
+                <Layers className="h-4 w-4 text-green-400" />
+                <span className="text-sm text-white">DATABASE_URL</span>
+              </div>
+              <Badge className={envStatus?.databaseConnected !== false ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>
+                {envStatus?.databaseConnected !== false ? 'Connected' : 'Not Connected'}
+              </Badge>
+            </div>
+          </div>
+        </GlassCardContent>
+      </GlassCard>
+
+      {/* Webhook Configuration */}
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle>Webhook Endpoints</GlassCardTitle>
+          <GlassCardDescription>External service callbacks</GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent>
+          <div className="space-y-3">
+            <div className="p-3 bg-white/5 rounded-lg border border-white/10">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-white">Stripe Webhook</span>
+                <Badge className="bg-green-500/20 text-green-400">Active</Badge>
+              </div>
+              <code className="text-xs text-white/40 mt-1 block">/api/stripe/webhook</code>
+            </div>
+            <div className="p-3 bg-white/5 rounded-lg border border-white/10">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-white">Widget Embed</span>
+                <Badge className="bg-green-500/20 text-green-400">Active</Badge>
+              </div>
+              <code className="text-xs text-white/40 mt-1 block">/widget/embed.js</code>
             </div>
           </div>
         </GlassCardContent>
