@@ -74,6 +74,7 @@ import {
   getAdminCredentials,
   getStaffCredentials
 } from './env';
+import { registerChannelRoutes } from './channelRoutes';
 
 // =============================================
 // PHASE 2.4: SIGNED WIDGET TOKENS
@@ -6540,6 +6541,9 @@ These suggestions should be relevant to what was just discussed and help guide t
       res.status(500).json({ error: 'Failed to load widget configuration' });
     }
   });
+
+  // Register channel routes for multi-channel inbox
+  registerChannelRoutes(app, requireAuth);
 
   const httpServer = createServer(app);
   return httpServer;

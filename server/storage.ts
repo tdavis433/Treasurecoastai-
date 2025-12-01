@@ -48,8 +48,15 @@ import {
   widgetSettings,
   conversationNotes,
   sessionStates,
-  systemLogs
+  systemLogs,
+  conversations,
+  conversationMessages,
+  conversationParticipants,
+  conversationActivities,
+  messageAttachments,
+  channels,
 } from "@shared/schema";
+import * as schema from "@shared/schema";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { neonConfig, Pool } from "@neondatabase/serverless";
 import { eq, and, gte, lte, or, like, sql, desc } from "drizzle-orm";
@@ -58,7 +65,7 @@ import ws from "ws";
 neonConfig.webSocketConstructor = ws;
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle(pool);
+export const db = drizzle(pool, { schema });
 
 export interface IStorage {
   createAppointment(clientId: string, appointment: InsertAppointment): Promise<Appointment>;
