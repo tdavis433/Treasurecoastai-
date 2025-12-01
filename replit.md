@@ -105,3 +105,18 @@ shared/
 - Updated CSS with premium color palette and glow effects
 - Cleaned up routes and removed unused imports
 - Focus on core value: Admin builds bots, Clients view analytics
+- Added Test Chat tab to control-center for inline AI testing (Dec 1, 2024)
+- Fixed LSP errors in routes.ts (getClientSettings → getSettings)
+- All core platform features tested and verified working end-to-end
+
+## Control Center Features
+The admin Control Center at `/super-admin` provides:
+- **Overview Tab:** Bot stats, conversations, leads, bookings
+- **Test Chat Tab:** Inline AI chat tester with real GPT-4o-mini responses
+- **Settings Tab:** Business profile, hours, FAQs, system prompt
+- **Billing Tab:** Stripe integration status
+- **Analytics Tab:** Charts and trends
+- **Logs Tab:** Conversation logs
+- **Automations Tab:** Keyword triggers
+- **Widget Tab:** Customization settings
+- **Install Tab:** Embed code generator
