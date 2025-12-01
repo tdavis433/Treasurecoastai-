@@ -18,12 +18,19 @@ import {
   Calendar, Utensils, Scissors, Car, Dumbbell, Home, ClipboardList,
   Users, DollarSign, Shield, Search, Loader2, ExternalLink, Check,
   X, RefreshCw, Trash2, Plus, Download, BarChart3, Send, Bot,
-  Play, Eye, Code2
+  Play, Eye, Code2, Zap
 } from "lucide-react";
 
 interface BotFaq {
   question: string;
   answer: string;
+}
+
+interface KeywordAutomation {
+  id: string;
+  keywords: string[];
+  response: string;
+  enabled: boolean;
 }
 
 interface ScrapedWebsite {
@@ -86,6 +93,7 @@ interface BotConfig {
       responseTemplate: string;
     };
   };
+  automations?: KeywordAutomation[];
   systemPrompt: string;
   faqs: BotFaq[];
   metadata?: {
@@ -703,6 +711,10 @@ export default function BotDashboard() {
               <Play className="h-4 w-4" />
               Test Chat
             </TabsTrigger>
+            <TabsTrigger value="automations" className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500/20 data-[state=active]:to-orange-500/20 data-[state=active]:text-amber-400 data-[state=active]:border data-[state=active]:border-amber-400/30 data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white transition-all" data-testid="tab-automations">
+              <Zap className="h-4 w-4" />
+              Automations
+            </TabsTrigger>
             {renderBusinessTypeTabs()}
           </TabsList>
 
@@ -837,6 +849,13 @@ export default function BotDashboard() {
 
           <TabsContent value="test-chat">
             <TestChatTab botId={botId || ''} botConfig={editedConfig} />
+          </TabsContent>
+
+          <TabsContent value="automations">
+            <AutomationsTab 
+              config={editedConfig}
+              updateConfig={updateConfig}
+            />
           </TabsContent>
 
           {renderBusinessTypeContent()}
@@ -1709,6 +1728,216 @@ function TestChatTab({ botId, botConfig }: { botId: string; botConfig: BotConfig
           </GlassCardContent>
         </GlassCard>
       </div>
+    </div>
+  );
+}
+
+function AutomationsTab({ config, updateConfig }: {
+  config: BotConfig;
+  updateConfig: (updates: Partial<BotConfig>) => void;
+}) {
+  const { toast } = useToast();
+  const [newKeywords, setNewKeywords] = useState("");
+  const [newResponse, setNewResponse] = useState("");
+
+  const automations = config.automations || [];
+
+  const addAutomation = () => {
+    if (!newKeywords.trim() || !newResponse.trim()) {
+      toast({ 
+        title: "Error", 
+        description: "Please enter both keywords and a response.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    const keywords = newKeywords.split(',').map(k => k.trim()).filter(k => k);
+    if (keywords.length === 0) {
+      toast({ 
+        title: "Error", 
+        description: "Please enter at least one keyword.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    const newAutomation: KeywordAutomation = {
+      id: Date.now().toString(),
+      keywords,
+      response: newResponse.trim(),
+      enabled: true,
+    };
+
+    updateConfig({ automations: [...automations, newAutomation] });
+    setNewKeywords("");
+    setNewResponse("");
+    toast({ title: "Success", description: "Automation added. Don't forget to save!" });
+  };
+
+  const toggleAutomation = (id: string) => {
+    updateConfig({
+      automations: automations.map(a => 
+        a.id === id ? { ...a, enabled: !a.enabled } : a
+      )
+    });
+  };
+
+  const removeAutomation = (id: string) => {
+    updateConfig({
+      automations: automations.filter(a => a.id !== id)
+    });
+    toast({ title: "Removed", description: "Automation removed. Don't forget to save!" });
+  };
+
+  return (
+    <div className="space-y-6">
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-amber-400" />
+            Keyword Automations
+          </GlassCardTitle>
+          <GlassCardDescription>
+            Create instant responses triggered by specific keywords. When a user message contains any of these keywords, the bot will respond with the configured message.
+          </GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent>
+          <div className="space-y-6">
+            <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-400/20">
+              <h4 className="text-white font-medium mb-4 flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Add New Automation
+              </h4>
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-white/70">Trigger Keywords</Label>
+                  <Input
+                    value={newKeywords}
+                    onChange={(e) => setNewKeywords(e.target.value)}
+                    placeholder="pricing, cost, how much (comma-separated)"
+                    className="bg-white/5 border-white/10 text-white mt-1"
+                    data-testid="input-automation-keywords"
+                  />
+                  <p className="text-white/40 text-xs mt-1">Enter keywords separated by commas. Message containing any keyword will trigger this automation.</p>
+                </div>
+                <div>
+                  <Label className="text-white/70">Bot Response</Label>
+                  <Textarea
+                    value={newResponse}
+                    onChange={(e) => setNewResponse(e.target.value)}
+                    placeholder="Our pricing starts at $99/month. Would you like more details?"
+                    className="bg-white/5 border-white/10 text-white mt-1 min-h-[100px]"
+                    data-testid="input-automation-response"
+                  />
+                </div>
+                <Button 
+                  onClick={addAutomation}
+                  className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+                  data-testid="button-add-automation"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Automation
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-white font-medium mb-4">Active Automations</h4>
+              {automations.length === 0 ? (
+                <div className="text-center py-8 text-white/40 bg-white/5 rounded-lg border border-white/10">
+                  <Zap className="h-12 w-12 mx-auto mb-3 opacity-40" />
+                  <p>No automations configured yet.</p>
+                  <p className="text-sm">Add keyword triggers above to automate common responses.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {automations.map((automation) => (
+                    <div 
+                      key={automation.id}
+                      className={`p-4 rounded-lg border ${
+                        automation.enabled 
+                          ? 'bg-white/5 border-white/10' 
+                          : 'bg-white/2 border-white/5 opacity-60'
+                      }`}
+                      data-testid={`automation-${automation.id}`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Switch
+                              checked={automation.enabled}
+                              onCheckedChange={() => toggleAutomation(automation.id)}
+                              data-testid={`switch-automation-${automation.id}`}
+                            />
+                            <span className={`text-sm ${automation.enabled ? 'text-green-400' : 'text-white/40'}`}>
+                              {automation.enabled ? 'Active' : 'Disabled'}
+                            </span>
+                          </div>
+                          <div className="mb-2">
+                            <p className="text-white/55 text-xs mb-1">Keywords:</p>
+                            <div className="flex flex-wrap gap-1">
+                              {automation.keywords.map((keyword, i) => (
+                                <span 
+                                  key={i}
+                                  className="px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-400 text-xs"
+                                >
+                                  {keyword}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-white/55 text-xs mb-1">Response:</p>
+                            <p className="text-white text-sm">{automation.response}</p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeAutomation(automation.id)}
+                          className="text-red-400 hover:text-red-300 hover:bg-red-400/10 flex-shrink-0"
+                          data-testid={`button-remove-automation-${automation.id}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </GlassCardContent>
+      </GlassCard>
+
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="text-sm">How Automations Work</GlassCardTitle>
+        </GlassCardHeader>
+        <GlassCardContent>
+          <div className="space-y-3 text-sm text-white/70">
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-full bg-amber-400/20 flex items-center justify-center flex-shrink-0">
+                <span className="text-amber-400 text-xs font-bold">1</span>
+              </div>
+              <p>User sends a message containing one of your trigger keywords</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-full bg-amber-400/20 flex items-center justify-center flex-shrink-0">
+                <span className="text-amber-400 text-xs font-bold">2</span>
+              </div>
+              <p>Bot immediately responds with your configured response</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-full bg-amber-400/20 flex items-center justify-center flex-shrink-0">
+                <span className="text-amber-400 text-xs font-bold">3</span>
+              </div>
+              <p>Conversation continues naturally with AI handling follow-ups</p>
+            </div>
+          </div>
+        </GlassCardContent>
+      </GlassCard>
     </div>
   );
 }
