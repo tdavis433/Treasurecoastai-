@@ -1,0 +1,117 @@
+YOUR REAL GOAL (Simplified & Accurate)
+
+You want a platform where:
+
+1. YOU can easily build custom AI assistants for clients
+
+— You build the logic
+— You control the bot personality
+— You design the conversation flows
+— You tailor the bot to each business
+
+2. The CLIENT gets a simple dashboard
+
+The client only sees:
+	•	📅 Appointments
+	•	👤 New leads
+	•	💬 Conversations
+	•	✉️ Contact submissions
+	•	📊 Simple analytics
+
+3. You don’t want to build Intercom, Drift, Zendesk, etc.
+
+You want:
+	•	A clean, modern, simple AI assistant builder
+	•	A clean client dashboard
+	•	Lead/Chat/Booking management
+	•	Basic automations
+	•	Basic widget settings
+	•	Clean UI
+	•	Reliable AI behavior
+	•	Clear, non-bloated structure
+
+4. You don’t want the bot builder to build “full programs”
+
+You want it to:
+	•	Let YOU build AI assistants
+	•	Let YOU customize everything
+	•	Let clients JUST see results
+	•	No crazy dev tools, no big workflows, no SaaS monster
+
+5. You want the Replit prompt to focus ONLY on this.
+
+⸻
+
+⭐ THE REAL PRODUCT YOU WANT LOOKS LIKE THIS
+
+ADMIN SIDE (YOU only)
+	•	Build bots for your clients
+	•	Set the bot personality
+	•	Add business info
+	•	Add FAQs
+	•	Add booking links
+	•	Add follow-up messages
+	•	Customize widget
+	•	Turn on lead capture
+	•	Connect calendar
+	•	Connect notifications
+	•	Test and preview everything
+
+This is like a Botpress Lite but 10x easier.
+
+⸻
+
+CLIENT SIDE (the business owner)
+
+They log in and ONLY see:
+
+1. Recent chats
+
+AT THE MOST basic level:
+	•	Chat viewer
+	•	Lead details
+	•	Mark as contacted
+
+2. Leads
+	•	List of captured leads
+	•	Name/email/phone
+	•	What they asked
+	•	Bot summary of intent
+	•	Click-to-call
+
+3. Bookings / Appointments
+	•	Appointment list
+	•	Customer info
+	•	Linked chat
+	•	Calendar sync
+
+4. Settings (very basic)
+	•	Toggle bot on/off
+	•	Widget color
+	•	Business hours
+	•	Notification settings
+
+That’s it.
+Clean. Simple. Powerful.
+ZERO advanced workflow madness.
+
+⸻
+
+⭐ NOW — LET’S FIX YOUR REPLIT PROMPT
+
+You don’t want a platform that builds entire apps.
+You want a platform that:
+
+✔ Lets YOU build customer AI assistants
+
+✔ Lets CLIENTS view leads + bookings + chats
+
+✔ Is lightweight and stable
+
+✔ Looks good
+
+✔ Doesn’t overwhelm
+
+✔ Doesn’t try to be Intercom or Zendesk
+
+✔ Doesn’t attempt enterprise-level complexity

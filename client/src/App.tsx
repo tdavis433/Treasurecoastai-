@@ -21,8 +21,6 @@ import Signup from "@/pages/signup";
 import NotFound from "@/pages/not-found";
 import DemosPage from "@/pages/demos";
 import DemoBotPage from "@/pages/demo-bot";
-import FlowBuilderPage from "@/pages/flow-builder";
-import FlowListPage from "@/pages/flow-list";
 
 function Router() {
   return (
@@ -36,9 +34,6 @@ function Router() {
       <Route path="/admin/analytics" component={AdminAnalytics} />
       <Route path="/admin/bot/new" component={CreateBot} />
       <Route path="/admin/bot/wizard" component={BotWizard} />
-      <Route path="/flow-builder" component={FlowBuilderPage} />
-      <Route path="/admin/flows/:flowId" component={FlowBuilderPage} />
-      <Route path="/admin/flows" component={FlowListPage} />
       <Route path="/admin/bot/:botId/automations" component={AutomationsPage} />
       <Route path="/admin/bot/:botId/widget-settings" component={WidgetSettingsPage} />
       <Route path="/admin/bot/:botId" component={BotDashboard} />

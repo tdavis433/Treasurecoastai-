@@ -1,0 +1,335 @@
+Alright, this is actually perfect – Replit’s phase list is solid, it just needs to be rewired to match your real vision:
+	•	YOU = agency owner + builder
+	•	CLIENTS = can only view stuff (leads, chats, bookings, basic analytics)
+	•	Platform = simple, clean, focused on AI assistants for local businesses (not some mega “build your own AI platform” thing)
+
+Here’s a single master prompt that:
+	•	Uses Replit’s 8 phases
+	•	Adds way more detail to each
+	•	Bakes in everything we talked about:
+	•	You build and edit the assistants
+	•	Clients get a simple dashboard
+	•	Bots show bookings/leads/conversations/analytics
+	•	No wild self-service app builder for clients
+
+Just copy everything between the lines into Replit Agent:
+
+⸻
+
+🔥 MASTER REPLIT AGENT PROMPT — TREASURE COAST AI (AGENCY MODEL)
+
+You are building Treasure Coast AI, an agency-first AI assistant platform.
+
+Core idea (read carefully):
+	•	I am the agency owner.
+	•	I log into an admin panel and build AI assistants for different businesses.
+	•	Each business gets a client dashboard where they can view:
+	•	Conversations
+	•	Leads
+	•	Bookings/appointments
+	•	Simple analytics
+	•	Clients do NOT build bots. They only see results.
+	•	The goal is simple, stable, beautiful, not a bloated Intercom clone.
+
+Use the following PHASES as your roadmap.
+Do not go outside this scope.
+
+⸻
+
+PHASE 1 — Clean Slate: Remove the Bloat
+
+Goal: Strip the project down to ONLY what is needed for this vision.
+	1.	Remove or disable:
+	•	Any “build your own AI app” features.
+	•	Any fully self-service “prompt marketplace” / “program-your-own-tool” style systems.
+	•	Any huge generic workflow engines that aren’t needed for:
+	•	Admin bot configuration
+	•	Simple client viewing
+	2.	Keep (or create minimal structure for):
+	•	A Next.js + TypeScript + Tailwind + Prisma project.
+	•	An admin area where I manage bots & clients.
+	•	A client area where business owners log in to view their data.
+	•	A reusable embeddable chat widget.
+	3.	Ensure the project:
+	•	Compiles cleanly.
+	•	Has no TypeScript or lint errors.
+	•	Has a simple, clean folder structure.
+
+⸻
+
+PHASE 2 — Data Foundation
+
+Goal: Define a clean database schema to support the agency model.
+
+Create Prisma models (or equivalent) for at least:
+	•	User
+	•	id, email, name, role ("AGENCY_ADMIN" or "CLIENT_USER")
+	•	ClientBusiness
+	•	The business the bot serves (name, industry, domain, contact info, timezone, status)
+	•	Bot
+	•	Linked to a ClientBusiness
+	•	name, status, primaryPurpose, welcomeMessage
+	•	instructions (system prompt)
+	•	reference to knowledge / scraped data
+	•	BotFAQ
+	•	Linked to Bot
+	•	question, answer
+	•	KnowledgeSource
+	•	For website scrape, uploaded docs, manual content
+	•	type ("SCRAPED_URL" | "MANUAL" | "FILE"), url, title, status
+	•	Conversation
+	•	Linked to Bot, optionally Lead
+	•	startedAt, endedAt, source ("WIDGET"), summary, intent, createdFromPageUrl
+	•	Message
+	•	Linked to Conversation
+	•	senderType ("USER" | "BOT"), text, timestamp, meta
+	•	Lead
+	•	Linked to ClientBusiness and optionally Conversation
+	•	name, email, phone, source, status ("NEW" | "CONTACTED" | "BOOKED" | "LOST"), notes
+	•	Booking
+	•	Linked to ClientBusiness and optionally Conversation + Lead
+	•	dateTime, serviceType, status, externalCalendarLink
+	•	AnalyticsDailySnapshot (optional for later)
+	•	For caching daily metrics per bot/business (conversations, leads, bookings, etc.)
+
+Requirements:
+	•	Every record is clearly scoped to a ClientBusiness.
+	•	User with role "AGENCY_ADMIN" can see all businesses.
+	•	User with role "CLIENT_USER" can only see their own ClientBusiness.
+
+Run migrations and ensure database schema is valid.
+
+⸻
+
+PHASE 3 — Website Scraper & AI Enrichment (Admin Only)
+
+Goal: Give me, the admin, a fast way to feed business knowledge into each bot.
+
+In the admin panel, build a page for each ClientBusiness / Bot where I can:
+	1.	Enter one or more URLs to scrape (their website, FAQ page, services page, etc.).
+	2.	Your backend:
+	•	Fetches and parses the HTML.
+	•	Extracts readable text.
+	•	Cleans it.
+	•	Stores it into KnowledgeSource associated with the bot.
+	3.	Add a simple status system:
+	•	PENDING, SUCCESS, FAILED for each scrape job.
+	4.	Show the admin a preview of scraped content:
+	•	Title of page.
+	•	Short excerpt.
+	•	Last updated time.
+
+This scraped content will be used in the AI engine as retrieval context.
+Do not build an open “scraper for any random user”.
+This is a tool only inside the admin panel.
+
+⸻
+
+PHASE 4 — Admin Bot Builder (This is MY Command Center)
+
+Goal: A clean, powerful admin-only interface where I set up each bot.
+
+In an /admin area (protected for "AGENCY_ADMIN"):
+
+For each ClientBusiness:
+	1.	Bot Overview Page
+	•	Show basic bot info (name, status, linked business).
+	•	Button to open “Edit Bot Settings”.
+	•	Summary of recent conversations + leads + bookings.
+	2.	Bot Settings Editor
+I should be able to configure:
+	•	Bot name and avatar.
+	•	Bot tone/personality (short description).
+	•	System instructions (full “who you are” prompt).
+	•	Welcome message.
+	•	Fallback message (“Sorry, I’m not sure…”).
+	•	Business hours, timezone.
+	•	Calendar link for bookings.
+	•	Services list.
+	•	FAQs: add/edit/delete BotFAQ rows (question + answer).
+	•	Which knowledge sources are active.
+You can use a tabbed interface:
+	•	“General”
+	•	“Personality & Instructions”
+	•	“FAQs”
+	•	“Knowledge”
+	•	“Behavior”
+	3.	Simple Automations (Admin-Only)
+	•	A small section where I can set:
+	•	If user mentions X keyword → send Y message or suggest booking link.
+	•	This should be FORM-based, not a huge visual workflow builder.
+	4.	Preview / Test Panel
+	•	On the right side, show a mini chat window.
+	•	When I change settings, I can test messages and see how the bot will respond using current config + knowledge.
+
+No client ever sees this screen.
+This is MY control room.
+
+⸻
+
+PHASE 5 — AI Engine (Reliable, Simple, Context-Aware)
+
+Goal: Build a solid AI engine that uses:
+	•	System instructions from the bot.
+	•	FAQs.
+	•	Scraped knowledge.
+	•	Conversation history.
+	•	Business info (hours, services, etc.).
+
+Implementation:
+	1.	Create a backend service/module, e.g. src/server/services/aiEngine.ts, with something like:
+	•	generateBotReply({ botId, conversationId, userMessage, recentMessages })
+	2.	Inside that function:
+	•	Load bot record, FAQs, and any active KnowledgeSource data.
+	•	Build a context string (or retrieval structure) including:
+	•	Business name, services, contact info.
+	•	FAQs.
+	•	Scraped content (summarized if needed).
+	•	Build an OpenAI prompt with:
+	•	System message: bot instructions + key rules (don’t hallucinate, ask for clarification when unsure, etc.).
+	•	Conversation history (recent messages).
+	•	User message.
+	•	Additional “tool” style instructions if needed (for bookings, etc.).
+	3.	Requirements:
+	•	The AI must NEVER expose raw internal instructions.
+	•	The AI should:
+	•	Answer using business-specific info whenever possible.
+	•	Avoid guessing if info is missing.
+	•	Suggest calling, texting, or booking when appropriate.
+	4.	Add safety:
+	•	Try/catch around OpenAI calls.
+	•	Friendly fallback message if OpenAI fails.
+
+⸻
+
+PHASE 6 — Widget & Deployment
+
+Goal: Build a beautiful, lightweight chat widget that any client can embed on their site.
+	1.	Create a front-end widget component that:
+	•	Shows a chat bubble on bottom-right (or configurable left/right).
+	•	Opens a chat window when clicked.
+	•	Shows bot avatar, name, and welcome text.
+	•	Allows user to:
+	•	Type messages.
+	•	See streaming or standard bot responses.
+	•	Persists conversation in your backend (Conversation + Message).
+	2.	Embed Script:
+	•	Provide an embed.js script in public that clients can drop on their site.
+	•	Example snippet:
+
+<script src="https://your-domain.com/embed.js" data-bot-id="BOT_ID"></script>
+
+
+	•	The script should:
+	•	Inject the chat widget into their page.
+	•	Pass botId into your system.
+
+	3.	Design:
+	•	Use Tailwind + shadcn-style components for the chat window.
+	•	Focus on clean, modern, mobile-friendly UI, not overcomplicated theming.
+	•	Widget settings (colors, position, welcome text) come from the bot settings in the admin panel.
+	4.	Make sure:
+	•	Widget works on desktop & mobile.
+	•	No console errors.
+	•	It doesn’t break host page layout.
+
+⸻
+
+PHASE 7 — Simple Client Dashboard
+
+Goal: A very simple, clean dashboard for business owners (CLIENT_USER) to log in and view data for THEIR business only.
+
+When a CLIENT_USER logs in, they should see:
+	1.	Home / Overview
+	•	Overview cards:
+	•	Conversations (last 7/30 days)
+	•	New leads
+	•	Bookings
+	•	Tiny chart for conversation volume over time.
+	2.	Conversations Page
+	•	List of conversations:
+	•	Date/time
+	•	Short preview of user’s first message
+	•	Status (open/resolved)
+	•	When a conversation is clicked:
+	•	Show full chat transcript.
+	•	Show AI-generated summary at top:
+	•	“This user asked about X, is likely interested in Y, and should be followed up by Z.”
+	•	Show linked lead (if any) + booking (if any).
+	3.	Leads Page
+	•	Table of leads:
+	•	Name, email, phone
+	•	Source (widget, campaign, etc.)
+	•	Status (dropdown: NEW, CONTACTED, BOOKED, LOST)
+	•	Created date
+	•	Ability to update status + add a short note.
+	4.	Bookings Page
+	•	List of upcoming + past bookings:
+	•	Customer name
+	•	Service type
+	•	Date/time
+	•	Status (scheduled/completed/cancelled)
+	•	If you integrate with a calendar link, show it.
+	5.	Settings Page (Very simple)
+	•	Toggle bot ON/OFF.
+	•	Widget color (dropdown / color picker).
+	•	Notification options (email for new leads/conversations).
+	•	Show the embed snippet with their botId so they can give it to their web dev.
+
+Important:
+	•	Clients cannot edit bot instructions, FAQs, knowledge sources, or AI behavior.
+	•	They only view data and very basic settings.
+
+⸻
+
+PHASE 8 — Polish & Test (Make It Bulletproof)
+
+Goal: Turn this into a clean, stable, production-ready MVP.
+	1.	Code Cleanup
+	•	Remove unused imports.
+	•	Remove dead code.
+	•	Fix all TS errors.
+	•	Normalize naming.
+	•	Respect workspace/client scoping everywhere.
+	2.	UI/UX Polish
+	•	Ensure all layouts look good on desktop and mobile.
+	•	Fix spacing, typography, overflow, scroll issues.
+	•	Add loading states and empty states:
+	•	“No conversations yet.”
+	•	“No leads yet.”
+	•	Add success + error toasts for key actions.
+	3.	Testing
+	•	Run through full flow:
+	•	Admin creates a business + bot.
+	•	Admin scrapes a website and adds FAQs.
+	•	Admin tests bot via preview.
+	•	Client logs in.
+	•	Widget installed on a test page.
+	•	End user chats with bot.
+	•	Lead captured.
+	•	Booking created (or at least simulated).
+	•	Client sees conversation, lead, and booking in dashboard.
+	•	Fix any bug you find automatically.
+	4.	Final Report
+	•	When done, output:
+	•	Summary of what you implemented.
+	•	Any remaining rough edges.
+	•	Suggestions for next improvements (but do not implement scope-creep features unless they support the core flow above).
+
+⸻
+
+GLOBAL RULES
+	•	Keep scope tight: admin builds bots, clients view results.
+	•	No huge “build-your-own AI app” system.
+	•	No over-engineered workflow engines.
+	•	Everything must be clean, stable, understandable.
+	•	Prefer quality and reliability over feature count.
+
+⸻
+
+Start from PHASE 1 and work through PHASE 8 in order.
+Ask clarifying questions only if absolutely needed; otherwise make the best reasonable assumptions.
+
+⸻
+
+If you want after this, I can give you a matching QA-only prompt and a “stress test the whole system” prompt, but this master prompt is the one that should get Replit building exactly what you want.

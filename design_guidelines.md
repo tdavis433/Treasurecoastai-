@@ -1,254 +1,175 @@
 # Treasure Coast AI Platform - Design Guidelines
 
 ## Design Approach
-**Dark Neon-Glass SaaS**: Modern, sophisticated dark theme inspired by Linear, Vercel Dashboard, and premium SaaS platforms. Glass morphism effects, subtle neon accents, and crisp data visualization. This is the single source of truth for all admin surfaces.
-
-## Core Design Principles
-- **Data Clarity**: Information hierarchy that makes complex analytics instantly scannable
-- **Professional Polish**: Refined details that build trust with business clients
-- **Efficient Workflows**: Reduce clicks, surface relevant actions contextually
-- **Scalable Design**: Consistent patterns that work from 5 to 500 chatbots
-- **Dark-First**: Optimized for extended use with reduced eye strain
+**Dark Luxury SaaS with Neon-Glass Accents**: Premium AI platform aesthetic inspired by Linear, Vercel, and Stripe. Deep blacks (#000000, #0A0A0F, #0B0E13) create sophisticated depth. Glassmorphism cards with subtle blur effects and glowing neon borders. Vibrant cyan/teal primary with electric purple secondary. Smooth micro-animations create a polished, expensive feel that commands attention.
 
 ## Brand Colors
 
-### Primary Palette
-- **Dark Base** (#0B0E13): Primary background, page base
-- **Card Surface** (white/5%): Glass card backgrounds
-- **Borders** (white/10%): Subtle borders for glass effects
-- **Ocean Blue** (#0A5CFF / hsl(219, 100%, 58%)): Primary actions, CTAs, active states
-- **Cyan Accent** (#4FC3F7 / hsl(199, 92%, 64%)): Secondary accents, neon glow effects
-- **Teal** (#00C2B3 / hsl(174, 100%, 38%)): Success states, positive indicators
+### Background Layers
+- **Deep Black** (#000000): Page backgrounds, maximum depth
+- **Charcoal** (#0A0A0F): Secondary backgrounds, section dividers
+- **Slate** (#0B0E13): Card surfaces, elevated elements
+- **Glass Surface** (white/3-5%): Glassmorphism card backgrounds
+
+### Accent Palette
+- **Vibrant Cyan** (#00E5CC / hsl(174, 100%, 45%)): Primary CTAs, active states, links
+- **Electric Purple** (#A855F7 / hsl(283, 89%, 65%)): Secondary accents, premium features, highlights
+- **Neon Teal** (#00C2B3): Success states, positive metrics
+- **Midnight Blue** (#0A5CFF): Information, neutral actions
 
 ### Text Hierarchy
-- **Primary Text** (white): Main headings, important content
-- **Secondary Text** (white/85%): Body content, descriptions
-- **Tertiary Text** (white/55%): Labels, muted content, placeholders
-- **Disabled** (white/30%): Inactive elements
+- **Primary**: white (100%)
+- **Secondary**: white/90%
+- **Tertiary**: white/60%
+- **Muted**: white/40%
 
 ### Status Colors
-- **Active/Success**: Green (#10B981 / bg-green-500/20 + text-green-400 + border-green-500/30)
-- **Demo/Info**: Blue (#3B82F6 / bg-blue-500/20 + text-blue-400 + border-blue-500/30)
-- **Paused/Warning**: Amber (#F59E0B / bg-amber-500/20 + text-amber-400 + border-amber-500/30)
-- **Error/Danger**: Red (#EF4444 / bg-red-500/20 + text-red-400 + border-red-500/30)
+- **Success**: Emerald (#10B981) - bg-emerald-500/15, text-emerald-400, border-emerald-500/40
+- **Info**: Blue (#3B82F6) - bg-blue-500/15, text-blue-400, border-blue-500/40
+- **Warning**: Amber (#F59E0B) - bg-amber-500/15, text-amber-400, border-amber-500/40
+- **Error**: Rose (#EF4444) - bg-rose-500/15, text-rose-400, border-rose-500/40
 
-### Glow & Shadow
-- **Card Shadow**: 0px 4px 20px rgba(0,0,0,0.45)
-- **Glow (cyan)**: 0px 4px 30px rgba(79,195,247,0.15)
-- **Focus Ring**: Cyan ring with 2px offset
+### Glow Effects
+- **Cyan Glow**: 0 0 30px rgba(0,229,204,0.15), 0 0 60px rgba(0,229,204,0.08)
+- **Purple Glow**: 0 0 30px rgba(168,85,247,0.15), 0 0 60px rgba(168,85,247,0.08)
+- **Card Shadow**: 0 8px 40px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4)
 
 ## Typography
 
-### Font Stacks
-- **Primary**: Inter (weights: 400, 500, 600, 700)
-- **Mono**: JetBrains Mono (for code, IDs, logs)
+**Font Stack**: Inter (400, 500, 600, 700) + JetBrains Mono for code/IDs
 
-### Scale
-- **Display**: 24-32px / font-bold (page titles)
-- **Heading**: 18-20px / font-semibold (card titles, section headers)
-- **Body**: 14-15px / font-normal (content, descriptions)
-- **Small**: 12-13px / font-medium (labels, badges, metadata)
-- **Micro**: 11px / font-medium (timestamps, footnotes)
+- **Display**: 28-36px, font-bold, tracking-tight, text-white
+- **Heading**: 20-24px, font-semibold, text-white
+- **Body**: 15-16px, font-normal, text-white/90
+- **Label**: 13-14px, font-medium, text-white/60
+- **Micro**: 11-12px, font-medium, text-white/50
 
-## Component Library
+## Component Specifications
 
-### GlassCard (Primary Container)
-Use `GlassCard` from `@/components/ui/glass-card.tsx` for all card containers.
+### Glass Cards
+- Background: bg-white/3 to bg-white/5
+- Border: 1px solid white/10 with gradient overlay (white/15 top to white/5 bottom)
+- Border radius: 16-20px (rounded-2xl)
+- Backdrop blur: backdrop-blur-xl
+- Padding: p-6 to p-8
+- Shadow: 0 8px 40px rgba(0,0,0,0.6)
+- Hover: Increase bg to white/7, add subtle cyan glow
 
-```tsx
-import { GlassCard, GlassCardHeader, GlassCardTitle, GlassCardDescription, GlassCardContent } from "@/components/ui/glass-card";
+### Premium Buttons
 
-<GlassCard hover glow>
-  <GlassCardHeader>
-    <GlassCardTitle>Card Title</GlassCardTitle>
-    <GlassCardDescription>Description text</GlassCardDescription>
-  </GlassCardHeader>
-  <GlassCardContent>
-    {/* Content */}
-  </GlassCardContent>
-</GlassCard>
-```
+**Primary (Gradient)**: 
+- Background: Linear gradient cyan (#00E5CC) to teal (#00C2B3)
+- Text: white, font-semibold
+- Padding: px-6 py-3
+- Rounded: rounded-xl
+- Glow: Cyan shadow on hover
 
-Properties:
-- `bg-white/5` base background
-- `border border-white/10` subtle glass edge
-- `rounded-2xl` large radius for modern feel
-- `backdrop-blur-md` glass effect
-- `hover`: adds hover state with increased opacity
-- `glow`: adds cyan glow on hover
+**Secondary (Purple)**:
+- Background: Linear gradient purple (#A855F7) to violet (#7C3AED)
+- Same specs as primary
+- Glow: Purple shadow on hover
 
-### NeonBadge (Status Indicators)
-Status badges with neon glow effects.
+**Ghost/Outline**:
+- Border: 1px solid white/15
+- Background: transparent, hover bg-white/5
+- Text: white/90
 
-```tsx
-<Badge className="bg-green-500/20 text-green-400 border border-green-500/30">ACTIVE</Badge>
-<Badge className="bg-blue-500/20 text-blue-400 border border-blue-500/30">DEMO</Badge>
-<Badge className="bg-amber-500/20 text-amber-400 border border-amber-500/30">PAUSED</Badge>
-<Badge className="bg-red-500/20 text-red-400 border border-red-500/30">ERROR</Badge>
-```
+**Buttons on Images**: 
+- Background: bg-black/40 backdrop-blur-md
+- No gradient overlays
 
-### Glass Inputs
-Form inputs with glass aesthetic.
+### Status Badges
+Glassmorphic with neon glow borders:
+- Background: Status color at 15% opacity
+- Border: 1px solid status color at 40% opacity
+- Text: Status color at full brightness
+- Padding: px-3 py-1
+- Rounded: rounded-lg
+- Font: 12px, font-medium, uppercase, tracking-wide
 
-```tsx
-<input className="glass-input" />
-// Defined in index.css:
-// bg-white/5, border-white/10, text-white, placeholder:text-white/40
-// focus: border-cyan-400/50, ring-2 ring-cyan-400/20
-```
+### Form Inputs
+- Background: bg-white/5
+- Border: 1px solid white/10
+- Focus: border-cyan-400/60, ring-2 ring-cyan-400/20, glow effect
+- Placeholder: text-white/40
+- Text: text-white
+- Rounded: rounded-xl
+- Padding: px-4 py-3
 
-### Buttons on Dark Backgrounds
-
-Primary (Gradient):
-```tsx
-<Button className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white">
-```
-
-Outline (Glass):
-```tsx
-<Button variant="outline" className="border-white/10 text-white/85 hover:bg-white/5">
-```
-
-Ghost:
-```tsx
-<Button variant="ghost" className="text-white/85 hover:bg-white/10">
-```
-
-### Tabs (Dark Theme)
-```tsx
-<TabsList className="bg-white/5 border border-white/10 rounded-xl">
-  <TabsTrigger 
-    className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500/20 data-[state=active]:to-blue-500/20 
-               data-[state=active]:text-cyan-400 data-[state=active]:border data-[state=active]:border-cyan-400/30
-               data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white"
-  >
-    Tab Name
-  </TabsTrigger>
-</TabsList>
-```
-
-### Select Dropdowns
-```tsx
-<SelectTrigger className="bg-white/5 border-white/10 text-white">
-<SelectContent className="bg-[#0B0E13] border-white/10">
-  <SelectItem className="text-white hover:bg-white/10">
-```
+### Data Tables
+- Header: bg-white/5, text-white/60, font-medium, uppercase, text-xs
+- Row: border-b border-white/5, hover:bg-white/3
+- Cell padding: px-4 py-4
+- Alternating rows: Subtle bg-white/2 on even rows
 
 ## Layout System
 
-### Page Structure
-```tsx
-<div className="min-h-screen bg-[#0B0E13]">
-  <header className="border-b border-white/10 bg-white/5 backdrop-blur-md h-14">
-    {/* Navigation */}
-  </header>
-  <main className="max-w-7xl mx-auto px-6 py-8">
-    {/* Content */}
-  </main>
-</div>
-```
+**Spacing (8pt Grid)**: 
+- Tight: gap-2, p-2
+- Normal: gap-4, p-4
+- Comfortable: gap-6, p-6
+- Loose: gap-8, p-8
+- Extra Loose: gap-12, p-12
 
-### Spacing (8pt Grid)
-- **Tight**: gap-2, p-2 (8px)
-- **Normal**: gap-4, p-4 (16px)
-- **Comfortable**: gap-6, p-6 (24px)
-- **Loose**: gap-8, p-8 (32px)
+**Container**: max-w-7xl mx-auto px-6
 
-### Grid Layouts
-- **Stats Cards**: grid-cols-2 md:grid-cols-4 gap-4
-- **Bot Cards**: grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4
-- **Form Fields**: grid-cols-1 md:grid-cols-2 gap-4
+**Grid Patterns**:
+- Stat Cards: grid-cols-2 md:grid-cols-4 gap-4
+- Feature Cards: grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6
+- Bot Management: grid-cols-1 lg:grid-cols-2 gap-6
 
-## Loading States
+## Animations (Subtle Luxury)
 
-### Skeleton Loaders
-```tsx
-<div className="animate-pulse">
-  <div className="h-8 bg-white/10 rounded-lg w-32 mb-2" />
-  <div className="h-4 bg-white/10 rounded w-48" />
-</div>
-```
+- **Card Entrance**: Fade-in with slight translate-y (20px to 0), 400ms ease-out, staggered 80ms delay
+- **Hover Elevation**: Transform scale(1.02), shadow expansion, 250ms ease
+- **Button Press**: Scale(0.98), 150ms
+- **Glow Pulse**: Subtle opacity animation on cyan/purple glows, 2s infinite
+- **Loading Spinners**: Cyan gradient border with rotation
+- **Page Transitions**: 200ms cross-fade
 
-### Inline Loading
-```tsx
-<div className="text-center py-8 text-white/55">
-  <div className="h-8 w-8 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin mx-auto mb-3" />
-  Loading...
-</div>
-```
+## Images
 
-### Button Loading
-```tsx
-<Button disabled className="opacity-50">
-  {isPending ? 'Loading...' : 'Submit'}
-</Button>
-```
+**Hero Section**: 
+Full-width gradient mesh background (dark to darker with subtle cyan/purple gradients). Overlay abstract AI neural network visualization with animated glow points. Translucent particles floating across viewport. Hero text overlays with glassmorphic container.
 
-## Error & Empty States
+**Dashboard Sections**:
+Abstract data visualization backgrounds - flowing lines, gradient orbs, geometric patterns with cyan/purple accents. Keep subtle and non-distracting.
 
-### Error Messages
-```tsx
-<div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400">
-  <AlertTriangle className="h-4 w-4 inline mr-2" />
-  Error loading data. Please try again.
-</div>
-```
+**Bot Builder**:
+AI-themed iconography, chat bubble illustrations with glow effects. High-quality mockups of chatbot interfaces on glass cards.
 
-### Empty States
-```tsx
-<div className="text-center py-12 text-white/40">
-  <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
-  <p className="font-medium">No bots found</p>
-  <p className="text-sm mt-1">Create your first chatbot to get started</p>
-  <Button className="mt-4">Create Bot</Button>
-</div>
-```
+**Client Portal**:
+Clean, minimal. Analytics charts as primary visuals with occasional abstract accent graphics.
 
-## Analytics Components
+## Special Elements
 
-### Stat Cards
-```tsx
-<GlassCard>
-  <div className="p-4 text-center">
-    <div className="h-10 w-10 rounded-lg bg-cyan-400/10 flex items-center justify-center mx-auto mb-2">
-      <Icon className="h-5 w-5 text-cyan-400" />
-    </div>
-    <div className="text-2xl font-bold text-white">1,234</div>
-    <div className="text-xs text-white/55">Metric Label</div>
-  </div>
-</GlassCard>
-```
+**Navigation Header**:
+- Height: 64px
+- Background: bg-black/60 backdrop-blur-xl
+- Border: border-b border-white/10
+- Logo glow: Subtle cyan on hover
+- Active link: Cyan underline with gradient
 
-### Charts
-- Primary data: Cyan (#4FC3F7)
-- Secondary data: Blue (#3B82F6)
-- Grid lines: white/10%
-- Axis labels: white/55%
-- Tooltips: bg-[#0B0E13] with white/10% border
+**Sidebar (Admin)**:
+- Width: 280px
+- Background: bg-black with gradient overlay
+- Icons with cyan/purple accent on active
+- Hover: bg-white/5 transition
 
-## Mobile Optimization
-- Navigation: Hamburger menu below lg breakpoint
-- Sidebars: Slide-out drawer on mobile
-- Cards: Stack to single column (grid-cols-1)
-- Stat cards: 2-column grid on mobile
-- Tables: Horizontal scroll with sticky first column
+**Analytics Cards**:
+- Glass background with metric icon in gradient circle (cyan/purple)
+- Large numbers: 32-40px bold
+- Trend indicators: Small arrows with green/red states
+- Sparkline charts in muted cyan
 
-## Accessibility
-- All interactive elements: min h-10 (40px) touch targets
-- Focus indicators: 2px cyan ring with offset
-- Color contrast: WCAG AA compliant
-- Form validation: Error messages below fields with icon
-- Loading states: Skeleton screens for card/table content
+**Empty States**:
+- Large icon with gradient fill (cyan to purple)
+- Text: "No data yet" in white/60
+- CTA button with gradient
 
-## Animation & Interaction
-- Page transitions: Fade-in 150ms
-- Card hover: shadow elevation + opacity change, 200ms ease
-- Button press: Slight scale down (0.98) on active
-- Modal appearance: Fade + slide-up 250ms
-- No distracting auto-play animations
-
-## Data Test IDs
-All interactive and display elements must include data-testid attributes:
-- Interactive: `{action}-{target}` (e.g., button-create-bot, input-email)
-- Display: `{type}-{content}` (e.g., stat-total-messages, badge-status-active)
-- Dynamic: `{type}-{description}-{id}` (e.g., card-bot-faith_house)
+## Accessibility & Polish
+- Focus rings: 2px cyan with 3px offset
+- Touch targets: min-h-12 on mobile
+- WCAG AA contrast maintained
+- Error messages: Below fields with rose accent
+- Loading states: Skeleton with subtle shimmer animation (white/5 to white/10)

@@ -1,0 +1,161 @@
+You are building a simple but powerful AI assistant platform for small businesses.
+
+Your job is to build a clean system with:
+
+⸻
+
+⭐ 1. ADMIN PANEL (for me only)
+
+This must include:
+
+Bot Builder (Simple)
+	•	Business name
+	•	AI instructions
+	•	FAQs
+	•	Services offered
+	•	Pricing info
+	•	Business hours
+	•	Location
+	•	Team names
+	•	Appointment link
+	•	Special instructions
+	•	Welcome message
+
+Widget Customization
+	•	Primary color
+	•	Accent color
+	•	Bot avatar
+	•	Bubble position
+
+Automations (Simple)
+	•	Trigger: Keyword
+	•	Trigger: Intent
+	•	Action: Send message
+	•	Action: Send link
+	•	Action: Notify admin
+	•	Action: Tag lead
+
+Preview Mode
+	•	Test messages
+	•	See bot replies
+	•	Adjust settings
+
+⸻
+
+⭐ 2. CLIENT DASHBOARD (Simple + Clean)
+
+Clients should ONLY see:
+
+Chats
+	•	List of conversations
+	•	Messages
+	•	Lead contact info
+	•	AI summary
+	•	Mark as resolved
+
+Leads
+	•	List of leads
+	•	Name/email/phone
+	•	What they asked
+	•	AI summary
+	•	Status dropdown
+
+Bookings
+	•	List of scheduled appointments
+	•	Customer details
+	•	Linked chat
+	•	Calendar integration
+
+Settings
+	•	Toggle bot on/off
+	•	Notification settings
+	•	Widget color
+	•	Embed snippet
+
+⸻
+
+⭐ 3. WIDGET (Simple + Nice)
+	•	Chat bubble
+	•	Welcome message
+	•	Lead capture
+	•	AI replies
+	•	Booking support
+	•	File upload optional (MVP not required)
+
+⸻
+
+⭐ 4. AI ENGINE (Simple + Reliable)
+
+Use these features:
+	•	Instructions from admin panel
+	•	FAQs from admin panel
+	•	Business info
+	•	Lookup business hours
+	•	Lookup services
+	•	Lookup prices
+	•	Lookup booking link
+	•	AI memory limited to the conversation only
+	•	No complicated workflows
+
+Just high-quality, structured responses.
+
+⸻
+
+⭐ 5. TECH STACK
+
+Use:
+	•	Next.js
+	•	TypeScript
+	•	React
+	•	Tailwind
+	•	Prisma (Postgres)
+	•	OpenAI gpt-4o-mini or better
+	•	Shadcn UI
+	•	Simple REST API
+	•	Socket or Pusher for realtime chat
+
+⸻
+
+⭐ 6. REQUIREMENTS
+
+The platform should:
+	•	Compile with zero errors
+	•	Be visually clean
+	•	Be easy to navigate
+	•	Be stable
+	•	Be simple
+	•	Focus ONLY on chat, leads, booking, and simple bot setup
+
+Do NOT build:
+	•	Enterprise-level systems
+	•	Workflow monsters
+	•	Multi-channel messaging
+	•	Bot-builder-with-code
+	•	A whole mini-Zendesk
+	•	Marketplace
+	•	50 features I don’t need
+
+JUST build the essentials above.
+
+⸻
+
+⭐ 7. FINAL TASK
+
+When done:
+	•	Test every page
+	•	Test every form
+	•	Test bot logic
+	•	Test widget
+	•	Test chat flow
+	•	Fix ALL issues automatically
+
+Then provide:
+	•	A bug list
+	•	A recommendations list
+	•	A summary of what’s built
+
+⸻
+
+⭐ END OF PROMPT
+
+Build ONLY what is listed above. Nothing more.
