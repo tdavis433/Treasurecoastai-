@@ -2284,7 +2284,7 @@ export default function ControlCenter() {
               {dashboardSection === 'templates' && (
                 <TemplatesSectionPanel 
                   templates={templates}
-                  clients={workspaces}
+                  clients={workspacesData?.workspaces || []}
                   onCreateFromTemplate={(template) => {
                     setSelectedTemplate(template);
                     setShowCreateModal(true);
@@ -2294,7 +2294,7 @@ export default function ControlCenter() {
 
               {/* Knowledge Section - Global knowledge base */}
               {dashboardSection === 'knowledge' && (
-                <KnowledgeSectionPanel bots={clientBots} clients={workspaces} />
+                <KnowledgeSectionPanel bots={clientBots} clients={workspacesData?.workspaces || []} />
               )}
 
               {/* Integrations Section - API keys and connections */}
