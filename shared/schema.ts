@@ -1505,6 +1505,47 @@ export const insertBotFlowVersionSchema = createInsertSchema(botFlowVersions).om
 export type InsertBotFlowVersion = z.infer<typeof insertBotFlowVersionSchema>;
 export type BotFlowVersion = typeof botFlowVersions.$inferSelect;
 
+// Flow Sessions - Active flow execution state
+export const flowSessions = pgTable("flow_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull().unique(),
+  workspaceId: varchar("workspace_id").notNull(),
+  botId: varchar("bot_id").notNull(),
+  flowId: varchar("flow_id").notNull(),
+  versionId: varchar("version_id").notNull(),
+  
+  currentNodeId: varchar("current_node_id").notNull(),
+  variables: json("variables").$type<Record<string, any>>().notNull().default({}),
+  messageHistory: json("message_history").$type<Array<{
+    role: string;
+    content: string;
+    timestamp: string;
+    nodeId?: string;
+  }>>().notNull().default([]),
+  
+  contactId: varchar("contact_id"),
+  contactName: varchar("contact_name"),
+  contactEmail: varchar("contact_email"),
+  
+  status: text("status").notNull().default("active"),
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  lastActivityAt: timestamp("last_activity_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at"),
+}, (table) => ({
+  conversationIdx: index("flow_sessions_conversation_id_idx").on(table.conversationId),
+  workspaceIdx: index("flow_sessions_workspace_id_idx").on(table.workspaceId),
+  flowIdx: index("flow_sessions_flow_id_idx").on(table.flowId),
+  statusIdx: index("flow_sessions_status_idx").on(table.status),
+}));
+
+export const insertFlowSessionSchema = createInsertSchema(flowSessions).omit({
+  id: true,
+  startedAt: true,
+});
+
+export type InsertFlowSession = z.infer<typeof insertFlowSessionSchema>;
+export type FlowSession = typeof flowSessions.$inferSelect;
+
 // =============================================
 // KNOWLEDGE BASE (Phase 2A)
 // =============================================
@@ -1962,6 +2003,26 @@ export const botFlowsRelations = relations(botFlows, ({ one, many }) => ({
   versions: many(botFlowVersions),
   currentVersion: one(botFlowVersions, {
     fields: [botFlows.currentVersionId],
+    references: [botFlowVersions.id],
+  }),
+  sessions: many(flowSessions),
+}));
+
+export const flowSessionsRelations = relations(flowSessions, ({ one }) => ({
+  workspace: one(workspaces, {
+    fields: [flowSessions.workspaceId],
+    references: [workspaces.id],
+  }),
+  bot: one(bots, {
+    fields: [flowSessions.botId],
+    references: [bots.botId],
+  }),
+  flow: one(botFlows, {
+    fields: [flowSessions.flowId],
+    references: [botFlows.id],
+  }),
+  version: one(botFlowVersions, {
+    fields: [flowSessions.versionId],
     references: [botFlowVersions.id],
   }),
 }));
