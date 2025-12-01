@@ -21,8 +21,8 @@ import {
   ChevronRight, Search, CreditCard, ExternalLink, Building2, Code, Copy, Check,
   TrendingUp, Users2, AlertCircle, Activity, RefreshCw, Download, Layers,
   Shield, FileWarning, CheckCircle2, XCircle, Filter, Calendar, UserPlus,
-  MoreVertical, Workflow, Palette, ChevronDown, SendHorizontal, MessageCircle,
-  CheckCircle, PauseCircle
+  MoreVertical, MoreHorizontal, Workflow, Palette, ChevronDown, SendHorizontal, MessageCircle,
+  CheckCircle, PauseCircle, LayoutGrid, List
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -41,6 +41,7 @@ interface BotConfig {
   clientId: string;
   name: string;
   description: string;
+  status?: 'active' | 'paused';
   metadata?: {
     isDemo?: boolean;
     isTemplate?: boolean;
@@ -1593,6 +1594,7 @@ export default function ControlCenter() {
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
+
                   {workspacesLoading ? (
                     <div className="flex items-center justify-center py-12">
                       <div className="h-8 w-8 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
@@ -1600,7 +1602,13 @@ export default function ControlCenter() {
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                       {filteredWorkspaces.map(workspace => (
-                        <GlassCard key={workspace.id} hover data-testid={`card-workspace-${workspace.slug}`}>
+                        <GlassCard 
+                          key={workspace.id} 
+                          hover 
+                          data-testid={`card-workspace-${workspace.slug}`}
+                          className="cursor-pointer"
+                          onClick={() => setLocation(`/super-admin/clients/${workspace.slug}`)}
+                        >
                           <GlassCardHeader className="pb-3">
                             <div className="flex items-start justify-between gap-2">
                               <div className="min-w-0 flex-1">
@@ -1619,15 +1627,16 @@ export default function ControlCenter() {
                                 <GlassCardDescription className="text-xs">{workspace.slug}</GlassCardDescription>
                               </div>
                               <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
+                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                                   <Button variant="ghost" size="icon" className="h-7 w-7 text-white/55 hover:text-white hover:bg-white/10" data-testid={`button-workspace-menu-${workspace.slug}`}>
                                     <MoreVertical className="h-4 w-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="bg-[#1a1d24] border-white/10 min-w-[160px]">
+                                <DropdownMenuContent align="end" className="bg-[#1a1d24] border-white/10 min-w-[160px]" onClick={(e) => e.stopPropagation()}>
                                   <DropdownMenuItem 
                                     className="text-cyan-400 hover:bg-cyan-500/10 gap-2"
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       window.open(`/client/dashboard?impersonate=${workspace.slug}`, '_blank');
                                     }}
                                     data-testid={`button-view-as-client-${workspace.slug}`}
@@ -1637,7 +1646,7 @@ export default function ControlCenter() {
                                   </DropdownMenuItem>
                                   <DropdownMenuItem 
                                     className="text-white hover:bg-white/10 gap-2"
-                                    onClick={() => setEditingWorkspace({ slug: workspace.slug, name: workspace.name, plan: workspace.plan })}
+                                    onClick={(e) => { e.stopPropagation(); setEditingWorkspace({ slug: workspace.slug, name: workspace.name, plan: workspace.plan }); }}
                                     data-testid={`button-edit-workspace-${workspace.slug}`}
                                   >
                                     <Settings className="h-4 w-4" />
@@ -1649,7 +1658,7 @@ export default function ControlCenter() {
                                   {workspace.status !== 'active' && (
                                     <DropdownMenuItem 
                                       className="text-green-400 hover:bg-green-500/10 gap-2"
-                                      onClick={() => updateWorkspaceStatusMutation.mutate({ slug: workspace.slug, status: 'active' })}
+                                      onClick={(e) => { e.stopPropagation(); updateWorkspaceStatusMutation.mutate({ slug: workspace.slug, status: 'active' }); }}
                                     >
                                       <CheckCircle className="h-4 w-4" />
                                       Activate
@@ -1658,7 +1667,7 @@ export default function ControlCenter() {
                                   {workspace.status !== 'paused' && (
                                     <DropdownMenuItem 
                                       className="text-amber-400 hover:bg-amber-500/10 gap-2"
-                                      onClick={() => updateWorkspaceStatusMutation.mutate({ slug: workspace.slug, status: 'paused' })}
+                                      onClick={(e) => { e.stopPropagation(); updateWorkspaceStatusMutation.mutate({ slug: workspace.slug, status: 'paused' }); }}
                                     >
                                       <PauseCircle className="h-4 w-4" />
                                       Pause
@@ -1667,7 +1676,8 @@ export default function ControlCenter() {
                                   <DropdownMenuSeparator className="bg-white/10" />
                                   <DropdownMenuItem 
                                     className="text-red-400 hover:bg-red-500/10 gap-2"
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       if (confirm(`Are you sure you want to delete "${workspace.name}"? This will also delete all ${workspace.botsCount} bots in this workspace.`)) {
                                         deleteWorkspaceMutation.mutate(workspace.slug);
                                       }
@@ -2260,11 +2270,34 @@ export default function ControlCenter() {
                   bots={clientBots} 
                   templates={templates}
                   clients={clients}
+                  workspaces={workspacesData?.workspaces || []}
+                  botAnalytics={botAnalyticsData?.bots || []}
                   onSelectBot={(botId) => {
                     setSelectedBotId(botId);
                     setActiveTab('overview');
                   }}
                   onCreateBot={() => setShowCreateModal(true)}
+                  onDuplicateBot={async (botId) => {
+                    const bot = clientBots.find(b => b.botId === botId);
+                    if (!bot) return;
+                    try {
+                      const response = await apiRequest("POST", `/api/super-admin/bots/${botId}/duplicate`);
+                      const newBot = await response.json();
+                      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/bots"] });
+                      toast({ title: "Bot Duplicated", description: `Created "${newBot.name || 'New Bot'}" as a copy.` });
+                    } catch (e) {
+                      toast({ title: "Error", description: "Failed to duplicate bot.", variant: "destructive" });
+                    }
+                  }}
+                  onToggleBotStatus={async (botId, newStatus) => {
+                    try {
+                      await apiRequest("PATCH", `/api/super-admin/bots/${botId}/status`, { status: newStatus });
+                      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/bots"] });
+                      toast({ title: "Status Updated", description: `Bot is now ${newStatus}.` });
+                    } catch (e) {
+                      toast({ title: "Error", description: "Failed to update bot status.", variant: "destructive" });
+                    }
+                  }}
                 />
               )}
 
@@ -2381,83 +2414,119 @@ export default function ControlCenter() {
                   </AlertDialog>
                 </div>
 
-                {/* Tabs */}
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="mb-6 w-full justify-start flex-wrap h-auto gap-1 bg-white/5 border border-white/10 rounded-xl p-1 overflow-x-auto">
-                    <TabsTrigger data-testid="tab-overview" value="overview" className="text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/55">
-                      <Eye className="h-4 w-4 mr-1" />
-                      Overview
-                    </TabsTrigger>
-                    <TabsTrigger data-testid="tab-test-chat" value="test-chat" className="text-xs data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400 text-white/55">
-                      <MessageCircle className="h-4 w-4 mr-1" />
-                      Test Chat
-                    </TabsTrigger>
-                    <TabsTrigger data-testid="tab-settings" value="settings" className="text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/55">
-                      <Settings className="h-4 w-4 mr-1" />
-                      Settings
-                    </TabsTrigger>
-                    <TabsTrigger data-testid="tab-billing" value="billing" className="text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/55">
-                      <CreditCard className="h-4 w-4 mr-1" />
-                      Billing
-                    </TabsTrigger>
-                    <TabsTrigger data-testid="tab-analytics" value="analytics" className="text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/55">
-                      <BarChart3 className="h-4 w-4 mr-1" />
-                      Analytics
-                    </TabsTrigger>
-                    <TabsTrigger data-testid="tab-logs" value="logs" className="text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/55">
-                      <MessageSquare className="h-4 w-4 mr-1" />
-                      Logs
-                    </TabsTrigger>
-                    <TabsTrigger data-testid="tab-automations" value="automations" className="text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/55">
-                      <Workflow className="h-4 w-4 mr-1" />
-                      Automations
-                    </TabsTrigger>
-                    <TabsTrigger data-testid="tab-widget" value="widget" className="text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/55">
-                      <Palette className="h-4 w-4 mr-1" />
-                      Widget
-                    </TabsTrigger>
-                    <TabsTrigger data-testid="tab-install" value="install" className="text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/55">
-                      <Code className="h-4 w-4 mr-1" />
-                      Install
-                    </TabsTrigger>
-                  </TabsList>
+                {/* God Mode Tab Navigation */}
+                <div className="mb-6">
+                  {/* Primary Tabs - Core Editing */}
+                  <div className="flex items-center gap-1 flex-wrap mb-2">
+                    <span className="text-xs text-white/40 mr-2 uppercase tracking-wider">Edit</span>
+                    {[
+                      { value: 'overview', icon: Eye, label: 'Overview' },
+                      { value: 'persona', icon: MessageCircle, label: 'Persona & AI' },
+                      { value: 'knowledge', icon: FileText, label: 'Knowledge' },
+                      { value: 'automations', icon: Workflow, label: 'Automations' },
+                    ].map(tab => (
+                      <Button
+                        key={tab.value}
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setActiveTab(tab.value)}
+                        className={activeTab === tab.value 
+                          ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' 
+                          : 'text-white/55 hover:text-white hover:bg-white/10'}
+                        data-testid={`tab-${tab.value}`}
+                      >
+                        <tab.icon className="h-4 w-4 mr-1" />
+                        {tab.label}
+                      </Button>
+                    ))}
+                  </div>
+                  
+                  {/* Secondary Tabs - Deployment & Testing */}
+                  <div className="flex items-center gap-1 flex-wrap mb-2">
+                    <span className="text-xs text-white/40 mr-2 uppercase tracking-wider">Deploy</span>
+                    {[
+                      { value: 'channels', icon: Palette, label: 'Channels & Widget' },
+                      { value: 'test-chat', icon: Play, label: 'Test Sandbox', highlight: true },
+                    ].map(tab => (
+                      <Button
+                        key={tab.value}
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setActiveTab(tab.value)}
+                        className={activeTab === tab.value 
+                          ? (tab.highlight ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30')
+                          : 'text-white/55 hover:text-white hover:bg-white/10'}
+                        data-testid={`tab-${tab.value}`}
+                      >
+                        <tab.icon className="h-4 w-4 mr-1" />
+                        {tab.label}
+                      </Button>
+                    ))}
+                  </div>
+                  
+                  {/* Tertiary Tabs - Monitoring & Admin */}
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <span className="text-xs text-white/40 mr-2 uppercase tracking-wider">Monitor</span>
+                    {[
+                      { value: 'analytics', icon: BarChart3, label: 'Analytics' },
+                      { value: 'logs', icon: MessageSquare, label: 'Logs' },
+                      { value: 'billing', icon: CreditCard, label: 'Billing' },
+                    ].map(tab => (
+                      <Button
+                        key={tab.value}
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setActiveTab(tab.value)}
+                        className={activeTab === tab.value 
+                          ? 'bg-white/10 text-white border border-white/20' 
+                          : 'text-white/55 hover:text-white hover:bg-white/10'}
+                        data-testid={`tab-${tab.value}`}
+                      >
+                        <tab.icon className="h-4 w-4 mr-1" />
+                        {tab.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
 
-                  <TabsContent value="overview">
+                {/* Tab Content */}
+                <div className="space-y-6">
+                  {activeTab === 'overview' && (
                     <OverviewPanel bot={selectedBot} client={selectedClient} />
-                  </TabsContent>
+                  )}
 
-                  <TabsContent value="test-chat">
+                  {activeTab === 'persona' && (
+                    <PersonaPanel bot={selectedBot} clientType={selectedClient.type} />
+                  )}
+
+                  {activeTab === 'knowledge' && (
+                    <KnowledgePanel bot={selectedBot} clientType={selectedClient.type} />
+                  )}
+
+                  {activeTab === 'test-chat' && (
                     <TestChatPanel clientId={selectedClient.id} botId={selectedBot.botId} botName={selectedBot.name} />
-                  </TabsContent>
+                  )}
 
-                  <TabsContent value="settings">
-                    <BotSettingsPanel bot={selectedBot} clientType={selectedClient.type} />
-                  </TabsContent>
+                  {activeTab === 'channels' && (
+                    <ChannelsPanel bot={selectedBot} client={selectedClient} />
+                  )}
 
-                  <TabsContent value="billing">
+                  {activeTab === 'billing' && (
                     <BillingPanel clientId={selectedClient.id} clientName={selectedClient.name} status={selectedClient.status} />
-                  </TabsContent>
+                  )}
 
-                  <TabsContent value="analytics">
+                  {activeTab === 'analytics' && (
                     <AnalyticsPanel clientId={selectedClient.id} />
-                  </TabsContent>
+                  )}
 
-                  <TabsContent value="logs">
+                  {activeTab === 'logs' && (
                     <LogsPanel clientId={selectedClient.id} botId={selectedBot.botId} />
-                  </TabsContent>
+                  )}
 
-                  <TabsContent value="automations">
+                  {activeTab === 'automations' && (
                     <AutomationsPanel botId={selectedBot.botId} clientId={selectedClient.id} />
-                  </TabsContent>
-
-                  <TabsContent value="widget">
-                    <WidgetSettingsPanel botId={selectedBot.botId} clientId={selectedClient.id} />
-                  </TabsContent>
-
-                  <TabsContent value="install">
-                    <InstallPanel bot={selectedBot} client={selectedClient} />
-                  </TabsContent>
-                </Tabs>
+                  )}
+                </div>
               </div>
             </aside>
           )}
@@ -2989,7 +3058,689 @@ const TONE_OPTIONS = [
   { value: 'informative', label: 'Informative', description: 'Educational and detailed' },
 ];
 
-// Bot Settings Panel - Full editing capabilities
+const RESPONSE_LENGTH_OPTIONS = [
+  { value: 'brief', label: 'Brief', description: 'Short, concise responses' },
+  { value: 'medium', label: 'Medium', description: 'Balanced response length' },
+  { value: 'detailed', label: 'Detailed', description: 'Comprehensive explanations' },
+];
+
+// Persona Panel - System prompt, tone, personality settings
+function PersonaPanel({ bot, clientType }: { bot: BotConfig; clientType?: string }) {
+  const { toast } = useToast();
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    systemPrompt: bot.systemPrompt || '',
+    tone: (bot as any).tone || 'professional',
+    responseLength: (bot as any).responseLength || 'medium',
+    personality: {
+      formality: (bot as any).personality?.formality || 50,
+      warmth: (bot as any).personality?.warmth || 70,
+      enthusiasm: (bot as any).personality?.enthusiasm || 60,
+    },
+  });
+
+  useEffect(() => {
+    setFormData({
+      systemPrompt: bot.systemPrompt || '',
+      tone: (bot as any).tone || 'professional',
+      responseLength: (bot as any).responseLength || 'medium',
+      personality: {
+        formality: (bot as any).personality?.formality || 50,
+        warmth: (bot as any).personality?.warmth || 70,
+        enthusiasm: (bot as any).personality?.enthusiasm || 60,
+      },
+    });
+    setIsEditing(false);
+  }, [bot.botId]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      // Fetch latest bot data to avoid overwriting other panels' changes
+      const latestBots = await fetch('/api/super-admin/bots').then(r => r.json()) as BotConfig[];
+      const latestBot = latestBots.find(b => b.botId === bot.botId) || bot;
+      
+      const updatedBot = {
+        ...latestBot,
+        systemPrompt: formData.systemPrompt,
+        tone: formData.tone,
+        responseLength: formData.responseLength,
+        personality: formData.personality,
+      };
+      const response = await apiRequest("PUT", `/api/super-admin/bots/${bot.botId}`, updatedBot);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Saved", description: "Persona settings have been updated." });
+      setIsEditing(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/bots"] });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to save persona settings.", variant: "destructive" });
+    },
+  });
+
+  return (
+    <div className="space-y-6">
+      {/* Action Bar */}
+      <div className="flex justify-end gap-2">
+        {isEditing ? (
+          <>
+            <Button variant="outline" size="sm" onClick={() => setIsEditing(false)} data-testid="button-cancel-persona">
+              <X className="h-4 w-4 mr-2" />
+              Cancel
+            </Button>
+            <Button size="sm" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} data-testid="button-save-persona">
+              <Save className="h-4 w-4 mr-2" />
+              {saveMutation.isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </>
+        ) : (
+          <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} data-testid="button-edit-persona">
+            <Edit2 className="h-4 w-4 mr-2" />
+            Edit Persona
+          </Button>
+        )}
+      </div>
+
+      {/* System Prompt */}
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="text-lg flex items-center gap-2">
+            <MessageCircle className="h-5 w-5 text-cyan-400" />
+            System Prompt
+          </GlassCardTitle>
+          <GlassCardDescription>Define how the AI assistant should behave and respond</GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent>
+          {isEditing ? (
+            <Textarea
+              data-testid="input-system-prompt"
+              value={formData.systemPrompt}
+              onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
+              rows={8}
+              placeholder="You are a helpful assistant for [Business Name]. Your role is to..."
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40 font-mono text-sm"
+            />
+          ) : (
+            <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+              <pre className="text-sm text-white/80 whitespace-pre-wrap font-mono">{formData.systemPrompt || 'No system prompt configured'}</pre>
+            </div>
+          )}
+        </GlassCardContent>
+      </GlassCard>
+
+      {/* Tone & Style */}
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="text-lg flex items-center gap-2">
+            <Palette className="h-5 w-5 text-purple-400" />
+            Tone & Response Style
+          </GlassCardTitle>
+          <GlassCardDescription>Configure how the assistant communicates</GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent className="space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-white/70">Conversation Tone</Label>
+              {isEditing ? (
+                <Select value={formData.tone} onValueChange={(v) => setFormData({ ...formData, tone: v })}>
+                  <SelectTrigger className="bg-white/5 border-white/10 text-white mt-1" data-testid="select-tone">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1a1d24] border-white/10">
+                    {TONE_OPTIONS.map(opt => (
+                      <SelectItem key={opt.value} value={opt.value} className="text-white">
+                        <div>
+                          <span>{opt.label}</span>
+                          <span className="text-white/40 text-xs ml-2">{opt.description}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-sm mt-1 text-white">{TONE_OPTIONS.find(t => t.value === formData.tone)?.label || 'Professional'}</p>
+              )}
+            </div>
+            <div>
+              <Label className="text-white/70">Response Length</Label>
+              {isEditing ? (
+                <Select value={formData.responseLength} onValueChange={(v) => setFormData({ ...formData, responseLength: v })}>
+                  <SelectTrigger className="bg-white/5 border-white/10 text-white mt-1" data-testid="select-response-length">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1a1d24] border-white/10">
+                    {RESPONSE_LENGTH_OPTIONS.map(opt => (
+                      <SelectItem key={opt.value} value={opt.value} className="text-white">
+                        <div>
+                          <span>{opt.label}</span>
+                          <span className="text-white/40 text-xs ml-2">{opt.description}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-sm mt-1 text-white">{RESPONSE_LENGTH_OPTIONS.find(r => r.value === formData.responseLength)?.label || 'Medium'}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Personality Sliders */}
+          {isEditing && (
+            <div className="space-y-4 pt-4 border-t border-white/10">
+              <h4 className="text-sm font-medium text-white/70">Personality Settings</h4>
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between text-xs text-white/55 mb-1">
+                    <span>Casual</span>
+                    <span>Formality: {formData.personality.formality}%</span>
+                    <span>Formal</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={formData.personality.formality}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      personality: { ...formData.personality, formality: Number(e.target.value) }
+                    })}
+                    className="w-full accent-cyan-500"
+                  />
+                </div>
+                <div>
+                  <div className="flex justify-between text-xs text-white/55 mb-1">
+                    <span>Reserved</span>
+                    <span>Warmth: {formData.personality.warmth}%</span>
+                    <span>Warm</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={formData.personality.warmth}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      personality: { ...formData.personality, warmth: Number(e.target.value) }
+                    })}
+                    className="w-full accent-purple-500"
+                  />
+                </div>
+                <div>
+                  <div className="flex justify-between text-xs text-white/55 mb-1">
+                    <span>Calm</span>
+                    <span>Enthusiasm: {formData.personality.enthusiasm}%</span>
+                    <span>Energetic</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={formData.personality.enthusiasm}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      personality: { ...formData.personality, enthusiasm: Number(e.target.value) }
+                    })}
+                    className="w-full accent-amber-500"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </GlassCardContent>
+      </GlassCard>
+
+      {/* Preview Card */}
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="text-lg">Response Preview</GlassCardTitle>
+          <GlassCardDescription>Example of how the bot might respond</GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent>
+          <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+            <p className="text-sm text-white/80 italic">
+              {formData.tone === 'professional' && "Thank you for reaching out. I'd be happy to assist you with your inquiry today."}
+              {formData.tone === 'friendly' && "Hey there! Great to hear from you! Let me help you out with that."}
+              {formData.tone === 'casual' && "Hey! What can I do for you today?"}
+              {formData.tone === 'compassionate' && "I understand, and I'm here to help. Let's work through this together."}
+              {formData.tone === 'informative' && "Based on your inquiry, I can provide detailed information about our services."}
+            </p>
+          </div>
+        </GlassCardContent>
+      </GlassCard>
+    </div>
+  );
+}
+
+// Knowledge Panel - FAQs, business info, scraped content
+function KnowledgePanel({ bot, clientType }: { bot: BotConfig; clientType?: string }) {
+  const { toast } = useToast();
+  const [isEditing, setIsEditing] = useState(false);
+  const [faqs, setFaqs] = useState<Array<{ question: string; answer: string }>>(bot.faqs || []);
+  const [editingFaqIndex, setEditingFaqIndex] = useState<number | null>(null);
+  const [newFaq, setNewFaq] = useState({ question: '', answer: '' });
+  const [showAddFaq, setShowAddFaq] = useState(false);
+  const [formData, setFormData] = useState({
+    businessName: bot.businessProfile?.businessName || '',
+    type: bot.businessProfile?.type || '',
+    phone: bot.businessProfile?.phone || '',
+    email: bot.businessProfile?.email || '',
+    website: bot.businessProfile?.website || '',
+    location: bot.businessProfile?.location || '',
+    hours: formatHoursForDisplay(bot.businessProfile?.hours),
+    services: bot.businessProfile?.services?.join(', ') || '',
+  });
+
+  useEffect(() => {
+    setFormData({
+      businessName: bot.businessProfile?.businessName || '',
+      type: bot.businessProfile?.type || '',
+      phone: bot.businessProfile?.phone || '',
+      email: bot.businessProfile?.email || '',
+      website: bot.businessProfile?.website || '',
+      location: bot.businessProfile?.location || '',
+      hours: formatHoursForDisplay(bot.businessProfile?.hours),
+      services: bot.businessProfile?.services?.join(', ') || '',
+    });
+    setFaqs(bot.faqs || []);
+    setIsEditing(false);
+    setEditingFaqIndex(null);
+    setShowAddFaq(false);
+  }, [bot.botId]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      // Fetch latest bot data to avoid overwriting other panels' changes
+      const latestBots = await fetch('/api/super-admin/bots').then(r => r.json()) as BotConfig[];
+      const latestBot = latestBots.find(b => b.botId === bot.botId) || bot;
+      
+      const updatedBot = {
+        ...latestBot,
+        businessProfile: {
+          ...latestBot.businessProfile,
+          businessName: formData.businessName,
+          type: formData.type,
+          phone: formData.phone,
+          email: formData.email,
+          website: formData.website,
+          location: formData.location,
+          hours: parseHoursFromString(formData.hours),
+          services: formData.services.split(',').map(s => s.trim()).filter(Boolean),
+        },
+        faqs: faqs,
+      };
+      const response = await apiRequest("PUT", `/api/super-admin/bots/${bot.botId}`, updatedBot);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Saved", description: "Knowledge base has been updated." });
+      setIsEditing(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/bots"] });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to save knowledge.", variant: "destructive" });
+    },
+  });
+
+  const handleAddFaq = () => {
+    if (newFaq.question.trim() && newFaq.answer.trim()) {
+      setFaqs([...faqs, { question: newFaq.question.trim(), answer: newFaq.answer.trim() }]);
+      setNewFaq({ question: '', answer: '' });
+      setShowAddFaq(false);
+    }
+  };
+
+  const handleDeleteFaq = (index: number) => {
+    setFaqs(faqs.filter((_, i) => i !== index));
+    setEditingFaqIndex(null);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Action Bar */}
+      <div className="flex justify-end gap-2">
+        {isEditing ? (
+          <>
+            <Button variant="outline" size="sm" onClick={() => setIsEditing(false)} data-testid="button-cancel-knowledge">
+              <X className="h-4 w-4 mr-2" />
+              Cancel
+            </Button>
+            <Button size="sm" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} data-testid="button-save-knowledge">
+              <Save className="h-4 w-4 mr-2" />
+              {saveMutation.isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </>
+        ) : (
+          <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} data-testid="button-edit-knowledge">
+            <Edit2 className="h-4 w-4 mr-2" />
+            Edit Knowledge
+          </Button>
+        )}
+      </div>
+
+      {/* FAQs Section */}
+      <GlassCard>
+        <GlassCardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <GlassCardTitle className="text-lg flex items-center gap-2">
+                <FileText className="h-5 w-5 text-cyan-400" />
+                FAQs ({faqs.length})
+              </GlassCardTitle>
+              <GlassCardDescription>Common questions and answers the bot knows</GlassCardDescription>
+            </div>
+            {isEditing && (
+              <Button size="sm" onClick={() => setShowAddFaq(true)} className="bg-cyan-500 hover:bg-cyan-600" data-testid="button-add-faq">
+                <Plus className="h-4 w-4 mr-1" />
+                Add FAQ
+              </Button>
+            )}
+          </div>
+        </GlassCardHeader>
+        <GlassCardContent>
+          {showAddFaq && (
+            <div className="mb-4 p-4 bg-white/5 rounded-lg border border-cyan-500/30 space-y-3">
+              <Input
+                placeholder="Question..."
+                value={newFaq.question}
+                onChange={(e) => setNewFaq({ ...newFaq, question: e.target.value })}
+                className="bg-white/5 border-white/10 text-white"
+                data-testid="input-new-faq-question"
+              />
+              <Textarea
+                placeholder="Answer..."
+                value={newFaq.answer}
+                onChange={(e) => setNewFaq({ ...newFaq, answer: e.target.value })}
+                className="bg-white/5 border-white/10 text-white"
+                rows={3}
+                data-testid="input-new-faq-answer"
+              />
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleAddFaq} data-testid="button-confirm-add-faq">
+                  <Check className="h-4 w-4 mr-1" />
+                  Add
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => { setShowAddFaq(false); setNewFaq({ question: '', answer: '' }); }}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {faqs.length === 0 ? (
+            <div className="text-center py-8 text-white/40">
+              <FileText className="h-8 w-8 mx-auto mb-2" />
+              <p>No FAQs configured yet</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {faqs.map((faq, index) => (
+                <div key={index} className="p-3 bg-white/5 rounded-lg border border-white/10" data-testid={`faq-item-${index}`}>
+                  {editingFaqIndex === index && isEditing ? (
+                    <div className="space-y-2">
+                      <Input
+                        value={faq.question}
+                        onChange={(e) => {
+                          const updated = [...faqs];
+                          updated[index] = { ...faq, question: e.target.value };
+                          setFaqs(updated);
+                        }}
+                        className="bg-white/5 border-white/10 text-white"
+                      />
+                      <Textarea
+                        value={faq.answer}
+                        onChange={(e) => {
+                          const updated = [...faqs];
+                          updated[index] = { ...faq, answer: e.target.value };
+                          setFaqs(updated);
+                        }}
+                        className="bg-white/5 border-white/10 text-white"
+                        rows={2}
+                      />
+                      <Button size="sm" onClick={() => setEditingFaqIndex(null)}>Done</Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-white text-sm">{faq.question}</p>
+                        <p className="text-white/55 text-xs mt-1 line-clamp-2">{faq.answer}</p>
+                      </div>
+                      {isEditing && (
+                        <div className="flex gap-1">
+                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditingFaqIndex(index)}>
+                            <Edit2 className="h-3 w-3" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-6 w-6 text-red-400 hover:text-red-300" onClick={() => handleDeleteFaq(index)}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </GlassCardContent>
+      </GlassCard>
+
+      {/* Business Information */}
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="text-lg flex items-center gap-2">
+            <Building2 className="h-5 w-5 text-purple-400" />
+            Business Information
+          </GlassCardTitle>
+          <GlassCardDescription>Details the bot uses to answer questions about the business</GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-white/70 flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                Business Name
+              </Label>
+              {isEditing ? (
+                <Input value={formData.businessName} onChange={(e) => setFormData({ ...formData, businessName: e.target.value })} className="bg-white/5 border-white/10 text-white mt-1" />
+              ) : (
+                <p className="text-sm mt-1 text-white">{formData.businessName || '-'}</p>
+              )}
+            </div>
+            <div>
+              <Label className="text-white/70 flex items-center gap-2">
+                <Phone className="h-4 w-4" />
+                Phone
+              </Label>
+              {isEditing ? (
+                <Input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="bg-white/5 border-white/10 text-white mt-1" />
+              ) : (
+                <p className="text-sm mt-1 text-white">{formData.phone || '-'}</p>
+              )}
+            </div>
+            <div>
+              <Label className="text-white/70 flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                Email
+              </Label>
+              {isEditing ? (
+                <Input value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="bg-white/5 border-white/10 text-white mt-1" />
+              ) : (
+                <p className="text-sm mt-1 text-white">{formData.email || '-'}</p>
+              )}
+            </div>
+            <div>
+              <Label className="text-white/70 flex items-center gap-2">
+                <Globe className="h-4 w-4" />
+                Website
+              </Label>
+              {isEditing ? (
+                <Input value={formData.website} onChange={(e) => setFormData({ ...formData, website: e.target.value })} className="bg-white/5 border-white/10 text-white mt-1" />
+              ) : (
+                <p className="text-sm mt-1 text-white">{formData.website || '-'}</p>
+              )}
+            </div>
+          </div>
+          <div>
+            <Label className="text-white/70 flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              Location
+            </Label>
+            {isEditing ? (
+              <Input value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} className="bg-white/5 border-white/10 text-white mt-1" />
+            ) : (
+              <p className="text-sm mt-1 text-white">{formData.location || '-'}</p>
+            )}
+          </div>
+          <div>
+            <Label className="text-white/70 flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Hours of Operation
+            </Label>
+            {isEditing ? (
+              <Textarea value={formData.hours} onChange={(e) => setFormData({ ...formData, hours: e.target.value })} className="bg-white/5 border-white/10 text-white mt-1" rows={3} placeholder="Mon-Fri: 9am-5pm&#10;Sat: 10am-2pm" />
+            ) : (
+              <pre className="text-sm mt-1 text-white whitespace-pre-wrap">{formData.hours || '-'}</pre>
+            )}
+          </div>
+          <div>
+            <Label className="text-white/70">Services (comma-separated)</Label>
+            {isEditing ? (
+              <Input value={formData.services} onChange={(e) => setFormData({ ...formData, services: e.target.value })} className="bg-white/5 border-white/10 text-white mt-1" placeholder="Haircuts, Coloring, Styling" />
+            ) : (
+              <p className="text-sm mt-1 text-white">{formData.services || '-'}</p>
+            )}
+          </div>
+        </GlassCardContent>
+      </GlassCard>
+    </div>
+  );
+}
+
+// Channels Panel - Widget styling + embed code (combined)
+function ChannelsPanel({ bot, client }: { bot: BotConfig; client: Client }) {
+  const { toast } = useToast();
+  const [copied, setCopied] = useState(false);
+
+  const embedCode = `<script src="${window.location.origin}/widget/embed.js" data-bot-id="${bot.botId}"></script>`;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(embedCode);
+    setCopied(true);
+    toast({ title: "Copied!", description: "Embed code copied to clipboard." });
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Widget Preview */}
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="text-lg flex items-center gap-2">
+            <Palette className="h-5 w-5 text-cyan-400" />
+            Widget Preview
+          </GlassCardTitle>
+          <GlassCardDescription>How the chat widget appears on client websites</GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent>
+          <div className="flex justify-center py-8">
+            <div className="relative">
+              {/* Mock widget button */}
+              <div className="h-14 w-14 rounded-full bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center shadow-lg cursor-pointer hover:scale-105 transition-transform">
+                <MessageCircle className="h-6 w-6 text-white" />
+              </div>
+              {/* Pulse animation */}
+              <div className="absolute inset-0 rounded-full bg-cyan-500/30 animate-ping" />
+            </div>
+          </div>
+          <div className="text-center mt-4">
+            <Button variant="outline" size="sm" onClick={() => window.open(`/demo/${bot.botId}`, '_blank')} className="border-white/10 text-white/70" data-testid="button-preview-widget">
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Open Full Preview
+            </Button>
+          </div>
+        </GlassCardContent>
+      </GlassCard>
+
+      {/* Embed Code */}
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="text-lg flex items-center gap-2">
+            <Code className="h-5 w-5 text-purple-400" />
+            Embed Code
+          </GlassCardTitle>
+          <GlassCardDescription>Add this code to your client's website to enable the chat widget</GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent>
+          <div className="relative">
+            <pre className="bg-[#0d0d12] text-cyan-400 p-4 rounded-lg overflow-x-auto text-sm font-mono border border-white/10">
+              {embedCode}
+            </pre>
+            <Button
+              size="sm"
+              onClick={handleCopy}
+              className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white"
+              data-testid="button-copy-embed"
+            >
+              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            </Button>
+          </div>
+          <div className="mt-4 space-y-2">
+            <h4 className="text-sm font-medium text-white/70">Installation Instructions:</h4>
+            <ol className="text-sm text-white/55 space-y-1 list-decimal list-inside">
+              <li>Copy the embed code above</li>
+              <li>Paste it before the closing <code className="text-cyan-400">&lt;/body&gt;</code> tag on your website</li>
+              <li>The widget will appear in the bottom-right corner</li>
+              <li>Test it by clicking the chat bubble</li>
+            </ol>
+          </div>
+        </GlassCardContent>
+      </GlassCard>
+
+      {/* Channel Status */}
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="text-lg">Available Channels</GlassCardTitle>
+          <GlassCardDescription>Where this assistant can be deployed</GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 bg-white/5 rounded-lg border border-green-500/30">
+              <div className="flex items-center gap-2 mb-2">
+                <Globe className="h-5 w-5 text-green-400" />
+                <span className="font-medium text-white">Website Widget</span>
+              </div>
+              <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Connected</Badge>
+            </div>
+            <div className="p-4 bg-white/5 rounded-lg border border-white/10">
+              <div className="flex items-center gap-2 mb-2">
+                <MessageSquare className="h-5 w-5 text-white/40" />
+                <span className="font-medium text-white/40">SMS</span>
+              </div>
+              <Badge className="bg-white/10 text-white/40 border-white/10">Coming Soon</Badge>
+            </div>
+            <div className="p-4 bg-white/5 rounded-lg border border-white/10">
+              <div className="flex items-center gap-2 mb-2">
+                <Mail className="h-5 w-5 text-white/40" />
+                <span className="font-medium text-white/40">Email</span>
+              </div>
+              <Badge className="bg-white/10 text-white/40 border-white/10">Coming Soon</Badge>
+            </div>
+            <div className="p-4 bg-white/5 rounded-lg border border-white/10">
+              <div className="flex items-center gap-2 mb-2">
+                <Phone className="h-5 w-5 text-white/40" />
+                <span className="font-medium text-white/40">WhatsApp</span>
+              </div>
+              <Badge className="bg-white/10 text-white/40 border-white/10">Coming Soon</Badge>
+            </div>
+          </div>
+        </GlassCardContent>
+      </GlassCard>
+    </div>
+  );
+}
+
+// Bot Settings Panel - Full editing capabilities (legacy, kept for compatibility)
 function BotSettingsPanel({ bot, clientType }: { bot: BotConfig; clientType?: string }) {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
@@ -4835,44 +5586,76 @@ function InstallPanel({ bot, client }: { bot: BotConfig; client: Client }) {
   );
 }
 
-// Assistants Section Panel - Global bot management with filters and bulk actions
+// Assistants Section Panel - Global bot management with filters, metrics, and actions
 function AssistantsSectionPanel({ 
   bots, 
   templates,
   clients,
+  workspaces,
+  botAnalytics,
   onSelectBot,
-  onCreateBot
+  onCreateBot,
+  onDuplicateBot,
+  onToggleBotStatus
 }: { 
   bots: BotConfig[]; 
   templates: Template[];
   clients: Client[];
+  workspaces: Array<{ id: string; name: string; slug: string; status: string }>;
+  botAnalytics: Array<{ botId: string; totalConversations: number; appointmentRequests: number }>;
   onSelectBot: (botId: string) => void;
   onCreateBot: () => void;
+  onDuplicateBot: (botId: string) => void;
+  onToggleBotStatus: (botId: string, newStatus: 'active' | 'paused') => void;
 }) {
   const [filter, setFilter] = useState<{
     status: 'all' | 'active' | 'paused' | 'demo';
     type: string;
+    clientId: string;
     search: string;
-  }>({ status: 'all', type: 'all', search: '' });
-  const [sortBy, setSortBy] = useState<'name' | 'type' | 'created'>('name');
+  }>({ status: 'all', type: 'all', clientId: 'all', search: '' });
+  const [sortBy, setSortBy] = useState<'name' | 'type' | 'conversations' | 'leads'>('name');
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+
+  const getBotMetrics = (botId: string) => {
+    const analytics = botAnalytics.find(a => a.botId === botId);
+    return {
+      conversations: analytics?.totalConversations || 0,
+      leads: analytics?.appointmentRequests || 0
+    };
+  };
 
   const filteredBots = bots.filter(bot => {
     const client = clients.find(c => c.id === bot.clientId);
     const matchesStatus = filter.status === 'all' || client?.status === filter.status;
     const matchesType = filter.type === 'all' || bot.businessProfile?.type === filter.type;
+    const matchesClient = filter.clientId === 'all' || bot.clientId === filter.clientId;
     const matchesSearch = !filter.search || 
       bot.name?.toLowerCase().includes(filter.search.toLowerCase()) ||
-      bot.businessProfile?.businessName?.toLowerCase().includes(filter.search.toLowerCase());
-    return matchesStatus && matchesType && matchesSearch;
+      bot.businessProfile?.businessName?.toLowerCase().includes(filter.search.toLowerCase()) ||
+      client?.name?.toLowerCase().includes(filter.search.toLowerCase());
+    return matchesStatus && matchesType && matchesClient && matchesSearch;
   }).sort((a, b) => {
     if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
     if (sortBy === 'type') return (a.businessProfile?.type || '').localeCompare(b.businessProfile?.type || '');
+    if (sortBy === 'conversations') {
+      const aMetrics = getBotMetrics(a.botId);
+      const bMetrics = getBotMetrics(b.botId);
+      return bMetrics.conversations - aMetrics.conversations;
+    }
+    if (sortBy === 'leads') {
+      const aMetrics = getBotMetrics(a.botId);
+      const bMetrics = getBotMetrics(b.botId);
+      return bMetrics.leads - aMetrics.leads;
+    }
     return 0;
   });
 
   const activeCount = bots.filter(b => clients.find(c => c.id === b.clientId)?.status === 'active').length;
   const pausedCount = bots.filter(b => clients.find(c => c.id === b.clientId)?.status === 'paused').length;
   const demoCount = bots.filter(b => clients.find(c => c.id === b.clientId)?.status === 'demo').length;
+  const totalConversations = botAnalytics.reduce((sum, a) => sum + (a.totalConversations || 0), 0);
+  const totalLeads = botAnalytics.reduce((sum, a) => sum + (a.appointmentRequests || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -4882,18 +5665,40 @@ function AssistantsSectionPanel({
           <h2 className="text-lg font-semibold text-white">All Assistants</h2>
           <p className="text-sm text-white/55">Manage all AI assistants across your platform</p>
         </div>
-        <Button onClick={onCreateBot} className="bg-cyan-500 hover:bg-cyan-600 text-white" data-testid="button-create-assistant">
-          <Plus className="h-4 w-4 mr-2" />
-          Create Assistant
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex border border-white/10 rounded-lg overflow-hidden">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setViewMode('grid')}
+              className={viewMode === 'grid' ? 'bg-white/10 text-white' : 'text-white/55'}
+              data-testid="button-view-grid"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setViewMode('table')}
+              className={viewMode === 'table' ? 'bg-white/10 text-white' : 'text-white/55'}
+              data-testid="button-view-table"
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
+          <Button onClick={onCreateBot} className="bg-cyan-500 hover:bg-cyan-600 text-white" data-testid="button-create-assistant">
+            <Plus className="h-4 w-4 mr-2" />
+            Create Assistant
+          </Button>
+        </div>
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         <GlassCard hover onClick={() => setFilter(f => ({ ...f, status: 'all' }))} className={filter.status === 'all' ? 'ring-1 ring-cyan-400/50' : ''}>
           <GlassCardContent className="py-4 text-center">
             <p className="text-2xl font-bold text-white">{bots.length}</p>
-            <p className="text-xs text-white/55">Total</p>
+            <p className="text-xs text-white/55">Total Bots</p>
           </GlassCardContent>
         </GlassCard>
         <GlassCard hover onClick={() => setFilter(f => ({ ...f, status: 'active' }))} className={filter.status === 'active' ? 'ring-1 ring-green-400/50' : ''}>
@@ -4914,6 +5719,18 @@ function AssistantsSectionPanel({
             <p className="text-xs text-white/55">Demo</p>
           </GlassCardContent>
         </GlassCard>
+        <GlassCard>
+          <GlassCardContent className="py-4 text-center">
+            <p className="text-2xl font-bold text-cyan-400">{totalConversations}</p>
+            <p className="text-xs text-white/55">Conversations</p>
+          </GlassCardContent>
+        </GlassCard>
+        <GlassCard>
+          <GlassCardContent className="py-4 text-center">
+            <p className="text-2xl font-bold text-purple-400">{totalLeads}</p>
+            <p className="text-xs text-white/55">Leads</p>
+          </GlassCardContent>
+        </GlassCard>
       </div>
 
       {/* Filters Bar */}
@@ -4921,13 +5738,25 @@ function AssistantsSectionPanel({
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
           <Input
-            placeholder="Search assistants..."
+            placeholder="Search assistants or clients..."
             value={filter.search}
             onChange={(e) => setFilter(f => ({ ...f, search: e.target.value }))}
             className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/40"
             data-testid="input-filter-search"
           />
         </div>
+        <Select value={filter.clientId} onValueChange={(v) => setFilter(f => ({ ...f, clientId: v }))}>
+          <SelectTrigger className="w-[180px] bg-white/5 border-white/10 text-white" data-testid="select-filter-client">
+            <Building2 className="h-4 w-4 mr-2 text-white/40" />
+            <SelectValue placeholder="All Clients" />
+          </SelectTrigger>
+          <SelectContent className="bg-[#1a1d24] border-white/10">
+            <SelectItem value="all" className="text-white">All Clients</SelectItem>
+            {clients.map(client => (
+              <SelectItem key={client.id} value={client.id} className="text-white">{client.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select value={filter.type} onValueChange={(v) => setFilter(f => ({ ...f, type: v }))}>
           <SelectTrigger className="w-[150px] bg-white/5 border-white/10 text-white" data-testid="select-filter-type">
             <SelectValue placeholder="Business Type" />
@@ -4940,54 +5769,216 @@ function AssistantsSectionPanel({
           </SelectContent>
         </Select>
         <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
-          <SelectTrigger className="w-[130px] bg-white/5 border-white/10 text-white" data-testid="select-sort-by">
+          <SelectTrigger className="w-[150px] bg-white/5 border-white/10 text-white" data-testid="select-sort-by">
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
           <SelectContent className="bg-[#1a1d24] border-white/10">
             <SelectItem value="name" className="text-white">Name</SelectItem>
             <SelectItem value="type" className="text-white">Type</SelectItem>
-            <SelectItem value="created" className="text-white">Created</SelectItem>
+            <SelectItem value="conversations" className="text-white">Conversations</SelectItem>
+            <SelectItem value="leads" className="text-white">Leads</SelectItem>
           </SelectContent>
         </Select>
+        {(filter.status !== 'all' || filter.type !== 'all' || filter.clientId !== 'all' || filter.search) && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setFilter({ status: 'all', type: 'all', clientId: 'all', search: '' })}
+            className="text-white/55 hover:text-white"
+          >
+            <X className="h-4 w-4 mr-1" />
+            Clear
+          </Button>
+        )}
       </div>
 
-      {/* Assistants Grid */}
+      {/* Assistants Display */}
       {filteredBots.length === 0 ? (
         <GlassCard>
           <GlassCardContent className="py-12 text-center">
             <Bot className="h-12 w-12 mx-auto mb-3 text-white/30" />
             <p className="text-white/55">No assistants match your filters</p>
-            <Button variant="outline" className="mt-4 border-white/10 text-white/70" onClick={() => setFilter({ status: 'all', type: 'all', search: '' })}>
+            <Button variant="outline" className="mt-4 border-white/10 text-white/70" onClick={() => setFilter({ status: 'all', type: 'all', clientId: 'all', search: '' })}>
               Clear Filters
             </Button>
           </GlassCardContent>
         </GlassCard>
+      ) : viewMode === 'table' ? (
+        /* Table View */
+        <GlassCard>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/10">
+                  <th className="text-left p-4 text-xs font-medium text-white/55 uppercase">Assistant</th>
+                  <th className="text-left p-4 text-xs font-medium text-white/55 uppercase">Client</th>
+                  <th className="text-left p-4 text-xs font-medium text-white/55 uppercase">Type</th>
+                  <th className="text-center p-4 text-xs font-medium text-white/55 uppercase">Status</th>
+                  <th className="text-center p-4 text-xs font-medium text-white/55 uppercase">Conversations</th>
+                  <th className="text-center p-4 text-xs font-medium text-white/55 uppercase">Leads</th>
+                  <th className="text-right p-4 text-xs font-medium text-white/55 uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredBots.map(bot => {
+                  const client = clients.find(c => c.id === bot.clientId);
+                  const metrics = getBotMetrics(bot.botId);
+                  const botStatus = bot.status || (client?.status === 'active' ? 'active' : 'paused');
+                  return (
+                    <tr 
+                      key={bot.botId} 
+                      className="border-b border-white/5 hover:bg-white/5 cursor-pointer"
+                      onClick={() => onSelectBot(bot.botId)}
+                      data-testid={`row-assistant-${bot.botId}`}
+                    >
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
+                            <Bot className="h-4 w-4 text-cyan-400" />
+                          </div>
+                          <span className="text-white font-medium">{bot.name || bot.businessProfile?.businessName}</span>
+                        </div>
+                      </td>
+                      <td className="p-4 text-white/70">{client?.name || 'Unknown'}</td>
+                      <td className="p-4 text-white/55 text-sm">{BUSINESS_TYPES.find(t => t.value === bot.businessProfile?.type)?.label || 'Custom'}</td>
+                      <td className="p-4 text-center">
+                        <Badge className={`text-xs ${
+                          botStatus === 'active' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                          botStatus === 'demo' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
+                          'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                        }`}>
+                          {botStatus}
+                        </Badge>
+                      </td>
+                      <td className="p-4 text-center">
+                        <span className="text-cyan-400 font-medium">{metrics.conversations}</span>
+                      </td>
+                      <td className="p-4 text-center">
+                        <span className="text-purple-400 font-medium">{metrics.leads}</span>
+                      </td>
+                      <td className="p-4 text-right" onClick={e => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-white/55 hover:text-white" data-testid={`button-actions-${bot.botId}`}>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-[#1a1d24] border-white/10">
+                            <DropdownMenuItem onClick={() => onSelectBot(bot.botId)} className="text-white hover:bg-white/10">
+                              <Edit2 className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onDuplicateBot(bot.botId)} className="text-white hover:bg-white/10" data-testid={`button-duplicate-${bot.botId}`}>
+                              <Copy className="h-4 w-4 mr-2" />
+                              Duplicate
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-white/10" />
+                            <DropdownMenuItem 
+                              onClick={() => onToggleBotStatus(bot.botId, botStatus === 'active' ? 'paused' : 'active')}
+                              className={botStatus === 'active' ? 'text-amber-400 hover:bg-amber-500/10' : 'text-green-400 hover:bg-green-500/10'}
+                              data-testid={`button-toggle-status-${bot.botId}`}
+                            >
+                              {botStatus === 'active' ? (
+                                <>
+                                  <Pause className="h-4 w-4 mr-2" />
+                                  Pause
+                                </>
+                              ) : (
+                                <>
+                                  <Play className="h-4 w-4 mr-2" />
+                                  Activate
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </GlassCard>
       ) : (
+        /* Grid View */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredBots.map(bot => {
             const client = clients.find(c => c.id === bot.clientId);
+            const metrics = getBotMetrics(bot.botId);
+            const botStatus = bot.status || (client?.status === 'active' ? 'active' : 'paused');
             return (
-              <GlassCard key={bot.botId} hover onClick={() => onSelectBot(bot.botId)} data-testid={`card-assistant-${bot.botId}`} className="cursor-pointer">
+              <GlassCard key={bot.botId} hover data-testid={`card-assistant-${bot.botId}`} className="cursor-pointer group">
                 <GlassCardContent className="p-4">
                   <div className="flex items-start gap-3">
                     <div className="h-10 w-10 rounded-lg bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
                       <Building2 className="h-5 w-5 text-cyan-400" />
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0" onClick={() => onSelectBot(bot.botId)}>
                       <h3 className="font-medium text-white truncate">{bot.name || bot.businessProfile?.businessName}</h3>
-                      <p className="text-xs text-white/55">{BUSINESS_TYPES.find(t => t.value === bot.businessProfile?.type)?.label || 'Custom'}</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Badge className={`text-xs ${
-                          client?.status === 'active' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
-                          client?.status === 'demo' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
-                          'bg-amber-500/20 text-amber-400 border-amber-500/30'
-                        }`}>
-                          {client?.status}
-                        </Badge>
-                        <span className="text-xs text-white/40">{bot.faqs?.length || 0} FAQs</span>
-                      </div>
+                      <p className="text-xs text-white/55">{client?.name}</p>
+                      <p className="text-xs text-white/40">{BUSINESS_TYPES.find(t => t.value === bot.businessProfile?.type)?.label || 'Custom'}</p>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-white/30" />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-white/40 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                          data-testid={`button-menu-${bot.botId}`}
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-[#1a1d24] border-white/10">
+                        <DropdownMenuItem onClick={() => onSelectBot(bot.botId)} className="text-white hover:bg-white/10">
+                          <Edit2 className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onDuplicateBot(bot.botId)} className="text-white hover:bg-white/10" data-testid={`button-duplicate-${bot.botId}`}>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Duplicate
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-white/10" />
+                        <DropdownMenuItem 
+                          onClick={() => onToggleBotStatus(bot.botId, botStatus === 'active' ? 'paused' : 'active')}
+                          className={botStatus === 'active' ? 'text-amber-400 hover:bg-amber-500/10' : 'text-green-400 hover:bg-green-500/10'}
+                          data-testid={`button-toggle-status-${bot.botId}`}
+                        >
+                          {botStatus === 'active' ? (
+                            <>
+                              <Pause className="h-4 w-4 mr-2" />
+                              Pause
+                            </>
+                          ) : (
+                            <>
+                              <Play className="h-4 w-4 mr-2" />
+                              Activate
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  
+                  {/* Metrics Row */}
+                  <div className="flex items-center gap-4 mt-3 pt-3 border-t border-white/10">
+                    <Badge className={`text-xs ${
+                      botStatus === 'active' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                      botStatus === 'demo' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
+                      'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                    }`}>
+                      {botStatus}
+                    </Badge>
+                    <div className="flex items-center gap-1 text-xs text-white/55">
+                      <MessageSquare className="h-3 w-3" />
+                      <span className="text-cyan-400 font-medium">{metrics.conversations}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-white/55">
+                      <Users className="h-3 w-3" />
+                      <span className="text-purple-400 font-medium">{metrics.leads}</span>
+                    </div>
+                    <span className="text-xs text-white/40 ml-auto">{bot.faqs?.length || 0} FAQs</span>
                   </div>
                 </GlassCardContent>
               </GlassCard>

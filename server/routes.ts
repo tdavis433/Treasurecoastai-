@@ -3123,6 +3123,80 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
+  // Duplicate bot - create a copy of an existing bot
+  app.post("/api/super-admin/bots/:botId/duplicate", requireSuperAdmin, (req, res) => {
+    try {
+      const { botId } = req.params;
+      const existingConfig = getBotConfigByBotId(botId);
+      
+      if (!existingConfig) {
+        return res.status(404).json({ error: `Bot not found: ${botId}` });
+      }
+      
+      // Generate new bot ID
+      const timestamp = Date.now().toString(36);
+      const random = Math.random().toString(36).substring(2, 8);
+      const newBotId = `bot_${timestamp}_${random}`;
+      
+      // Create duplicate config with new ID
+      const duplicatedConfig: BotConfig = {
+        ...existingConfig,
+        botId: newBotId,
+        name: `${existingConfig.name || existingConfig.businessProfile?.businessName || 'Bot'} (Copy)`,
+        metadata: {
+          ...existingConfig.metadata,
+          clonedFrom: botId,
+          createdAt: new Date().toISOString(),
+        },
+        status: 'paused', // Start duplicates as paused
+      };
+      
+      const success = saveBotConfig(newBotId, duplicatedConfig);
+      
+      if (success) {
+        res.json(duplicatedConfig);
+      } else {
+        res.status(500).json({ error: "Failed to duplicate bot" });
+      }
+    } catch (error) {
+      console.error("Duplicate bot error:", error);
+      res.status(500).json({ error: "Failed to duplicate bot" });
+    }
+  });
+
+  // Update bot status (pause/activate)
+  app.patch("/api/super-admin/bots/:botId/status", requireSuperAdmin, (req, res) => {
+    try {
+      const { botId } = req.params;
+      const { status } = req.body;
+      
+      if (!['active', 'paused'].includes(status)) {
+        return res.status(400).json({ error: "Invalid status. Must be 'active' or 'paused'." });
+      }
+      
+      const existingConfig = getBotConfigByBotId(botId);
+      if (!existingConfig) {
+        return res.status(404).json({ error: `Bot not found: ${botId}` });
+      }
+      
+      const updatedConfig: BotConfig = {
+        ...existingConfig,
+        status: status,
+      };
+      
+      const success = saveBotConfig(botId, updatedConfig);
+      
+      if (success) {
+        res.json({ success: true, botId, status });
+      } else {
+        res.status(500).json({ error: "Failed to update bot status" });
+      }
+    } catch (error) {
+      console.error("Update bot status error:", error);
+      res.status(500).json({ error: "Failed to update bot status" });
+    }
+  });
+
   // =============================================
   // PHASE 3: WEBSITE SCRAPER ROUTES
   // =============================================
@@ -6317,6 +6391,117 @@ These suggestions should be relevant to what was just discussed and help guide t
     } catch (error) {
       console.error("Delete workspace error:", error);
       res.status(500).json({ error: "Failed to delete workspace" });
+    }
+  });
+
+  // =============================================
+  // SUPER-ADMIN: WORKSPACE DETAIL ENDPOINTS
+  // =============================================
+
+  // Get workspace conversations
+  app.get("/api/super-admin/workspaces/:slug/conversations", requireSuperAdmin, async (req, res) => {
+    try {
+      const { slug } = req.params;
+      
+      const workspace = await getWorkspaceBySlug(slug);
+      if (!workspace) {
+        return res.status(404).json({ error: "Workspace not found" });
+      }
+      
+      // Get all bots for this workspace
+      const allBots = getAllBotConfigs();
+      const wsBots = allBots.filter(b => b.clientId === slug || b.clientId === (workspace as any).id);
+      
+      // Aggregate conversations from all bots
+      const allConversations: any[] = [];
+      for (const bot of wsBots) {
+        const sessions = await storage.getClientRecentSessions(bot.clientId, bot.botId, 100);
+        for (const session of sessions) {
+          allConversations.push({
+            id: session.id,
+            sessionId: session.sessionId,
+            botId: bot.botId,
+            visitorName: session.visitorName || null,
+            visitorEmail: session.visitorEmail || null,
+            visitorPhone: session.visitorPhone || null,
+            messageCount: session.messageCount || 0,
+            sentiment: session.sentiment || null,
+            summary: session.summary || null,
+            createdAt: session.startedAt?.toISOString(),
+            updatedAt: session.updatedAt?.toISOString(),
+          });
+        }
+      }
+      
+      // Sort by date, most recent first
+      allConversations.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      
+      res.json({
+        conversations: allConversations,
+        total: allConversations.length,
+      });
+    } catch (error) {
+      console.error("Get workspace conversations error:", error);
+      res.status(500).json({ error: "Failed to fetch workspace conversations" });
+    }
+  });
+
+  // Get workspace leads
+  app.get("/api/super-admin/workspaces/:slug/leads", requireSuperAdmin, async (req, res) => {
+    try {
+      const { slug } = req.params;
+      
+      const workspace = await getWorkspaceBySlug(slug);
+      if (!workspace) {
+        return res.status(404).json({ error: "Workspace not found" });
+      }
+      
+      // Get leads for this workspace (using slug as clientId)
+      const { leads } = await storage.getLeads(slug, { limit: 500 });
+      
+      const formattedLeads = leads.map(lead => ({
+        id: lead.id,
+        name: lead.name || 'Anonymous',
+        email: lead.email || null,
+        phone: lead.phone || null,
+        context: lead.context || null,
+        status: lead.status || 'new',
+        createdAt: lead.createdAt?.toISOString(),
+      }));
+      
+      res.json({
+        leads: formattedLeads,
+        total: formattedLeads.length,
+      });
+    } catch (error) {
+      console.error("Get workspace leads error:", error);
+      res.status(500).json({ error: "Failed to fetch workspace leads" });
+    }
+  });
+
+  // Get workspace users
+  app.get("/api/super-admin/workspaces/:slug/users", requireSuperAdmin, async (req, res) => {
+    try {
+      const { slug } = req.params;
+      
+      const workspace = await getWorkspaceBySlug(slug);
+      if (!workspace) {
+        return res.status(404).json({ error: "Workspace not found" });
+      }
+      
+      // Get users associated with this workspace
+      // Users with clientId matching the workspace slug are members
+      const workspaceUsers = await db.select({
+        id: adminUsers.id,
+        username: adminUsers.username,
+        role: adminUsers.role,
+        createdAt: adminUsers.createdAt,
+      }).from(adminUsers).where(eq(adminUsers.clientId, slug));
+      
+      res.json(workspaceUsers);
+    } catch (error) {
+      console.error("Get workspace users error:", error);
+      res.status(500).json({ error: "Failed to fetch workspace users" });
     }
   });
 

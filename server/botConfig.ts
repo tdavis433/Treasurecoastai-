@@ -117,6 +117,7 @@ export interface BotConfig {
   };
   workspaceId?: string;
   botType?: string;
+  status?: 'active' | 'paused';
 }
 
 export interface ClientRecord {

@@ -8,6 +8,7 @@ import AdminDashboard from "@/pages/admin-dashboard";
 import AdminAppointments from "@/pages/admin-appointments";
 import AdminAnalytics from "@/pages/admin-analytics";
 import ControlCenter from "@/pages/control-center";
+import ClientDetailAdmin from "@/pages/client-detail-admin";
 import BotDashboard from "@/pages/bot-dashboard";
 import ClientDashboard from "@/pages/client-dashboard";
 import LeadsPage from "@/pages/leads";
@@ -45,6 +46,7 @@ function Router() {
       <Route path="/client/inbox" component={InboxPage} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
+      <Route path="/super-admin/clients/:slug" component={ClientDetailAdmin} />
       <Route path="/super-admin" component={ControlCenter} />
       <Route path="/super-admin/control-center">
         <Redirect to="/super-admin" />
