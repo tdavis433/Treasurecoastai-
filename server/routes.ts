@@ -1711,7 +1711,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check for external booking URL if booking intent detected
       let externalBookingUrl: string | null = null;
       if (mentionsAppointment) {
-        const settings = await storage.getClientSettings(clientId);
+        const settings = await storage.getSettings(clientId);
         if (settings?.externalBookingUrl) {
           externalBookingUrl = settings.externalBookingUrl;
         }

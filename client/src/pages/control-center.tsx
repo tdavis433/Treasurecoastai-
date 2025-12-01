@@ -21,7 +21,7 @@ import {
   ChevronRight, Search, CreditCard, ExternalLink, Building2, Code, Copy, Check,
   TrendingUp, Users2, AlertCircle, Activity, RefreshCw, Download, Layers,
   Shield, FileWarning, CheckCircle2, XCircle, Filter, Calendar, UserPlus,
-  MoreVertical, Workflow, Palette, ChevronDown
+  MoreVertical, Workflow, Palette, ChevronDown, SendHorizontal, MessageCircle
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -1906,6 +1906,10 @@ export default function ControlCenter() {
                       <Eye className="h-4 w-4 mr-1" />
                       Overview
                     </TabsTrigger>
+                    <TabsTrigger data-testid="tab-test-chat" value="test-chat" className="text-xs data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400 text-white/55">
+                      <MessageCircle className="h-4 w-4 mr-1" />
+                      Test Chat
+                    </TabsTrigger>
                     <TabsTrigger data-testid="tab-settings" value="settings" className="text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/55">
                       <Settings className="h-4 w-4 mr-1" />
                       Settings
@@ -1938,6 +1942,10 @@ export default function ControlCenter() {
 
                   <TabsContent value="overview">
                     <OverviewPanel bot={selectedBot} client={selectedClient} />
+                  </TabsContent>
+
+                  <TabsContent value="test-chat">
+                    <TestChatPanel clientId={selectedClient.id} botId={selectedBot.botId} botName={selectedBot.name} />
                   </TabsContent>
 
                   <TabsContent value="settings">
@@ -3819,6 +3827,138 @@ function CreateFromTemplateModal({
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+// Test Chat Panel - Interactive AI chat testing
+function TestChatPanel({ clientId, botId, botName }: { clientId: string; botId: string; botName: string }) {
+  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+  const [inputValue, setInputValue] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [sessionId] = useState(() => `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  const { toast } = useToast();
+
+  const sendMessage = async () => {
+    if (!inputValue.trim() || isLoading) return;
+
+    const userMessage = inputValue.trim();
+    setInputValue('');
+    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(`/api/chat/${clientId}/${botId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          messages: [...messages, { role: 'user', content: userMessage }],
+          sessionId
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to get response');
+      
+      const data = await response.json();
+      setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
+    } catch (error) {
+      console.error('Chat error:', error);
+      toast({
+        title: "Chat Error",
+        description: "Failed to get AI response. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const clearChat = () => {
+    setMessages([]);
+    toast({ title: "Chat Cleared", description: "Conversation has been reset." });
+  };
+
+  return (
+    <div className="space-y-4">
+      <GlassCard className="h-[500px] flex flex-col">
+        <GlassCardHeader className="flex-shrink-0 flex flex-row items-center justify-between">
+          <div>
+            <GlassCardTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 text-cyan-400" />
+              Test Chat
+            </GlassCardTitle>
+            <GlassCardDescription>
+              Test {botName} with real AI responses
+            </GlassCardDescription>
+          </div>
+          <Button variant="outline" size="sm" onClick={clearChat} className="border-white/20 text-white/70 hover:bg-white/10">
+            <X className="h-4 w-4 mr-1" />
+            Clear
+          </Button>
+        </GlassCardHeader>
+        
+        <GlassCardContent className="flex-1 flex flex-col min-h-0">
+          <ScrollArea className="flex-1 pr-4 mb-4">
+            <div className="space-y-4">
+              {messages.length === 0 && (
+                <div className="text-center text-white/40 py-8">
+                  <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>Start a conversation to test the AI</p>
+                  <p className="text-sm mt-1">Try asking about services, hours, or booking</p>
+                </div>
+              )}
+              {messages.map((message, i) => (
+                <div
+                  key={i}
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-[80%] rounded-2xl px-4 py-2 ${
+                      message.role === 'user'
+                        ? 'bg-cyan-500 text-white'
+                        : 'bg-white/10 text-white/90'
+                    }`}
+                  >
+                    {message.content}
+                  </div>
+                </div>
+              ))}
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-white/10 rounded-2xl px-4 py-2">
+                    <div className="flex gap-1">
+                      <span className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+          
+          <div className="flex gap-2 flex-shrink-0">
+            <Input
+              data-testid="input-test-chat"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+              placeholder="Type a message..."
+              className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-white/40"
+              disabled={isLoading}
+            />
+            <Button 
+              data-testid="button-send-message"
+              onClick={sendMessage}
+              disabled={isLoading || !inputValue.trim()}
+              className="bg-cyan-500 hover:bg-cyan-600 text-white"
+            >
+              <SendHorizontal className="h-4 w-4" />
+            </Button>
+          </div>
+        </GlassCardContent>
+      </GlassCard>
+    </div>
   );
 }
 
