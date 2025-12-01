@@ -145,8 +145,10 @@ export default function ControlCenter() {
   const [newUserForm, setNewUserForm] = useState({ username: '', password: '', role: 'client_admin' as 'super_admin' | 'client_admin', clientId: '' });
   const [editingUser, setEditingUser] = useState<{ id: string; username: string; role: string } | null>(null);
   const [showCreateWorkspaceModal, setShowCreateWorkspaceModal] = useState(false);
-  const [newWorkspaceForm, setNewWorkspaceForm] = useState({ name: '', slug: '', ownerId: '', plan: 'starter' });
+  const [newWorkspaceForm, setNewWorkspaceForm] = useState({ name: '', slug: '', clientEmail: '', plan: 'starter' });
   const [editingWorkspace, setEditingWorkspace] = useState<{ slug: string; name: string; plan: string; ownerId?: string } | null>(null);
+  const [generatedCredentials, setGeneratedCredentials] = useState<{ email: string; temporaryPassword: string; dashboardUrl: string } | null>(null);
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
 
   const { data: currentUser, isLoading: authLoading } = useQuery<AuthUser>({
     queryKey: ["/api/auth/me"],
@@ -447,18 +449,29 @@ export default function ControlCenter() {
 
   // Workspace CRUD mutations
   const createWorkspaceMutation = useMutation({
-    mutationFn: async (data: { name: string; slug: string; ownerId: string; plan?: string }) => {
+    mutationFn: async (data: { name: string; slug: string; clientEmail?: string; plan?: string }) => {
       const response = await apiRequest("POST", "/api/super-admin/workspaces", data);
       return response.json();
     },
-    onSuccess: async () => {
+    onSuccess: async (data) => {
       await queryClient.refetchQueries({ queryKey: ["/api/super-admin/workspaces"] });
       setShowCreateWorkspaceModal(false);
-      setNewWorkspaceForm({ name: '', slug: '', ownerId: '', plan: 'starter' });
-      toast({ title: "Workspace Created", description: "New workspace has been created successfully." });
+      setNewWorkspaceForm({ name: '', slug: '', clientEmail: '', plan: 'starter' });
+      
+      // If credentials were generated, show them in a modal
+      if (data.clientCredentials) {
+        setGeneratedCredentials({
+          email: data.clientCredentials.email,
+          temporaryPassword: data.clientCredentials.temporaryPassword,
+          dashboardUrl: data.clientCredentials.dashboardUrl,
+        });
+        setShowCredentialsModal(true);
+      } else {
+        toast({ title: "Client Created", description: "New client has been created successfully." });
+      }
     },
     onError: (error: any) => {
-      toast({ title: "Error", description: error.message || "Failed to create workspace.", variant: "destructive" });
+      toast({ title: "Error", description: error.message || "Failed to create client.", variant: "destructive" });
     },
   });
 
@@ -1987,7 +2000,7 @@ export default function ControlCenter() {
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Add New Client</AlertDialogTitle>
             <AlertDialogDescription className="text-white/55">
-              Create a new business client. An AI assistant will be automatically created for them.
+              Create a new business client. Login credentials will be auto-generated for them to access their dashboard.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-4 py-4">
@@ -2005,6 +2018,18 @@ export default function ControlCenter() {
                 placeholder="e.g. Acme Restaurant"
                 data-testid="input-new-workspace-name"
               />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm text-white/85">Client Email</label>
+              <input
+                type="email"
+                value={newWorkspaceForm.clientEmail}
+                onChange={(e) => setNewWorkspaceForm(f => ({ ...f, clientEmail: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-cyan-400/50"
+                placeholder="client@business.com"
+                data-testid="input-new-workspace-email"
+              />
+              <p className="text-xs text-white/40">Client will use this email to log in to their dashboard</p>
             </div>
             <div className="space-y-2">
               <label className="text-sm text-white/85">Slug (auto-generated)</label>
@@ -2035,24 +2060,6 @@ export default function ControlCenter() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm text-white/85">Owner</label>
-              <Select
-                value={newWorkspaceForm.ownerId}
-                onValueChange={(value) => setNewWorkspaceForm(f => ({ ...f, ownerId: value }))}
-              >
-                <SelectTrigger className="w-full bg-white/5 border-white/10 text-white" data-testid="select-new-workspace-owner">
-                  <SelectValue placeholder="Select owner..." />
-                </SelectTrigger>
-                <SelectContent className="bg-[#1a1d24] border-white/10">
-                  {adminUsers?.map(user => (
-                    <SelectItem key={user.id} value={String(user.id)} className="text-white">
-                      {user.username} ({user.role === 'super_admin' ? 'Super Admin' : 'Client Admin'})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel className="bg-transparent border-white/10 text-white hover:bg-white/10">
@@ -2060,11 +2067,123 @@ export default function ControlCenter() {
             </AlertDialogCancel>
             <Button
               onClick={() => createWorkspaceMutation.mutate(newWorkspaceForm)}
-              disabled={!newWorkspaceForm.name || !newWorkspaceForm.slug || !newWorkspaceForm.ownerId || createWorkspaceMutation.isPending}
+              disabled={!newWorkspaceForm.name || !newWorkspaceForm.slug || !newWorkspaceForm.clientEmail || createWorkspaceMutation.isPending}
               className="bg-cyan-500 hover:bg-cyan-600 text-white"
               data-testid="button-create-workspace-confirm"
             >
               {createWorkspaceMutation.isPending ? "Creating..." : "Create Client"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Generated Credentials Modal */}
+      <AlertDialog open={showCredentialsModal} onOpenChange={setShowCredentialsModal}>
+        <AlertDialogContent className="bg-[#1a1d24] border-white/10 max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-400" />
+              Client Created Successfully
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-white/55">
+              Share these login credentials with your client. They can use them to access their dashboard.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {generatedCredentials && (
+            <div className="space-y-4 py-4">
+              <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+                <div className="space-y-1">
+                  <label className="text-xs text-white/55 uppercase tracking-wide">Login Email</label>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-cyan-400 bg-black/30 px-3 py-2 rounded text-sm font-mono">
+                      {generatedCredentials.email}
+                    </code>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-white/55 hover:text-white"
+                      onClick={() => {
+                        navigator.clipboard.writeText(generatedCredentials.email);
+                        toast({ title: "Copied", description: "Email copied to clipboard" });
+                      }}
+                      data-testid="button-copy-email"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-white/55 uppercase tracking-wide">Temporary Password</label>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-cyan-400 bg-black/30 px-3 py-2 rounded text-sm font-mono">
+                      {generatedCredentials.temporaryPassword}
+                    </code>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-white/55 hover:text-white"
+                      onClick={() => {
+                        navigator.clipboard.writeText(generatedCredentials.temporaryPassword);
+                        toast({ title: "Copied", description: "Password copied to clipboard" });
+                      }}
+                      data-testid="button-copy-password"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-white/55 uppercase tracking-wide">Dashboard URL</label>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-cyan-400 bg-black/30 px-3 py-2 rounded text-sm font-mono truncate">
+                      {window.location.origin}{generatedCredentials.dashboardUrl}
+                    </code>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-white/55 hover:text-white"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}${generatedCredentials.dashboardUrl}`);
+                        toast({ title: "Copied", description: "Dashboard URL copied to clipboard" });
+                      }}
+                      data-testid="button-copy-dashboard-url"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+                <p className="text-amber-400 text-sm flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  Save these credentials now. The password cannot be retrieved later.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                className="w-full border-white/10 text-white hover:bg-white/10"
+                onClick={() => {
+                  const text = `Login Credentials for ${newWorkspaceForm.name || 'Client'}\n\nEmail: ${generatedCredentials.email}\nPassword: ${generatedCredentials.temporaryPassword}\nDashboard: ${window.location.origin}${generatedCredentials.dashboardUrl}`;
+                  navigator.clipboard.writeText(text);
+                  toast({ title: "All Copied", description: "All credentials copied to clipboard" });
+                }}
+                data-testid="button-copy-all-credentials"
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Copy All Credentials
+              </Button>
+            </div>
+          )}
+          <AlertDialogFooter>
+            <Button
+              onClick={() => {
+                setShowCredentialsModal(false);
+                setGeneratedCredentials(null);
+              }}
+              className="bg-cyan-500 hover:bg-cyan-600 text-white"
+              data-testid="button-close-credentials-modal"
+            >
+              Done
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

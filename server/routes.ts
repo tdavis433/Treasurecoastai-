@@ -5926,14 +5926,25 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
-  // Create new workspace
+  // Helper function to generate a cryptographically secure temporary password
+  function generateTemporaryPassword(length: number = 12): string {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    const randomBytes = crypto.randomBytes(length);
+    let password = '';
+    for (let i = 0; i < length; i++) {
+      password += chars.charAt(randomBytes[i] % chars.length);
+    }
+    return password;
+  }
+
+  // Create new workspace with client account
   app.post("/api/super-admin/workspaces", requireSuperAdmin, async (req, res) => {
     try {
-      const { name, slug, ownerId, plan, settings } = req.body;
+      const { name, slug, ownerId, plan, settings, clientEmail } = req.body;
       
       // Validate required fields
-      if (!name || !slug || !ownerId) {
-        return res.status(400).json({ error: "name, slug, and ownerId are required" });
+      if (!name || !slug) {
+        return res.status(400).json({ error: "name and slug are required" });
       }
       
       // Validate slug format (alphanumeric and underscores only)
@@ -5947,30 +5958,152 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(409).json({ error: `Workspace with slug '${slug}' already exists` });
       }
       
-      // Validate owner exists
-      const [owner] = await db.select().from(adminUsers).where(eq(adminUsers.id, ownerId)).limit(1);
-      if (!owner) {
-        return res.status(400).json({ error: "Invalid ownerId - user not found" });
+      // If clientEmail provided, check it doesn't already exist
+      if (clientEmail) {
+        const existingUser = await storage.findAdminByUsername(clientEmail);
+        if (existingUser) {
+          return res.status(409).json({ error: `An account with email '${clientEmail}' already exists` });
+        }
+      }
+      
+      let clientUser = null;
+      let temporaryPassword = null;
+      
+      // If clientEmail is provided, create a client account
+      if (clientEmail) {
+        temporaryPassword = generateTemporaryPassword();
+        const passwordHash = await bcrypt.hash(temporaryPassword, 10);
+        
+        // Create the client user account
+        const [newUser] = await db.insert(adminUsers).values({
+          username: clientEmail,
+          passwordHash,
+          role: "client_admin",
+          clientId: slug,
+        }).returning();
+        
+        clientUser = newUser;
+      }
+      
+      // Determine the owner - use client user if created, otherwise use provided ownerId
+      const effectiveOwnerId = clientUser?.id || ownerId;
+      
+      if (!effectiveOwnerId) {
+        return res.status(400).json({ error: "Either clientEmail or ownerId is required" });
+      }
+      
+      // Validate owner exists if ownerId was provided (not using new client user)
+      if (!clientUser && ownerId) {
+        const [owner] = await db.select().from(adminUsers).where(eq(adminUsers.id, ownerId)).limit(1);
+        if (!owner) {
+          return res.status(400).json({ error: "Invalid ownerId - user not found" });
+        }
       }
       
       const workspace = await createWorkspace({
         name,
         slug,
-        ownerId,
+        ownerId: effectiveOwnerId,
         plan: plan || 'starter',
         settings: settings || {},
       });
+      
+      // Create workspace membership for the client user
+      if (clientUser) {
+        await db.insert(workspaceMemberships).values({
+          workspaceId: workspace.id,
+          userId: clientUser.id,
+          role: "owner",
+          status: "active",
+          acceptedAt: new Date(),
+        });
+        
+        // Create default bot for the workspace
+        const defaultBotId = `${slug}_bot`;
+        await db.insert(bots).values({
+          botId: defaultBotId,
+          workspaceId: workspace.id,
+          name: `${name} Assistant`,
+          botType: "generic",
+          businessProfile: {
+            businessName: name,
+            type: "generic",
+            email: clientEmail,
+          },
+          systemPrompt: `You are a helpful AI assistant for ${name}. Be friendly, professional, and help visitors with their questions.`,
+          theme: {
+            primaryColor: "#06b6d4",
+            welcomeMessage: `Welcome to ${name}! How can I help you today?`,
+          },
+          status: "active",
+        });
+        
+        // Create default bot settings
+        await db.insert(botSettings).values({
+          botId: defaultBotId,
+          faqs: [],
+          rules: {},
+          automations: {},
+        });
+        
+        // Create client settings
+        await db.insert(clientSettings).values({
+          clientId: slug,
+          businessName: name,
+          tagline: "Welcome to our business",
+          primaryEmail: clientEmail,
+          status: "active",
+          knowledgeBase: {
+            about: `Welcome to ${name}.`,
+            requirements: "",
+            pricing: "",
+            application: "",
+          },
+          operatingHours: {
+            enabled: false,
+            timezone: "America/New_York",
+            schedule: {
+              monday: { open: "09:00", close: "17:00", enabled: true },
+              tuesday: { open: "09:00", close: "17:00", enabled: true },
+              wednesday: { open: "09:00", close: "17:00", enabled: true },
+              thursday: { open: "09:00", close: "17:00", enabled: true },
+              friday: { open: "09:00", close: "17:00", enabled: true },
+              saturday: { open: "09:00", close: "17:00", enabled: false },
+              sunday: { open: "09:00", close: "17:00", enabled: false },
+            },
+            afterHoursMessage: "We're currently closed. Please leave a message and we'll get back to you.",
+          },
+        });
+      }
       
       // Log this action
       await storage.createSystemLog({
         level: 'info',
         source: 'super-admin',
-        message: `Workspace ${slug} created`,
+        message: `Workspace ${slug} created${clientUser ? ' with client account' : ''}`,
         workspaceId: workspace.id,
-        details: { name, plan: plan || 'starter', ownerId },
+        details: { 
+          name, 
+          plan: plan || 'starter', 
+          ownerId: effectiveOwnerId,
+          clientEmail: clientEmail || null,
+          hasClientAccount: !!clientUser,
+        },
       });
       
-      res.status(201).json(workspace);
+      // Return workspace with client credentials if created
+      const response: any = {
+        ...workspace,
+        clientCredentials: clientUser ? {
+          email: clientEmail,
+          temporaryPassword,
+          loginUrl: '/login',
+          dashboardUrl: '/client/dashboard',
+          message: 'Share these credentials with your client. They can change their password after logging in.',
+        } : null,
+      };
+      
+      res.status(201).json(response);
     } catch (error) {
       console.error("Create workspace error:", error);
       res.status(500).json({ error: "Failed to create workspace" });
