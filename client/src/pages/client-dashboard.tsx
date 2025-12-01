@@ -26,6 +26,7 @@ import {
   Calendar,
   Users,
   TrendingUp,
+  TrendingDown,
   Clock,
   CheckCircle,
   Building2,
@@ -44,10 +45,16 @@ import {
   Power,
   Sparkles,
   ArrowUpRight,
+  ArrowDownRight,
   Eye,
   Search,
   Download,
+  BarChart3,
+  Bell,
+  Activity,
+  Filter,
 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { format } from "date-fns";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -82,7 +89,20 @@ interface ClientStats {
     bookings: number;
     pendingBookings: number;
     completedBookings: number;
+    conversationsTrend: number;
+    leadsTrend: number;
+    bookingsTrend: number;
   } | null;
+  peakHours: { hour: number; count: number }[];
+  leadStatusBreakdown: {
+    new: number;
+    contacted: number;
+    qualified: number;
+    converted: number;
+    lost: number;
+  };
+  lastActivity: string | null;
+  notificationEmail: string | null;
 }
 
 interface ClientProfile {
@@ -162,6 +182,8 @@ export default function ClientDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [conversationsDateRange, setConversationsDateRange] = useState<'all' | '7' | '30'>('all');
   const [statsRange, setStatsRange] = useState<'all' | '7' | '30'>('7');
+  const [bookingsDateRange, setBookingsDateRange] = useState<'all' | '7' | '30'>('all');
+  const [bookingsSearch, setBookingsSearch] = useState('');
 
   const { data: currentUser, isLoading: authLoading } = useQuery<AuthUser>({
     queryKey: ["/api/auth/me"],
@@ -382,7 +404,12 @@ export default function ClientDashboard() {
               <div className="h-12 w-12 rounded-xl bg-cyan-500/20 flex items-center justify-center">
                 <MessageSquare className="h-6 w-6 text-cyan-400" />
               </div>
-              <ArrowUpRight className="h-4 w-4 text-white/40" />
+              {!statsFetching && statsRange !== 'all' && typeof stats?.rangeStats?.conversationsTrend === 'number' && (
+                <div className={`flex items-center gap-1 text-xs font-medium ${stats.rangeStats.conversationsTrend >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {stats.rangeStats.conversationsTrend >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                  {stats.rangeStats.conversationsTrend >= 0 ? '+' : ''}{stats.rangeStats.conversationsTrend}%
+                </div>
+              )}
             </div>
             {statsFetching ? (
               <div className="h-8 w-16 bg-white/10 rounded animate-pulse mb-1" />
@@ -400,7 +427,12 @@ export default function ClientDashboard() {
               <div className="h-12 w-12 rounded-xl bg-green-500/20 flex items-center justify-center">
                 <Users className="h-6 w-6 text-green-400" />
               </div>
-              {!statsFetching && displayNewLeads > 0 && (
+              {!statsFetching && statsRange !== 'all' && typeof stats?.rangeStats?.leadsTrend === 'number' ? (
+                <div className={`flex items-center gap-1 text-xs font-medium ${stats.rangeStats.leadsTrend >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {stats.rangeStats.leadsTrend >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                  {stats.rangeStats.leadsTrend >= 0 ? '+' : ''}{stats.rangeStats.leadsTrend}%
+                </div>
+              ) : !statsFetching && displayNewLeads > 0 && (
                 <Badge className="bg-green-500/20 text-green-400 border-green-400/40">{displayNewLeads} new</Badge>
               )}
             </div>
@@ -420,7 +452,12 @@ export default function ClientDashboard() {
               <div className="h-12 w-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
                 <Calendar className="h-6 w-6 text-purple-400" />
               </div>
-              {!statsFetching && displayPendingBookings > 0 && (
+              {!statsFetching && statsRange !== 'all' && typeof stats?.rangeStats?.bookingsTrend === 'number' ? (
+                <div className={`flex items-center gap-1 text-xs font-medium ${stats.rangeStats.bookingsTrend >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {stats.rangeStats.bookingsTrend >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                  {stats.rangeStats.bookingsTrend >= 0 ? '+' : ''}{stats.rangeStats.bookingsTrend}%
+                </div>
+              ) : !statsFetching && displayPendingBookings > 0 && (
                 <Badge className="bg-amber-500/20 text-amber-400 border-amber-400/40">{displayPendingBookings} pending</Badge>
               )}
             </div>
@@ -442,8 +479,13 @@ export default function ClientDashboard() {
           <GlassCardContent className="pt-6">
             <div className="flex items-center justify-between mb-4">
               <div className="h-12 w-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                <TrendingUp className="h-6 w-6 text-blue-400" />
+                <Activity className="h-6 w-6 text-blue-400" />
               </div>
+              {stats?.lastActivity && (
+                <span className="text-xs text-white/40">
+                  {format(new Date(stats.lastActivity), "MMM d, h:mm a")}
+                </span>
+              )}
             </div>
             {statsFetching ? (
               <div className="h-8 w-16 bg-white/10 rounded animate-pulse mb-1" />
@@ -451,7 +493,7 @@ export default function ClientDashboard() {
               <div className="text-3xl font-bold text-white mb-1">{weeklyConversations}</div>
             )}
             <p className="text-sm text-white/60">This Week</p>
-            <p className="text-xs text-blue-400 mt-2">New conversations</p>
+            <p className="text-xs text-blue-400 mt-2">Last activity shown above</p>
           </GlassCardContent>
         </GlassCard>
       </div>
@@ -597,6 +639,106 @@ export default function ClientDashboard() {
         </GlassCard>
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <GlassCard data-testid="card-lead-funnel">
+          <GlassCardHeader>
+            <GlassCardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-green-400" />
+              Lead Funnel
+            </GlassCardTitle>
+            <GlassCardDescription>
+              Track leads through your pipeline
+            </GlassCardDescription>
+          </GlassCardHeader>
+          <GlassCardContent>
+            {stats?.leadStatusBreakdown && (stats.leadStatusBreakdown.new > 0 || stats.leadStatusBreakdown.contacted > 0 || stats.leadStatusBreakdown.qualified > 0 || stats.leadStatusBreakdown.converted > 0) ? (
+              <div className="space-y-4">
+                {[
+                  { label: 'New', value: stats.leadStatusBreakdown?.new ?? 0, color: 'bg-green-500' },
+                  { label: 'Contacted', value: stats.leadStatusBreakdown?.contacted ?? 0, color: 'bg-blue-500' },
+                  { label: 'Qualified', value: stats.leadStatusBreakdown?.qualified ?? 0, color: 'bg-purple-500' },
+                  { label: 'Converted', value: stats.leadStatusBreakdown?.converted ?? 0, color: 'bg-cyan-500' },
+                ].map((stage) => {
+                  const breakdown = stats.leadStatusBreakdown || { new: 0, contacted: 0, qualified: 0, converted: 0, lost: 0 };
+                  const total = (breakdown.new || 0) + (breakdown.contacted || 0) + (breakdown.qualified || 0) + (breakdown.converted || 0);
+                  const percentage = total > 0 ? (stage.value / total) * 100 : 0;
+                  return (
+                    <div key={stage.label} className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-white/70">{stage.label}</span>
+                        <span className="text-white font-medium">{stage.value}</span>
+                      </div>
+                      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full ${stage.color} rounded-full transition-all duration-500`}
+                          style={{ width: `${Math.max(percentage, stage.value > 0 ? 5 : 0)}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+                {(stats.leadStatusBreakdown?.lost ?? 0) > 0 && (
+                  <p className="text-xs text-white/40 mt-2">
+                    {stats.leadStatusBreakdown?.lost ?? 0} lost leads not shown
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-white/40">
+                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No lead data available</p>
+              </div>
+            )}
+          </GlassCardContent>
+        </GlassCard>
+
+        <GlassCard data-testid="card-peak-hours">
+          <GlassCardHeader>
+            <GlassCardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-cyan-400" />
+              Peak Activity Hours
+            </GlassCardTitle>
+            <GlassCardDescription>
+              When visitors chat most often
+            </GlassCardDescription>
+          </GlassCardHeader>
+          <GlassCardContent>
+            {Array.isArray(stats?.peakHours) && stats.peakHours.length > 0 ? (
+              <div className="space-y-3">
+                {stats.peakHours.slice(0, 5).map((peak) => {
+                  const peakCount = peak?.count ?? 0;
+                  const peakHour = peak?.hour ?? 0;
+                  const maxCount = stats.peakHours?.[0]?.count || 1;
+                  const percentage = maxCount > 0 ? (peakCount / maxCount) * 100 : 0;
+                  const hourLabel = peakHour === 0 ? '12 AM' : 
+                                    peakHour < 12 ? `${peakHour} AM` : 
+                                    peakHour === 12 ? '12 PM' : 
+                                    `${peakHour - 12} PM`;
+                  return (
+                    <div key={peakHour} className="flex items-center gap-3">
+                      <span className="text-sm text-white/60 w-16">{hourLabel}</span>
+                      <div className="flex-1 h-6 bg-white/10 rounded overflow-hidden">
+                        <div 
+                          className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded transition-all duration-500 flex items-center justify-end pr-2"
+                          style={{ width: `${Math.max(percentage, 10)}%` }}
+                        >
+                          <span className="text-xs text-white font-medium">{peakCount}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-white/40">
+                <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No activity data yet</p>
+              </div>
+            )}
+          </GlassCardContent>
+        </GlassCard>
+      </div>
+
       <GlassCard data-testid="card-quick-actions">
         <GlassCardHeader>
           <GlassCardTitle>Quick Actions</GlassCardTitle>
@@ -657,6 +799,34 @@ export default function ClientDashboard() {
     
     const filteredSessions = filterSessionsByDate(sessionsData?.sessions);
     
+    const handleExportCSV = () => {
+      if (!filteredSessions || filteredSessions.length === 0) {
+        toast({ title: "No data to export", description: "No conversations available for export" });
+        return;
+      }
+      
+      const headers = ['Date', 'Time', 'Visitor Messages', 'Bot Replies', 'Total Messages', 'Topics', 'Booking Requested'];
+      const rows = filteredSessions.map(session => [
+        format(new Date(session.startedAt), "yyyy-MM-dd"),
+        format(new Date(session.startedAt), "HH:mm"),
+        session.userMessageCount,
+        session.botMessageCount,
+        session.userMessageCount + session.botMessageCount,
+        session.topics?.join('; ') || '',
+        session.appointmentRequested ? 'Yes' : 'No'
+      ]);
+      
+      const csvContent = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `conversations-${format(new Date(), "yyyy-MM-dd")}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "Export complete", description: `Exported ${filteredSessions.length} conversations to CSV` });
+    };
+    
     return (
     <div className="space-y-6">
       <div>
@@ -671,7 +841,7 @@ export default function ClientDashboard() {
               <MessageSquare className="h-5 w-5 text-cyan-400" />
               All Conversations
             </GlassCardTitle>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <div className="flex items-center gap-1 p-1 rounded-lg bg-white/5 border border-white/10">
                 <Button
                   size="sm"
@@ -704,6 +874,17 @@ export default function ClientDashboard() {
               <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-400/40">
                 {filteredSessions.length} {conversationsDateRange === 'all' ? 'total' : `in ${conversationsDateRange} days`}
               </Badge>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-white/20 text-white/70 hover:text-white hover:bg-white/10"
+                onClick={handleExportCSV}
+                disabled={!filteredSessions || filteredSessions.length === 0}
+                data-testid="button-export-conversations-csv"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export CSV
+              </Button>
             </div>
           </div>
         </GlassCardHeader>
@@ -942,8 +1123,21 @@ export default function ClientDashboard() {
                           </span>
                         </div>
                       </div>
-                      {lead.notes && (
-                        <p className="text-sm text-white/50 mt-3 pl-16">{lead.notes}</p>
+                      {(lead.conversationPreview || lead.notes) && (
+                        <div className="mt-3 pl-16 space-y-2">
+                          {lead.conversationPreview && (
+                            <div className="flex items-start gap-2">
+                              <Sparkles className="h-3 w-3 text-cyan-400 mt-1 flex-shrink-0" />
+                              <div>
+                                <p className="text-xs text-cyan-400 font-medium">What they wanted:</p>
+                                <p className="text-sm text-white/60">{lead.conversationPreview}</p>
+                              </div>
+                            </div>
+                          )}
+                          {lead.notes && (
+                            <p className="text-sm text-white/50">{lead.notes}</p>
+                          )}
+                        </div>
                       )}
                     </div>
                   ))}
@@ -966,7 +1160,27 @@ export default function ClientDashboard() {
     );
   };
 
-  const renderBookingsSection = () => (
+  const renderBookingsSection = () => {
+    const filterBookingsByDate = (appointments: Appointment[] | undefined) => {
+      if (!appointments || bookingsDateRange === 'all') return appointments || [];
+      const daysAgo = bookingsDateRange === '7' ? 7 : 30;
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
+      return appointments.filter(a => new Date(a.createdAt) >= cutoffDate);
+    };
+    
+    const filteredBookings = filterBookingsByDate(appointmentsData?.appointments)?.filter((apt: Appointment) => {
+      if (!bookingsSearch) return true;
+      const query = bookingsSearch.toLowerCase();
+      return (
+        apt.name?.toLowerCase().includes(query) ||
+        apt.contact?.toLowerCase().includes(query) ||
+        apt.email?.toLowerCase().includes(query) ||
+        apt.appointmentType?.toLowerCase().includes(query)
+      );
+    }) || [];
+    
+    return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-white mb-2">Bookings</h2>
@@ -1005,10 +1219,56 @@ export default function ClientDashboard() {
 
       <GlassCard data-testid="card-bookings-list">
         <GlassCardHeader>
-          <GlassCardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-purple-400" />
-            All Booking Requests
-          </GlassCardTitle>
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <GlassCardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-purple-400" />
+              All Booking Requests
+            </GlassCardTitle>
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+                <Input
+                  placeholder="Search bookings..."
+                  value={bookingsSearch}
+                  onChange={(e) => setBookingsSearch(e.target.value)}
+                  className="pl-9 w-48 bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                  data-testid="input-search-bookings"
+                />
+              </div>
+              <div className="flex items-center gap-1 p-1 rounded-lg bg-white/5 border border-white/10">
+                <Button
+                  size="sm"
+                  variant={bookingsDateRange === 'all' ? "default" : "ghost"}
+                  className={bookingsDateRange === 'all' ? "bg-purple-500/20 text-purple-400 hover:bg-purple-500/30" : "text-white/60 hover:text-white hover:bg-white/10"}
+                  onClick={() => setBookingsDateRange('all')}
+                  data-testid="button-bookings-all"
+                >
+                  All
+                </Button>
+                <Button
+                  size="sm"
+                  variant={bookingsDateRange === '7' ? "default" : "ghost"}
+                  className={bookingsDateRange === '7' ? "bg-purple-500/20 text-purple-400 hover:bg-purple-500/30" : "text-white/60 hover:text-white hover:bg-white/10"}
+                  onClick={() => setBookingsDateRange('7')}
+                  data-testid="button-bookings-7days"
+                >
+                  7 Days
+                </Button>
+                <Button
+                  size="sm"
+                  variant={bookingsDateRange === '30' ? "default" : "ghost"}
+                  className={bookingsDateRange === '30' ? "bg-purple-500/20 text-purple-400 hover:bg-purple-500/30" : "text-white/60 hover:text-white hover:bg-white/10"}
+                  onClick={() => setBookingsDateRange('30')}
+                  data-testid="button-bookings-30days"
+                >
+                  30 Days
+                </Button>
+              </div>
+              <Badge className="bg-purple-500/20 text-purple-400 border-purple-400/40">
+                {filteredBookings.length} {bookingsDateRange === 'all' ? 'total' : `in ${bookingsDateRange} days`}
+              </Badge>
+            </div>
+          </div>
         </GlassCardHeader>
         <GlassCardContent>
           {appointmentsLoading ? (
@@ -1017,10 +1277,10 @@ export default function ClientDashboard() {
                 <div key={i} className="h-24 bg-white/10 rounded-lg animate-pulse" />
               ))}
             </div>
-          ) : (appointmentsData?.appointments?.length || 0) > 0 ? (
+          ) : filteredBookings.length > 0 ? (
             <ScrollArea className="h-[400px]">
               <div className="space-y-4">
-                {appointmentsData?.appointments?.map((apt) => (
+                {filteredBookings.map((apt) => (
                   <div
                     key={apt.id}
                     className="p-4 rounded-lg bg-white/5 border border-white/10"
@@ -1080,14 +1340,19 @@ export default function ClientDashboard() {
           ) : (
             <div className="text-center py-12 text-white/40">
               <Calendar className="h-16 w-16 mx-auto mb-4 opacity-50" />
-              <p className="text-lg font-medium">No booking requests yet</p>
-              <p className="text-sm mt-2">When visitors request appointments, they will appear here</p>
+              <p className="text-lg font-medium">
+                {bookingsSearch || bookingsDateRange !== 'all' ? 'No matching bookings' : 'No booking requests yet'}
+              </p>
+              <p className="text-sm mt-2">
+                {bookingsSearch || bookingsDateRange !== 'all' ? 'Try adjusting your filters' : 'When visitors request appointments, they will appear here'}
+              </p>
             </div>
           )}
         </GlassCardContent>
       </GlassCard>
     </div>
   );
+  };
 
   const renderSettingsSection = () => (
     <div className="space-y-6">
@@ -1203,6 +1468,13 @@ export default function ClientDashboard() {
                   {typeof profile?.businessInfo?.hours === 'string' 
                     ? profile.businessInfo.hours 
                     : 'Not configured'}
+                </p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium text-white/50">Notification Email</Label>
+                <p className="text-lg text-white mt-1 flex items-center gap-2" data-testid="text-notification-email">
+                  <Bell className="h-4 w-4 text-white/50" />
+                  {stats?.notificationEmail || 'Not configured'}
                 </p>
               </div>
             </div>

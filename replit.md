@@ -163,6 +163,15 @@ shared/
   - Credentials modal shows: Email, temporary password, and dashboard URL
   - Copy buttons for easy sharing with clients
   - Secure password generation using crypto.randomBytes
+- **Enhanced Client Dashboard Analytics (Dec 2024)**:
+  - Trend indicators on stat cards: Shows +/-% change vs previous period (green/red arrows)
+  - Lead Funnel visualization: Progress bars for New → Contacted → Qualified → Converted pipeline
+  - Peak Activity Hours chart: Bar visualization of when visitors chat most (top 5 hours)
+  - CSV Export: Download conversations to CSV with one click
+  - Bookings filters: Search by name/contact and filter by date range (7/30 days/All)
+  - "What they wanted" field: Shows conversation context for each lead
+  - Notification email display in Settings section
+  - Last activity timestamp shown on Activity card
 
 ## Control Center Features (Admin Only)
 The admin Control Center at `/super-admin` provides:

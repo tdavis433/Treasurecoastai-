@@ -4159,10 +4159,14 @@ These suggestions should be relevant to what was just discussed and help guide t
       const leadsData = await storage.getLeads(clientId);
       const leads = leadsData?.leads || [];
       
+      // Get client settings for notification email
+      const settings = await storage.getSettings(clientId);
+      
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const weekAgo = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
       const cutoffDate = days ? new Date(todayStart.getTime() - days * 24 * 60 * 60 * 1000) : null;
+      const previousPeriodStart = days ? new Date(cutoffDate!.getTime() - days * 24 * 60 * 60 * 1000) : null;
       
       // Calculate filtered stats based on date range
       const filterByDate = (items: any[], dateField: string = 'createdAt') => {
@@ -4173,9 +4177,69 @@ These suggestions should be relevant to what was just discussed and help guide t
         });
       };
       
+      // Filter for previous period (for trend calculation)
+      const filterByPreviousPeriod = (items: any[], dateField: string = 'createdAt') => {
+        if (!previousPeriodStart || !cutoffDate) return [];
+        return items.filter((item: any) => {
+          const itemDate = item[dateField] ? new Date(item[dateField]) : null;
+          return itemDate && itemDate >= previousPeriodStart && itemDate < cutoffDate;
+        });
+      };
+      
       const filteredAppointments = filterByDate(appointments);
       const filteredLeads = filterByDate(leads);
       const filteredAnalytics = filterByDate(analytics);
+      
+      // Previous period data for trends
+      const prevAppointments = filterByPreviousPeriod(appointments);
+      const prevLeads = filterByPreviousPeriod(leads);
+      const prevAnalytics = filterByPreviousPeriod(analytics);
+      
+      // Calculate peak hours from analytics
+      const hourCounts: Record<number, number> = {};
+      analytics.forEach((a: any) => {
+        const hour = new Date(a.createdAt).getHours();
+        hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+      });
+      const peakHoursData = Object.entries(hourCounts)
+        .map(([hour, count]) => ({ hour: parseInt(hour), count }))
+        .sort((a, b) => b.count - a.count);
+      
+      // Lead status breakdown
+      const leadStatusBreakdown = {
+        new: leads.filter((l: any) => l.status === 'new').length,
+        contacted: leads.filter((l: any) => l.status === 'contacted').length,
+        qualified: leads.filter((l: any) => l.status === 'qualified').length,
+        converted: leads.filter((l: any) => l.status === 'converted').length,
+        lost: leads.filter((l: any) => l.status === 'lost').length,
+      };
+      
+      // Find last activity timestamp
+      const lastAnalytic = analytics.length > 0 
+        ? analytics.reduce((latest: any, curr: any) => 
+            new Date(curr.createdAt) > new Date(latest.createdAt) ? curr : latest
+          )
+        : null;
+      const lastAppointment = appointments.length > 0
+        ? appointments.reduce((latest: any, curr: any) =>
+            new Date(curr.createdAt) > new Date(latest.createdAt) ? curr : latest
+          )
+        : null;
+      const lastLead = leads.length > 0
+        ? leads.reduce((latest: any, curr: any) =>
+            new Date(curr.createdAt) > new Date(latest.createdAt) ? curr : latest
+          )
+        : null;
+      
+      const lastActivityDates = [
+        lastAnalytic?.createdAt,
+        lastAppointment?.createdAt,
+        lastLead?.createdAt,
+      ].filter(Boolean).map(d => new Date(d));
+      
+      const lastActivity = lastActivityDates.length > 0
+        ? new Date(Math.max(...lastActivityDates.map(d => d.getTime()))).toISOString()
+        : null;
       
       // All-time stats (always returned)
       const dbStats = {
@@ -4189,15 +4253,35 @@ These suggestions should be relevant to what was just discussed and help guide t
         newLeads: leads.filter((l: any) => l.status === 'new').length,
       };
       
+      // Current period stats
+      const currentConversations = new Set(filteredAnalytics.map((a: any) => a.sessionId)).size;
+      const currentLeads = filteredLeads.length;
+      const currentBookings = filteredAppointments.length;
+      
+      // Previous period stats for trend calculation
+      const prevConversations = new Set(prevAnalytics.map((a: any) => a.sessionId)).size;
+      const prevLeadsCount = prevLeads.length;
+      const prevBookingsCount = prevAppointments.length;
+      
+      // Calculate trend percentages
+      const calcTrend = (current: number, previous: number): number => {
+        if (previous === 0) return current > 0 ? 100 : 0;
+        return Math.round(((current - previous) / previous) * 100);
+      };
+      
       // Range-filtered stats (null if no range specified)
       const rangeStats = cutoffDate ? {
         days,
-        conversations: new Set(filteredAnalytics.map((a: any) => a.sessionId)).size,
-        leads: filteredLeads.length,
+        conversations: currentConversations,
+        leads: currentLeads,
         newLeads: filteredLeads.filter((l: any) => l.status === 'new').length,
-        bookings: filteredAppointments.length,
+        bookings: currentBookings,
         pendingBookings: filteredAppointments.filter((a: any) => a.status === "new" || a.status === "pending").length,
         completedBookings: filteredAppointments.filter((a: any) => a.status === "confirmed" || a.status === "completed").length,
+        // Trend data
+        conversationsTrend: calcTrend(currentConversations, prevConversations),
+        leadsTrend: calcTrend(currentLeads, prevLeadsCount),
+        bookingsTrend: calcTrend(currentBookings, prevBookingsCount),
       } : null;
 
       res.json({
@@ -4208,6 +4292,11 @@ These suggestions should be relevant to what was just discussed and help guide t
         logStats,
         dbStats,
         rangeStats,
+        // Additional dashboard data
+        peakHours: peakHoursData.slice(0, 5), // Top 5 peak hours
+        leadStatusBreakdown,
+        lastActivity,
+        notificationEmail: settings?.notificationEmail || null,
       });
     } catch (error) {
       console.error("Get client stats error:", error);
