@@ -2364,7 +2364,7 @@ export default function ControlCenter() {
 
               {/* Knowledge Section - Global knowledge base */}
               {dashboardSection === 'knowledge' && (
-                <KnowledgeSectionPanel bots={clientBots} />
+                <KnowledgeSectionPanel bots={clientBots} clients={workspaces} />
               )}
 
               {/* Integrations Section - API keys and connections */}
@@ -6998,134 +6998,400 @@ function TemplatesSectionPanel({
 }
 
 // Knowledge Section Panel - Global knowledge management
-function KnowledgeSectionPanel({ bots }: { bots: BotConfig[] }) {
+function KnowledgeSectionPanel({ bots, clients }: { bots: BotConfig[]; clients: Client[] }) {
   const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
+  const [selectedClientFilter, setSelectedClientFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<'overview' | 'detail'>('overview');
+  const [selectedFaqIds, setSelectedFaqIds] = useState<Set<string>>(new Set());
+  const { toast } = useToast();
   
-  const totalFaqs = bots.reduce((sum, bot) => sum + (bot.faqs?.length || 0), 0);
-  const totalServices = bots.reduce((sum, bot) => sum + (bot.businessProfile?.services?.length || 0), 0);
-  const botsWithRules = bots.filter(b => b.rules?.specialInstructions?.length).length;
+  // Filter bots by client
+  const filteredBots = selectedClientFilter === 'all' 
+    ? bots 
+    : bots.filter(b => b.clientId === selectedClientFilter);
+  
+  // Compute stats
+  const totalFaqs = filteredBots.reduce((sum, bot) => sum + (bot.faqs?.length || 0), 0);
+  const totalServices = filteredBots.reduce((sum, bot) => sum + (bot.businessProfile?.services?.length || 0), 0);
+  const botsWithRules = filteredBots.filter(b => b.rules?.specialInstructions?.length).length;
+  const botsWithSystemPrompt = filteredBots.filter(b => b.systemPrompt).length;
 
   const selectedBot = bots.find(b => b.botId === selectedBotId);
+  
+  // All FAQs across all filtered bots (filtered by search when in detail mode)
+  const displayFaqs = filteredBots.flatMap(bot => 
+    (bot.faqs || []).map((faq, idx) => ({
+      ...faq,
+      botId: bot.botId,
+      botName: bot.name || bot.businessProfile?.businessName || 'Unknown Bot',
+      faqId: `${bot.botId}_faq_${idx}`,
+    }))
+  ).filter(faq => 
+    !searchQuery || 
+    faq.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    faq.answer.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  // Create a Set of visible FAQ IDs for quick lookup
+  const visibleFaqIds = new Set(displayFaqs.map(f => f.faqId));
+  
+  // Only count selections that are currently visible
+  const validSelectionCount = Array.from(selectedFaqIds).filter(id => visibleFaqIds.has(id)).length;
+  
+  // Clear selections when filters change or view mode changes
+  useEffect(() => {
+    if (selectedFaqIds.size > 0) {
+      setSelectedFaqIds(new Set());
+    }
+  }, [selectedClientFilter, searchQuery, viewMode]);
+  
+  // Get client name helper
+  const getClientName = (clientId: string) => {
+    const client = clients.find(c => c.id === clientId);
+    return client?.name || clientId;
+  };
+
+  // Sort bots by FAQ count (most first)
+  const botsByFaqCount = [...filteredBots].sort((a, b) => 
+    (b.faqs?.length || 0) - (a.faqs?.length || 0)
+  );
+
+  const handleSelectAllFaqs = () => {
+    const allSelected = displayFaqs.every(f => selectedFaqIds.has(f.faqId));
+    if (allSelected && displayFaqs.length > 0) {
+      setSelectedFaqIds(new Set());
+    } else {
+      setSelectedFaqIds(new Set(displayFaqs.map(f => f.faqId)));
+    }
+  };
+
+  const handleBulkExport = () => {
+    // Only export FAQs that are currently visible AND selected
+    const faqsToExport = displayFaqs.filter(f => selectedFaqIds.has(f.faqId));
+    if (faqsToExport.length === 0) {
+      toast({ title: 'No FAQs Selected', description: 'Please select FAQs to export', variant: 'destructive' });
+      return;
+    }
+    
+    const csvContent = [
+      ['Bot', 'Question', 'Answer'],
+      ...faqsToExport.map(f => [f.botName, f.question, f.answer])
+    ].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `faqs_export_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    toast({ title: 'Exported', description: `${faqsToExport.length} FAQs exported to CSV` });
+    setSelectedFaqIds(new Set());
+  };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h2 className="text-lg font-semibold text-white">Knowledge Base</h2>
-        <p className="text-sm text-white/55">Manage FAQs, services, and training data across all assistants</p>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h2 className="text-lg font-semibold text-white">Knowledge Base</h2>
+          <p className="text-sm text-white/55">Manage FAQs, services, and training data across all assistants</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setViewMode('overview')}
+            className={viewMode === 'overview' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white'}
+            data-testid="button-view-overview"
+          >
+            <LayoutGrid className="h-4 w-4 mr-2" />
+            Overview
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setViewMode('detail')}
+            className={viewMode === 'detail' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white'}
+            data-testid="button-view-detail"
+          >
+            <List className="h-4 w-4 mr-2" />
+            All FAQs
+          </Button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex items-center gap-4 flex-wrap">
+        <Select value={selectedClientFilter} onValueChange={setSelectedClientFilter}>
+          <SelectTrigger className="w-[200px] bg-white/5 border-white/10 text-white" data-testid="select-client-filter">
+            <SelectValue placeholder="Filter by client..." />
+          </SelectTrigger>
+          <SelectContent className="bg-[#1a1d24] border-white/10 max-h-[300px]">
+            <SelectItem value="all" className="text-white">All Clients</SelectItem>
+            {clients.map(client => (
+              <SelectItem key={client.id} value={client.id} className="text-white">
+                {client.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/40" />
+          <Input
+            placeholder="Search FAQs..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/40"
+            data-testid="input-search-faqs"
+          />
+        </div>
+        
+        {validSelectionCount > 0 && (
+          <Button
+            size="sm"
+            onClick={handleBulkExport}
+            className="bg-cyan-500 hover:bg-cyan-600 text-white"
+            data-testid="button-export-faqs"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export {validSelectionCount} FAQs
+          </Button>
+        )}
       </div>
 
       {/* Knowledge Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <GlassCard>
           <GlassCardContent className="py-4 text-center">
-            <p className="text-2xl font-bold text-white">{totalFaqs}</p>
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <MessageSquare className="h-4 w-4 text-cyan-400" />
+              <p className="text-2xl font-bold text-white">{totalFaqs}</p>
+            </div>
             <p className="text-xs text-white/55">Total FAQs</p>
           </GlassCardContent>
         </GlassCard>
         <GlassCard>
           <GlassCardContent className="py-4 text-center">
-            <p className="text-2xl font-bold text-white">{totalServices}</p>
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <Layers className="h-4 w-4 text-purple-400" />
+              <p className="text-2xl font-bold text-white">{totalServices}</p>
+            </div>
             <p className="text-xs text-white/55">Services Defined</p>
           </GlassCardContent>
         </GlassCard>
         <GlassCard>
           <GlassCardContent className="py-4 text-center">
-            <p className="text-2xl font-bold text-white">{botsWithRules}</p>
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <Shield className="h-4 w-4 text-amber-400" />
+              <p className="text-2xl font-bold text-white">{botsWithRules}</p>
+            </div>
             <p className="text-xs text-white/55">Bots with Rules</p>
           </GlassCardContent>
         </GlassCard>
         <GlassCard>
           <GlassCardContent className="py-4 text-center">
-            <p className="text-2xl font-bold text-white">{bots.length}</p>
-            <p className="text-xs text-white/55">Total Assistants</p>
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <Bot className="h-4 w-4 text-green-400" />
+              <p className="text-2xl font-bold text-white">{botsWithSystemPrompt}</p>
+            </div>
+            <p className="text-xs text-white/55">Custom Prompts</p>
           </GlassCardContent>
         </GlassCard>
       </div>
 
-      {/* Bot Selector */}
-      <div className="flex items-center gap-4">
-        <Select value={selectedBotId || ''} onValueChange={setSelectedBotId}>
-          <SelectTrigger className="w-[250px] bg-white/5 border-white/10 text-white" data-testid="select-knowledge-bot">
-            <SelectValue placeholder="Select an assistant to view..." />
-          </SelectTrigger>
-          <SelectContent className="bg-[#1a1d24] border-white/10 max-h-[300px]">
-            {bots.map(bot => (
-              <SelectItem key={bot.botId} value={bot.botId} className="text-white">
-                {bot.name || bot.businessProfile?.businessName}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {selectedBot && (
-          <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30">
-            {selectedBot.faqs?.length || 0} FAQs
-          </Badge>
-        )}
-      </div>
-
-      {/* Knowledge Display */}
-      {selectedBot ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* FAQs */}
+      {viewMode === 'overview' ? (
+        <>
+          {/* Bot Knowledge Cards - Overview Mode */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {botsByFaqCount.map(bot => {
+              const faqCount = bot.faqs?.length || 0;
+              const serviceCount = bot.businessProfile?.services?.length || 0;
+              const hasRules = !!(bot.rules?.specialInstructions?.length);
+              
+              return (
+                <GlassCard 
+                  key={bot.botId} 
+                  hover 
+                  className={`cursor-pointer ${selectedBotId === bot.botId ? 'ring-2 ring-cyan-500/50' : ''}`}
+                  onClick={() => {
+                    setSelectedBotId(bot.botId);
+                    setViewMode('detail');
+                  }}
+                  data-testid={`card-knowledge-bot-${bot.botId}`}
+                >
+                  <GlassCardContent className="p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-medium text-white truncate">{bot.name || bot.businessProfile?.businessName}</h3>
+                        <p className="text-xs text-white/50 truncate">{getClientName(bot.clientId)}</p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-white/40 flex-shrink-0" />
+                    </div>
+                    
+                    {/* Knowledge Bar */}
+                    <div className="h-2 rounded-full bg-white/10 overflow-hidden mb-3">
+                      <div 
+                        className="h-full bg-gradient-to-r from-cyan-500 to-purple-500" 
+                        style={{ width: `${Math.min(faqCount * 10, 100)}%` }}
+                      />
+                    </div>
+                    
+                    <div className="flex items-center gap-3 text-xs">
+                      <div className="flex items-center gap-1 text-white/60">
+                        <MessageSquare className="h-3 w-3 text-cyan-400" />
+                        <span className="text-cyan-400 font-medium">{faqCount}</span>
+                        <span>FAQs</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-white/60">
+                        <Layers className="h-3 w-3 text-purple-400" />
+                        <span className="text-purple-400 font-medium">{serviceCount}</span>
+                        <span>Services</span>
+                      </div>
+                      {hasRules && (
+                        <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs">Rules</Badge>
+                      )}
+                    </div>
+                  </GlassCardContent>
+                </GlassCard>
+              );
+            })}
+          </div>
+          
+          {filteredBots.length === 0 && (
+            <GlassCard>
+              <GlassCardContent className="py-12 text-center">
+                <Layers className="h-12 w-12 mx-auto mb-3 text-white/30" />
+                <p className="text-white/55">No assistants found for this filter</p>
+              </GlassCardContent>
+            </GlassCard>
+          )}
+        </>
+      ) : (
+        <>
+          {/* All FAQs Table - Detail Mode */}
           <GlassCard>
-            <GlassCardHeader>
-              <GlassCardTitle className="text-base">FAQs</GlassCardTitle>
-              <GlassCardDescription>{selectedBot.faqs?.length || 0} questions</GlassCardDescription>
+            <GlassCardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <GlassCardTitle className="text-base">All FAQs</GlassCardTitle>
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSelectAllFaqs}
+                    className="text-white/70 hover:text-white text-xs"
+                    data-testid="button-select-all-faqs"
+                  >
+                    {displayFaqs.every(f => selectedFaqIds.has(f.faqId)) && displayFaqs.length > 0 ? 'Deselect All' : 'Select All'}
+                  </Button>
+                  <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30">
+                    {displayFaqs.length} FAQs
+                  </Badge>
+                </div>
+              </div>
             </GlassCardHeader>
             <GlassCardContent>
-              <ScrollArea className="h-[300px]">
-                <div className="space-y-3">
-                  {selectedBot.faqs?.map((faq, i) => (
-                    <div key={i} className="p-3 bg-white/5 rounded-lg border border-white/10">
-                      <p className="font-medium text-white text-sm">{faq.question}</p>
-                      <p className="text-xs text-white/55 mt-1 line-clamp-2">{faq.answer}</p>
+              <ScrollArea className="h-[400px]">
+                <div className="space-y-2">
+                  {displayFaqs.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Search className="h-8 w-8 mx-auto mb-2 text-white/30" />
+                      <p className="text-white/55">No FAQs found matching your search</p>
                     </div>
-                  )) || <p className="text-white/40 text-sm">No FAQs configured</p>}
+                  ) : (
+                    displayFaqs.map((faq) => (
+                      <div 
+                        key={faq.faqId} 
+                        className={`p-3 rounded-lg border transition-colors ${
+                          selectedFaqIds.has(faq.faqId) 
+                            ? 'bg-cyan-500/10 border-cyan-500/30' 
+                            : 'bg-white/5 border-white/10 hover:bg-white/10'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedFaqIds.has(faq.faqId)}
+                            onChange={(e) => {
+                              const newSet = new Set(selectedFaqIds);
+                              if (e.target.checked) {
+                                newSet.add(faq.faqId);
+                              } else {
+                                newSet.delete(faq.faqId);
+                              }
+                              setSelectedFaqIds(newSet);
+                            }}
+                            className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10 text-cyan-500"
+                            data-testid={`checkbox-faq-${faq.faqId}`}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Badge className="bg-white/10 text-white/60 text-xs">{faq.botName}</Badge>
+                            </div>
+                            <p className="font-medium text-white text-sm">{faq.question}</p>
+                            <p className="text-xs text-white/55 mt-1 line-clamp-2">{faq.answer}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </ScrollArea>
             </GlassCardContent>
           </GlassCard>
 
-          {/* Services & Rules */}
-          <div className="space-y-6">
-            <GlassCard>
-              <GlassCardHeader>
-                <GlassCardTitle className="text-base">Services</GlassCardTitle>
-              </GlassCardHeader>
-              <GlassCardContent>
-                <div className="flex flex-wrap gap-2">
-                  {selectedBot.businessProfile?.services?.map((service, i) => (
-                    <Badge key={i} className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30">{service}</Badge>
-                  )) || <p className="text-white/40 text-sm">No services defined</p>}
-                </div>
-              </GlassCardContent>
-            </GlassCard>
+          {/* Selected Bot Detail Panel */}
+          {selectedBot && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <GlassCard>
+                <GlassCardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <GlassCardTitle className="text-base">{selectedBot.name || selectedBot.businessProfile?.businessName}</GlassCardTitle>
+                      <GlassCardDescription>Services & Business Info</GlassCardDescription>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedBotId(null)}
+                      className="text-white/50 hover:text-white"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </GlassCardHeader>
+                <GlassCardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedBot.businessProfile?.services?.map((service, i) => (
+                      <Badge key={i} className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30">{service}</Badge>
+                    )) || <p className="text-white/40 text-sm">No services defined</p>}
+                  </div>
+                </GlassCardContent>
+              </GlassCard>
 
-            <GlassCard>
-              <GlassCardHeader>
-                <GlassCardTitle className="text-base">Special Instructions</GlassCardTitle>
-              </GlassCardHeader>
-              <GlassCardContent>
-                <ul className="space-y-2">
-                  {selectedBot.rules?.specialInstructions?.map((instruction, i) => (
-                    <li key={i} className="text-sm text-white/70 flex items-start gap-2">
-                      <Check className="h-4 w-4 text-green-400 flex-shrink-0 mt-0.5" />
-                      {instruction}
-                    </li>
-                  )) || <p className="text-white/40 text-sm">No special instructions</p>}
-                </ul>
-              </GlassCardContent>
-            </GlassCard>
-          </div>
-        </div>
-      ) : (
-        <GlassCard>
-          <GlassCardContent className="py-12 text-center">
-            <Layers className="h-12 w-12 mx-auto mb-3 text-white/30" />
-            <p className="text-white/55">Select an assistant to view its knowledge base</p>
-          </GlassCardContent>
-        </GlassCard>
+              <GlassCard>
+                <GlassCardHeader>
+                  <GlassCardTitle className="text-base">Special Instructions</GlassCardTitle>
+                </GlassCardHeader>
+                <GlassCardContent>
+                  <ScrollArea className="h-[150px]">
+                    <ul className="space-y-2">
+                      {selectedBot.rules?.specialInstructions?.map((instruction, i) => (
+                        <li key={i} className="text-sm text-white/70 flex items-start gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-400 flex-shrink-0 mt-0.5" />
+                          {instruction}
+                        </li>
+                      )) || <p className="text-white/40 text-sm">No special instructions</p>}
+                    </ul>
+                  </ScrollArea>
+                </GlassCardContent>
+              </GlassCard>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
