@@ -1084,6 +1084,661 @@ export type InsertSystemLog = z.infer<typeof insertSystemLogSchema>;
 export type SystemLog = typeof systemLogs.$inferSelect;
 
 // =============================================
+// UNIFIED CONVERSATION MODEL (Phase 1A)
+// =============================================
+
+// Channels - Define communication channel types
+export const channels = pgTable("channels", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull(),
+  
+  // Channel type: chat, email, facebook, instagram, whatsapp, sms
+  type: text("type").notNull(),
+  name: text("name").notNull(),
+  
+  // Connection config (OAuth tokens, API keys, etc.)
+  config: json("config").$type<{
+    provider?: string;
+    credentials?: Record<string, string>;
+    webhookUrl?: string;
+    pageId?: string;
+    phoneNumber?: string;
+    emailAddress?: string;
+    [key: string]: any;
+  }>().default({}),
+  
+  // Status: active, paused, disconnected, error
+  status: text("status").notNull().default("active"),
+  lastSyncAt: timestamp("last_sync_at"),
+  errorMessage: text("error_message"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  workspaceIdx: index("channels_workspace_id_idx").on(table.workspaceId),
+  typeIdx: index("channels_type_idx").on(table.type),
+  statusIdx: index("channels_status_idx").on(table.status),
+}));
+
+export const insertChannelSchema = createInsertSchema(channels).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertChannel = z.infer<typeof insertChannelSchema>;
+export type Channel = typeof channels.$inferSelect;
+
+// Conversations - Unified conversation model
+export const conversations = pgTable("conversations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull(),
+  botId: varchar("bot_id"),
+  channelId: varchar("channel_id").notNull(),
+  
+  // External IDs for channel-specific tracking
+  externalId: varchar("external_id"),
+  
+  // Contact info (visitor/customer)
+  contactId: varchar("contact_id"),
+  contactName: text("contact_name"),
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  contactAvatar: text("contact_avatar"),
+  
+  // Conversation metadata
+  subject: text("subject"),
+  tags: text("tags").array().default([]),
+  priority: text("priority").notNull().default("normal"), // low, normal, high, urgent
+  
+  // Status: open, pending, resolved, closed
+  status: text("status").notNull().default("open"),
+  
+  // Assignment
+  assignedAgentId: varchar("assigned_agent_id"),
+  assignedTeam: text("assigned_team"),
+  
+  // AI/Bot handling
+  isHandledByBot: boolean("is_handled_by_bot").notNull().default(true),
+  botHandoffReason: text("bot_handoff_reason"),
+  
+  // Metrics
+  messageCount: integer("message_count").notNull().default(0),
+  firstResponseAt: timestamp("first_response_at"),
+  resolvedAt: timestamp("resolved_at"),
+  
+  // CSAT
+  csatScore: integer("csat_score"),
+  csatFeedback: text("csat_feedback"),
+  
+  // Context for AI
+  aiContext: json("ai_context").$type<{
+    summary?: string;
+    sentiment?: string;
+    topics?: string[];
+    userIntent?: string;
+    previousInteractions?: number;
+    [key: string]: any;
+  }>().default({}),
+  
+  // Custom fields
+  customFields: json("custom_fields").$type<Record<string, any>>().default({}),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  lastMessageAt: timestamp("last_message_at"),
+}, (table) => ({
+  workspaceIdx: index("conversations_workspace_id_idx").on(table.workspaceId),
+  botIdx: index("conversations_bot_id_idx").on(table.botId),
+  channelIdx: index("conversations_channel_id_idx").on(table.channelId),
+  statusIdx: index("conversations_status_idx").on(table.status),
+  assignedIdx: index("conversations_assigned_agent_id_idx").on(table.assignedAgentId),
+  contactIdx: index("conversations_contact_id_idx").on(table.contactId),
+  lastMessageIdx: index("conversations_last_message_at_idx").on(table.lastMessageAt),
+}));
+
+export const insertConversationSchema = createInsertSchema(conversations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  messageCount: true,
+});
+
+export type InsertConversation = z.infer<typeof insertConversationSchema>;
+export type Conversation = typeof conversations.$inferSelect;
+
+// Conversation Messages - Individual messages
+export const conversationMessages = pgTable("conversation_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull(),
+  
+  // Sender info
+  senderType: text("sender_type").notNull(), // user, bot, agent, system
+  senderId: varchar("sender_id"),
+  senderName: text("sender_name"),
+  senderAvatar: text("sender_avatar"),
+  
+  // Message content
+  content: text("content").notNull(),
+  contentType: text("content_type").notNull().default("text"), // text, html, markdown, rich
+  
+  // Rich content (cards, buttons, etc.)
+  richContent: json("rich_content").$type<{
+    type?: string;
+    buttons?: Array<{ label: string; action: string; url?: string }>;
+    cards?: Array<{ title: string; description: string; image?: string; buttons?: any[] }>;
+    quickReplies?: string[];
+    form?: { fields: any[] };
+    [key: string]: any;
+  }>(),
+  
+  // Attachments reference
+  hasAttachments: boolean("has_attachments").notNull().default(false),
+  
+  // Status: sent, delivered, read, failed
+  status: text("status").notNull().default("sent"),
+  
+  // AI metadata
+  isAiGenerated: boolean("is_ai_generated").notNull().default(false),
+  aiConfidence: integer("ai_confidence"),
+  aiSourceIds: text("ai_source_ids").array(),
+  
+  // Channel-specific metadata
+  externalMessageId: varchar("external_message_id"),
+  metadata: json("metadata").$type<Record<string, any>>().default({}),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  editedAt: timestamp("edited_at"),
+  deletedAt: timestamp("deleted_at"),
+}, (table) => ({
+  conversationIdx: index("conversation_messages_conversation_id_idx").on(table.conversationId),
+  senderTypeIdx: index("conversation_messages_sender_type_idx").on(table.senderType),
+  createdAtIdx: index("conversation_messages_created_at_idx").on(table.createdAt),
+}));
+
+export const insertConversationMessageSchema = createInsertSchema(conversationMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertConversationMessage = z.infer<typeof insertConversationMessageSchema>;
+export type ConversationMessage = typeof conversationMessages.$inferSelect;
+
+// Message Attachments
+export const messageAttachments = pgTable("message_attachments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  messageId: varchar("message_id").notNull().references(() => conversationMessages.id),
+  workspaceId: varchar("workspace_id").notNull(), // Workspace scoping for tenant isolation
+  
+  // File info
+  fileName: text("file_name").notNull(),
+  fileType: text("file_type").notNull(), // image, video, audio, document, other
+  mimeType: text("mime_type"),
+  fileSize: integer("file_size"),
+  
+  // Storage
+  url: text("url").notNull(),
+  thumbnailUrl: text("thumbnail_url"),
+  
+  // Metadata
+  metadata: json("metadata").$type<{
+    width?: number;
+    height?: number;
+    duration?: number;
+    [key: string]: any;
+  }>().default({}),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  messageIdx: index("message_attachments_message_id_idx").on(table.messageId),
+  workspaceIdx: index("message_attachments_workspace_id_idx").on(table.workspaceId),
+}));
+
+export const insertMessageAttachmentSchema = createInsertSchema(messageAttachments).omit({
+  id: true,
+  createdAt: true,
+  workspaceId: true, // Auto-populated from message context
+});
+
+export type InsertMessageAttachment = z.infer<typeof insertMessageAttachmentSchema>;
+export type MessageAttachment = typeof messageAttachments.$inferSelect;
+
+// Conversation Activities - Activity log
+export const conversationActivities = pgTable("conversation_activities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull(),
+  
+  // Activity type: assigned, status_changed, tag_added, note_added, etc.
+  activityType: text("activity_type").notNull(),
+  
+  // Actor
+  actorId: varchar("actor_id"),
+  actorType: text("actor_type").notNull(), // agent, bot, system
+  actorName: text("actor_name"),
+  
+  // Activity details
+  description: text("description"),
+  oldValue: text("old_value"),
+  newValue: text("new_value"),
+  metadata: json("metadata").$type<Record<string, any>>().default({}),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  conversationIdx: index("conversation_activities_conversation_id_idx").on(table.conversationId),
+  activityTypeIdx: index("conversation_activities_activity_type_idx").on(table.activityType),
+  createdAtIdx: index("conversation_activities_created_at_idx").on(table.createdAt),
+}));
+
+export const insertConversationActivitySchema = createInsertSchema(conversationActivities).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertConversationActivity = z.infer<typeof insertConversationActivitySchema>;
+export type ConversationActivity = typeof conversationActivities.$inferSelect;
+
+// Conversation Participants - Track who is in each conversation
+export const conversationParticipants = pgTable("conversation_participants", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull().references(() => conversations.id),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id),
+  
+  // Participant info
+  participantType: text("participant_type").notNull(), // customer, agent, bot
+  participantId: varchar("participant_id"), // References adminUsers.id for agents, or contact_id for customers
+  
+  // Display info
+  name: text("name"),
+  email: text("email"),
+  avatar: text("avatar"),
+  
+  // Role and status
+  role: text("role").default("member"), // owner, agent, participant, member
+  status: text("status").default("active"), // active, left, removed
+  
+  // Activity tracking
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+  leftAt: timestamp("left_at"),
+  lastSeenAt: timestamp("last_seen_at"),
+  lastReadAt: timestamp("last_read_at"),
+  unreadCount: integer("unread_count").default(0),
+  
+  // Metadata
+  metadata: json("metadata").$type<Record<string, any>>().default({}),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  conversationIdx: index("conversation_participants_conversation_id_idx").on(table.conversationId),
+  workspaceIdx: index("conversation_participants_workspace_id_idx").on(table.workspaceId),
+  participantIdx: index("conversation_participants_participant_id_idx").on(table.participantId),
+  statusIdx: index("conversation_participants_status_idx").on(table.status),
+  uniqueParticipant: unique("conversation_participants_unique").on(table.conversationId, table.participantId, table.participantType),
+}));
+
+export const insertConversationParticipantSchema = createInsertSchema(conversationParticipants).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertConversationParticipant = z.infer<typeof insertConversationParticipantSchema>;
+export type ConversationParticipant = typeof conversationParticipants.$inferSelect;
+
+// =============================================
+// BOT FLOW ENGINE (Phase 1C)
+// =============================================
+
+// Bot Flow Definitions
+export const botFlows = pgTable("bot_flows", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull(),
+  botId: varchar("bot_id").notNull(),
+  
+  // Flow metadata
+  name: text("name").notNull(),
+  description: text("description"),
+  flowType: text("flow_type").notNull().default("conversation"), // conversation, welcome, fallback, handoff
+  
+  // Version tracking
+  currentVersionId: varchar("current_version_id"),
+  isPublished: boolean("is_published").notNull().default(false),
+  
+  // Trigger config
+  triggers: json("triggers").$type<Array<{
+    type: string; // keyword, intent, page_url, event, schedule, fallback
+    conditions: Record<string, any>;
+    priority?: number;
+  }>>().default([]),
+  
+  // Status
+  status: text("status").notNull().default("draft"), // draft, active, paused, archived
+  
+  // Stats
+  totalRuns: integer("total_runs").notNull().default(0),
+  successfulRuns: integer("successful_runs").notNull().default(0),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  publishedAt: timestamp("published_at"),
+}, (table) => ({
+  workspaceIdx: index("bot_flows_workspace_id_idx").on(table.workspaceId),
+  botIdx: index("bot_flows_bot_id_idx").on(table.botId),
+  statusIdx: index("bot_flows_status_idx").on(table.status),
+  flowTypeIdx: index("bot_flows_flow_type_idx").on(table.flowType),
+}));
+
+export const insertBotFlowSchema = createInsertSchema(botFlows).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  totalRuns: true,
+  successfulRuns: true,
+});
+
+export type InsertBotFlow = z.infer<typeof insertBotFlowSchema>;
+export type BotFlow = typeof botFlows.$inferSelect;
+
+// Bot Flow Versions - Version history
+export const botFlowVersions = pgTable("bot_flow_versions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  flowId: varchar("flow_id").notNull(),
+  
+  // Version metadata
+  version: integer("version").notNull(),
+  name: text("name"),
+  description: text("description"),
+  
+  // Flow definition (nodes and edges)
+  nodes: json("nodes").$type<Array<{
+    id: string;
+    type: string; // start, message, question, condition, action, ai_answer, handoff, end
+    position: { x: number; y: number };
+    data: {
+      label?: string;
+      content?: string;
+      options?: any[];
+      conditions?: any[];
+      actions?: any[];
+      aiConfig?: Record<string, any>;
+      [key: string]: any;
+    };
+  }>>().notNull().default([]),
+  
+  edges: json("edges").$type<Array<{
+    id: string;
+    source: string;
+    target: string;
+    sourceHandle?: string;
+    label?: string;
+    condition?: Record<string, any>;
+  }>>().notNull().default([]),
+  
+  // Variables and settings
+  variables: json("variables").$type<Array<{
+    name: string;
+    type: string;
+    defaultValue?: any;
+  }>>().default([]),
+  
+  settings: json("settings").$type<{
+    timeout?: number;
+    fallbackFlowId?: string;
+    aiEnabled?: boolean;
+    [key: string]: any;
+  }>().default({}),
+  
+  // Author
+  createdBy: varchar("created_by"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  flowIdx: index("bot_flow_versions_flow_id_idx").on(table.flowId),
+  versionIdx: index("bot_flow_versions_version_idx").on(table.version),
+}));
+
+export const insertBotFlowVersionSchema = createInsertSchema(botFlowVersions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertBotFlowVersion = z.infer<typeof insertBotFlowVersionSchema>;
+export type BotFlowVersion = typeof botFlowVersions.$inferSelect;
+
+// =============================================
+// KNOWLEDGE BASE (Phase 2A)
+// =============================================
+
+// Knowledge Sources - Source definitions
+export const knowledgeSources = pgTable("knowledge_sources", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull(),
+  botId: varchar("bot_id"),
+  
+  // Source type: url, file, text, api, sitemap
+  sourceType: text("source_type").notNull(),
+  name: text("name").notNull(),
+  
+  // Source config
+  config: json("config").$type<{
+    url?: string;
+    fileKey?: string;
+    content?: string;
+    refreshInterval?: number;
+    selectors?: string[];
+    excludePatterns?: string[];
+    [key: string]: any;
+  }>().notNull(),
+  
+  // Status: pending, processing, ready, error
+  status: text("status").notNull().default("pending"),
+  statusMessage: text("status_message"),
+  
+  // Stats
+  documentCount: integer("document_count").notNull().default(0),
+  chunkCount: integer("chunk_count").notNull().default(0),
+  lastSyncAt: timestamp("last_sync_at"),
+  nextSyncAt: timestamp("next_sync_at"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  workspaceIdx: index("knowledge_sources_workspace_id_idx").on(table.workspaceId),
+  botIdx: index("knowledge_sources_bot_id_idx").on(table.botId),
+  statusIdx: index("knowledge_sources_status_idx").on(table.status),
+}));
+
+export const insertKnowledgeSourceSchema = createInsertSchema(knowledgeSources).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  documentCount: true,
+  chunkCount: true,
+});
+
+export type InsertKnowledgeSource = z.infer<typeof insertKnowledgeSourceSchema>;
+export type KnowledgeSource = typeof knowledgeSources.$inferSelect;
+
+// Knowledge Documents - Processed documents
+export const knowledgeDocuments = pgTable("knowledge_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sourceId: varchar("source_id").notNull(),
+  workspaceId: varchar("workspace_id").notNull(),
+  
+  // Document info
+  title: text("title").notNull(),
+  url: text("url"),
+  content: text("content").notNull(),
+  
+  // Metadata
+  metadata: json("metadata").$type<{
+    author?: string;
+    publishedAt?: string;
+    category?: string;
+    tags?: string[];
+    language?: string;
+    [key: string]: any;
+  }>().default({}),
+  
+  // Stats
+  chunkCount: integer("chunk_count").notNull().default(0),
+  contentHash: text("content_hash"),
+  
+  // Visibility
+  isPublic: boolean("is_public").notNull().default(true),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  sourceIdx: index("knowledge_documents_source_id_idx").on(table.sourceId),
+  workspaceIdx: index("knowledge_documents_workspace_id_idx").on(table.workspaceId),
+}));
+
+export const insertKnowledgeDocumentSchema = createInsertSchema(knowledgeDocuments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  chunkCount: true,
+});
+
+export type InsertKnowledgeDocument = z.infer<typeof insertKnowledgeDocumentSchema>;
+export type KnowledgeDocument = typeof knowledgeDocuments.$inferSelect;
+
+// Knowledge Chunks - Chunked text for vector search
+export const knowledgeChunks = pgTable("knowledge_chunks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id").notNull(),
+  sourceId: varchar("source_id").notNull(),
+  workspaceId: varchar("workspace_id").notNull(),
+  
+  // Chunk content
+  content: text("content").notNull(),
+  chunkIndex: integer("chunk_index").notNull(),
+  
+  // Token count for context window management
+  tokenCount: integer("token_count"),
+  
+  // Metadata
+  metadata: json("metadata").$type<{
+    heading?: string;
+    section?: string;
+    pageNumber?: number;
+    [key: string]: any;
+  }>().default({}),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  documentIdx: index("knowledge_chunks_document_id_idx").on(table.documentId),
+  sourceIdx: index("knowledge_chunks_source_id_idx").on(table.sourceId),
+  workspaceIdx: index("knowledge_chunks_workspace_id_idx").on(table.workspaceId),
+}));
+
+export const insertKnowledgeChunkSchema = createInsertSchema(knowledgeChunks).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertKnowledgeChunk = z.infer<typeof insertKnowledgeChunkSchema>;
+export type KnowledgeChunk = typeof knowledgeChunks.$inferSelect;
+
+// =============================================
+// ENTERPRISE FEATURES (Phase 3D)
+// =============================================
+
+// NOTE: auditLogs table is already defined above (line ~443)
+// Use existing auditLogs for audit trail functionality
+
+// Integration Registry - Marketplace integrations
+export const integrations = pgTable("integrations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull(),
+  
+  // Integration type: crm, email, slack, zapier, custom
+  type: text("type").notNull(),
+  name: text("name").notNull(),
+  provider: text("provider").notNull(), // hubspot, salesforce, slack, etc.
+  
+  // Auth and config
+  authType: text("auth_type").notNull(), // oauth, api_key, webhook
+  config: json("config").$type<{
+    apiKey?: string;
+    accessToken?: string;
+    refreshToken?: string;
+    webhookUrl?: string;
+    expiresAt?: string;
+    [key: string]: any;
+  }>().default({}),
+  
+  // Settings
+  settings: json("settings").$type<{
+    syncInterval?: number;
+    eventMappings?: Record<string, string>;
+    fieldMappings?: Record<string, string>;
+    [key: string]: any;
+  }>().default({}),
+  
+  // Status
+  status: text("status").notNull().default("active"), // active, paused, error, disconnected
+  lastSyncAt: timestamp("last_sync_at"),
+  errorMessage: text("error_message"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  workspaceIdx: index("integrations_workspace_id_idx").on(table.workspaceId),
+  typeIdx: index("integrations_type_idx").on(table.type),
+  providerIdx: index("integrations_provider_idx").on(table.provider),
+  statusIdx: index("integrations_status_idx").on(table.status),
+}));
+
+export const insertIntegrationSchema = createInsertSchema(integrations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertIntegration = z.infer<typeof insertIntegrationSchema>;
+export type Integration = typeof integrations.$inferSelect;
+
+// Agent Performance Metrics (Phase 3A)
+export const agentMetrics = pgTable("agent_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull(),
+  agentId: varchar("agent_id").notNull(),
+  
+  // Time period
+  date: timestamp("date").notNull(),
+  
+  // Metrics
+  conversationsHandled: integer("conversations_handled").notNull().default(0),
+  messagesReceived: integer("messages_received").notNull().default(0),
+  messagesSent: integer("messages_sent").notNull().default(0),
+  avgFirstResponseTime: integer("avg_first_response_time"), // seconds
+  avgResolutionTime: integer("avg_resolution_time"), // seconds
+  csatTotal: integer("csat_total").notNull().default(0),
+  csatCount: integer("csat_count").notNull().default(0),
+  transfersIn: integer("transfers_in").notNull().default(0),
+  transfersOut: integer("transfers_out").notNull().default(0),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  workspaceIdx: index("agent_metrics_workspace_id_idx").on(table.workspaceId),
+  agentIdx: index("agent_metrics_agent_id_idx").on(table.agentId),
+  dateIdx: index("agent_metrics_date_idx").on(table.date),
+  unique: unique("agent_metrics_agent_date").on(table.agentId, table.date),
+}));
+
+export const insertAgentMetricSchema = createInsertSchema(agentMetrics).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAgentMetric = z.infer<typeof insertAgentMetricSchema>;
+export type AgentMetric = typeof agentMetrics.$inferSelect;
+
+// =============================================
 // DRIZZLE RELATIONS
 // =============================================
 
@@ -1218,5 +1873,169 @@ export const automationRunsRelations = relations(automationRuns, ({ one }) => ({
   bot: one(bots, {
     fields: [automationRuns.botId],
     references: [bots.botId],
+  }),
+}));
+
+// =============================================
+// NEW FEATURE RELATIONS (Phase 1-3)
+// =============================================
+
+// Channel relations
+export const channelsRelations = relations(channels, ({ one, many }) => ({
+  workspace: one(workspaces, {
+    fields: [channels.workspaceId],
+    references: [workspaces.id],
+  }),
+  conversations: many(conversations),
+}));
+
+// Conversation relations
+export const conversationsRelations = relations(conversations, ({ one, many }) => ({
+  workspace: one(workspaces, {
+    fields: [conversations.workspaceId],
+    references: [workspaces.id],
+  }),
+  channel: one(channels, {
+    fields: [conversations.channelId],
+    references: [channels.id],
+  }),
+  bot: one(bots, {
+    fields: [conversations.botId],
+    references: [bots.botId],
+  }),
+  assignedAgent: one(adminUsers, {
+    fields: [conversations.assignedAgentId],
+    references: [adminUsers.id],
+  }),
+  messages: many(conversationMessages),
+  activities: many(conversationActivities),
+  participants: many(conversationParticipants),
+}));
+
+// Conversation messages relations
+export const conversationMessagesRelations = relations(conversationMessages, ({ one, many }) => ({
+  conversation: one(conversations, {
+    fields: [conversationMessages.conversationId],
+    references: [conversations.id],
+  }),
+  attachments: many(messageAttachments),
+}));
+
+// Message attachments relations
+export const messageAttachmentsRelations = relations(messageAttachments, ({ one }) => ({
+  message: one(conversationMessages, {
+    fields: [messageAttachments.messageId],
+    references: [conversationMessages.id],
+  }),
+}));
+
+// Conversation participants relations
+export const conversationParticipantsRelations = relations(conversationParticipants, ({ one }) => ({
+  conversation: one(conversations, {
+    fields: [conversationParticipants.conversationId],
+    references: [conversations.id],
+  }),
+  workspace: one(workspaces, {
+    fields: [conversationParticipants.workspaceId],
+    references: [workspaces.id],
+  }),
+}));
+
+// Conversation activities relations
+export const conversationActivitiesRelations = relations(conversationActivities, ({ one }) => ({
+  conversation: one(conversations, {
+    fields: [conversationActivities.conversationId],
+    references: [conversations.id],
+  }),
+}));
+
+// Bot flows relations
+export const botFlowsRelations = relations(botFlows, ({ one, many }) => ({
+  workspace: one(workspaces, {
+    fields: [botFlows.workspaceId],
+    references: [workspaces.id],
+  }),
+  bot: one(bots, {
+    fields: [botFlows.botId],
+    references: [bots.botId],
+  }),
+  versions: many(botFlowVersions),
+  currentVersion: one(botFlowVersions, {
+    fields: [botFlows.currentVersionId],
+    references: [botFlowVersions.id],
+  }),
+}));
+
+// Bot flow versions relations
+export const botFlowVersionsRelations = relations(botFlowVersions, ({ one }) => ({
+  flow: one(botFlows, {
+    fields: [botFlowVersions.flowId],
+    references: [botFlows.id],
+  }),
+}));
+
+// Knowledge sources relations
+export const knowledgeSourcesRelations = relations(knowledgeSources, ({ one, many }) => ({
+  workspace: one(workspaces, {
+    fields: [knowledgeSources.workspaceId],
+    references: [workspaces.id],
+  }),
+  bot: one(bots, {
+    fields: [knowledgeSources.botId],
+    references: [bots.botId],
+  }),
+  documents: many(knowledgeDocuments),
+}));
+
+// Knowledge documents relations
+export const knowledgeDocumentsRelations = relations(knowledgeDocuments, ({ one, many }) => ({
+  source: one(knowledgeSources, {
+    fields: [knowledgeDocuments.sourceId],
+    references: [knowledgeSources.id],
+  }),
+  workspace: one(workspaces, {
+    fields: [knowledgeDocuments.workspaceId],
+    references: [workspaces.id],
+  }),
+  chunks: many(knowledgeChunks),
+}));
+
+// Knowledge chunks relations
+export const knowledgeChunksRelations = relations(knowledgeChunks, ({ one }) => ({
+  document: one(knowledgeDocuments, {
+    fields: [knowledgeChunks.documentId],
+    references: [knowledgeDocuments.id],
+  }),
+  source: one(knowledgeSources, {
+    fields: [knowledgeChunks.sourceId],
+    references: [knowledgeSources.id],
+  }),
+}));
+
+// Audit logs relations (uses existing auditLogs table)
+export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
+  user: one(adminUsers, {
+    fields: [auditLogs.userId],
+    references: [adminUsers.id],
+  }),
+}));
+
+// Integrations relations
+export const integrationsRelations = relations(integrations, ({ one }) => ({
+  workspace: one(workspaces, {
+    fields: [integrations.workspaceId],
+    references: [workspaces.id],
+  }),
+}));
+
+// Agent metrics relations
+export const agentMetricsRelations = relations(agentMetrics, ({ one }) => ({
+  workspace: one(workspaces, {
+    fields: [agentMetrics.workspaceId],
+    references: [workspaces.id],
+  }),
+  agent: one(adminUsers, {
+    fields: [agentMetrics.agentId],
+    references: [adminUsers.id],
   }),
 }));
