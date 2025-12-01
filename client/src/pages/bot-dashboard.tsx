@@ -17,7 +17,8 @@ import {
   Phone, Mail, Globe, MapPin, Building2, Sparkles, AlertTriangle,
   Calendar, Utensils, Scissors, Car, Dumbbell, Home, ClipboardList,
   Users, DollarSign, Shield, Search, Loader2, ExternalLink, Check,
-  X, RefreshCw, Trash2, Plus, Download
+  X, RefreshCw, Trash2, Plus, Download, BarChart3, Send, Bot,
+  Play, Eye, Code2
 } from "lucide-react";
 
 interface BotFaq {
@@ -672,8 +673,12 @@ export default function BotDashboard() {
           </div>
         </div>
 
-        <Tabs defaultValue="profile" className="space-y-6">
+        <Tabs defaultValue="overview" className="space-y-6">
           <TabsList className="flex flex-wrap gap-2 h-auto p-1 bg-white/5 rounded-xl border border-white/10">
+            <TabsTrigger value="overview" className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500/20 data-[state=active]:to-blue-500/20 data-[state=active]:text-cyan-400 data-[state=active]:border data-[state=active]:border-cyan-400/30 data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white transition-all" data-testid="tab-overview">
+              <BarChart3 className="h-4 w-4" />
+              Overview
+            </TabsTrigger>
             <TabsTrigger value="profile" className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500/20 data-[state=active]:to-blue-500/20 data-[state=active]:text-cyan-400 data-[state=active]:border data-[state=active]:border-cyan-400/30 data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white transition-all" data-testid="tab-profile">
               <Building2 className="h-4 w-4" />
               Business Profile
@@ -694,8 +699,16 @@ export default function BotDashboard() {
               <Search className="h-4 w-4" />
               Website Intelligence
             </TabsTrigger>
+            <TabsTrigger value="test-chat" className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500/20 data-[state=active]:to-emerald-500/20 data-[state=active]:text-green-400 data-[state=active]:border data-[state=active]:border-green-400/30 data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white transition-all" data-testid="tab-test-chat">
+              <Play className="h-4 w-4" />
+              Test Chat
+            </TabsTrigger>
             {renderBusinessTypeTabs()}
           </TabsList>
+
+          <TabsContent value="overview">
+            <BotOverviewTab botId={botId || ''} botConfig={editedConfig} />
+          </TabsContent>
 
           <TabsContent value="profile">
             <GlassCard>
@@ -820,6 +833,10 @@ export default function BotDashboard() {
               updateConfig={updateConfig}
               updateBusinessProfile={updateBusinessProfile}
             />
+          </TabsContent>
+
+          <TabsContent value="test-chat">
+            <TestChatTab botId={botId || ''} botConfig={editedConfig} />
           </TabsContent>
 
           {renderBusinessTypeContent()}
@@ -1304,6 +1321,381 @@ function WebsiteScraperTab({ botId, botConfig, updateConfig, updateBusinessProfi
                 </Button>
               </div>
             )}
+          </GlassCardContent>
+        </GlassCard>
+      </div>
+    </div>
+  );
+}
+
+interface BotStats {
+  totalConversations: number;
+  totalMessages: number;
+  leadsCollected: number;
+  bookingsInitiated: number;
+  avgResponseTime: number;
+  satisfactionRate: number;
+}
+
+function BotOverviewTab({ botId, botConfig }: { botId: string; botConfig: BotConfig }) {
+  const { data: stats, isLoading } = useQuery<BotStats>({
+    queryKey: ["/api/admin/bot-stats", botId],
+    queryFn: async () => {
+      const response = await fetch(`/api/admin/bot-stats?botId=${botId}`, { credentials: "include" });
+      if (!response.ok) {
+        return {
+          totalConversations: 0,
+          totalMessages: 0,
+          leadsCollected: 0,
+          bookingsInitiated: 0,
+          avgResponseTime: 0,
+          satisfactionRate: 0,
+        };
+      }
+      return response.json();
+    },
+  });
+
+  const statCards = [
+    { 
+      label: "Conversations", 
+      value: stats?.totalConversations || 0, 
+      icon: MessageSquare, 
+      color: "cyan",
+      gradient: "from-cyan-500/20 to-blue-500/20",
+      borderColor: "border-cyan-400/30"
+    },
+    { 
+      label: "Messages", 
+      value: stats?.totalMessages || 0, 
+      icon: Send, 
+      color: "purple",
+      gradient: "from-purple-500/20 to-pink-500/20",
+      borderColor: "border-purple-400/30"
+    },
+    { 
+      label: "Leads Collected", 
+      value: stats?.leadsCollected || 0, 
+      icon: Users, 
+      color: "green",
+      gradient: "from-green-500/20 to-emerald-500/20",
+      borderColor: "border-green-400/30"
+    },
+    { 
+      label: "Bookings", 
+      value: stats?.bookingsInitiated || 0, 
+      icon: Calendar, 
+      color: "yellow",
+      gradient: "from-yellow-500/20 to-orange-500/20",
+      borderColor: "border-yellow-400/30"
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {statCards.map((stat) => (
+          <GlassCard key={stat.label}>
+            <GlassCardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-white/55 text-sm">{stat.label}</p>
+                  <p className="text-3xl font-bold text-white mt-1" data-testid={`stat-${stat.label.toLowerCase().replace(' ', '-')}`}>
+                    {isLoading ? "-" : stat.value.toLocaleString()}
+                  </p>
+                </div>
+                <div className={`p-3 rounded-xl bg-gradient-to-br ${stat.gradient} border ${stat.borderColor}`}>
+                  <stat.icon className={`h-6 w-6 text-${stat.color}-400`} />
+                </div>
+              </div>
+            </GlassCardContent>
+          </GlassCard>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <GlassCard>
+          <GlassCardHeader>
+            <GlassCardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-cyan-400" />
+              Bot Configuration Summary
+            </GlassCardTitle>
+          </GlassCardHeader>
+          <GlassCardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                <span className="text-white/70">Business Name</span>
+                <span className="text-white font-medium">{botConfig.businessProfile.businessName}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                <span className="text-white/70">Business Type</span>
+                <NeonBadge variant="default" className="capitalize">
+                  {botConfig.businessProfile.type.replace('_', ' ')}
+                </NeonBadge>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                <span className="text-white/70">FAQs Configured</span>
+                <span className="text-white font-medium">{botConfig.faqs?.length || 0}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                <span className="text-white/70">System Prompt Length</span>
+                <span className="text-white font-medium">{botConfig.systemPrompt?.length || 0} chars</span>
+              </div>
+            </div>
+          </GlassCardContent>
+        </GlassCard>
+
+        <GlassCard>
+          <GlassCardHeader>
+            <GlassCardTitle className="flex items-center gap-2">
+              <Code2 className="h-5 w-5 text-purple-400" />
+              Quick Actions
+            </GlassCardTitle>
+          </GlassCardHeader>
+          <GlassCardContent>
+            <div className="space-y-3">
+              <Button 
+                variant="outline" 
+                className="w-full justify-start text-left"
+                onClick={() => window.open(`/demo/${botId}`, '_blank')}
+                data-testid="button-preview-widget"
+              >
+                <Eye className="h-4 w-4 mr-3 text-cyan-400" />
+                Preview Widget
+                <ExternalLink className="h-3 w-3 ml-auto text-white/40" />
+              </Button>
+              <Button 
+                variant="outline" 
+                className="w-full justify-start text-left"
+                data-testid="button-view-conversations"
+              >
+                <MessageSquare className="h-4 w-4 mr-3 text-green-400" />
+                View Conversations
+              </Button>
+              <Button 
+                variant="outline" 
+                className="w-full justify-start text-left"
+                data-testid="button-view-leads"
+              >
+                <Users className="h-4 w-4 mr-3 text-purple-400" />
+                View Leads
+              </Button>
+              <Button 
+                variant="outline" 
+                className="w-full justify-start text-left"
+                data-testid="button-get-embed-code"
+              >
+                <Code2 className="h-4 w-4 mr-3 text-yellow-400" />
+                Get Embed Code
+              </Button>
+            </div>
+          </GlassCardContent>
+        </GlassCard>
+      </div>
+    </div>
+  );
+}
+
+interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+}
+
+function TestChatTab({ botId, botConfig }: { botId: string; botConfig: BotConfig }) {
+  const { toast } = useToast();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [inputValue, setInputValue] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+
+  const sendMessage = async () => {
+    if (!inputValue.trim()) return;
+
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: inputValue.trim(),
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInputValue("");
+    setIsTyping(true);
+
+    try {
+      const response = await fetch(`/api/chat/${botConfig.clientId}/${botId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          message: userMessage.content,
+          sessionId: `test-${Date.now()}`,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to get response');
+
+      const data = await response.json();
+      
+      const assistantMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: data.response || data.message || "I'm sorry, I couldn't generate a response.",
+        timestamp: new Date(),
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      toast({ 
+        title: "Error", 
+        description: "Failed to send message. Check API configuration.",
+        variant: "destructive" 
+      });
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  const clearChat = () => {
+    setMessages([]);
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="lg:col-span-2">
+        <GlassCard className="h-[600px] flex flex-col">
+          <GlassCardHeader className="flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <div>
+                <GlassCardTitle className="flex items-center gap-2">
+                  <Bot className="h-5 w-5 text-green-400" />
+                  Test Chat
+                </GlassCardTitle>
+                <GlassCardDescription>
+                  Preview how your bot responds to user messages
+                </GlassCardDescription>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={clearChat}
+                data-testid="button-clear-chat"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Clear
+              </Button>
+            </div>
+          </GlassCardHeader>
+          <GlassCardContent className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-2">
+              {messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center text-white/40">
+                  <Bot className="h-16 w-16 mb-4 opacity-50" />
+                  <p className="text-lg font-medium">Start a conversation</p>
+                  <p className="text-sm">Type a message below to test your bot</p>
+                </div>
+              ) : (
+                messages.map((msg) => (
+                  <div 
+                    key={msg.id}
+                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    data-testid={`message-${msg.role}-${msg.id}`}
+                  >
+                    <div className={`max-w-[80%] p-4 rounded-2xl ${
+                      msg.role === 'user'
+                        ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white'
+                        : 'bg-white/10 border border-white/10 text-white'
+                    }`}>
+                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                      <p className={`text-xs mt-2 ${msg.role === 'user' ? 'text-white/70' : 'text-white/40'}`}>
+                        {msg.timestamp.toLocaleTimeString()}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+              {isTyping && (
+                <div className="flex justify-start">
+                  <div className="bg-white/10 border border-white/10 p-4 rounded-2xl">
+                    <div className="flex gap-1">
+                      <div className="w-2 h-2 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <div className="w-2 h-2 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <div className="w-2 h-2 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3 flex-shrink-0">
+              <Input
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+                placeholder="Type a message..."
+                className="bg-white/5 border-white/10 text-white flex-1"
+                data-testid="input-test-message"
+              />
+              <Button 
+                onClick={sendMessage}
+                disabled={isTyping || !inputValue.trim()}
+                className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                data-testid="button-send-test"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+          </GlassCardContent>
+        </GlassCard>
+      </div>
+
+      <div className="space-y-6">
+        <GlassCard>
+          <GlassCardHeader>
+            <GlassCardTitle className="text-sm">Bot Context</GlassCardTitle>
+          </GlassCardHeader>
+          <GlassCardContent>
+            <div className="space-y-3 text-sm">
+              <div>
+                <p className="text-white/55">Business</p>
+                <p className="text-white font-medium">{botConfig.businessProfile.businessName}</p>
+              </div>
+              <div>
+                <p className="text-white/55">Type</p>
+                <p className="text-white capitalize">{botConfig.businessProfile.type.replace('_', ' ')}</p>
+              </div>
+              <div>
+                <p className="text-white/55">FAQs Available</p>
+                <p className="text-white">{botConfig.faqs?.length || 0} Q&A pairs</p>
+              </div>
+            </div>
+          </GlassCardContent>
+        </GlassCard>
+
+        <GlassCard>
+          <GlassCardHeader>
+            <GlassCardTitle className="text-sm">Test Suggestions</GlassCardTitle>
+          </GlassCardHeader>
+          <GlassCardContent>
+            <div className="space-y-2">
+              {[
+                "What are your hours?",
+                "How can I contact you?",
+                "What services do you offer?",
+                "I'd like to book an appointment",
+              ].map((suggestion) => (
+                <Button
+                  key={suggestion}
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start text-left text-white/70 hover:text-white"
+                  onClick={() => setInputValue(suggestion)}
+                  data-testid={`suggestion-${suggestion.replace(/[^a-z0-9]/gi, '-').toLowerCase()}`}
+                >
+                  {suggestion}
+                </Button>
+              ))}
+            </div>
           </GlassCardContent>
         </GlassCard>
       </div>
