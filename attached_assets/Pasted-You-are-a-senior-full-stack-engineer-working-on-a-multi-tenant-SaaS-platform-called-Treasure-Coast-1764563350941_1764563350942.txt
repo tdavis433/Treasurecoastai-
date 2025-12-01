@@ -1,0 +1,226 @@
+You are a senior full-stack engineer working on a multi-tenant SaaS platform called **Treasure Coast AI**.
+
+STACK & CONTEXT
+- Tech stack: Next.js + React + TypeScript + Tailwind (or similar modern React stack).
+- There are TWO main areas:
+  1. SUPER-ADMIN / AGENCY AREA (for us, the agency) → DO NOT CHANGE in this task.
+  2. CLIENT DASHBOARD (for each business owner) → THIS IS WHAT YOU ARE UPGRADING NOW.
+
+HIGH-LEVEL GOAL
+Completely review and upgrade the **client dashboard** so it:
+- Feels clean, modern, and beautiful.
+- Shows stats that ACTUALLY matter to the business owner.
+- Lets them change basic “front-of-house” things (general settings) without breaking anything.
+- Hides or removes all “developer” / “backend” style controls. We handle all heavy logic behind the scenes.
+
+TREAT THE CLIENT AS:
+- A busy small business owner (restaurant, barber, sober living, gym, etc.).
+- Not technical.
+- Wants quick clarity: “Is this working?” “How many leads/bookings did I get?” “What do I need to change?”
+
+YOUR TASKS (BIG PICTURE)
+1. Go through every page, tab, and component of the **client dashboard**, and:
+   - Remove or hide anything that’s confusing, technical, or only relevant to us (the agency).
+   - Rename and reorganize things so it’s crystal clear for a non-technical business owner.
+   - Add or adjust features so they can:
+     - See key performance stats.
+     - View and search conversations/leads.
+     - Make simple, safe changes.
+
+2. Make the UI consistent with a **clean, premium SaaS**:
+   - Simple layout.
+   - Clear spacing and typography.
+   - Logical grouping of information.
+   - Use existing design system / tailwind classes already in the project (dark / neon / coastal if present).
+
+3. Implement all changes directly in code:
+   - Update components, pages, hooks, API calls.
+   - Clean up unused code and dead tabs.
+   - Add comments where logic might need future expansion.
+
+--------------------------------
+DETAIL SPEC — CLIENT DASHBOARD UX
+--------------------------------
+
+The client dashboard should be built around these main sections in the sidebar/top nav:
+
+1) **Overview**
+   - Purpose: At-a-glance health of their assistant.
+   - Show:
+     - Total conversations (Today, Last 7 days, Last 30 days).
+     - Leads captured (with contact info) for the same ranges.
+     - Booked appointments / calls (if that exists in the system).
+     - Online/offline status of their assistant (e.g. “Assistant is ACTIVE / PAUSED”).
+     - Basic satisfaction / success metric if available (e.g. % of conversations that reached a goal).
+   - Add simple cards / widgets with clear labels, like:
+     - “New Leads (Last 7 Days)”
+     - “Total Conversations (Last 30 Days)”
+     - “Bookings from Assistant (Last 30 Days)”
+   - Include a short, friendly text at the top like:
+     - “Here’s how your AI assistant has been helping your business.”
+
+2) **Conversations**
+   - Purpose: Let the client see what the bot is saying and what customers ask.
+   - Features:
+     - List of conversations with:
+       - Customer name (if captured) or “Visitor”.
+       - Timestamp of last message.
+       - Basic tags/status (e.g. “Lead captured”, “Booking made”, “General question”).
+     - Ability to click a conversation to view the full chat transcript.
+     - Optional: simple filters (Date range, conversation type).
+   - Do NOT add heavy helpdesk features (assignments, complex tagging, etc.). Keep it simple and readable.
+
+3) **Leads / Contacts**
+   - Purpose: Show captured leads in a simple table.
+   - Columns (as available in the data model):
+     - Name
+     - Phone
+     - Email
+     - Source (e.g. “Website chat widget”)
+     - Date captured
+   - Allow:
+     - Simple search by name/email/phone.
+     - Export to CSV if easy (optional, but nice).
+   - Make it easy for the client to see “real people” the assistant has brought in.
+
+4) **Bookings / Appointments** (only if the product already supports this)
+   - If the system already tracks bookings, show:
+     - Date/time
+     - Service type
+     - Customer name + contact
+     - Status (upcoming / completed / canceled)
+   - If there’s no real bookings feature, either:
+     - Hide this tab entirely, OR
+     - Rename it to something accurate that matches existing functionality.
+
+5) **Knowledge Base / FAQs**
+   - Purpose: Let the client safely help the assistant answer better.
+   - Show:
+     - A list/table of FAQ entries:
+       - Question
+       - Answer
+       - Category (if used)
+     - Buttons: “Add Question”, “Edit”, “Delete”.
+   - Make the edit form extremely simple:
+     - “Customer Question”
+     - “Your Answer”
+   - Do NOT expose any deep prompt engineering or internal system prompts here.
+   - If the project already has a way to sync this to the bot, hook into it. If not, wire it up to the existing schema/endpoints used by the bot.
+
+6) **Settings**
+   - This is where the client can change “general stuff” safely.
+   - Group settings into clear sections:
+
+   [Business Info]
+   - Business Name
+   - Address (optional)
+   - Phone
+   - Email
+   - Website
+   - Hours of operation
+
+   [Assistant Basics]
+   - Assistant / Bot name (e.g. “Faith House Assistant”).
+   - Welcome message / greeting.
+   - Default tone: dropdown if supported (e.g. “Friendly”, “Professional”, “Casual”) — optional.
+
+   [Availability & Status]
+   - Simple toggle: ACTIVE / PAUSED for their assistant.
+   - Text helper: explain what PAUSED means (e.g. “The assistant will stop replying to new conversations.”).
+   - IMPORTANT: Call whatever existing API / field controls bot status (respect any existing status logic).
+
+   [Notifications]
+   - Simple toggles:
+     - “Email me new leads”
+     - “Email me daily summary” (if implemented)
+   - If emailing is not yet implemented, either:
+     - Hide these options, or
+     - Add them but clearly mark as “coming soon” (only if you also add TODO comments in code).
+
+   [Chat Widget]
+   - If a website widget already exists in the project:
+     - Show the script snippet they should copy/paste into their site.
+     - Allow changing:
+       - Primary color (within a safe set if needed).
+       - Position (bottom-right / bottom-left).
+       - Widget greeting text.
+   - Hide any tailwind/theme internals; only expose simple, client-friendly options.
+
+7) **Billing / Plan** (ONLY if already partially implemented)
+   - If Stripe or billing exists:
+     - Show current plan name.
+     - Price per month.
+     - Next billing date.
+     - Button: “Manage Subscription” that links to the Stripe portal or billing page.
+   - If billing is not fully wired up, either:
+     - Hide this tab completely, OR
+     - Show read-only info with a TODO in the code for future Stripe integration.
+
+--------------------------------
+CLEANUP & RENAMING
+--------------------------------
+
+Go through the current client dashboard pages and:
+
+- Rename any confusing tabs:
+  - Example:
+    - “Bot Config” → “Assistant Settings”
+    - “KB Entries” → “Knowledge Base”
+    - “Logs” → “Conversations” or remove if it’s raw technical logs.
+- Remove / hide:
+  - API key fields.
+  - Model names.
+  - Temperature / top_p / system prompt blocks.
+  - Internal feature flags.
+- Replace technical copy with simple explanations:
+  - “LLM Provider” → HIDDEN or handled by super-admin only.
+  - “Embedding Sync” → HIDDEN or described as “We keep your assistant updated automatically.”
+
+--------------------------------
+IMPLEMENTATION STEPS
+--------------------------------
+
+1) DISCOVER EXISTING STRUCTURE
+   - Find all client dashboard routes/pages (e.g. /client, /dashboard, /app/client, etc.).
+   - List the current sections and components.
+   - Identify which ones are:
+     - Client-friendly and useful.
+     - Too technical and should be moved/removed/hidden.
+
+2) DESIGN NEW NAV STRUCTURE IN CODE
+   - Implement a clear navigation based on:
+     - Overview
+     - Conversations
+     - Leads
+     - Bookings (if real)
+     - Knowledge Base
+     - Settings
+     - Billing (if real)
+   - Update routing, layout components, and active state handling as needed.
+
+3) IMPLEMENT UI + LOGIC CHANGES
+   - Build / refactor pages for each section above.
+   - Use existing design tokens/components where possible (e.g. Card, Table, Badge, Toggle, etc.).
+   - Wire each page to the existing backend API / DB queries.
+   - Add new aggregations for metrics in Overview if needed (e.g. use existing conversations/leads tables).
+
+4) CLEAN & COMMENT
+   - Remove dead code, unused components, commented-out experiments.
+   - Add comments in code where future work will be needed:
+     - e.g. // TODO: Wire this “Daily Summary Email” toggle to real email service.
+   - Ensure TypeScript types stay accurate and strict.
+
+5) FINAL PASS
+   - Click through the entire client dashboard experience as if you are a non-technical owner.
+   - Confirm:
+     - All labels are clear.
+     - No technical jargon is visible.
+     - Important stats are obvious.
+     - General settings are easy to adjust.
+   - Fix any layout or wording issues you see.
+
+CONSTRAINTS
+- DO NOT modify the super-admin / agency control center in this task.
+- DO NOT expose raw prompts, API keys, model names, or low-level AI settings to the client.
+- Preserve all security and auth rules already in place.
+- Keep code clean, typed, and production-ready.
