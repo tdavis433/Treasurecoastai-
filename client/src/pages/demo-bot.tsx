@@ -358,14 +358,14 @@ export default function DemoBotPage() {
   const features = businessTypeFeatures[bp.type] || ["Quality Service", "Expert Team", "Customer First", "Best Prices"];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#0A0A0F]">
       {/* Demo Banner */}
-      <div className="bg-gray-900 text-white py-2 px-4 text-center text-sm">
+      <div className="bg-gradient-to-r from-cyan-900/30 via-[#0A0A0F] to-purple-900/30 text-white py-3 px-4 text-center text-sm border-b border-white/5 premium-blur">
         <div className="flex items-center justify-center gap-4">
-          <Badge variant="outline" className="border-cyan-400 text-cyan-400">DEMO</Badge>
-          <span>This is a demo landing page for {bp.businessName}</span>
+          <Badge className="bg-cyan-500/10 text-cyan-400 border-cyan-500/30 neon-pulse">DEMO</Badge>
+          <span className="text-white/80">This is a demo landing page for <span className="text-cyan-400 font-medium">{bp.businessName}</span></span>
           <Link href="/demos">
-            <Button variant="ghost" size="sm" className="text-white hover:text-cyan-400" data-testid="button-back">
+            <Button variant="ghost" size="sm" className="text-white/70 hover:text-cyan-400 transition-colors" data-testid="button-back">
               <ArrowLeft className="h-4 w-4 mr-1" />
               All Demos
             </Button>
@@ -374,40 +374,46 @@ export default function DemoBotPage() {
       </div>
 
       {/* Hero Section */}
-      <section className={`relative bg-gradient-to-br ${colors.primary} text-white overflow-hidden`}>
-        <div className="absolute inset-0 bg-black/20" />
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 25% 25%, white 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+      <section className={`relative bg-gradient-to-br from-[#0A0A0F] via-[#0F1520] to-[#0A0A0F] text-white overflow-hidden`}>
+        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-500/5" />
+        <div className="absolute inset-0 cyber-grid opacity-20" />
+        
+        {/* Animated glow orbs */}
+        <div className="glow-orb glow-orb-cyan w-[400px] h-[400px] top-0 left-0" style={{ animationDelay: '0s' }} />
+        <div className="glow-orb glow-orb-purple w-[300px] h-[300px] bottom-0 right-0" style={{ animationDelay: '2s' }} />
         
         <div className="relative max-w-6xl mx-auto px-4 py-24 md:py-32">
           <div className="flex flex-col md:flex-row items-center gap-12">
             <div className="flex-1 text-center md:text-left">
-              <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 mb-6">
-                {businessTypeIcons[bp.type] || <Building2 className="h-5 w-5" />}
-                <span className="text-sm font-medium capitalize">{bp.type.replace(/_/g, ' ')}</span>
+              <div className="inline-flex items-center gap-2 glass-card-glow rounded-full px-5 py-2.5 mb-6 border border-cyan-500/20">
+                <div className="text-cyan-400">
+                  {businessTypeIcons[bp.type] || <Building2 className="h-5 w-5" />}
+                </div>
+                <span className="text-sm font-medium capitalize text-white/90">{bp.type.replace(/_/g, ' ')}</span>
               </div>
               
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4" data-testid="hero-title">
-                {bp.businessName}
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 slide-in-bottom" data-testid="hero-title">
+                <span className="text-glow-gradient">{bp.businessName}</span>
               </h1>
               
-              <p className="text-xl md:text-2xl text-white/90 mb-8" data-testid="hero-tagline">
+              <p className="text-xl md:text-2xl text-white/70 mb-8" data-testid="hero-tagline">
                 {tagline}
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
-                <Button size="lg" className="bg-white text-gray-900 hover:bg-gray-100 font-semibold" data-testid="button-contact">
+                <Button size="lg" className="btn-gradient-primary glow-cyan-strong font-semibold" data-testid="button-contact">
                   <Phone className="h-5 w-5 mr-2" />
                   Contact Us
                 </Button>
-                <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10" data-testid="button-learn-more">
+                <Button size="lg" variant="outline" className="border-white/20 text-white hover:bg-white/10 hover:border-cyan-500/40 transition-all" data-testid="button-learn-more">
                   Learn More
                 </Button>
               </div>
             </div>
             
             <div className="flex-1 hidden md:flex justify-center">
-              <div className="w-64 h-64 bg-white/10 backdrop-blur-sm rounded-3xl flex items-center justify-center">
-                <div className="w-32 h-32 text-white/80">
+              <div className="w-64 h-64 glass-card-glow rounded-3xl flex items-center justify-center border border-cyan-500/20 breathe-glow">
+                <div className="w-32 h-32 text-cyan-400">
                   {businessTypeIcons[bp.type] || <Building2 className="w-full h-full" />}
                 </div>
               </div>
@@ -417,21 +423,21 @@ export default function DemoBotPage() {
       </section>
 
       {/* Features Section */}
-      <section className="py-16 bg-white">
+      <section className="py-16 bg-[#0A0A0F]">
         <div className="max-w-6xl mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">Why Choose Us</h2>
+          <h2 className="text-3xl font-bold text-center text-white mb-12">Why Choose Us</h2>
           
           <div className="grid md:grid-cols-4 gap-6">
             {features.map((feature, index) => (
               <div 
                 key={index}
-                className="bg-gray-50 rounded-2xl p-6 text-center hover:shadow-lg transition-shadow"
+                className="glass-card-glow rounded-2xl p-6 text-center card-tilt"
                 data-testid={`feature-${index}`}
               >
-                <div className={`w-12 h-12 ${colors.accent} rounded-xl flex items-center justify-center mx-auto mb-4`}>
-                  <CheckCircle2 className="h-6 w-6 text-white" />
+                <div className="w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-xl flex items-center justify-center mx-auto mb-4 border border-cyan-500/20">
+                  <CheckCircle2 className="h-6 w-6 text-cyan-400" />
                 </div>
-                <h3 className="font-semibold text-gray-900">{feature}</h3>
+                <h3 className="font-semibold text-white">{feature}</h3>
               </div>
             ))}
           </div>
@@ -440,10 +446,10 @@ export default function DemoBotPage() {
 
       {/* Services Section */}
       {bp.services && bp.services.length > 0 && (
-        <section className="py-16 bg-gray-50">
+        <section className="py-16 bg-gradient-to-b from-[#0A0A0F] to-[#0F1520]">
           <div className="max-w-6xl mx-auto px-4">
-            <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">Our Services</h2>
-            <p className="text-gray-600 text-center mb-12 max-w-2xl mx-auto">
+            <h2 className="text-3xl font-bold text-center text-white mb-4">Our Services</h2>
+            <p className="text-white/60 text-center mb-12 max-w-2xl mx-auto">
               We offer a wide range of services to meet your needs
             </p>
             
@@ -451,14 +457,14 @@ export default function DemoBotPage() {
               {bp.services.slice(0, 6).map((service, index) => (
                 <div 
                   key={index}
-                  className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-lg transition-shadow"
+                  className="glass-card-glow rounded-2xl p-6 card-tilt border border-white/5"
                   data-testid={`service-${index}`}
                 >
-                  <div className={`w-10 h-10 ${colors.accent} rounded-lg flex items-center justify-center mb-4`}>
-                    <Star className="h-5 w-5 text-white" />
+                  <div className="w-10 h-10 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-lg flex items-center justify-center mb-4 border border-cyan-500/20">
+                    <Star className="h-5 w-5 text-cyan-400" />
                   </div>
-                  <h3 className="font-semibold text-gray-900 mb-2">{service}</h3>
-                  <p className="text-sm text-gray-600">
+                  <h3 className="font-semibold text-white mb-2">{service}</h3>
+                  <p className="text-sm text-white/60">
                     Professional {service.toLowerCase()} services tailored to your needs.
                   </p>
                 </div>
@@ -469,83 +475,83 @@ export default function DemoBotPage() {
       )}
 
       {/* Contact Section */}
-      <section className="py-16 bg-white">
+      <section className="py-16 bg-[#0A0A0F]">
         <div className="max-w-6xl mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-12">
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-6">Get In Touch</h2>
-              <p className="text-gray-600 mb-8">
+              <h2 className="text-3xl font-bold text-white mb-6">Get In Touch</h2>
+              <p className="text-white/60 mb-8">
                 Have questions? We'd love to hear from you. Reach out to us and we'll respond as soon as we can.
               </p>
               
               <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 ${colors.accent} rounded-xl flex items-center justify-center`}>
-                    <Phone className="h-5 w-5 text-white" />
+                <div className="flex items-center gap-4 glass-card-glow p-4 rounded-xl">
+                  <div className="w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl flex items-center justify-center border border-cyan-500/20">
+                    <Phone className="h-5 w-5 text-cyan-400" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Phone</p>
-                    <p className="font-semibold text-gray-900" data-testid="contact-phone">{bp.phone}</p>
+                    <p className="text-sm text-white/50">Phone</p>
+                    <p className="font-semibold text-white" data-testid="contact-phone">{bp.phone}</p>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 ${colors.accent} rounded-xl flex items-center justify-center`}>
-                    <Mail className="h-5 w-5 text-white" />
+                <div className="flex items-center gap-4 glass-card-glow p-4 rounded-xl">
+                  <div className="w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl flex items-center justify-center border border-cyan-500/20">
+                    <Mail className="h-5 w-5 text-cyan-400" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Email</p>
-                    <p className="font-semibold text-gray-900" data-testid="contact-email">{bp.email}</p>
+                    <p className="text-sm text-white/50">Email</p>
+                    <p className="font-semibold text-white" data-testid="contact-email">{bp.email}</p>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 ${colors.accent} rounded-xl flex items-center justify-center`}>
-                    <MapPin className="h-5 w-5 text-white" />
+                <div className="flex items-center gap-4 glass-card-glow p-4 rounded-xl">
+                  <div className="w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl flex items-center justify-center border border-cyan-500/20">
+                    <MapPin className="h-5 w-5 text-cyan-400" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Location</p>
-                    <p className="font-semibold text-gray-900" data-testid="contact-location">{bp.location}</p>
+                    <p className="text-sm text-white/50">Location</p>
+                    <p className="font-semibold text-white" data-testid="contact-location">{bp.location}</p>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 ${colors.accent} rounded-xl flex items-center justify-center`}>
-                    <Globe className="h-5 w-5 text-white" />
+                <div className="flex items-center gap-4 glass-card-glow p-4 rounded-xl">
+                  <div className="w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl flex items-center justify-center border border-cyan-500/20">
+                    <Globe className="h-5 w-5 text-cyan-400" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Website</p>
-                    <p className="font-semibold text-gray-900" data-testid="contact-website">{bp.website}</p>
+                    <p className="text-sm text-white/50">Website</p>
+                    <p className="font-semibold text-white" data-testid="contact-website">{bp.website}</p>
                   </div>
                 </div>
               </div>
             </div>
             
             <div>
-              <h3 className="text-xl font-bold text-gray-900 mb-4">Business Hours</h3>
-              <div className="bg-gray-50 rounded-2xl p-6">
+              <h3 className="text-xl font-bold text-white mb-4">Business Hours</h3>
+              <div className="glass-card-glow rounded-2xl p-6">
                 <div className="flex items-start gap-4 mb-4">
-                  <Clock className="h-5 w-5 text-gray-400 mt-0.5" />
+                  <Clock className="h-5 w-5 text-cyan-400 mt-0.5" />
                   <div className="flex-1 space-y-2">
                     {Object.entries(bp.hours).map(([day, hours]) => (
                       <div key={day} className="flex justify-between text-sm">
-                        <span className="text-gray-600 capitalize">{day}</span>
-                        <span className="font-medium text-gray-900">{hours}</span>
+                        <span className="text-white/60 capitalize">{day}</span>
+                        <span className="font-medium text-white">{hours}</span>
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
               
-              <div className="mt-6 p-6 bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl text-white">
+              <div className="mt-6 p-6 bg-gradient-to-br from-cyan-500/10 via-[#0F1520] to-purple-500/10 rounded-2xl border border-cyan-500/20 neon-pulse">
                 <div className="flex items-center gap-3 mb-3">
                   <MessageCircle className="h-6 w-6 text-cyan-400" />
-                  <h4 className="font-semibold">Need Quick Answers?</h4>
+                  <h4 className="font-semibold text-white">Need Quick Answers?</h4>
                 </div>
-                <p className="text-sm text-gray-300 mb-4">
+                <p className="text-sm text-white/70 mb-4">
                   Chat with our AI assistant 24/7 for instant responses to your questions.
                 </p>
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-white/50">
                   Click the chat button in the bottom right corner to get started!
                 </p>
               </div>

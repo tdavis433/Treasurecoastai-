@@ -178,42 +178,43 @@ export default function DemosPage() {
   const bots = data?.bots || [];
 
   return (
-    <div className="min-h-screen bg-[#0B0E13] text-white overflow-hidden">
+    <div className="min-h-screen bg-[#0B0E13] text-white overflow-hidden morphing-gradient">
       {/* Hero Section */}
       <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
-        {/* Animated Background Gradients */}
+        {/* Animated Background Gradients - More Dynamic */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-1/4 -left-1/4 w-[600px] h-[600px] bg-cyan-500/20 rounded-full blur-[120px] animate-pulse" />
-          <div className="absolute bottom-1/4 -right-1/4 w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/10 rounded-full blur-[150px]" />
+          <div className="glow-orb glow-orb-cyan w-[600px] h-[600px] top-1/4 -left-1/4" />
+          <div className="glow-orb glow-orb-purple w-[500px] h-[500px] bottom-1/4 -right-1/4" style={{ animationDelay: '2s' }} />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/10 rounded-full blur-[150px] animate-pulse" />
+          
+          {/* Floating particles */}
+          <div className="particle" style={{ left: '10%', top: '20%', animationDelay: '0s' }} />
+          <div className="particle" style={{ left: '30%', top: '40%', animationDelay: '2s' }} />
+          <div className="particle" style={{ left: '70%', top: '30%', animationDelay: '4s' }} />
+          <div className="particle" style={{ left: '85%', top: '60%', animationDelay: '6s' }} />
+          <div className="particle" style={{ left: '50%', top: '80%', animationDelay: '8s' }} />
         </div>
 
-        {/* Grid Pattern Overlay */}
-        <div 
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: 'linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)',
-            backgroundSize: '50px 50px'
-          }}
-        />
+        {/* Cyber Grid Pattern Overlay */}
+        <div className="absolute inset-0 cyber-grid opacity-30" />
 
         <div className="relative z-10 container mx-auto px-4 text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-8 backdrop-blur-sm">
+          <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full glass-card-glow border border-cyan-500/20 mb-8 neon-pulse">
             <Sparkles className="h-4 w-4 text-cyan-400" />
-            <span className="text-sm text-white/80">AI-Powered Customer Engagement</span>
+            <span className="text-sm text-white/90 font-medium">AI-Powered Customer Engagement</span>
           </div>
 
           {/* Main Heading */}
           <h1 
-            className="text-5xl md:text-7xl font-bold mb-6 leading-tight"
+            className="text-5xl md:text-7xl font-bold mb-6 leading-tight slide-in-bottom"
             data-testid="text-hero-title"
           >
-            <span className="bg-gradient-to-r from-white via-white to-white/60 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-white via-white to-white/80 bg-clip-text text-transparent">
               Transform Your Business
             </span>
             <br />
-            <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">
+            <span className="text-glow-gradient">
               With AI Assistants
             </span>
           </h1>
@@ -312,22 +313,22 @@ export default function DemosPage() {
                   key={bot.botId} 
                   hover
                   glow
-                  className={`group ${colors.glow}`}
+                  className={`group glass-card-glow card-tilt ${colors.glow}`}
                   data-testid={`card-bot-${bot.botId}`}
                 >
                   <GlassCardHeader className="pb-4">
                     <div className="flex items-start justify-between gap-4 mb-4">
-                      <div className={`p-3 rounded-xl ${colors.bg} transition-transform group-hover:scale-110`}>
+                      <div className={`p-3.5 rounded-xl ${colors.bg} transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg`}>
                         {businessTypeIcons[bot.businessType] || <MessageCircle className="h-6 w-6" />}
                       </div>
                       <Badge 
-                        className="bg-blue-500/10 text-blue-400 border-blue-500/20"
+                        className="bg-cyan-500/10 text-cyan-400 border-cyan-500/20 group-hover:bg-cyan-500/20 transition-colors"
                         data-testid={`badge-type-${bot.botId}`}
                       >
                         {businessTypeLabels[bot.businessType] || bot.businessType}
                       </Badge>
                     </div>
-                    <GlassCardTitle className="text-xl" data-testid={`text-bot-name-${bot.botId}`}>
+                    <GlassCardTitle className="text-xl group-hover:text-cyan-300 transition-colors" data-testid={`text-bot-name-${bot.botId}`}>
                       {bot.businessName}
                     </GlassCardTitle>
                     <GlassCardDescription className="line-clamp-2">
@@ -337,13 +338,13 @@ export default function DemosPage() {
                   <GlassCardContent>
                     <Link href={`/demo/${bot.botId}`}>
                       <Button 
-                        className="w-full gap-2 bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-white/20 group-hover:border-cyan-500/30" 
+                        className="w-full gap-2 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 hover:from-cyan-500/20 hover:to-blue-500/20 text-white border border-cyan-500/20 hover:border-cyan-500/40 shine-overlay transition-all duration-300" 
                         variant="outline"
                         data-testid={`button-open-demo-${bot.botId}`}
                       >
-                        <MessageCircle className="h-4 w-4" />
+                        <MessageCircle className="h-4 w-4 text-cyan-400" />
                         Try Demo
-                        <ChevronRight className="h-4 w-4 ml-auto group-hover:translate-x-1 transition-transform" />
+                        <ChevronRight className="h-4 w-4 ml-auto group-hover:translate-x-1 transition-transform text-cyan-400" />
                       </Button>
                     </Link>
                   </GlassCardContent>
@@ -378,15 +379,16 @@ export default function DemosPage() {
               <GlassCard 
                 key={i} 
                 hover
-                className="group"
+                className="group glass-card-glow"
                 data-testid={`card-feature-${i}`}
+                style={{ animationDelay: `${i * 100}ms` }}
               >
                 <GlassCardHeader>
-                  <div className={`w-12 h-12 rounded-xl bg-${feature.color}-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br from-${feature.color}-500/20 to-${feature.color}-600/10 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:shadow-lg transition-all duration-300 border border-${feature.color}-500/20`}>
                     {feature.icon}
                   </div>
-                  <GlassCardTitle className="text-lg">{feature.title}</GlassCardTitle>
-                  <GlassCardDescription>
+                  <GlassCardTitle className="text-lg group-hover:text-white transition-colors">{feature.title}</GlassCardTitle>
+                  <GlassCardDescription className="group-hover:text-white/70 transition-colors">
                     {feature.description}
                   </GlassCardDescription>
                 </GlassCardHeader>
