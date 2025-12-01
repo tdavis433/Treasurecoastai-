@@ -81,37 +81,37 @@ const features = [
   {
     icon: <Zap className="h-6 w-6 text-cyan-400" />,
     title: "Smart Automations",
-    description: "Set up your own triggers for keywords, time delays, and lead capture rules — your way.",
+    description: "We configure triggers, lead capture rules, and booking prompts — optimized for your business.",
     color: "cyan"
   },
   {
     icon: <Shield className="h-6 w-6 text-green-400" />,
     title: "Built-in Safety",
-    description: "Your bot comes with crisis detection, PII protection, and content safety rules you control.",
+    description: "Every bot includes crisis detection, content safety, and PII protection — all managed for you.",
     color: "green"
   },
   {
     icon: <Globe className="h-6 w-6 text-blue-400" />,
-    title: "Your Dashboard",
-    description: "Manage all your bots from one powerful dashboard with full control over every setting.",
+    title: "Simple Client Dashboard",
+    description: "Log in anytime to view your conversations, leads, and bookings — we handle the rest.",
     color: "blue"
   },
   {
     icon: <BarChart3 className="h-6 w-6 text-purple-400" />,
-    title: "Your Analytics",
-    description: "Track your conversations, leads, and trends with exports and filtering you control.",
+    title: "Clear Analytics",
+    description: "See exactly how your bot is performing with easy-to-understand stats and trends.",
     color: "purple"
   },
   {
     icon: <Palette className="h-6 w-6 text-pink-400" />,
     title: "Your Brand",
-    description: "Fully customize your chat widget with your colors, positioning, sounds, and style.",
+    description: "We customize your chat widget to match your brand colors and style perfectly.",
     color: "pink"
   },
   {
     icon: <Lock className="h-6 w-6 text-amber-400" />,
-    title: "Enterprise Ready",
-    description: "Built-in security, rate limiting, and integrations — ready for your business needs.",
+    title: "Fully Managed",
+    description: "No tech headaches. We build, deploy, and maintain your AI assistant end-to-end.",
     color: "amber"
   }
 ];
@@ -211,18 +211,18 @@ export default function DemosPage() {
             data-testid="text-hero-title"
           >
             <span className="bg-gradient-to-r from-white via-white to-white/80 bg-clip-text text-transparent">
-              Transform Your Business
+              We Build AI Assistants
             </span>
             <br />
             <span className="text-glow-gradient">
-              With AI Assistants
+              For Local Businesses
             </span>
           </h1>
 
           {/* Subheading */}
           <p className="text-xl md:text-2xl text-white/60 max-w-3xl mx-auto mb-10 leading-relaxed">
-            Build your own intelligent chatbot that handles customer inquiries 24/7, captures leads, 
-            books appointments, and provides instant support — no coding required.
+            Get a custom AI chatbot built and managed for your business. We handle the tech — 
+            you just log in to see leads, bookings, and conversations.
           </p>
 
           {/* CTAs */}
@@ -234,7 +234,7 @@ export default function DemosPage() {
                 data-testid="button-get-started"
               >
                 <MessageCircle className="h-5 w-5" />
-                Get Your Custom AI Assistant
+                Get Started — We Build It For You
                 <ArrowRight className="h-5 w-5" />
               </Button>
             </Link>
@@ -255,15 +255,15 @@ export default function DemosPage() {
           <div className="flex flex-wrap items-center justify-center gap-6 text-white/40 text-sm">
             <div className="flex items-center gap-2">
               <Check className="h-4 w-4 text-green-400" />
-              No coding required
+              Fully managed service
             </div>
             <div className="flex items-center gap-2">
               <Check className="h-4 w-4 text-green-400" />
-              5-minute setup
+              We handle setup
             </div>
             <div className="flex items-center gap-2">
               <Check className="h-4 w-4 text-green-400" />
-              Full customization control
+              Ongoing support included
             </div>
           </div>
         </div>
@@ -292,17 +292,17 @@ export default function DemosPage() {
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center mb-16">
             <Badge className="mb-4 bg-cyan-500/10 text-cyan-400 border-cyan-500/20 px-4 py-1">
-              Industry Templates
+              Industry Examples
             </Badge>
             <h2 className="text-3xl md:text-5xl font-bold mb-4" data-testid="text-templates-title">
-              Ready for{" "}
+              Built for{" "}
               <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
                 Any Industry
               </span>
             </h2>
             <p className="text-lg text-white/60 max-w-2xl mx-auto">
-              Choose from our pre-built templates or customize your own. Each bot is trained for 
-              industry-specific conversations, FAQs, and safety protocols.
+              See examples of AI assistants we've built for different industries. 
+              We'll create one tailored specifically for your business.
             </p>
           </div>
 
@@ -361,17 +361,17 @@ export default function DemosPage() {
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <Badge className="mb-4 bg-blue-500/10 text-blue-400 border-blue-500/20 px-4 py-1">
-              Platform Features
+              What You Get
             </Badge>
             <h2 className="text-3xl md:text-5xl font-bold mb-4">
-              Everything You Need to{" "}
+              A Fully Managed{" "}
               <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                Succeed
+                AI Solution
               </span>
             </h2>
             <p className="text-lg text-white/60 max-w-2xl mx-auto">
-              A complete platform for building, customizing, and deploying your own AI assistants 
-              with full control over every detail.
+              We handle the technology. You get a powerful AI assistant capturing leads and 
+              booking appointments — with a simple dashboard to see your results.
             </p>
           </div>
 
@@ -405,21 +405,21 @@ export default function DemosPage() {
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center mb-16">
             <Badge className="mb-4 bg-green-500/10 text-green-400 border-green-500/20 px-4 py-1">
-              Getting Started
+              How It Works
             </Badge>
             <h2 className="text-3xl md:text-5xl font-bold mb-4">
-              Launch in{" "}
+              We Do the Heavy{" "}
               <span className="bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent">
-                Minutes
+                Lifting
               </span>
             </h2>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
             {[
-              { step: "1", title: "Choose Template", desc: "Select from 10+ industry templates or start from scratch" },
-              { step: "2", title: "Customize", desc: "Add your business info, FAQs, and personalization" },
-              { step: "3", title: "Deploy", desc: "Embed on your website with a single line of code" }
+              { step: "1", title: "Share Your Info", desc: "Tell us about your business, services, and common questions" },
+              { step: "2", title: "We Build It", desc: "Our team creates your custom AI assistant with the perfect personality" },
+              { step: "3", title: "You See Results", desc: "Log into your dashboard to view leads, bookings, and conversations" }
             ].map((item, i) => (
               <div key={i} className="text-center group">
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-white/10 flex items-center justify-center mx-auto mb-4 text-2xl font-bold text-cyan-400 group-hover:scale-110 transition-transform">
@@ -472,14 +472,14 @@ export default function DemosPage() {
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl md:text-5xl font-bold mb-6">
-              Ready to Transform Your{" "}
+              Ready for a 24/7{" "}
               <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-                Customer Experience?
+                AI Assistant?
               </span>
             </h2>
             <p className="text-lg text-white/60 mb-8">
-              Join businesses using Treasure Coast AI to build their own AI assistants, 
-              capture more leads, and grow faster — on your terms.
+              Let us build and manage your custom AI chatbot. Capture more leads, book more appointments, 
+              and delight your customers — while you focus on your business.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/login">
@@ -489,7 +489,7 @@ export default function DemosPage() {
                   data-testid="button-cta-bottom"
                 >
                   <MessageCircle className="h-5 w-5" />
-                  Get Your Custom AI Assistant
+                  Get Your AI Assistant Built
                   <ArrowRight className="h-5 w-5" />
                 </Button>
               </Link>
@@ -500,7 +500,7 @@ export default function DemosPage() {
                   className="text-white/70 hover:text-white hover:bg-white/5 px-8 py-6 text-lg"
                   data-testid="button-login"
                 >
-                  Admin Login
+                  Client Login
                 </Button>
               </Link>
             </div>

@@ -290,7 +290,7 @@ export default function AdminDashboard() {
             Dashboard
           </h2>
           <p className="text-white/55 mt-1">
-            Overview of your chatbot's performance and leads
+            Overview of your client's AI assistant performance and leads
           </p>
         </div>
 

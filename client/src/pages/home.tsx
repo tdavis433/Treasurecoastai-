@@ -50,13 +50,13 @@ export default function Home() {
             <div className="flex items-center gap-4">
               <Link href="/login">
                 <Button variant="ghost" className="text-white/80 hover:text-white" data-testid="link-login">
-                  Admin Login
+                  Client Login
                 </Button>
               </Link>
               <Link href="/demos">
                 <Button className="btn-gradient-primary rounded-xl px-6 glow-cyan" data-testid="button-get-started-nav">
                   <MessageSquare className="w-4 h-4 mr-2" />
-                  Get Your AI Assistant
+                  Get Started
                 </Button>
               </Link>
             </div>
@@ -76,14 +76,14 @@ export default function Home() {
             </div>
 
             <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight" data-testid="text-hero-title">
-              AI Chatbots That
-              <span className="text-gradient-cyan-purple block mt-2">Actually Convert</span>
+              AI Assistants That
+              <span className="text-gradient-cyan-purple block mt-2">Work 24/7 For You</span>
             </h1>
 
             <p className="text-xl md:text-2xl text-white/70 max-w-3xl mx-auto mb-10 leading-relaxed">
-              Build your own custom AI assistant in minutes. 
-              Capture leads, book appointments, and delight customers 24/7 — 
-              all while you sleep.
+              We build and manage custom AI chatbots for local businesses. 
+              Capture leads, book appointments, and delight customers around the clock — 
+              while you focus on running your business.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -94,7 +94,7 @@ export default function Home() {
                   data-testid="button-get-started-hero"
                 >
                   <MessageSquare className="w-5 h-5 mr-2" />
-                  Get Your Custom AI Assistant
+                  Get Started — We Build It For You
                   <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
@@ -106,7 +106,7 @@ export default function Home() {
                   data-testid="button-view-demos"
                 >
                   <Sparkles className="w-5 h-5 mr-2 text-primary" />
-                  See Live Demos
+                  See What We Build
                 </Button>
               </Link>
             </div>
@@ -156,11 +156,11 @@ export default function Home() {
             initial="initial"
           >
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4" data-testid="text-features-title">
-              Everything You Need to
-              <span className="text-gradient-cyan-purple"> Win</span>
+              Everything Your Business Needs
+              <span className="text-gradient-cyan-purple"> To Win</span>
             </h2>
             <p className="text-xl text-white/60 max-w-2xl mx-auto">
-              Create your own stunning AI chatbot in minutes. No coding required — just customize and deploy.
+              We handle the tech. You get a powerful AI assistant that captures leads, books appointments, and answers questions 24/7.
             </p>
           </motion.div>
 
@@ -174,8 +174,8 @@ export default function Home() {
             {[
               {
                 icon: Globe,
-                title: "Website Scraper",
-                description: "Paste a URL and watch AI extract all business info, FAQs, services, and more. Instant bot setup."
+                title: "We Learn Your Business",
+                description: "We scrape your website and learn your services, pricing, FAQs, and more — so your bot knows everything."
               },
               {
                 icon: Sparkles,
@@ -185,22 +185,22 @@ export default function Home() {
               {
                 icon: MessageSquare,
                 title: "Lead Capture",
-                description: "Automatically detect and save lead information. Never miss a potential customer again."
+                description: "Your bot automatically captures names, emails, and phone numbers from every interested visitor."
               },
               {
                 icon: BarChart3,
-                title: "Rich Analytics",
-                description: "See every conversation, lead, and booking. Know exactly how your bot performs."
+                title: "Simple Dashboard",
+                description: "See every conversation, lead, and booking in your clean, easy-to-use client dashboard."
               },
               {
                 icon: Zap,
-                title: "Instant Deploy",
-                description: "Copy-paste embed code and your bot goes live. Works on any website instantly."
+                title: "We Handle Everything",
+                description: "We build, deploy, and manage your AI assistant. You just focus on your business."
               },
               {
                 icon: Shield,
-                title: "Enterprise Ready",
-                description: "Bank-level security, 99.9% uptime, and dedicated support for your peace of mind."
+                title: "Always On Support",
+                description: "Need changes? We're here for you. Your AI assistant is fully managed by our team."
               }
             ].map((feature, i) => (
               <motion.div
@@ -231,10 +231,10 @@ export default function Home() {
             initial="initial"
           >
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4" data-testid="text-howitworks-title">
-              Live in <span className="text-primary">Minutes</span>, Not Months
+              Your AI Assistant, <span className="text-primary">Managed For You</span>
             </h2>
             <p className="text-xl text-white/60 max-w-2xl mx-auto">
-              From zero to deployed AI chatbot in three simple steps
+              Here's how we get your business a 24/7 AI assistant
             </p>
           </motion.div>
 
@@ -242,18 +242,18 @@ export default function Home() {
             {[
               {
                 step: "01",
-                title: "Paste Your Website URL",
-                description: "Our AI scrapes your website and extracts all your business information automatically."
+                title: "Share Your Business Info",
+                description: "Tell us about your services, hours, and FAQs. We'll learn everything about your business."
               },
               {
                 step: "02",
-                title: "Customize & Train",
-                description: "Tweak the personality, add FAQs, set up lead capture rules. Make it yours."
+                title: "We Build Your Bot",
+                description: "Our team configures your custom AI assistant with the perfect personality and knowledge."
               },
               {
                 step: "03",
-                title: "Deploy & Grow",
-                description: "Copy the embed code, add it to your website, and watch leads roll in 24/7."
+                title: "You See Results",
+                description: "Log into your dashboard to see conversations, leads, and bookings — all handled for you."
               }
             ].map((item, i) => (
               <motion.div
@@ -302,10 +302,10 @@ export default function Home() {
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-12">
                 {[
-                  "Unlimited bots",
+                  "Fully managed",
                   "GPT-4 powered",
-                  "Easy customization",
-                  "24/7 support"
+                  "Simple dashboard",
+                  "Ongoing support"
                 ].map((item, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <Check className="w-5 h-5 text-primary" />
@@ -321,7 +321,7 @@ export default function Home() {
                   data-testid="button-start-free-trial"
                 >
                   <MessageSquare className="w-5 h-5 mr-2" />
-                  Get Your Custom AI Assistant
+                  Get Your AI Assistant Built
                   <TrendingUp className="w-5 h-5 ml-2 group-hover:translate-y-[-2px] transition-transform" />
                 </Button>
               </Link>

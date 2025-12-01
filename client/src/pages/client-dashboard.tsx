@@ -877,7 +877,7 @@ export default function ClientDashboard() {
                 <div className="flex items-start gap-2">
                   <AlertCircle className="h-4 w-4 text-white/55 flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-white/55">
-                    Need more capacity? Upgrade your plan in the Billing section for increased limits.
+                    Need more capacity? Contact our team to upgrade your plan for increased limits.
                   </p>
                 </div>
               </div>
@@ -898,7 +898,7 @@ export default function ClientDashboard() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-white">Analytics</h2>
-          <p className="text-sm text-white/55">Detailed insights into your AI assistant's performance</p>
+          <p className="text-sm text-white/55">See how your AI assistant is performing</p>
         </div>
         <div className="flex items-center gap-3">
           <Select value={String(dateRange)} onValueChange={(v) => setDateRange(Number(v))}>
@@ -1124,7 +1124,7 @@ export default function ClientDashboard() {
         <GlassCardHeader>
           <GlassCardTitle>Recent Chat Sessions</GlassCardTitle>
           <GlassCardDescription>
-            Individual conversation sessions with your custom AI assistant
+            Conversations your AI assistant has handled for you
           </GlassCardDescription>
         </GlassCardHeader>
         <GlassCardContent>
@@ -1209,7 +1209,7 @@ export default function ClientDashboard() {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold text-white">Leads</h2>
-        <p className="text-sm text-white/55">Manage leads captured by your AI assistant</p>
+        <p className="text-sm text-white/55">View leads your AI assistant has captured</p>
       </div>
       
       <GlassCard data-testid="card-leads-navigation">
@@ -1219,7 +1219,7 @@ export default function ClientDashboard() {
             Lead Management
           </GlassCardTitle>
           <GlassCardDescription>
-            View and manage leads captured by your custom AI assistant
+            View leads captured by your AI assistant
           </GlassCardDescription>
         </GlassCardHeader>
         <GlassCardContent className="space-y-4">
@@ -1258,7 +1258,7 @@ export default function ClientDashboard() {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold text-white">Inbox</h2>
-        <p className="text-sm text-white/55">View and manage conversations with your AI assistant</p>
+        <p className="text-sm text-white/55">See what your AI assistant has been talking about</p>
       </div>
       
       <GlassCard data-testid="card-inbox-navigation">
@@ -1314,7 +1314,7 @@ export default function ClientDashboard() {
         <GlassCardHeader>
           <GlassCardTitle>Booking Requests</GlassCardTitle>
           <GlassCardDescription>
-            All appointment requests captured by your AI assistant
+            Booking requests your AI assistant has collected
           </GlassCardDescription>
         </GlassCardHeader>
         <GlassCardContent>
@@ -1386,7 +1386,7 @@ export default function ClientDashboard() {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold text-white">Widget Code</h2>
-        <p className="text-sm text-white/55">Embed your custom AI assistant on your website</p>
+        <p className="text-sm text-white/55">Add your AI assistant to your website</p>
       </div>
       
       <GlassCard data-testid="card-widget-code">
@@ -1396,7 +1396,7 @@ export default function ClientDashboard() {
             Embed Code
           </GlassCardTitle>
           <GlassCardDescription>
-            Copy and paste this code into your website to add your AI assistant widget
+            Add this code to your website — or let us handle it for you
           </GlassCardDescription>
         </GlassCardHeader>
         <GlassCardContent className="space-y-4">
@@ -1813,7 +1813,7 @@ export default function ClientDashboard() {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold text-white">Settings</h2>
-        <p className="text-sm text-white/55">Manage your business information and AI assistant</p>
+        <p className="text-sm text-white/55">View your business information — contact us for changes</p>
       </div>
       
       <GlassCard data-testid="card-settings">
@@ -1873,7 +1873,7 @@ export default function ClientDashboard() {
                   <Clock className="h-4 w-4 text-white/55" />
                   {formatHoursValue(profile?.businessInfo?.hours)}
                 </p>
-                <p className="text-xs text-white/40 mt-1">Update hours in Control Center</p>
+                <p className="text-xs text-white/40 mt-1">Contact us to update hours</p>
               </div>
               {editingSettings ? (
                 <div>
@@ -1941,9 +1941,9 @@ export default function ClientDashboard() {
             <div className="flex items-start gap-2">
               <AlertCircle className="h-5 w-5 text-white/55 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-white">Need to update your chatbot?</p>
+                <p className="text-sm font-medium text-white">Need changes to your AI assistant?</p>
                 <p className="text-sm text-white/55">
-                  Use the Control Center to customize your AI assistant's personality, knowledge, and behavior.
+                  Contact our team and we'll update your bot's personality, FAQs, or settings for you.
                 </p>
               </div>
             </div>
