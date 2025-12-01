@@ -328,11 +328,13 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-6 border-t border-white/5">
+      <footer className="py-12 px-6 border-t border-white/5" data-testid="footer">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <TreasureCoastLogo size="sm" />
+          <div data-testid="footer-logo">
+            <TreasureCoastLogo size="sm" />
+          </div>
           
-          <p className="text-white/40 text-sm">
+          <p className="text-white/40 text-sm" data-testid="footer-copyright">
             &copy; {new Date().getFullYear()} Treasure Coast AI. All rights reserved.
           </p>
           

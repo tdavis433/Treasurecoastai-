@@ -34,11 +34,27 @@
       "Pre-Purchase Inspections"
     ],
     "team": [
-      { "name": "Joe Martinez", "role": "Owner/Master Technician", "certifications": "ASE Master, 25+ years" },
-      { "name": "Tom", "role": "Lead Technician", "certifications": "ASE Certified" },
-      { "name": "Sarah", "role": "Service Advisor", "experience": "10 years" }
+      {
+        "name": "Joe Martinez",
+        "role": "Owner/Master Technician",
+        "certifications": "ASE Master, 25+ years"
+      },
+      {
+        "name": "Tom",
+        "role": "Lead Technician",
+        "certifications": "ASE Certified"
+      },
+      {
+        "name": "Sarah",
+        "role": "Service Advisor",
+        "experience": "10 years"
+      }
     ],
-    "certifications": ["ASE Certified", "AAA Approved", "NAPA AutoCare Center"],
+    "certifications": [
+      "ASE Certified",
+      "AAA Approved",
+      "NAPA AutoCare Center"
+    ],
     "guarantees": [
       "24-month/24,000-mile warranty on parts & labor",
       "Free shuttle service (5-mile radius)",
@@ -66,11 +82,17 @@
       "Emphasize our warranty and honest reputation"
     ],
     "crisisHandling": {
-      "onCrisisKeywords": ["kill myself", "suicide", "overdose", "self harm", "I want to die"],
+      "onCrisisKeywords": [
+        "kill myself",
+        "suicide",
+        "overdose",
+        "self harm",
+        "I want to die"
+      ],
       "responseTemplate": "I'm not able to handle emergencies. If you are in immediate danger or having a medical emergency, call 911 or your local emergency number right now."
     }
   },
-  "systemPrompt": "You are the friendly service advisor assistant for Coastline Auto Care, a trusted auto repair shop in Port St. Lucie on Florida's Treasure Coast. We've been serving the community since 2008 with honest, quality auto service.\n\nOUR TEAM:\n- Joe Martinez: Owner & Master Technician, ASE Master Certified, 25+ years experience\n- Tom: Lead Technician, ASE Certified\n- Sarah: Service Advisor, 10 years experience\n\nCERTIFICATIONS: ASE Certified shop, AAA Approved, NAPA AutoCare Center\n\nSERVICE PRICING (estimates - exact quote after inspection):\n- Conventional Oil Change: $39.95\n- Synthetic Oil Change: $69.95-89.95\n- Brake Inspection: FREE with service\n- Brake Pad Replacement: $149-249 per axle + parts\n- Tire Rotation: $24.95 (free with oil change)\n- Wheel Alignment: $89.95\n- AC Recharge: $149.95\n- Diagnostic Scan: $99.95 (waived with repair)\n- Battery Test: FREE\n- Battery Replacement: $149-249 installed\n- Pre-Purchase Inspection: $99.95\n\nGUARANTEES:\n- 24-month/24,000-mile warranty on parts & labor\n- Free shuttle service within 5 miles\n- Same-day service on most repairs\n\nSAFETY: If someone reports brake failure, steering issues, or smells gas - tell them NOT to drive and to call us or get towed immediately.\n\nBe helpful, honest, and build trust. We're the shop that treats customers like family!",
+  "systemPrompt": "You are a helpful assistant for this business.",
   "faqs": [
     {
       "id": "faq-1",
@@ -146,12 +168,30 @@
   "automations": {
     "officeHours": {
       "schedule": {
-        "monday": { "open": "07:30", "close": "18:00" },
-        "tuesday": { "open": "07:30", "close": "18:00" },
-        "wednesday": { "open": "07:30", "close": "18:00" },
-        "thursday": { "open": "07:30", "close": "18:00" },
-        "friday": { "open": "07:30", "close": "18:00" },
-        "saturday": { "open": "08:00", "close": "15:00" },
+        "monday": {
+          "open": "07:30",
+          "close": "18:00"
+        },
+        "tuesday": {
+          "open": "07:30",
+          "close": "18:00"
+        },
+        "wednesday": {
+          "open": "07:30",
+          "close": "18:00"
+        },
+        "thursday": {
+          "open": "07:30",
+          "close": "18:00"
+        },
+        "friday": {
+          "open": "07:30",
+          "close": "18:00"
+        },
+        "saturday": {
+          "open": "08:00",
+          "close": "15:00"
+        },
         "sunday": null
       },
       "timezone": "America/New_York",
@@ -160,23 +200,48 @@
     },
     "leadCapture": {
       "enabled": true,
-      "triggerKeywords": ["appointment", "schedule", "drop off", "bring in", "quote"],
-      "captureFields": ["name", "phone", "vehicle", "issue"],
+      "triggerKeywords": [
+        "appointment",
+        "schedule",
+        "drop off",
+        "bring in",
+        "quote"
+      ],
+      "captureFields": [
+        "name",
+        "phone",
+        "vehicle",
+        "issue"
+      ],
       "successMessage": "Thanks! We'll call you shortly to schedule your appointment. You can also call us directly at (772) 555-AUTO!"
     }
   },
   "personality": {
-    "tone": "friendly",
-    "responseLength": "medium",
     "formality": 40,
-    "enthusiasm": 65,
-    "warmth": 85
+    "warmth": 85,
+    "enthusiasm": 65
   },
   "quickActions": [
-    { "id": "qa-1", "label": "Schedule Service", "prompt": "I need to schedule a service" },
-    { "id": "qa-2", "label": "Get Pricing", "prompt": "What are your prices?" },
-    { "id": "qa-3", "label": "Hours & Location", "prompt": "What are your hours and where are you?" },
-    { "id": "qa-4", "label": "Check Engine Light", "prompt": "My check engine light is on" }
+    {
+      "id": "qa-1",
+      "label": "Schedule Service",
+      "prompt": "I need to schedule a service"
+    },
+    {
+      "id": "qa-2",
+      "label": "Get Pricing",
+      "prompt": "What are your prices?"
+    },
+    {
+      "id": "qa-3",
+      "label": "Hours & Location",
+      "prompt": "What are your hours and where are you?"
+    },
+    {
+      "id": "qa-4",
+      "label": "Check Engine Light",
+      "prompt": "My check engine light is on"
+    }
   ],
   "metadata": {
     "isDemo": true,
@@ -184,5 +249,10 @@
     "templateCategory": "Auto Shop",
     "createdAt": "2025-11-27",
     "version": "2.0"
-  }
+  },
+  "businessType": "auto_shop",
+  "businessName": "Coastline Auto Care",
+  "isDemo": true,
+  "tone": "professional",
+  "responseLength": "medium"
 }
