@@ -1,8 +1,56 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, createContext, useContext, useRef } from "react";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+
+// Save lock context to prevent concurrent saves across panels
+interface SaveLockContextType {
+  acquireLock: () => Promise<void>;
+  releaseLock: () => void;
+  isLocked: boolean;
+}
+
+const SaveLockContext = createContext<SaveLockContextType | null>(null);
+
+function SaveLockProvider({ children }: { children: React.ReactNode }) {
+  const [isLocked, setIsLocked] = useState(false);
+  const lockPromiseRef = useRef<Promise<void> | null>(null);
+  const resolveRef = useRef<(() => void) | null>(null);
+
+  const acquireLock = async () => {
+    while (lockPromiseRef.current) {
+      await lockPromiseRef.current;
+    }
+    lockPromiseRef.current = new Promise((resolve) => {
+      resolveRef.current = resolve;
+    });
+    setIsLocked(true);
+  };
+
+  const releaseLock = () => {
+    setIsLocked(false);
+    if (resolveRef.current) {
+      resolveRef.current();
+      resolveRef.current = null;
+    }
+    lockPromiseRef.current = null;
+  };
+
+  return (
+    <SaveLockContext.Provider value={{ acquireLock, releaseLock, isLocked }}>
+      {children}
+    </SaveLockContext.Provider>
+  );
+}
+
+function useSaveLock() {
+  const context = useContext(SaveLockContext);
+  if (!context) {
+    return { acquireLock: async () => {}, releaseLock: () => {}, isLocked: false };
+  }
+  return context;
+}
 import { Button } from "@/components/ui/button";
 import { GlassCard, GlassCardHeader, GlassCardTitle, GlassCardDescription, GlassCardContent } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
@@ -591,6 +639,7 @@ export default function ControlCenter() {
   }
 
   return (
+    <SaveLockProvider>
     <div className="h-screen bg-[#0B0E13] text-white flex flex-col overflow-hidden">
       {/* Header */}
       <header className="h-14 border-b border-white/10 bg-[#0d1117]/80 backdrop-blur-md flex items-center justify-between px-6 flex-shrink-0">
@@ -2748,6 +2797,7 @@ export default function ControlCenter() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </SaveLockProvider>
   );
 }
 
@@ -3067,6 +3117,7 @@ const RESPONSE_LENGTH_OPTIONS = [
 // Persona Panel - System prompt, tone, personality settings
 function PersonaPanel({ bot, clientType }: { bot: BotConfig; clientType?: string }) {
   const { toast } = useToast();
+  const { acquireLock, releaseLock, isLocked } = useSaveLock();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     systemPrompt: bot.systemPrompt || '',
@@ -3097,21 +3148,27 @@ function PersonaPanel({ bot, clientType }: { bot: BotConfig; clientType?: string
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      // Fetch latest bot data first to avoid overwriting other panels' changes
-      const response = await fetch('/api/super-admin/bots');
-      const allBots = await response.json() as BotConfig[];
-      const latestBot = allBots.find(b => b.botId === bot.botId) || bot;
-      
-      // Merge our fields with the latest data
-      const updatedBot = {
-        ...latestBot,
-        systemPrompt: formData.systemPrompt,
-        tone: formData.tone,
-        responseLength: formData.responseLength,
-        personality: formData.personality,
-      };
-      const saveResponse = await apiRequest("PUT", `/api/super-admin/bots/${bot.botId}`, updatedBot);
-      return saveResponse.json();
+      // Acquire lock to prevent concurrent saves
+      await acquireLock();
+      try {
+        // Fetch latest bot data first to avoid overwriting other panels' changes
+        const response = await fetch('/api/super-admin/bots');
+        const allBots = await response.json() as BotConfig[];
+        const latestBot = allBots.find(b => b.botId === bot.botId) || bot;
+        
+        // Merge our fields with the latest data
+        const updatedBot = {
+          ...latestBot,
+          systemPrompt: formData.systemPrompt,
+          tone: formData.tone,
+          responseLength: formData.responseLength,
+          personality: formData.personality,
+        };
+        const saveResponse = await apiRequest("PUT", `/api/super-admin/bots/${bot.botId}`, updatedBot);
+        return saveResponse.json();
+      } finally {
+        releaseLock();
+      }
     },
     onSuccess: () => {
       toast({ title: "Saved", description: "Persona settings have been updated." });
@@ -3320,6 +3377,7 @@ function PersonaPanel({ bot, clientType }: { bot: BotConfig; clientType?: string
 // Knowledge Panel - FAQs, business info, scraped content
 function KnowledgePanel({ bot, clientType }: { bot: BotConfig; clientType?: string }) {
   const { toast } = useToast();
+  const { acquireLock, releaseLock, isLocked } = useSaveLock();
   const [isEditing, setIsEditing] = useState(false);
   const [faqs, setFaqs] = useState<Array<{ question: string; answer: string }>>(bot.faqs || []);
   const [editingFaqIndex, setEditingFaqIndex] = useState<number | null>(null);
@@ -3357,29 +3415,35 @@ function KnowledgePanel({ bot, clientType }: { bot: BotConfig; clientType?: stri
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      // Fetch latest bot data first to avoid overwriting other panels' changes
-      const response = await fetch('/api/super-admin/bots');
-      const allBots = await response.json() as BotConfig[];
-      const latestBot = allBots.find(b => b.botId === bot.botId) || bot;
-      
-      // Merge our fields with the latest data
-      const updatedBot = {
-        ...latestBot,
-        businessProfile: {
-          ...latestBot.businessProfile,
-          businessName: formData.businessName,
-          type: formData.type,
-          phone: formData.phone,
-          email: formData.email,
-          website: formData.website,
-          location: formData.location,
-          hours: parseHoursFromString(formData.hours),
-          services: formData.services.split(',').map(s => s.trim()).filter(Boolean),
-        },
-        faqs: faqs,
-      };
-      const saveResponse = await apiRequest("PUT", `/api/super-admin/bots/${bot.botId}`, updatedBot);
-      return saveResponse.json();
+      // Acquire lock to prevent concurrent saves
+      await acquireLock();
+      try {
+        // Fetch latest bot data first to avoid overwriting other panels' changes
+        const response = await fetch('/api/super-admin/bots');
+        const allBots = await response.json() as BotConfig[];
+        const latestBot = allBots.find(b => b.botId === bot.botId) || bot;
+        
+        // Merge our fields with the latest data
+        const updatedBot = {
+          ...latestBot,
+          businessProfile: {
+            ...latestBot.businessProfile,
+            businessName: formData.businessName,
+            type: formData.type,
+            phone: formData.phone,
+            email: formData.email,
+            website: formData.website,
+            location: formData.location,
+            hours: parseHoursFromString(formData.hours),
+            services: formData.services.split(',').map(s => s.trim()).filter(Boolean),
+          },
+          faqs: faqs,
+        };
+        const saveResponse = await apiRequest("PUT", `/api/super-admin/bots/${bot.botId}`, updatedBot);
+        return saveResponse.json();
+      } finally {
+        releaseLock();
+      }
     },
     onSuccess: () => {
       toast({ title: "Saved", description: "Knowledge base has been updated." });
@@ -3628,6 +3692,7 @@ function KnowledgePanel({ bot, clientType }: { bot: BotConfig; clientType?: stri
 // Channels Panel - Widget styling + embed code (combined)
 function ChannelsPanel({ bot, client }: { bot: BotConfig; client: Client }) {
   const { toast } = useToast();
+  const { acquireLock, releaseLock, isLocked } = useSaveLock();
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [widgetSettings, setWidgetSettings] = useState({
@@ -3650,16 +3715,22 @@ function ChannelsPanel({ bot, client }: { bot: BotConfig; client: Client }) {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/super-admin/bots');
-      const allBots = await response.json() as BotConfig[];
-      const latestBot = allBots.find(b => b.botId === bot.botId) || bot;
-      
-      const updatedBot = {
-        ...latestBot,
-        widgetSettings: widgetSettings,
-      };
-      const saveResponse = await apiRequest("PUT", `/api/super-admin/bots/${bot.botId}`, updatedBot);
-      return saveResponse.json();
+      // Acquire lock to prevent concurrent saves
+      await acquireLock();
+      try {
+        const response = await fetch('/api/super-admin/bots');
+        const allBots = await response.json() as BotConfig[];
+        const latestBot = allBots.find(b => b.botId === bot.botId) || bot;
+        
+        const updatedBot = {
+          ...latestBot,
+          widgetSettings: widgetSettings,
+        };
+        const saveResponse = await apiRequest("PUT", `/api/super-admin/bots/${bot.botId}`, updatedBot);
+        return saveResponse.json();
+      } finally {
+        releaseLock();
+      }
     },
     onSuccess: () => {
       toast({ title: "Saved", description: "Widget settings have been updated." });
@@ -5399,42 +5470,123 @@ function CreateFromTemplateModal({
   );
 }
 
-// Test Chat Panel - Interactive AI chat testing
+// Test Chat Panel - Interactive AI chat testing with debugging
+interface DebugInfo {
+  request: {
+    endpoint: string;
+    method: string;
+    body: any;
+    timestamp: string;
+  };
+  response: {
+    status: number;
+    data: any;
+    latency: number;
+    timestamp: string;
+  } | null;
+}
+
 function TestChatPanel({ clientId, botId, botName }: { clientId: string; botId: string; botName: string }) {
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId] = useState(() => `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  const [showDebug, setShowDebug] = useState(false);
+  const [debugLogs, setDebugLogs] = useState<DebugInfo[]>([]);
+  const [selectedDebugIndex, setSelectedDebugIndex] = useState<number | null>(null);
+  // Use a ref to always have current message history for API calls
+  const messagesRef = useRef<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
   const { toast } = useToast();
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const sendMessage = async () => {
     if (!inputValue.trim() || isLoading) return;
 
     const userMessage = inputValue.trim();
     setInputValue('');
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    
+    // Build the full message history using the ref (always current)
+    const newUserMessage = { role: 'user' as const, content: userMessage };
+    const fullHistory = [...messagesRef.current, newUserMessage];
+    
+    // Update both state and ref
+    messagesRef.current = fullHistory;
+    setMessages(fullHistory);
     setIsLoading(true);
+
+    const requestBody = {
+      messages: fullHistory,
+      sessionId
+    };
+    
+    const debugRequest: DebugInfo = {
+      request: {
+        endpoint: `/api/chat/${clientId}/${botId}`,
+        method: 'POST',
+        body: requestBody,
+        timestamp: new Date().toISOString(),
+      },
+      response: null,
+    };
+    
+    const startTime = Date.now();
 
     try {
       const response = await fetch(`/api/chat/${clientId}/${botId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          messages: [...messages, { role: 'user', content: userMessage }],
-          sessionId
-        })
+        body: JSON.stringify(requestBody)
       });
 
-      if (!response.ok) throw new Error('Failed to get response');
-      
+      const latency = Date.now() - startTime;
       const data = await response.json();
+      
+      debugRequest.response = {
+        status: response.status,
+        data: data,
+        latency,
+        timestamp: new Date().toISOString(),
+      };
+
+      if (!response.ok) {
+        throw new Error(data.error || `HTTP ${response.status}: Failed to get response`);
+      }
+      
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
+      setDebugLogs(prev => {
+        const newLogs = [...prev, debugRequest];
+        // Auto-select the latest log entry
+        setSelectedDebugIndex(newLogs.length - 1);
+        return newLogs;
+      });
     } catch (error) {
       console.error('Chat error:', error);
+      const latency = Date.now() - startTime;
+      const errorMessage = error instanceof Error ? error.message : 'Failed to get AI response';
+      
+      debugRequest.response = {
+        status: debugRequest.response?.status || 500,
+        data: { error: errorMessage },
+        latency,
+        timestamp: new Date().toISOString(),
+      };
+      
+      // Add error message to chat so user sees it
+      setMessages(prev => [...prev, { role: 'assistant', content: `Sorry, I encountered an error: ${errorMessage}. Please try again.` }]);
+      setDebugLogs(prev => {
+        const newLogs = [...prev, debugRequest];
+        setSelectedDebugIndex(newLogs.length - 1);
+        return newLogs;
+      });
+      
       toast({
         title: "Chat Error",
-        description: "Failed to get AI response. Please try again.",
+        description: `Request failed: ${errorMessage}`,
         variant: "destructive"
       });
     } finally {
@@ -5444,86 +5596,245 @@ function TestChatPanel({ clientId, botId, botName }: { clientId: string; botId: 
 
   const clearChat = () => {
     setMessages([]);
-    toast({ title: "Chat Cleared", description: "Conversation has been reset." });
+    messagesRef.current = [];
+    setDebugLogs([]);
+    setSelectedDebugIndex(null);
+    toast({ title: "Chat Cleared", description: "Conversation and debug logs have been reset." });
   };
+
+  // Safe access to selected debug log with bounds checking
+  const selectedDebug = selectedDebugIndex !== null && 
+    selectedDebugIndex >= 0 && 
+    selectedDebugIndex < debugLogs.length 
+      ? debugLogs[selectedDebugIndex] 
+      : null;
 
   return (
     <div className="space-y-4">
-      <GlassCard className="h-[500px] flex flex-col">
-        <GlassCardHeader className="flex-shrink-0 flex flex-row items-center justify-between">
-          <div>
-            <GlassCardTitle className="flex items-center gap-2">
-              <MessageCircle className="h-5 w-5 text-cyan-400" />
-              Test Chat
-            </GlassCardTitle>
-            <GlassCardDescription>
-              Test {botName} with real AI responses
-            </GlassCardDescription>
-          </div>
-          <Button variant="outline" size="sm" onClick={clearChat} className="border-white/20 text-white/70 hover:bg-white/10">
-            <X className="h-4 w-4 mr-1" />
-            Clear
-          </Button>
-        </GlassCardHeader>
-        
-        <GlassCardContent className="flex-1 flex flex-col min-h-0">
-          <ScrollArea className="flex-1 pr-4 mb-4">
-            <div className="space-y-4">
-              {messages.length === 0 && (
-                <div className="text-center text-white/40 py-8">
-                  <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>Start a conversation to test the AI</p>
-                  <p className="text-sm mt-1">Try asking about services, hours, or booking</p>
-                </div>
-              )}
-              {messages.map((message, i) => (
-                <div
-                  key={i}
-                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-2 ${
-                      message.role === 'user'
-                        ? 'bg-cyan-500 text-white'
-                        : 'bg-white/10 text-white/90'
-                    }`}
-                  >
-                    {message.content}
+      {/* Debug Toggle */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+            Session: {sessionId.slice(0, 12)}...
+          </Badge>
+          <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30">
+            {messages.length} messages
+          </Badge>
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => setShowDebug(!showDebug)}
+          className={showDebug ? "bg-purple-500/20 border-purple-500/30 text-purple-400" : "border-white/20 text-white/70"}
+          data-testid="button-toggle-debug"
+        >
+          <Code className="h-4 w-4 mr-2" />
+          {showDebug ? 'Hide Debug' : 'Show Debug'}
+        </Button>
+      </div>
+
+      <div className={showDebug ? "grid grid-cols-2 gap-4" : ""}>
+        {/* Chat Panel */}
+        <GlassCard className="h-[500px] flex flex-col">
+          <GlassCardHeader className="flex-shrink-0 flex flex-row items-center justify-between">
+            <div>
+              <GlassCardTitle className="flex items-center gap-2">
+                <MessageCircle className="h-5 w-5 text-cyan-400" />
+                Test Chat
+              </GlassCardTitle>
+              <GlassCardDescription>
+                Test {botName} with real AI responses
+              </GlassCardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={clearChat} className="border-white/20 text-white/70 hover:bg-white/10">
+              <X className="h-4 w-4 mr-1" />
+              Clear
+            </Button>
+          </GlassCardHeader>
+          
+          <GlassCardContent className="flex-1 flex flex-col min-h-0">
+            <ScrollArea className="flex-1 pr-4 mb-4">
+              <div className="space-y-4">
+                {messages.length === 0 && (
+                  <div className="text-center text-white/40 py-8">
+                    <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p>Start a conversation to test the AI</p>
+                    <p className="text-sm mt-1">Try asking about services, hours, or booking</p>
                   </div>
-                </div>
-              ))}
-              {isLoading && (
-                <div className="flex justify-start">
-                  <div className="bg-white/10 rounded-2xl px-4 py-2">
-                    <div className="flex gap-1">
-                      <span className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                )}
+                {messages.map((message, i) => (
+                  <div
+                    key={i}
+                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-[80%] rounded-2xl px-4 py-2 ${
+                        message.role === 'user'
+                          ? 'bg-cyan-500 text-white'
+                          : 'bg-white/10 text-white/90'
+                      }`}
+                    >
+                      {message.content}
                     </div>
                   </div>
+                ))}
+                {isLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-white/10 rounded-2xl px-4 py-2">
+                      <div className="flex gap-1">
+                        <span className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+            
+            <div className="flex gap-2 flex-shrink-0">
+              <Input
+                data-testid="input-test-chat"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+                placeholder="Type a message..."
+                className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                disabled={isLoading}
+              />
+              <Button 
+                data-testid="button-send-message"
+                onClick={sendMessage}
+                disabled={isLoading || !inputValue.trim()}
+                className="bg-cyan-500 hover:bg-cyan-600 text-white"
+              >
+                <SendHorizontal className="h-4 w-4" />
+              </Button>
+            </div>
+          </GlassCardContent>
+        </GlassCard>
+
+        {/* Debug Panel */}
+        {showDebug && (
+          <GlassCard className="h-[500px] flex flex-col">
+            <GlassCardHeader className="flex-shrink-0">
+              <GlassCardTitle className="flex items-center gap-2">
+                <Code className="h-5 w-5 text-purple-400" />
+                Debug Console
+              </GlassCardTitle>
+              <GlassCardDescription>
+                Raw API request/response data
+              </GlassCardDescription>
+            </GlassCardHeader>
+            
+            <GlassCardContent className="flex-1 flex flex-col min-h-0">
+              {debugLogs.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center text-white/40 text-center">
+                  <div>
+                    <Code className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p>No API calls yet</p>
+                    <p className="text-sm mt-1">Send a message to see debug data</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col min-h-0">
+                  {/* Request History */}
+                  <div className="flex gap-1 mb-3 overflow-x-auto pb-2">
+                    {debugLogs.map((log, i) => (
+                      <Button
+                        key={i}
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedDebugIndex(i)}
+                        className={`flex-shrink-0 ${selectedDebugIndex === i 
+                          ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' 
+                          : 'text-white/55 hover:text-white'}`}
+                        data-testid={`button-debug-log-${i}`}
+                      >
+                        #{i + 1}
+                        <Badge 
+                          className={`ml-1 text-xs ${log.response?.status === 200 
+                            ? 'bg-green-500/20 text-green-400' 
+                            : 'bg-red-500/20 text-red-400'}`}
+                        >
+                          {log.response?.latency || '...'}ms
+                        </Badge>
+                      </Button>
+                    ))}
+                  </div>
+
+                  {/* Selected Log Details */}
+                  {selectedDebug && (
+                    <ScrollArea className="flex-1">
+                      <div className="space-y-4">
+                        {/* Request */}
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30">REQUEST</Badge>
+                            <span className="text-xs text-white/40">{selectedDebug.request.timestamp}</span>
+                          </div>
+                          <pre className="bg-black/30 rounded-lg p-3 text-xs text-white/80 overflow-x-auto font-mono">
+                            <div className="text-cyan-400 mb-1">{selectedDebug.request.method} {selectedDebug.request.endpoint}</div>
+                            {JSON.stringify(selectedDebug.request.body, null, 2)}
+                          </pre>
+                        </div>
+
+                        {/* Response */}
+                        {selectedDebug.response && (
+                          <div>
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge className={selectedDebug.response.status === 200 
+                                ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                                : 'bg-red-500/20 text-red-400 border-red-500/30'
+                              }>
+                                RESPONSE {selectedDebug.response.status}
+                              </Badge>
+                              <span className="text-xs text-white/40">{selectedDebug.response.latency}ms</span>
+                            </div>
+                            <pre className="bg-black/30 rounded-lg p-3 text-xs text-white/80 overflow-x-auto font-mono">
+                              {JSON.stringify(selectedDebug.response.data, null, 2)}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  )}
                 </div>
               )}
-            </div>
-          </ScrollArea>
-          
-          <div className="flex gap-2 flex-shrink-0">
-            <Input
-              data-testid="input-test-chat"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-              placeholder="Type a message..."
-              className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-white/40"
-              disabled={isLoading}
-            />
-            <Button 
-              data-testid="button-send-message"
-              onClick={sendMessage}
-              disabled={isLoading || !inputValue.trim()}
-              className="bg-cyan-500 hover:bg-cyan-600 text-white"
-            >
-              <SendHorizontal className="h-4 w-4" />
-            </Button>
+            </GlassCardContent>
+          </GlassCard>
+        )}
+      </div>
+
+      {/* Quick Test Prompts */}
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="text-sm">Quick Test Prompts</GlassCardTitle>
+          <GlassCardDescription>Click to test common scenarios</GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent>
+          <div className="flex flex-wrap gap-2">
+            {[
+              "What services do you offer?",
+              "What are your hours?",
+              "How can I book an appointment?",
+              "How much do you charge?",
+              "Where are you located?",
+              "Do you have any specials?",
+            ].map((prompt, i) => (
+              <Button
+                key={i}
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setInputValue(prompt);
+                }}
+                className="border-white/10 text-white/70 hover:bg-white/10 hover:text-white"
+                data-testid={`button-quick-prompt-${i}`}
+              >
+                {prompt}
+              </Button>
+            ))}
           </div>
         </GlassCardContent>
       </GlassCard>
