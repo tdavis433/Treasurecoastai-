@@ -156,6 +156,13 @@ shared/
   - Quick status row with Active Clients, Demo Bots, Paused counts
   - Left sidebar: "Client Assistants" title with badge count, improved search
   - Terminology updated throughout: "Workspaces" → "Clients" to match agency-first model
+- **Auto-generated login credentials feature**:
+  - When admin creates a new client, system generates login credentials automatically
+  - Create Client modal: Enter business name and client email
+  - System creates: User account, workspace, AI assistant bot, and all default settings
+  - Credentials modal shows: Email, temporary password, and dashboard URL
+  - Copy buttons for easy sharing with clients
+  - Secure password generation using crypto.randomBytes
 
 ## Control Center Features (Admin Only)
 The admin Control Center at `/super-admin` provides:
