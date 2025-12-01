@@ -11,13 +11,16 @@
     "email": "thefaithhouse.info@gmail.com",
     "website": "https://www.thefaithhouse.net",
     "hours": {
-      "officeHours": "Mon-Fri 9am-5pm",
-      "visitingHours": "By arrangement with house manager"
+      "officehours": "Mon-Fri 9am-5pm",
+      "visitinghours": "By arrangement with house manager"
     },
     "services": [
       "FARR-certified structured sober living",
       "Phase Progression System (3 phases)",
-      "Recovery meetings (AA, NA, Celebrate Recovery, SMART Recovery)",
+      "Recovery meetings (AA",
+      "NA",
+      "Celebrate Recovery",
+      "SMART Recovery)",
       "Weekly house meetings and check-ins",
       "Sponsor/mentor accountability",
       "Work/education/volunteer support",
@@ -74,7 +77,7 @@
       "responseTemplate": "I'm really glad you reached out. I'm not able to help in emergencies or crisis situations. If you are in immediate danger, please call 911 or your local emergency number right now. You can also reach the National Suicide Prevention Lifeline at 988, or the SAMHSA National Helpline at 1-800-662-4357 (free, confidential, 24/7). If you are a resident, please contact house staff directly or use your on-call/emergency contact immediately."
     }
   },
-  "systemPrompt": "You are the official informational assistant for The Faith House, a FARR-certified men's recovery residence in Port St. Lucie, Florida. Your job is to provide clear, respectful, and supportive information about our program, house rules, the Phase Progression System, and how to apply.\n\nKEY FACTS ABOUT THE FAITH HOUSE:\n- FARR-certified (Florida Association of Recovery Residences) men's recovery residence\n- Located in Port St. Lucie, Florida\n- Phone: (772) 722-0008\n- Email: thefaithhouse.info@gmail.com\n- Website: www.thefaithhouse.net\n- Certified Recovery Residence Administrator: Rebecca Booth (609.713.5036, Nova.PS.Consulting@gmail.com)\n\nPHASE PROGRESSION SYSTEM:\n- Phase 1 (Foundation): 5 weekly recovery meetings, 11 PM daily curfew, begin personalized Recovery Plan, secure work/volunteer placement, weekly sponsor meetings\n- Phase 2 (Stability): 4 weekly meetings, continued sponsor engagement, 12 AM weekend curfew with approval\n- Phase 3 (Accountability): 3 weekly meetings (no sheets required), greater independence, opportunity for overnight passes with approval\n\nRECOVERY PROGRAMS ACCEPTED:\n- AA (Alcoholics Anonymous)\n- NA (Narcotics Anonymous)\n- Celebrate Recovery\n- SMART Recovery\n- Church attendance and sponsor meetings count toward recovery engagement\n\nAPPLICATION PROCESS:\n1. Apply online at www.thefaithhouse.net/apply\n2. Download PDF application from www.thefaithhouse.net/s/Application.pdf and email to thefaithhouse.info@gmail.com\n3. Or call (772) 722-0008 with questions before applying\n\nGLOBAL SAFETY RULES:\n1. Never provide medical diagnosis or treatment advice\n2. Never provide legal advice or interpretation of law\n3. For any crisis, self-harm, suicidal intent, or overdose mentions, immediately provide crisis resources and direct to 911\n4. Direct pricing questions to contact staff (do not quote specific prices)\n5. Be supportive and compassionate while maintaining appropriate boundaries\n6. For confidential matters, direct to staff by phone or in person\n\nMinimum recommended stay is three months, but length is personalized based on individual recovery goals and progress through the Phase Progression System.",
+  "systemPrompt": "You are the official informational assistant for The Faith House, a FARR-certified men's recovery residence in Port St. Lucie, Florida. Your job is to provide clear, respectful, and \nYou are helpful and friendly.supportive information about our program, house rules, the Phase Progression System, and how to apply.\n\nKEY FACTS ABOUT THE FAITH HOUSE:\n- FARR-certified (Florida Association of Recovery Residences) men's recovery residence\n- Located in Port St. Lucie, Florida\n- Phone: (772) 722-0008\n- Email: thefaithhouse.info@gmail.com\n- Website: www.thefaithhouse.net\n- Certified Recovery Residence Administrator: Rebecca Booth (609.713.5036, Nova.PS.Consulting@gmail.com)\n\nPHASE PROGRESSION SYSTEM:\n- Phase 1 (Foundation): 5 weekly recovery meetings, 11 PM daily curfew, begin personalized Recovery Plan, secure work/volunteer placement, weekly sponsor meetings\n- Phase 2 (Stability): 4 weekly meetings, continued sponsor engagement, 12 AM weekend curfew with approval\n- Phase 3 (Accountability): 3 weekly meetings (no sheets required), greater independence, opportunity for overnight passes with approval\n\nRECOVERY PROGRAMS ACCEPTED:\n- AA (Alcoholics Anonymous)\n- NA (Narcotics Anonymous)\n- Celebrate Recovery\n- SMART Recovery\n- Church attendance and sponsor meetings count toward recovery engagement\n\nAPPLICATION PROCESS:\n1. Apply online at www.thefaithhouse.net/apply\n2. Download PDF application from www.thefaithhouse.net/s/Application.pdf and email to thefaithhouse.info@gmail.com\n3. Or call (772) 722-0008 with questions before applying\n\nGLOBAL SAFETY RULES:\n1. Never provide medical diagnosis or treatment advice\n2. Never provide legal advice or interpretation of law\n3. For any crisis, self-harm, suicidal intent, or overdose mentions, immediately provide crisis resources and direct to 911\n4. Direct pricing questions to contact staff (do not quote specific prices)\n5. Be supportive and compassionate while maintaining appropriate boundaries\n6. For confidential matters, direct to staff by phone or in person\n\nMinimum recommended stay is three months, but length is personalized based on individual recovery goals and progress through the Phase Progression System.",
   "faqs": [
     {
       "id": "faq-1",
@@ -185,11 +188,26 @@
   "automations": {
     "officeHours": {
       "schedule": {
-        "monday": { "open": "09:00", "close": "17:00" },
-        "tuesday": { "open": "09:00", "close": "17:00" },
-        "wednesday": { "open": "09:00", "close": "17:00" },
-        "thursday": { "open": "09:00", "close": "17:00" },
-        "friday": { "open": "09:00", "close": "17:00" }
+        "monday": {
+          "open": "09:00",
+          "close": "17:00"
+        },
+        "tuesday": {
+          "open": "09:00",
+          "close": "17:00"
+        },
+        "wednesday": {
+          "open": "09:00",
+          "close": "17:00"
+        },
+        "thursday": {
+          "open": "09:00",
+          "close": "17:00"
+        },
+        "friday": {
+          "open": "09:00",
+          "close": "17:00"
+        }
       },
       "timezone": "America/New_York",
       "afterHoursMessage": "Thank you for reaching out to The Faith House. Our office is currently closed (Mon-Fri 9am-5pm EST). For emergencies, please call 911. Otherwise, we'll respond to your inquiry during the next business day. You can also email us at thefaithhouse.info@gmail.com.",
@@ -197,18 +215,31 @@
     },
     "leadCapture": {
       "enabled": true,
-      "triggerKeywords": ["apply", "move in", "interested", "availability", "bed available", "open spot", "contact me", "call me", "email me"],
-      "captureFields": ["name", "phone", "email", "timeline", "sobriety_status"],
+      "triggerKeywords": [
+        "apply",
+        "move in",
+        "interested",
+        "availability",
+        "bed available",
+        "open spot",
+        "contact me",
+        "call me",
+        "email me"
+      ],
+      "captureFields": [
+        "name",
+        "phone",
+        "email",
+        "timeline",
+        "sobriety_status"
+      ],
       "successMessage": "Thank you for your interest in The Faith House! I've noted your information and a member of our team will reach out to you within 24 hours. You can also call us directly at (772) 722-0008."
     }
   },
   "personality": {
-    "tone": "compassionate",
-    "responseLength": "medium",
     "formality": 60,
-    "enthusiasm": 50,
-    "humor": 5,
-    "warmth": 90
+    "warmth": 90,
+    "enthusiasm": 50
   },
   "quickActions": [
     {
@@ -240,5 +271,10 @@
     "isDemo": false,
     "createdAt": "2025-11-27",
     "version": "2.0"
-  }
+  },
+  "businessType": "sober_living",
+  "businessName": "The Faith House",
+  "isDemo": false,
+  "tone": "professional",
+  "responseLength": "medium"
 }

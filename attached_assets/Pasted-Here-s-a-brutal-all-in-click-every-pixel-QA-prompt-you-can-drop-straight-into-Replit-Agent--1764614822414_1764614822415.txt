@@ -1,0 +1,409 @@
+Here’s a brutal, all-in, click-every-pixel QA prompt you can drop straight into Replit Agent.
+
+⸻
+
+🔥 ULTIMATE QA TEST PROMPT — ADMIN & CLIENT DASHBOARDS (TREASURE COAST AI)
+
+You are a senior QA engineer + UX reviewer testing the Treasure Coast AI platform.
+
+The platform has 3 roles:
+	•	AGENCY_ADMIN – me, the agency owner, using the Admin Panel to create/manage bots for different businesses.
+	•	CLIENT_USER – the business owner using the Client Dashboard to view conversations, leads, bookings, and basic analytics.
+	•	VISITOR – website visitors using the chat widget.
+
+Your mission:
+Test every feature, every page, every button, every input, every state, on both the Admin and Client sides — under normal use, bad input, and edge cases — and report every bug, visual glitch, UX issue, or missing behavior.
+
+Do not add new features. Just test what exists and how it behaves.
+
+⸻
+
+0. GLOBAL TESTING RULES
+	1.	Browsers & Devices
+	•	Test in at least:
+	•	Chrome (desktop)
+	•	Safari (desktop or Mac-like)
+	•	Mobile viewport (iPhone-sized)
+	•	For each page, test:
+	•	~360px (phone)
+	•	~768px (tablet)
+	•	~1024px (small laptop)
+	•	~1440px (desktop)
+	2.	General for Every Page
+For every screen you touch:
+	•	Try normal usage (happy path).
+	•	Try invalid input (empty fields, bad formats).
+	•	Try edge behaviors:
+	•	Refresh mid-action.
+	•	Use browser back/forward.
+	•	Open in new tab.
+	•	Resize window while modals/dropdowns are open.
+	•	Watch:
+	•	Console errors/warnings.
+	•	Network failures.
+	•	Layout breaks, overlaps, scroll issues.
+	3.	Bug Report Format
+For every issue, log:
+	•	Title: Short description
+	•	Severity: BLOCKER | MAJOR | MINOR | VISUAL | UX
+	•	Role: AGENCY_ADMIN | CLIENT_USER | VISITOR
+	•	Page/Route: e.g. /admin/bots/:id, /client/leads, widget on /test-page
+	•	Steps to Reproduce: Numbered list
+	•	Expected Result:
+	•	Actual Result:
+	•	Console/Network Notes: (if any)
+	•	Screen Size Tested: (e.g. 1440x900 desktop, 390x844 mobile)
+Also log positive confirmations as:
+	•	✅ Works as expected: [role, route, brief description]
+
+⸻
+
+1. AUTH, ROLES & NAVIGATION
+
+1.1 AGENCY_ADMIN Authentication
+	•	Valid login: correct email/password.
+	•	Invalid login:
+	•	Wrong password.
+	•	Unknown email.
+	•	Empty fields.
+	•	Forgotten password flow (if present).
+	•	Logout:
+	•	After logout, try going back to /admin via back button and direct URL.
+	•	Confirm redirect to login.
+	•	Session persistence:
+	•	Refresh on /admin routes and confirm session stays valid.
+	•	Close and reopen tab (if possible) and confirm reasonable behavior.
+
+1.2 CLIENT_USER Authentication
+
+Repeat all the above but as CLIENT_USER and ensure:
+	•	They land on Client Dashboard, not Admin.
+	•	Any attempt to access /admin routes is blocked / redirected.
+
+1.3 Navigation
+
+For each role:
+	•	Click every top-level nav item and submenu.
+	•	Confirm active state highlighting, correct titles, and no dead links.
+	•	Try:
+	•	Multiple fast clicks.
+	•	Opening in new tab.
+	•	Using browser back/forward between pages.
+
+⸻
+
+2. ADMIN PANEL (AGENCY_ADMIN) — BUSINESSES & BOTS
+
+2.1 ClientBusiness Management
+
+On the Admin side:
+	•	Create multiple ClientBusiness records with realistic data.
+	•	Try invalid inputs:
+	•	Empty required fields.
+	•	Invalid domain.
+	•	Overlong names.
+	•	Edit business details:
+	•	Change name, domain, contact info, timezone.
+	•	Save and refresh — confirm persistence.
+	•	Deactivate/Archive business (if supported):
+	•	Confirm it no longer appears as active.
+	•	Confirm CLIENT_USER of that business behaves correctly (cannot access or sees “inactive” state).
+
+2.2 Bot Creation & Linking
+
+For each ClientBusiness:
+	•	Create at least 2 bots.
+	•	Configure minimal data (name, purpose, status).
+	•	Verify:
+	•	Bots show under correct business.
+	•	Bot status indicator shows correctly (active/inactive).
+	•	Try:
+	•	Duplicate names.
+	•	Missing fields.
+	•	Delete or archive a bot:
+	•	Confirm it disappears from Admin lists.
+	•	Confirm its widget / client views behave correctly (cannot use inactive bot).
+
+⸻
+
+3. ADMIN PANEL — WEBSITE SCRAPER & KNOWLEDGE
+
+3.1 Scrape Workflow
+
+Per bot:
+	•	Add one or more URLs (home, services, FAQ).
+	•	Trigger scraping.
+	•	Check:
+	•	Status transitions: PENDING → SUCCESS or FAILED.
+	•	Error handling for:
+	•	Invalid URL.
+	•	404 URL.
+	•	Very long pages.
+	•	Open the scraped item preview:
+	•	Confirm text is readable.
+	•	No HTML junk or obviously broken encoding.
+
+3.2 Knowledge Management
+	•	Enable/disable each KnowledgeSource.
+	•	Confirm that toggling active/inactive is saved and persists after refresh.
+	•	Attempt saving with no sources at all — ensure AI behavior is documented/expected.
+
+⸻
+
+4. ADMIN PANEL — BOT BUILDER (COMMAND CENTER)
+
+4.1 Bot Overview Page
+	•	Confirm:
+	•	Correct business name.
+	•	Bot name + status.
+	•	Basic metrics (convos, leads, bookings) if displayed.
+	•	Test:
+	•	Clicking into “Edit Bot Settings”.
+	•	Links/buttons to widget snippet, preview, etc.
+
+4.2 Bot Settings Editor
+
+In each tab:
+
+General Tab
+	•	Edit:
+	•	Bot name.
+	•	Avatar (if supported).
+	•	Welcome message.
+	•	Fallback message.
+	•	Save → hard refresh → ensure values persist.
+
+Personality & Instructions
+	•	Enter short personality text.
+	•	Enter long system instructions (multi-paragraph).
+	•	Try:
+	•	Emojis.
+	•	Long text (> 1000 chars).
+	•	Confirm:
+	•	Saved correctly.
+	•	No UI cutoffs in textareas.
+
+FAQs
+	•	Add multiple FAQ items.
+	•	Edit question/answer.
+	•	Delete FAQ.
+	•	Boundary tests:
+	•	Empty question or answer (should block save with validation).
+	•	Duplicate questions.
+	•	Very short and very long content.
+
+Knowledge Tab
+	•	Toggle sources active/inactive.
+	•	Confirm changes persist.
+	•	UI should clearly show which sources are used.
+
+Behavior / Automations
+	•	Add simple keyword-based rule:
+	•	“If user says ‘price’, send message X”.
+	•	Add 2–3 different rules.
+	•	Edit and delete rules.
+	•	Confirm saving + refresh persistence.
+
+4.3 Preview / Test Panel
+	•	Send different messages:
+	•	General greeting.
+	•	FAQs that match your entries.
+	•	Questions related to scraped site content.
+	•	Totally off-topic question.
+	•	Confirm:
+	•	AI respects business info and instructions.
+	•	AI uses FAQs.
+	•	AI uses scraped knowledge where appropriate.
+	•	AI gives reasonable fallback when unsure.
+	•	Refresh the page and test again:
+	•	Ensure preview still works (no stale or missing configuration).
+
+⸻
+
+5. AI ENGINE BACKEND (FUNCTIONAL CHECKS)
+
+Drive from UI but verify behavior:
+	•	For a bot with:
+	•	Only instructions.
+	•	Instructions + FAQs.
+	•	Instructions + scraped knowledge.
+	•	Compare responses:
+	•	Ensure responses change logically based on available data.
+	•	Simulate:
+	•	Long conversation (10–15 turns).
+	•	Rapid repeated messages.
+	•	Confirm:
+	•	No infinite loops.
+	•	No raw error messages returned to user.
+	•	No internal prompt leakage.
+
+⸻
+
+6. WIDGET TESTING (VISITOR ROLE)
+
+6.1 Layout & Behavior
+
+On a test page with the embed:
+	•	Confirm widget bubble appears on correct side and color.
+	•	Click to open/close widget repeatedly:
+	•	No glitching, no overlapping, no double windows.
+	•	Type messages and check:
+	•	Input focus works.
+	•	Enter key submits.
+	•	Long messages wrap correctly.
+	•	Scroll works when conversation is long.
+
+6.2 Lead Capture & Bookings
+	•	Trigger any lead capture flow:
+	•	Forms with required fields.
+	•	Try valid input → confirm lead created and appears in Admin+Client dashboards.
+	•	Try invalid email/phone → validation errors.
+	•	Submit with empty required fields → blocked with clear messages.
+	•	Trigger a booking (if implemented):
+	•	Create booking.
+	•	Verify booking shows up under Admin + Client Bookings page.
+
+6.3 Edge & Error Conditions
+	•	Refresh page mid-conversation.
+	•	Open widget in multiple tabs for same bot.
+	•	Rapidly send messages to stress test.
+	•	Confirm:
+	•	No duplicated messages.
+	•	No stuck loaders.
+	•	No broken state when network is slow.
+
+⸻
+
+7. CLIENT DASHBOARD (CLIENT_USER)
+
+7.1 Overview Page
+
+Log in as a CLIENT_USER tied to a business where you’ve already:
+	•	Run several conversations.
+	•	Captured some leads.
+	•	Created some bookings.
+
+Check:
+	•	KPI cards:
+	•	Show non-zero correct counts.
+	•	Updating correctly as new interactions occur.
+	•	Date filters (if present):
+	•	Last 7 / 30 days, etc.
+	•	Charts:
+	•	No NaN/undefined labels.
+	•	Tooltips look correct.
+	•	Responsive layout.
+
+7.2 Conversations Page
+	•	Confirm:
+	•	List of conversations with date/time + snippets.
+	•	Filters:
+	•	Status (open/resolved).
+	•	Date range (if present).
+	•	Click into a conversation:
+	•	Full transcript visible.
+	•	Messages clearly labeled (user vs bot).
+	•	Timestamps make sense.
+	•	AI summary appears and reads logically.
+	•	Linked lead/booking appear when present.
+	•	Edge cases:
+	•	Conversation with no lead.
+	•	Conversation with lead but no booking.
+	•	Conversation with multiple messages from each side.
+
+7.3 Leads Page
+	•	Confirm:
+	•	Table of leads with correct columns (name, email, phone, status, created).
+	•	Try:
+	•	Sorting (if available).
+	•	Searching by name/email.
+	•	Filtering by status.
+	•	Update status for several leads:
+	•	NEW → CONTACTED → BOOKED → LOST.
+	•	Verify updates persist after refresh.
+	•	Edit notes and ensure they save.
+
+7.4 Bookings Page
+	•	Confirm:
+	•	Upcoming vs past bookings display correctly.
+	•	Check details:
+	•	Customer name, service type, date/time, status.
+	•	If there’s a “view conversation” or “view lead” link:
+	•	Click and verify navigation works.
+
+7.5 Settings Page
+	•	Toggle bot ON/OFF:
+	•	Confirm that widget uses this state (if OFF, widget should stop or show offline).
+	•	Change widget color:
+	•	Save + reload widget page; confirm color change.
+	•	Notification settings:
+	•	Toggle email notifications and confirm UI updates.
+
+7.6 Access Control
+
+Logged in as CLIENT_USER:
+	•	Try manually visiting /admin routes:
+	•	Confirm access is denied or redirected.
+	•	Try editing admin-only configurations via URL hacks:
+	•	Confirm blocked.
+
+⸻
+
+8. RESPONSIVE & VISUAL QA (ALL PAGES)
+
+For Admin, Client, and Widget:
+	•	Test at phone/tablet/desktop widths.
+	•	With modals, dropdowns, toasts open:
+	•	Resize window and confirm:
+	•	No broken layout.
+	•	No content off-screen that you can’t scroll to.
+	•	Check:
+	•	Buttons are tappable on mobile.
+	•	No overlapping text.
+	•	No horizontal scroll unless clearly intentional.
+	•	Toasts don’t cover important controls.
+
+⸻
+
+9. DATA CONSISTENCY & PERSISTENCE
+	•	For each major action (create bot, scrape site, add FAQ, create lead, create booking, change status):
+	•	Perform the action.
+	•	Refresh the page.
+	•	Log out and back in (as appropriate).
+	•	Confirm the data is still correct and visible to the correct role.
+	•	Ensure:
+	•	A lead created from the widget for Business A does not appear under Business B or any other client.
+	•	ADMIN can see all businesses’ data.
+	•	CLIENT only sees their own.
+
+⸻
+
+10. FINAL QA REPORT
+
+At the end, produce a structured QA report:
+	1.	Summary
+	•	Overall stability rating.
+	•	Number of blockers/major/minor issues.
+	2.	Blocker Issues
+	•	List with full bug format.
+	3.	Major Issues
+	4.	Minor / Visual / UX Issues
+	5.	Data / Consistency Issues
+	6.	Performance Observations
+	•	Slow pages, heavy queries, noticeable lag.
+	7.	Security / Access Concerns
+	•	Any leaks between businesses or roles.
+	8.	Confirmed Working
+	•	Bullet list of flows that function correctly end-to-end:
+	•	Admin creates business + bot.
+	•	Admin scrapes site + adds FAQs.
+	•	Widget runs on test site and chats properly.
+	•	Lead + booking captured.
+	•	Client sees conversations, leads, bookings.
+
+Only mark something as ✅ if you’ve actually tested it.
+
+⸻
+
+Use this prompt as your complete testing instruction set.
+Click everything, type into everything, break everything you can – and report every flaw.
