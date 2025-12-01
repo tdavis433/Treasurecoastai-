@@ -81,37 +81,37 @@ const features = [
   {
     icon: <Zap className="h-6 w-6 text-cyan-400" />,
     title: "Smart Automations",
-    description: "Trigger responses based on keywords, time, inactivity, and more. Capture leads automatically.",
+    description: "Set up your own triggers for keywords, time delays, and lead capture rules — your way.",
     color: "cyan"
   },
   {
     icon: <Shield className="h-6 w-6 text-green-400" />,
-    title: "Safety First",
-    description: "Built-in crisis detection, PII protection, and content safety rules for every conversation.",
+    title: "Built-in Safety",
+    description: "Your bot comes with crisis detection, PII protection, and content safety rules you control.",
     color: "green"
   },
   {
     icon: <Globe className="h-6 w-6 text-blue-400" />,
-    title: "Multi-Tenant Platform",
-    description: "Manage multiple businesses from one dashboard with workspace isolation and RBAC.",
+    title: "Your Dashboard",
+    description: "Manage all your bots from one powerful dashboard with full control over every setting.",
     color: "blue"
   },
   {
     icon: <BarChart3 className="h-6 w-6 text-purple-400" />,
-    title: "Rich Analytics",
-    description: "Track conversations, leads, sessions, and trends with CSV exports and date filtering.",
+    title: "Your Analytics",
+    description: "Track your conversations, leads, and trends with exports and filtering you control.",
     color: "purple"
   },
   {
     icon: <Palette className="h-6 w-6 text-pink-400" />,
-    title: "Custom Widget",
-    description: "Fully customizable chat widget with themes, positioning, sounds, and accessibility options.",
+    title: "Your Brand",
+    description: "Fully customize your chat widget with your colors, positioning, sounds, and style.",
     color: "pink"
   },
   {
     icon: <Lock className="h-6 w-6 text-amber-400" />,
-    title: "Enterprise Security",
-    description: "Session management, rate limiting, webhook signing, and Stripe billing integration.",
+    title: "Enterprise Ready",
+    description: "Built-in security, rate limiting, and integrations — ready for your business needs.",
     color: "amber"
   }
 ];
@@ -221,22 +221,23 @@ export default function DemosPage() {
 
           {/* Subheading */}
           <p className="text-xl md:text-2xl text-white/60 max-w-3xl mx-auto mb-10 leading-relaxed">
-            Deploy intelligent chatbots that handle customer inquiries 24/7, capture leads, 
-            book appointments, and provide instant support across any industry.
+            Build your own intelligent chatbot that handles customer inquiries 24/7, captures leads, 
+            books appointments, and provides instant support — no coding required.
           </p>
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
-            <Button 
-              size="lg" 
-              className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white px-8 py-6 text-lg gap-2 shadow-lg shadow-cyan-500/25"
-              data-testid="button-get-started"
-              onClick={() => window.location.href = 'mailto:hello@treasurecoastai.com?subject=I want a custom AI chatbot'}
-            >
-              <MessageCircle className="h-5 w-5" />
-              Contact Us Now
-              <ArrowRight className="h-5 w-5" />
-            </Button>
+            <Link href="/login">
+              <Button 
+                size="lg" 
+                className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white px-8 py-6 text-lg gap-2 shadow-lg shadow-cyan-500/25"
+                data-testid="button-get-started"
+              >
+                <MessageCircle className="h-5 w-5" />
+                Get Your Custom AI Assistant
+                <ArrowRight className="h-5 w-5" />
+              </Button>
+            </Link>
             <Link href="/faith-house">
               <Button 
                 size="lg" 
@@ -254,7 +255,7 @@ export default function DemosPage() {
           <div className="flex flex-wrap items-center justify-center gap-6 text-white/40 text-sm">
             <div className="flex items-center gap-2">
               <Check className="h-4 w-4 text-green-400" />
-              No credit card required
+              No coding required
             </div>
             <div className="flex items-center gap-2">
               <Check className="h-4 w-4 text-green-400" />
@@ -262,7 +263,7 @@ export default function DemosPage() {
             </div>
             <div className="flex items-center gap-2">
               <Check className="h-4 w-4 text-green-400" />
-              HIPAA-ready safety features
+              Full customization control
             </div>
           </div>
         </div>
@@ -369,8 +370,8 @@ export default function DemosPage() {
               </span>
             </h2>
             <p className="text-lg text-white/60 max-w-2xl mx-auto">
-              A complete platform for deploying, managing, and scaling AI assistants 
-              across your entire organization.
+              A complete platform for building, customizing, and deploying your own AI assistants 
+              with full control over every detail.
             </p>
           </div>
 
@@ -381,7 +382,6 @@ export default function DemosPage() {
                 hover
                 className="group glass-card-glow"
                 data-testid={`card-feature-${i}`}
-                style={{ animationDelay: `${i * 100}ms` }}
               >
                 <GlassCardHeader>
                   <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br from-${feature.color}-500/20 to-${feature.color}-600/10 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:shadow-lg transition-all duration-300 border border-${feature.color}-500/20`}>
@@ -478,20 +478,21 @@ export default function DemosPage() {
               </span>
             </h2>
             <p className="text-lg text-white/60 mb-8">
-              Join businesses using Treasure Coast AI to deliver exceptional 
-              customer support, capture more leads, and grow faster.
+              Join businesses using Treasure Coast AI to build their own AI assistants, 
+              capture more leads, and grow faster — on your terms.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button 
-                size="lg" 
-                className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white px-8 py-6 text-lg gap-2 shadow-lg shadow-cyan-500/25 glow-cyan-strong"
-                data-testid="button-cta-bottom"
-                onClick={() => window.location.href = 'mailto:hello@treasurecoastai.com?subject=I want a custom AI chatbot'}
-              >
-                <MessageCircle className="h-5 w-5" />
-                Get Your Custom Bot
-                <ArrowRight className="h-5 w-5" />
-              </Button>
+              <Link href="/login">
+                <Button 
+                  size="lg" 
+                  className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white px-8 py-6 text-lg gap-2 shadow-lg shadow-cyan-500/25 glow-cyan-strong"
+                  data-testid="button-cta-bottom"
+                >
+                  <MessageCircle className="h-5 w-5" />
+                  Get Your Custom AI Assistant
+                  <ArrowRight className="h-5 w-5" />
+                </Button>
+              </Link>
               <Link href="/login">
                 <Button 
                   size="lg" 

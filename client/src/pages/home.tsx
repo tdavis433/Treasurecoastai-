@@ -56,7 +56,7 @@ export default function Home() {
               <Link href="/demos">
                 <Button className="btn-gradient-primary rounded-xl px-6 glow-cyan" data-testid="button-get-started-nav">
                   <MessageSquare className="w-4 h-4 mr-2" />
-                  Contact Us
+                  Get Your AI Assistant
                 </Button>
               </Link>
             </div>
@@ -81,7 +81,7 @@ export default function Home() {
             </h1>
 
             <p className="text-xl md:text-2xl text-white/70 max-w-3xl mx-auto mb-10 leading-relaxed">
-              World-class AI assistants for your business. 
+              Build your own custom AI assistant in minutes. 
               Capture leads, book appointments, and delight customers 24/7 — 
               all while you sleep.
             </p>
@@ -94,7 +94,7 @@ export default function Home() {
                   data-testid="button-get-started-hero"
                 >
                   <MessageSquare className="w-5 h-5 mr-2" />
-                  Contact Us Today
+                  Get Your Custom AI Assistant
                   <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
@@ -160,7 +160,7 @@ export default function Home() {
               <span className="text-gradient-cyan-purple"> Win</span>
             </h2>
             <p className="text-xl text-white/60 max-w-2xl mx-auto">
-              Built for agencies who demand the best. Create stunning AI chatbots that work as hard as you do.
+              Create your own stunning AI chatbot in minutes. No coding required — just customize and deploy.
             </p>
           </motion.div>
 
@@ -242,18 +242,18 @@ export default function Home() {
             {[
               {
                 step: "01",
-                title: "Paste Website URL",
-                description: "Our AI scrapes your client's website and extracts all the business information automatically."
+                title: "Paste Your Website URL",
+                description: "Our AI scrapes your website and extracts all your business information automatically."
               },
               {
                 step: "02",
                 title: "Customize & Train",
-                description: "Tweak the personality, add FAQs, set up lead capture rules. Make it perfect."
+                description: "Tweak the personality, add FAQs, set up lead capture rules. Make it yours."
               },
               {
                 step: "03",
-                title: "Deploy & Profit",
-                description: "Copy the embed code, add it to the website, and watch leads roll in 24/7."
+                title: "Deploy & Grow",
+                description: "Copy the embed code, add it to your website, and watch leads roll in 24/7."
               }
             ].map((item, i) => (
               <motion.div
@@ -293,19 +293,19 @@ export default function Home() {
             <div className="relative z-10">
               <div className="flex items-center justify-center gap-4 mb-8">
                 <Users className="w-8 h-8 text-primary" />
-                <span className="text-lg text-white/60">Trusted by agencies worldwide</span>
+                <span className="text-lg text-white/60">Trusted by businesses worldwide</span>
               </div>
               
               <h2 className="text-4xl md:text-5xl font-bold text-white mb-8" data-testid="text-cta-title">
-                Ready to 10x Your Client Results?
+                Ready to 10x Your Business Results?
               </h2>
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-12">
                 {[
                   "Unlimited bots",
                   "GPT-4 powered",
-                  "White-label ready",
-                  "Priority support"
+                  "Easy customization",
+                  "24/7 support"
                 ].map((item, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <Check className="w-5 h-5 text-primary" />
@@ -321,7 +321,7 @@ export default function Home() {
                   data-testid="button-start-free-trial"
                 >
                   <MessageSquare className="w-5 h-5 mr-2" />
-                  Get Your Custom Bot
+                  Get Your Custom AI Assistant
                   <TrendingUp className="w-5 h-5 ml-2 group-hover:translate-y-[-2px] transition-transform" />
                 </Button>
               </Link>
