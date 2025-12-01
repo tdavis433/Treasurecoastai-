@@ -75,6 +75,8 @@ import {
   getStaffCredentials
 } from './env';
 
+import { scrapeWebsite, applyScrapedDataToBot } from './scraper';
+
 // =============================================
 // PHASE 2.4: SIGNED WIDGET TOKENS
 // =============================================
@@ -3118,6 +3120,120 @@ These suggestions should be relevant to what was just discussed and help guide t
     } catch (error) {
       console.error("Update bot config error:", error);
       res.status(500).json({ error: "Failed to update bot config" });
+    }
+  });
+
+  // =============================================
+  // PHASE 3: WEBSITE SCRAPER ROUTES
+  // =============================================
+
+  const scrapeUrlSchema = z.object({
+    url: z.string().url("Invalid URL format"),
+    botId: z.string().optional(),
+  });
+
+  app.post("/api/admin/scrape", requireSuperAdmin, async (req, res) => {
+    try {
+      const validation = scrapeUrlSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: validation.error.errors[0].message });
+      }
+
+      const { url, botId } = validation.data;
+      const workspaceId = "default";
+
+      const result = await scrapeWebsite(url, workspaceId, botId);
+
+      if (result.success) {
+        const scrape = await storage.getScrapedWebsiteById(result.scrapeId);
+        res.json({ success: true, scrape });
+      } else {
+        res.status(500).json({ success: false, error: result.error, scrapeId: result.scrapeId });
+      }
+    } catch (error) {
+      console.error("Scrape error:", error);
+      res.status(500).json({ error: "Failed to scrape website" });
+    }
+  });
+
+  app.get("/api/admin/scraped-websites", requireSuperAdmin, async (req, res) => {
+    try {
+      const { botId } = req.query;
+      const workspaceId = "default";
+
+      const scrapes = await storage.getScrapedWebsites(
+        workspaceId,
+        botId as string | undefined
+      );
+
+      res.json(scrapes);
+    } catch (error) {
+      console.error("Get scraped websites error:", error);
+      res.status(500).json({ error: "Failed to fetch scraped websites" });
+    }
+  });
+
+  app.get("/api/admin/scraped-websites/:id", requireSuperAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const scrape = await storage.getScrapedWebsiteById(id);
+
+      if (!scrape) {
+        return res.status(404).json({ error: "Scrape not found" });
+      }
+
+      res.json(scrape);
+    } catch (error) {
+      console.error("Get scraped website error:", error);
+      res.status(500).json({ error: "Failed to fetch scraped website" });
+    }
+  });
+
+  app.put("/api/admin/scraped-websites/:id", requireSuperAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+
+      const scrape = await storage.updateScrapedWebsite(id, updates);
+      res.json(scrape);
+    } catch (error) {
+      console.error("Update scraped website error:", error);
+      res.status(500).json({ error: "Failed to update scraped website" });
+    }
+  });
+
+  app.post("/api/admin/scraped-websites/:id/apply", requireSuperAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { botId } = req.body;
+      const user = (req as any).user;
+
+      if (!botId) {
+        return res.status(400).json({ error: "botId is required" });
+      }
+
+      const result = await applyScrapedDataToBot(id, botId, user?.id || "admin");
+
+      if (result.success) {
+        const scrape = await storage.getScrapedWebsiteById(id);
+        res.json({ success: true, scrape });
+      } else {
+        res.status(400).json({ success: false, error: result.error });
+      }
+    } catch (error) {
+      console.error("Apply scraped data error:", error);
+      res.status(500).json({ error: "Failed to apply scraped data" });
+    }
+  });
+
+  app.delete("/api/admin/scraped-websites/:id", requireSuperAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteScrapedWebsite(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete scraped website error:", error);
+      res.status(500).json({ error: "Failed to delete scraped website" });
     }
   });
 

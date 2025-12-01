@@ -37,6 +37,8 @@ import {
   type InsertKnowledgeDocument,
   type KnowledgeChunk,
   type InsertKnowledgeChunk,
+  type ScrapedWebsite,
+  type InsertScrapedWebsite,
   appointments,
   clientSettings,
   conversationAnalytics,
@@ -64,6 +66,7 @@ import {
   knowledgeSources,
   knowledgeDocuments,
   knowledgeChunks,
+  scrapedWebsites,
 } from "@shared/schema";
 import * as schema from "@shared/schema";
 import { drizzle } from "drizzle-orm/neon-serverless";
@@ -210,6 +213,13 @@ export interface IStorage {
   resolveSystemLog(id: string, resolvedBy: string, notes?: string): Promise<SystemLog>;
   getRecentErrorCount(minutes?: number): Promise<number>;
   getSystemStatus(): Promise<{ status: 'operational' | 'degraded' | 'incident'; errorCount: number; lastError?: SystemLog }>;
+  
+  // Website Scraper (Phase 3)
+  createScrapedWebsite(scrape: InsertScrapedWebsite): Promise<ScrapedWebsite>;
+  getScrapedWebsites(workspaceId: string, botId?: string): Promise<ScrapedWebsite[]>;
+  getScrapedWebsiteById(id: string): Promise<ScrapedWebsite | undefined>;
+  updateScrapedWebsite(id: string, updates: Partial<ScrapedWebsite>): Promise<ScrapedWebsite>;
+  deleteScrapedWebsite(id: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -1587,6 +1597,48 @@ export class DbStorage implements IStorage {
         like(knowledgeChunks.content, searchTerm)
       ))
       .limit(limit);
+  }
+
+  // Website Scraper (Phase 3)
+  async createScrapedWebsite(scrape: InsertScrapedWebsite): Promise<ScrapedWebsite> {
+    const [result] = await db
+      .insert(scrapedWebsites)
+      .values(scrape as any)
+      .returning();
+    return result;
+  }
+
+  async getScrapedWebsites(workspaceId: string, botId?: string): Promise<ScrapedWebsite[]> {
+    const conditions = [eq(scrapedWebsites.workspaceId, workspaceId)];
+    if (botId) {
+      conditions.push(eq(scrapedWebsites.botId, botId));
+    }
+    return db
+      .select()
+      .from(scrapedWebsites)
+      .where(and(...conditions))
+      .orderBy(desc(scrapedWebsites.createdAt));
+  }
+
+  async getScrapedWebsiteById(id: string): Promise<ScrapedWebsite | undefined> {
+    const [result] = await db
+      .select()
+      .from(scrapedWebsites)
+      .where(eq(scrapedWebsites.id, id));
+    return result;
+  }
+
+  async updateScrapedWebsite(id: string, updates: Partial<ScrapedWebsite>): Promise<ScrapedWebsite> {
+    const [result] = await db
+      .update(scrapedWebsites)
+      .set({ ...updates, updatedAt: new Date() } as any)
+      .where(eq(scrapedWebsites.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteScrapedWebsite(id: string): Promise<void> {
+    await db.delete(scrapedWebsites).where(eq(scrapedWebsites.id, id));
   }
 }
 

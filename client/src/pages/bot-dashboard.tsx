@@ -16,12 +16,40 @@ import {
   ArrowLeft, Settings, BookOpen, MessageSquare, Clock, Save, 
   Phone, Mail, Globe, MapPin, Building2, Sparkles, AlertTriangle,
   Calendar, Utensils, Scissors, Car, Dumbbell, Home, ClipboardList,
-  Users, DollarSign, Shield
+  Users, DollarSign, Shield, Search, Loader2, ExternalLink, Check,
+  X, RefreshCw, Trash2, Plus, Download
 } from "lucide-react";
 
 interface BotFaq {
   question: string;
   answer: string;
+}
+
+interface ScrapedWebsite {
+  id: string;
+  url: string;
+  domain: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  pageTitle?: string;
+  metaDescription?: string;
+  errorMessage?: string;
+  extractedData?: {
+    businessName?: string;
+    tagline?: string;
+    description?: string;
+    services?: Array<{ name: string; description?: string; price?: string }>;
+    faqs?: Array<{ question: string; answer: string }>;
+    contactInfo?: {
+      phone?: string;
+      email?: string;
+      address?: string;
+      hours?: Record<string, string>;
+    };
+    keyFeatures?: string[];
+    aboutContent?: string;
+  };
+  createdAt: string;
+  appliedToBotAt?: string;
 }
 
 interface BotConfig {
@@ -662,6 +690,10 @@ export default function BotDashboard() {
               <MessageSquare className="h-4 w-4" />
               System Prompt
             </TabsTrigger>
+            <TabsTrigger value="scraper" className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500/20 data-[state=active]:to-pink-500/20 data-[state=active]:text-purple-400 data-[state=active]:border data-[state=active]:border-purple-400/30 data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white transition-all" data-testid="tab-scraper">
+              <Search className="h-4 w-4" />
+              Website Intelligence
+            </TabsTrigger>
             {renderBusinessTypeTabs()}
           </TabsList>
 
@@ -779,6 +811,15 @@ export default function BotDashboard() {
                 />
               </GlassCardContent>
             </GlassCard>
+          </TabsContent>
+
+          <TabsContent value="scraper">
+            <WebsiteScraperTab 
+              botId={botId || ''} 
+              botConfig={editedConfig}
+              updateConfig={updateConfig}
+              updateBusinessProfile={updateBusinessProfile}
+            />
           </TabsContent>
 
           {renderBusinessTypeContent()}
@@ -968,5 +1009,304 @@ function CrisisHandlingTab({ config, updateRules }: {
         </div>
       </GlassCardContent>
     </GlassCard>
+  );
+}
+
+function WebsiteScraperTab({ botId, botConfig, updateConfig, updateBusinessProfile }: {
+  botId: string;
+  botConfig: BotConfig;
+  updateConfig: (updates: Partial<BotConfig>) => void;
+  updateBusinessProfile: (updates: Partial<BotConfig['businessProfile']>) => void;
+}) {
+  const { toast } = useToast();
+  const [scrapeUrl, setScrapeUrl] = useState("");
+  const [selectedScrape, setSelectedScrape] = useState<ScrapedWebsite | null>(null);
+
+  const { data: scrapedWebsites, isLoading: scrapesLoading, refetch } = useQuery<ScrapedWebsite[]>({
+    queryKey: ["/api/admin/scraped-websites", { botId }],
+    queryFn: async () => {
+      const response = await fetch(`/api/admin/scraped-websites?botId=${botId}`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch scraped websites");
+      return response.json();
+    },
+  });
+
+  const scrapeMutation = useMutation({
+    mutationFn: async (url: string) => {
+      const response = await apiRequest("POST", "/api/admin/scrape", { url, botId });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.success) {
+        toast({ title: "Success!", description: "Website scraped and analyzed successfully." });
+        refetch();
+        setSelectedScrape(data.scrape);
+        setScrapeUrl("");
+      } else {
+        toast({ title: "Partial Success", description: data.error || "Scrape completed with issues.", variant: "destructive" });
+        refetch();
+      }
+    },
+    onError: (error: Error) => {
+      toast({ title: "Scrape Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("DELETE", `/api/admin/scraped-websites/${id}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Deleted", description: "Scrape record deleted." });
+      refetch();
+      setSelectedScrape(null);
+    },
+  });
+
+  const handleScrape = () => {
+    if (!scrapeUrl.trim()) {
+      toast({ title: "Error", description: "Please enter a valid URL", variant: "destructive" });
+      return;
+    }
+    scrapeMutation.mutate(scrapeUrl);
+  };
+
+  const applyToBot = (scrape: ScrapedWebsite) => {
+    if (!scrape.extractedData) return;
+
+    const data = scrape.extractedData;
+
+    if (data.businessName) {
+      updateBusinessProfile({ businessName: data.businessName });
+    }
+    if (data.description) {
+      updateConfig({ description: data.description });
+    }
+    if (data.contactInfo) {
+      const updates: Partial<BotConfig['businessProfile']> = {};
+      if (data.contactInfo.phone) updates.phone = data.contactInfo.phone;
+      if (data.contactInfo.email) updates.email = data.contactInfo.email;
+      if (data.contactInfo.address) updates.location = data.contactInfo.address;
+      if (data.contactInfo.hours) updates.hours = data.contactInfo.hours;
+      updateBusinessProfile(updates);
+    }
+    if (data.services && data.services.length > 0) {
+      updateBusinessProfile({ services: data.services.map(s => s.name) });
+    }
+
+    toast({ title: "Applied!", description: "Scraped data has been applied to the bot configuration. Don't forget to save!" });
+  };
+
+  return (
+    <div className="space-y-6">
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="flex items-center gap-2">
+            <Search className="h-5 w-5 text-purple-400" />
+            Website Intelligence
+          </GlassCardTitle>
+          <GlassCardDescription>
+            Scrape client websites to auto-extract business info, services, FAQs, and contact details
+          </GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent>
+          <div className="flex gap-3">
+            <Input
+              value={scrapeUrl}
+              onChange={(e) => setScrapeUrl(e.target.value)}
+              placeholder="https://example.com"
+              className="bg-white/5 border-white/10 text-white flex-1"
+              data-testid="input-scrape-url"
+              onKeyDown={(e) => e.key === 'Enter' && handleScrape()}
+            />
+            <Button
+              onClick={handleScrape}
+              disabled={scrapeMutation.isPending}
+              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 min-w-[140px]"
+              data-testid="button-scrape"
+            >
+              {scrapeMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <Search className="h-4 w-4 mr-2" />
+                  Scrape & Analyze
+                </>
+              )}
+            </Button>
+          </div>
+        </GlassCardContent>
+      </GlassCard>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <GlassCard>
+          <GlassCardHeader>
+            <GlassCardTitle>Scraped Websites</GlassCardTitle>
+            <GlassCardDescription>Previous scrapes for this bot</GlassCardDescription>
+          </GlassCardHeader>
+          <GlassCardContent>
+            {scrapesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-purple-400" />
+              </div>
+            ) : !scrapedWebsites?.length ? (
+              <div className="text-center py-8 text-white/40">
+                <Globe className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No websites scraped yet</p>
+                <p className="text-sm">Enter a URL above to get started</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                {scrapedWebsites.map((scrape) => (
+                  <div
+                    key={scrape.id}
+                    onClick={() => setSelectedScrape(scrape)}
+                    className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                      selectedScrape?.id === scrape.id
+                        ? 'bg-purple-500/20 border-purple-400/50'
+                        : 'bg-white/5 border-white/10 hover:bg-white/10'
+                    }`}
+                    data-testid={`scrape-item-${scrape.id}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          {scrape.status === 'completed' && <Check className="h-4 w-4 text-green-400" />}
+                          {scrape.status === 'processing' && <Loader2 className="h-4 w-4 text-yellow-400 animate-spin" />}
+                          {scrape.status === 'failed' && <X className="h-4 w-4 text-red-400" />}
+                          <span className="text-white font-medium truncate">
+                            {scrape.pageTitle || scrape.domain}
+                          </span>
+                        </div>
+                        <p className="text-white/55 text-sm truncate">{scrape.url}</p>
+                        <p className="text-white/40 text-xs mt-1">
+                          {new Date(scrape.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteMutation.mutate(scrape.id);
+                        }}
+                        className="text-white/40 hover:text-red-400"
+                        data-testid={`button-delete-scrape-${scrape.id}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </GlassCardContent>
+        </GlassCard>
+
+        <GlassCard>
+          <GlassCardHeader>
+            <GlassCardTitle>Extracted Data Preview</GlassCardTitle>
+            <GlassCardDescription>
+              {selectedScrape ? 'Review and apply extracted data' : 'Select a scrape to preview'}
+            </GlassCardDescription>
+          </GlassCardHeader>
+          <GlassCardContent>
+            {!selectedScrape ? (
+              <div className="text-center py-8 text-white/40">
+                <Download className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Select a scraped website to preview</p>
+              </div>
+            ) : selectedScrape.status === 'failed' ? (
+              <div className="text-center py-8 text-red-400">
+                <AlertTriangle className="h-12 w-12 mx-auto mb-4" />
+                <p className="font-medium">Scrape Failed</p>
+                <p className="text-sm text-white/55 mt-2">{selectedScrape.errorMessage}</p>
+              </div>
+            ) : !selectedScrape.extractedData ? (
+              <div className="text-center py-8 text-white/40">
+                <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin" />
+                <p>Processing...</p>
+              </div>
+            ) : (
+              <div className="space-y-4 max-h-[400px] overflow-y-auto">
+                {selectedScrape.extractedData.businessName && (
+                  <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                    <Label className="text-white/55 text-xs uppercase">Business Name</Label>
+                    <p className="text-white font-medium">{selectedScrape.extractedData.businessName}</p>
+                  </div>
+                )}
+                
+                {selectedScrape.extractedData.description && (
+                  <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                    <Label className="text-white/55 text-xs uppercase">Description</Label>
+                    <p className="text-white/80 text-sm">{selectedScrape.extractedData.description}</p>
+                  </div>
+                )}
+
+                {selectedScrape.extractedData.services && selectedScrape.extractedData.services.length > 0 && (
+                  <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                    <Label className="text-white/55 text-xs uppercase">Services ({selectedScrape.extractedData.services.length})</Label>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {selectedScrape.extractedData.services.slice(0, 6).map((s, i) => (
+                        <span key={i} className="px-2 py-1 rounded bg-purple-500/20 text-purple-300 text-xs">
+                          {s.name}
+                        </span>
+                      ))}
+                      {selectedScrape.extractedData.services.length > 6 && (
+                        <span className="px-2 py-1 text-white/40 text-xs">
+                          +{selectedScrape.extractedData.services.length - 6} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {selectedScrape.extractedData.contactInfo && (
+                  <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                    <Label className="text-white/55 text-xs uppercase">Contact Info</Label>
+                    <div className="grid grid-cols-2 gap-2 mt-2 text-sm">
+                      {selectedScrape.extractedData.contactInfo.phone && (
+                        <div className="flex items-center gap-2 text-white/80">
+                          <Phone className="h-3 w-3" />
+                          {selectedScrape.extractedData.contactInfo.phone}
+                        </div>
+                      )}
+                      {selectedScrape.extractedData.contactInfo.email && (
+                        <div className="flex items-center gap-2 text-white/80">
+                          <Mail className="h-3 w-3" />
+                          {selectedScrape.extractedData.contactInfo.email}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {selectedScrape.extractedData.faqs && selectedScrape.extractedData.faqs.length > 0 && (
+                  <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                    <Label className="text-white/55 text-xs uppercase">FAQs Found ({selectedScrape.extractedData.faqs.length})</Label>
+                    <p className="text-white/60 text-sm mt-1">
+                      {selectedScrape.extractedData.faqs[0].question.substring(0, 60)}...
+                    </p>
+                  </div>
+                )}
+
+                <Button
+                  onClick={() => applyToBot(selectedScrape)}
+                  className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                  data-testid="button-apply-scrape"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Apply to Bot Configuration
+                </Button>
+              </div>
+            )}
+          </GlassCardContent>
+        </GlassCard>
+      </div>
+    </div>
   );
 }
