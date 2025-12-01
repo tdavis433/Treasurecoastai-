@@ -9,7 +9,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import path from "path";
 import fs from "fs";
-import { eq } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import {
   getBotConfig,
   getBotConfigAsync,
@@ -3234,6 +3234,68 @@ These suggestions should be relevant to what was just discussed and help guide t
     } catch (error) {
       console.error("Delete scraped website error:", error);
       res.status(500).json({ error: "Failed to delete scraped website" });
+    }
+  });
+
+  // Get bot stats for admin dashboard
+  app.get("/api/admin/bot-stats", requireSuperAdmin, async (req, res) => {
+    try {
+      const { botId } = req.query;
+      if (!botId || typeof botId !== 'string') {
+        return res.status(400).json({ error: "botId is required" });
+      }
+
+      // Get bot config to find clientId using DB-aware lookup
+      const botConfig = await getBotConfigByBotIdAsync(botId) || getBotConfigByBotId(botId);
+      if (!botConfig) {
+        return res.status(404).json({ error: `Bot not found: ${botId}` });
+      }
+      const clientId = botConfig.clientId;
+
+      // Get analytics summary for this bot (already scoped by botId)
+      const analytics = await storage.getClientAnalyticsSummary(clientId, botId);
+      
+      // Get leads count for this bot using direct DB query for accurate count
+      let leadsCount = 0;
+      let appointmentsCount = 0;
+      
+      try {
+        const leadsResult = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(leads)
+          .where(and(
+            eq(leads.clientId, clientId),
+            eq(leads.botId, botId)
+          ));
+        leadsCount = leadsResult[0]?.count || 0;
+      } catch (e) {
+        console.error("Error counting leads:", e);
+      }
+      
+      try {
+        const appointmentsResult = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(appointments)
+          .where(and(
+            eq(appointments.clientId, clientId),
+            eq(appointments.botId, botId)
+          ));
+        appointmentsCount = appointmentsResult[0]?.count || 0;
+      } catch (e) {
+        console.error("Error counting appointments:", e);
+      }
+      
+      res.json({
+        totalConversations: analytics.totalConversations || 0,
+        totalMessages: analytics.totalMessages || 0,
+        leadsCollected: leadsCount,
+        bookingsInitiated: appointmentsCount,
+        avgResponseTime: analytics.avgResponseTimeMs || 0,
+        satisfactionRate: 0,
+      });
+    } catch (error) {
+      console.error("Get bot stats error:", error);
+      res.status(500).json({ error: "Failed to get bot stats" });
     }
   });
 

@@ -1508,6 +1508,7 @@ function TestChatTab({ botId, botConfig }: { botId: string; botConfig: BotConfig
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [sessionId] = useState(`test-session-${Date.now()}`);
 
   const sendMessage = async () => {
     if (!inputValue.trim()) return;
@@ -1519,37 +1520,46 @@ function TestChatTab({ botId, botConfig }: { botId: string; botConfig: BotConfig
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInputValue("");
     setIsTyping(true);
 
     try {
+      const apiMessages = updatedMessages.map(m => ({
+        role: m.role,
+        content: m.content,
+      }));
+
       const response = await fetch(`/api/chat/${botConfig.clientId}/${botId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ 
-          message: userMessage.content,
-          sessionId: `test-${Date.now()}`,
+          messages: apiMessages,
+          sessionId,
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to get response');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to get response');
+      }
 
       const data = await response.json();
       
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.response || data.message || "I'm sorry, I couldn't generate a response.",
+        content: data.reply || data.response || data.message || "I'm sorry, I couldn't generate a response.",
         timestamp: new Date(),
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
+    } catch (error: any) {
       toast({ 
         title: "Error", 
-        description: "Failed to send message. Check API configuration.",
+        description: error.message || "Failed to send message. Check API configuration.",
         variant: "destructive" 
       });
     } finally {
