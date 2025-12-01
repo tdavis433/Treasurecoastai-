@@ -529,12 +529,15 @@ export default function ControlCenter() {
   return (
     <div className="h-screen bg-[#0B0E13] text-white flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="h-14 border-b border-white/10 bg-white/5 backdrop-blur-md flex items-center justify-between px-6 flex-shrink-0">
+      <header className="h-14 border-b border-white/10 bg-[#0d1117]/80 backdrop-blur-md flex items-center justify-between px-6 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center">
-            <Zap className="h-4 w-4 text-white" />
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-cyan-500 via-blue-500 to-purple-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+            <Zap className="h-5 w-5 text-white" />
           </div>
-          <span className="font-semibold text-lg text-white">Treasure Coast AI – Control Center</span>
+          <div>
+            <span className="font-bold text-lg text-white">Treasure Coast AI</span>
+            <span className="text-white/40 ml-2 text-sm">Agency Dashboard</span>
+          </div>
         </div>
         <div className="flex items-center gap-4">
           <Badge 
@@ -550,8 +553,13 @@ export default function ControlCenter() {
              systemStatus?.status === 'degraded' ? `${systemStatus.errorCount} Warnings` :
              `System Incident (${systemStatus?.errorCount || 0} Errors)`}
           </Badge>
-          <span className="text-sm text-white/55">{currentUser?.username}</span>
-          <Button data-testid="button-logout" variant="ghost" size="icon" onClick={handleLogout} className="text-white/85 hover:bg-white/10 hover:text-white">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
+            <div className="h-6 w-6 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-xs font-bold text-white">
+              {currentUser?.username?.charAt(0).toUpperCase()}
+            </div>
+            <span className="text-sm text-white/70">{currentUser?.username}</span>
+          </div>
+          <Button data-testid="button-logout" variant="ghost" size="icon" onClick={handleLogout} className="text-white/70 hover:bg-white/10 hover:text-white">
             <LogOut className="h-4 w-4" />
           </Button>
         </div>
@@ -559,14 +567,21 @@ export default function ControlCenter() {
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Left Sidebar - Bot Navigation */}
-        <aside className="w-72 border-r border-white/10 bg-white/5 flex flex-col flex-shrink-0">
+        <aside className="w-72 border-r border-white/10 bg-[#0d1117] flex flex-col flex-shrink-0">
           <div className="p-4 border-b border-white/10">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                <Bot className="h-4 w-4 text-cyan-400" />
+                Client Assistants
+              </h3>
+              <Badge className="bg-cyan-500/10 text-cyan-400 text-xs">{clientBots.length}</Badge>
+            </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
               <Input
                 data-testid="input-search-bots"
-                placeholder="Search bots..."
-                className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                placeholder="Search assistants..."
+                className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/40 h-9"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -574,9 +589,9 @@ export default function ControlCenter() {
           </div>
 
           <ScrollArea className="flex-1">
-            <div className="p-3">
-              <p className="text-xs font-medium text-white/55 uppercase tracking-wide px-2 mb-2">
-                Chatbots ({filteredBots.length}{searchQuery ? ` of ${clientBots.length}` : ''})
+            <div className="p-2">
+              <p className="text-xs font-medium text-white/40 uppercase tracking-wide px-2 mb-2">
+                {searchQuery ? `Showing ${filteredBots.length} of ${clientBots.length}` : 'All Assistants'}
               </p>
               {filteredBots.length === 0 ? (
                 <div className="text-center py-8">
@@ -655,64 +670,98 @@ export default function ControlCenter() {
           {/* Dashboard Grid - Always visible with independent scroll */}
           <main className={`flex-1 overflow-y-auto transition-all duration-300 h-full ${selectedBot ? 'lg:min-w-[50%] lg:max-w-[60%]' : 'w-full'}`}>
             <div className="p-6">
-              {/* Dashboard Header */}
-              <div className="mb-8">
-                <h1 className="text-2xl font-bold text-white">Dashboard Overview</h1>
-                <p className="text-white/55 mt-1">
-                  {searchQuery 
-                    ? `Showing ${filteredBots.length} of ${clientBots.length} bots matching "${searchQuery}"`
-                    : 'Select a chatbot to manage it, or view platform statistics below.'}
-                </p>
+              {/* Command Center Header */}
+              <div className="mb-6">
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div>
+                    <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+                      Command Center
+                      <Badge className="bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-cyan-400 border-cyan-400/30">
+                        Super Admin
+                      </Badge>
+                    </h1>
+                    <p className="text-white/55 mt-1">
+                      {searchQuery 
+                        ? `Showing ${filteredBots.length} of ${clientBots.length} bots matching "${searchQuery}"`
+                        : 'Manage all client assistants, view platform performance, and configure settings.'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      data-testid="button-create-client"
+                      onClick={() => setShowCreateWorkspaceModal(true)}
+                      className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white"
+                    >
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      New Client
+                    </Button>
+                    <Button
+                      data-testid="button-create-bot"
+                      variant="outline"
+                      onClick={() => setShowCreateModal(true)}
+                      className="border-white/20 text-white hover:bg-white/10"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      New Bot
+                    </Button>
+                  </div>
+                </div>
               </div>
 
-              {/* Quick Actions Bar */}
-              <div className="flex items-center gap-3 mb-6 overflow-x-auto pb-2 scrollbar-thin">
+              {/* Navigation Tabs */}
+              <div className="flex items-center gap-1 mb-6 p-1 bg-white/5 rounded-lg border border-white/10 overflow-x-auto">
                 <Button
                   data-testid="button-section-overview"
-                  variant={dashboardSection === 'overview' ? 'default' : 'outline'}
+                  variant="ghost"
                   size="sm"
                   onClick={() => setDashboardSection('overview')}
-                  className={dashboardSection === 'overview' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-400/30' : 'border-white/10 text-white/85 hover:bg-white/10'}
+                  className={dashboardSection === 'overview' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
                 >
                   <Layers className="h-4 w-4 mr-2" />
                   Overview
                 </Button>
                 <Button
                   data-testid="button-section-workspaces"
-                  variant={dashboardSection === 'workspaces' ? 'default' : 'outline'}
+                  variant="ghost"
                   size="sm"
                   onClick={() => setDashboardSection('workspaces')}
-                  className={dashboardSection === 'workspaces' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-400/30' : 'border-white/10 text-white/85 hover:bg-white/10'}
+                  className={dashboardSection === 'workspaces' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
                 >
                   <Users2 className="h-4 w-4 mr-2" />
-                  Workspaces ({workspacesData?.total || 0})
+                  Clients
+                  {(workspacesData?.total || 0) > 0 && (
+                    <Badge className="ml-1.5 bg-white/10 text-white/70 text-xs px-1.5">{workspacesData?.total}</Badge>
+                  )}
                 </Button>
                 <Button
                   data-testid="button-section-analytics"
-                  variant={dashboardSection === 'analytics' ? 'default' : 'outline'}
+                  variant="ghost"
                   size="sm"
                   onClick={() => setDashboardSection('analytics')}
-                  className={dashboardSection === 'analytics' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-400/30' : 'border-white/10 text-white/85 hover:bg-white/10'}
+                  className={dashboardSection === 'analytics' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
                 >
                   <TrendingUp className="h-4 w-4 mr-2" />
                   Analytics
                 </Button>
                 <Button
                   data-testid="button-section-logs"
-                  variant={dashboardSection === 'logs' ? 'default' : 'outline'}
+                  variant="ghost"
                   size="sm"
                   onClick={() => setDashboardSection('logs')}
-                  className={dashboardSection === 'logs' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-400/30' : 'border-white/10 text-white/85 hover:bg-white/10'}
+                  className={dashboardSection === 'logs' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
                 >
                   <FileWarning className="h-4 w-4 mr-2" />
-                  Logs {systemStatus?.errorCount ? `(${systemStatus.errorCount})` : ''}
+                  System Logs
+                  {systemStatus?.errorCount ? (
+                    <Badge className="ml-1.5 bg-red-500/20 text-red-400 text-xs px-1.5">{systemStatus.errorCount}</Badge>
+                  ) : null}
                 </Button>
                 <Button
                   data-testid="button-section-users"
-                  variant={dashboardSection === 'users' ? 'default' : 'outline'}
+                  variant="ghost"
                   size="sm"
                   onClick={() => setDashboardSection('users')}
-                  className={dashboardSection === 'users' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-400/30' : 'border-white/10 text-white/85 hover:bg-white/10'}
+                  className={dashboardSection === 'users' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
                 >
                   <Shield className="h-4 w-4 mr-2" />
                   Users
@@ -726,6 +775,7 @@ export default function ControlCenter() {
                     queryClient.invalidateQueries({ queryKey: ["/api/super-admin/analytics/global"] });
                     queryClient.invalidateQueries({ queryKey: ["/api/super-admin/system/status"] });
                     queryClient.invalidateQueries({ queryKey: ["/api/super-admin/workspaces"] });
+                    toast({ title: "Refreshed", description: "Dashboard data updated" });
                   }}
                   className="text-white/55 hover:text-white hover:bg-white/10"
                 >
@@ -735,72 +785,89 @@ export default function ControlCenter() {
 
               {dashboardSection === 'overview' && (
               <>
-              {/* Stats Overview - Shows filtered counts when search is active */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                <GlassCard hover>
+              {/* Platform Stats - Key Metrics */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <GlassCard hover data-testid="card-stat-conversations">
                   <GlassCardContent className="pt-6">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-cyan-400/10 flex items-center justify-center">
-                        <Bot className="h-5 w-5 text-cyan-400" />
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="h-10 w-10 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+                        <MessageSquare className="h-5 w-5 text-cyan-400" />
                       </div>
-                      <div>
-                        <p className="text-2xl font-bold text-white">{searchQuery ? filteredBots.length : clientBots.length}</p>
-                        <p className="text-sm text-white/55">{searchQuery ? 'Matching' : 'Total Bots'}</p>
-                      </div>
+                      <Badge className="bg-cyan-500/10 text-cyan-400 text-xs">Last 7 days</Badge>
                     </div>
+                    <p className="text-3xl font-bold text-white">{globalAnalytics?.summary?.totalConversations || 0}</p>
+                    <p className="text-sm text-white/55 mt-1">Total Conversations</p>
                   </GlassCardContent>
                 </GlassCard>
-                <GlassCard hover>
+                <GlassCard hover data-testid="card-stat-leads">
                   <GlassCardContent className="pt-6">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-                        <Play className="h-5 w-5 text-green-400" />
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="h-10 w-10 rounded-lg bg-green-500/20 flex items-center justify-center">
+                        <Users className="h-5 w-5 text-green-400" />
                       </div>
-                      <div>
-                        <p className="text-2xl font-bold text-white">
-                          {searchQuery 
-                            ? filteredBots.filter(b => clients.find(c => c.id === b.clientId)?.status === 'active').length
-                            : clients.filter(c => c.status === 'active').length}
-                        </p>
-                        <p className="text-sm text-white/55">Active</p>
-                      </div>
+                      <Badge className="bg-green-500/10 text-green-400 text-xs">Captured</Badge>
                     </div>
+                    <p className="text-3xl font-bold text-white">{globalAnalytics?.summary?.totalLeads || 0}</p>
+                    <p className="text-sm text-white/55 mt-1">Leads Generated</p>
                   </GlassCardContent>
                 </GlassCard>
-                <GlassCard hover>
+                <GlassCard hover data-testid="card-stat-bookings">
                   <GlassCardContent className="pt-6">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                        <Eye className="h-5 w-5 text-blue-400" />
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="h-10 w-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                        <Calendar className="h-5 w-5 text-purple-400" />
                       </div>
-                      <div>
-                        <p className="text-2xl font-bold text-white">
-                          {searchQuery 
-                            ? filteredBots.filter(b => b.metadata?.isDemo).length
-                            : clientBots.filter(b => b.metadata?.isDemo).length}
-                        </p>
-                        <p className="text-sm text-white/55">Demo</p>
-                      </div>
+                      <Badge className="bg-purple-500/10 text-purple-400 text-xs">Scheduled</Badge>
                     </div>
+                    <p className="text-3xl font-bold text-white">{globalAnalytics?.summary?.totalAppointments || 0}</p>
+                    <p className="text-sm text-white/55 mt-1">Bookings Made</p>
                   </GlassCardContent>
                 </GlassCard>
-                <GlassCard hover>
+                <GlassCard hover data-testid="card-stat-bots">
                   <GlassCardContent className="pt-6">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                        <Pause className="h-5 w-5 text-amber-400" />
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="h-10 w-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                        <Bot className="h-5 w-5 text-blue-400" />
                       </div>
-                      <div>
-                        <p className="text-2xl font-bold text-white">
-                          {searchQuery 
-                            ? filteredBots.filter(b => clients.find(c => c.id === b.clientId)?.status === 'paused').length
-                            : clients.filter(c => c.status === 'paused').length}
-                        </p>
-                        <p className="text-sm text-white/55">Paused</p>
-                      </div>
+                      <Badge className="bg-blue-500/10 text-blue-400 text-xs">
+                        {clients.filter(c => c.status === 'active').length} active
+                      </Badge>
                     </div>
+                    <p className="text-3xl font-bold text-white">{clientBots.length}</p>
+                    <p className="text-sm text-white/55 mt-1">Total Assistants</p>
                   </GlassCardContent>
                 </GlassCard>
+              </div>
+
+              {/* Quick Status Row */}
+              <div className="grid grid-cols-3 gap-3 mb-8">
+                <div className="p-3 rounded-lg bg-green-500/10 border border-green-400/20 flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                    <Play className="h-4 w-4 text-green-400" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold text-white">{clients.filter(c => c.status === 'active').length}</p>
+                    <p className="text-xs text-green-400">Active Clients</p>
+                  </div>
+                </div>
+                <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-400/20 flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center">
+                    <Eye className="h-4 w-4 text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold text-white">{clientBots.filter(b => b.metadata?.isDemo).length}</p>
+                    <p className="text-xs text-blue-400">Demo Bots</p>
+                  </div>
+                </div>
+                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-400/20 flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-full bg-amber-500/20 flex items-center justify-center">
+                    <Pause className="h-4 w-4 text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold text-white">{clients.filter(c => c.status === 'paused').length}</p>
+                    <p className="text-xs text-amber-400">Paused</p>
+                  </div>
+                </div>
               </div>
 
               {/* Bot Cards Grid with Bulk Actions */}
@@ -995,15 +1062,18 @@ export default function ControlCenter() {
 
               {dashboardSection === 'workspaces' && (
                 <div className="space-y-6">
-                  {/* Workspaces Header with Search and Export */}
+                  {/* Clients Header with Search and Export */}
                   <div className="flex items-center justify-between flex-wrap gap-4">
-                    <h2 className="text-lg font-semibold text-white">All Workspaces</h2>
+                    <div>
+                      <h2 className="text-lg font-semibold text-white">Client Management</h2>
+                      <p className="text-sm text-white/50 mt-0.5">Manage all your business clients and their AI assistants</p>
+                    </div>
                     <div className="flex items-center gap-2">
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/40" />
                         <Input
                           data-testid="input-workspace-search"
-                          placeholder="Search workspaces..."
+                          placeholder="Search clients..."
                           value={workspaceSearch}
                           onChange={(e) => setWorkspaceSearch(e.target.value)}
                           className="pl-9 w-56 bg-white/5 border-white/10 text-white placeholder:text-white/40"
@@ -1022,9 +1092,9 @@ export default function ControlCenter() {
                           const url = URL.createObjectURL(blob);
                           const a = document.createElement('a');
                           a.href = url;
-                          a.download = `workspaces-${new Date().toISOString().split('T')[0]}.csv`;
+                          a.download = `clients-${new Date().toISOString().split('T')[0]}.csv`;
                           a.click();
-                          toast({ title: "Export Complete", description: "Workspaces data exported to CSV." });
+                          toast({ title: "Export Complete", description: "Clients data exported to CSV." });
                         }}
                         className="border-white/10 text-white/85 hover:bg-white/10"
                       >
@@ -1032,106 +1102,15 @@ export default function ControlCenter() {
                         Export
                       </Button>
                       <Button
-                        variant="outline"
-                        size="sm"
                         onClick={() => setShowCreateWorkspaceModal(true)}
-                        className="border-white/10 text-white/85 hover:bg-white/10"
+                        className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white"
                         data-testid="button-add-workspace"
                       >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Workspace
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Add Client
                       </Button>
                     </div>
                   </div>
-
-                  {/* Create Workspace Modal */}
-                  <AlertDialog open={showCreateWorkspaceModal} onOpenChange={setShowCreateWorkspaceModal}>
-                    <AlertDialogContent className="bg-[#1a1d24] border-white/10">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle className="text-white">Create New Workspace</AlertDialogTitle>
-                        <AlertDialogDescription className="text-white/55">
-                          Add a new business workspace to the platform.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                          <label className="text-sm text-white/85">Business Name</label>
-                          <input
-                            type="text"
-                            value={newWorkspaceForm.name}
-                            onChange={(e) => {
-                              const name = e.target.value;
-                              const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
-                              setNewWorkspaceForm(f => ({ ...f, name, slug }));
-                            }}
-                            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-cyan-400/50"
-                            placeholder="e.g. Acme Restaurant"
-                            data-testid="input-new-workspace-name"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm text-white/85">Slug (auto-generated)</label>
-                          <input
-                            type="text"
-                            value={newWorkspaceForm.slug}
-                            onChange={(e) => setNewWorkspaceForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') }))}
-                            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-cyan-400/50"
-                            placeholder="e.g. acme_restaurant"
-                            data-testid="input-new-workspace-slug"
-                          />
-                          <p className="text-xs text-white/40">Lowercase letters, numbers, and underscores only</p>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm text-white/85">Plan</label>
-                          <Select
-                            value={newWorkspaceForm.plan}
-                            onValueChange={(value) => setNewWorkspaceForm(f => ({ ...f, plan: value }))}
-                          >
-                            <SelectTrigger className="w-full bg-white/5 border-white/10 text-white" data-testid="select-new-workspace-plan">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="bg-[#1a1d24] border-white/10">
-                              <SelectItem value="free" className="text-white">Free</SelectItem>
-                              <SelectItem value="starter" className="text-white">Starter</SelectItem>
-                              <SelectItem value="pro" className="text-white">Pro</SelectItem>
-                              <SelectItem value="enterprise" className="text-white">Enterprise</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm text-white/85">Owner</label>
-                          <Select
-                            value={newWorkspaceForm.ownerId}
-                            onValueChange={(value) => setNewWorkspaceForm(f => ({ ...f, ownerId: value }))}
-                          >
-                            <SelectTrigger className="w-full bg-white/5 border-white/10 text-white" data-testid="select-new-workspace-owner">
-                              <SelectValue placeholder="Select owner..." />
-                            </SelectTrigger>
-                            <SelectContent className="bg-[#1a1d24] border-white/10">
-                              {adminUsers?.map(user => (
-                                <SelectItem key={user.id} value={String(user.id)} className="text-white">
-                                  {user.username} ({user.role === 'super_admin' ? 'Super Admin' : 'Client Admin'})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-transparent border-white/10 text-white hover:bg-white/10">
-                          Cancel
-                        </AlertDialogCancel>
-                        <Button
-                          onClick={() => createWorkspaceMutation.mutate(newWorkspaceForm)}
-                          disabled={!newWorkspaceForm.name || !newWorkspaceForm.slug || !newWorkspaceForm.ownerId || createWorkspaceMutation.isPending}
-                          className="bg-cyan-500 hover:bg-cyan-600 text-white"
-                          data-testid="button-create-workspace-confirm"
-                        >
-                          {createWorkspaceMutation.isPending ? "Creating..." : "Create Workspace"}
-                        </Button>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
 
                   {/* Edit Workspace Modal */}
                   <AlertDialog open={!!editingWorkspace} onOpenChange={(open) => !open && setEditingWorkspace(null)}>
@@ -2001,6 +1980,95 @@ export default function ControlCenter() {
           queryClient.invalidateQueries({ queryKey: ["/api/super-admin/clients"] });
         }}
       />
+
+      {/* Create Client Modal - Globally accessible */}
+      <AlertDialog open={showCreateWorkspaceModal} onOpenChange={setShowCreateWorkspaceModal}>
+        <AlertDialogContent className="bg-[#1a1d24] border-white/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Add New Client</AlertDialogTitle>
+            <AlertDialogDescription className="text-white/55">
+              Create a new business client. An AI assistant will be automatically created for them.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm text-white/85">Business Name</label>
+              <input
+                type="text"
+                value={newWorkspaceForm.name}
+                onChange={(e) => {
+                  const name = e.target.value;
+                  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+                  setNewWorkspaceForm(f => ({ ...f, name, slug }));
+                }}
+                className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-cyan-400/50"
+                placeholder="e.g. Acme Restaurant"
+                data-testid="input-new-workspace-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm text-white/85">Slug (auto-generated)</label>
+              <input
+                type="text"
+                value={newWorkspaceForm.slug}
+                onChange={(e) => setNewWorkspaceForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') }))}
+                className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-cyan-400/50"
+                placeholder="e.g. acme_restaurant"
+                data-testid="input-new-workspace-slug"
+              />
+              <p className="text-xs text-white/40">Lowercase letters, numbers, and underscores only</p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm text-white/85">Plan</label>
+              <Select
+                value={newWorkspaceForm.plan}
+                onValueChange={(value) => setNewWorkspaceForm(f => ({ ...f, plan: value }))}
+              >
+                <SelectTrigger className="w-full bg-white/5 border-white/10 text-white" data-testid="select-new-workspace-plan">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1a1d24] border-white/10">
+                  <SelectItem value="free" className="text-white">Free</SelectItem>
+                  <SelectItem value="starter" className="text-white">Starter</SelectItem>
+                  <SelectItem value="pro" className="text-white">Pro</SelectItem>
+                  <SelectItem value="enterprise" className="text-white">Enterprise</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm text-white/85">Owner</label>
+              <Select
+                value={newWorkspaceForm.ownerId}
+                onValueChange={(value) => setNewWorkspaceForm(f => ({ ...f, ownerId: value }))}
+              >
+                <SelectTrigger className="w-full bg-white/5 border-white/10 text-white" data-testid="select-new-workspace-owner">
+                  <SelectValue placeholder="Select owner..." />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1a1d24] border-white/10">
+                  {adminUsers?.map(user => (
+                    <SelectItem key={user.id} value={String(user.id)} className="text-white">
+                      {user.username} ({user.role === 'super_admin' ? 'Super Admin' : 'Client Admin'})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-transparent border-white/10 text-white hover:bg-white/10">
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              onClick={() => createWorkspaceMutation.mutate(newWorkspaceForm)}
+              disabled={!newWorkspaceForm.name || !newWorkspaceForm.slug || !newWorkspaceForm.ownerId || createWorkspaceMutation.isPending}
+              className="bg-cyan-500 hover:bg-cyan-600 text-white"
+              data-testid="button-create-workspace-confirm"
+            >
+              {createWorkspaceMutation.isPending ? "Creating..." : "Create Client"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

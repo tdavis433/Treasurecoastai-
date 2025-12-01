@@ -148,6 +148,14 @@ shared/
 - Fixed critical functionality issues: Removed non-functional controls (bot toggle, notifications, widget color picker)
 - Settings now truly view-only: Shows business info and embed code with clear "contact agency for changes" messaging
 - Maintained premium dark luxury glassmorphism design throughout all changes
+- **Admin Command Center redesign completed**:
+  - Header: Premium gradient logo, "Agency Dashboard" subtitle, user avatar with initials
+  - Command Center header with "Super Admin" badge and quick action buttons (New Client, New Bot)
+  - Navigation tabs in pill-style container: Overview, Clients (renamed from Workspaces), Analytics, System Logs, Users
+  - Enhanced stats overview showing platform-wide metrics: Conversations, Leads, Bookings, Total Assistants
+  - Quick status row with Active Clients, Demo Bots, Paused counts
+  - Left sidebar: "Client Assistants" title with badge count, improved search
+  - Terminology updated throughout: "Workspaces" → "Clients" to match agency-first model
 
 ## Control Center Features (Admin Only)
 The admin Control Center at `/super-admin` provides:

@@ -1,0 +1,84 @@
+You are a senior full-stack engineer and product designer working on a multi-tenant SaaS platform called **Treasure Coast AI**.
+
+STACK & CONTEXT
+- Tech stack: Next.js + React + TypeScript + Tailwind CSS (or similar modern React stack).
+- Multi-tenant SaaS:
+  - SUPER-ADMIN / AGENCY AREA → for me (the agency owner).
+  - CLIENT DASHBOARD → for each business (read-only-ish, simple controls).
+- You already have the company vision:
+
+Treasure Coast AI is an agency-first AI assistant platform where:
+- I (the agency) create and manage AI assistants for local businesses.
+- Clients log in only to view results and basic settings.
+- Visitors chat with a widget on the client’s website.
+
+Your job in THIS TASK:
+Redesign and fully implement the **SUPER-ADMIN / AGENCY DASHBOARD** so it gives me:
+- Total control over clients, bots, data, automations, and integrations.
+- A clean, powerful UI to create/edit/manage AI assistants for each client.
+- Automatic per-client login + client dashboard when I add a new client.
+- Room to grow: no artificial limits on what kinds of assistants I can build.
+
+--------------------------------
+HIGH-LEVEL REQUIREMENTS
+--------------------------------
+
+1. Super-admin dashboard must be the **central command center**:
+   - I can see all clients, all assistants, and high-level stats.
+   - I can drill down into any client and any assistant quickly.
+   - I can configure everything AI-related at the agency level (models, keys, defaults) and at the assistant level (tone, knowledge, behavior, integrations).
+
+2. Multi-tenant behavior:
+   - When I create a new client:
+     - A **Client record** is created.
+     - A **default “Owner” user account** is created for that client with login credentials.
+     - That user is restricted to the **client dashboard** only (no access to super-admin).
+   - Each client sees only their own:
+     - Assistants/bots
+     - Conversations
+     - Leads/bookings
+     - Analytics
+     - Settings
+
+3. No technical clutter for clients:
+   - All deep AI settings (API keys, models, system prompts, complex automations) live in the **super-admin** side only.
+   - Clients get a simplified dashboard (you already updated that in a separate task).
+
+4. Extreme power for me (super-admin):
+   - I should be able to build extremely advanced AI assistants even if clients only see a simple front end.
+   - The UI should make it easy to:
+     - Clone assistants, use templates, test changes safely, and push updates live.
+     - Manage many clients at once.
+
+--------------------------------
+INFORMATION ARCHITECTURE — SUPER-ADMIN
+--------------------------------
+
+Design the super-admin dashboard with a left sidebar (or top nav) containing at least these main sections:
+
+1) **Home / Command Center**
+   - At-a-glance for the whole platform:
+     - Total clients
+     - Total assistants/bots
+     - Total conversations (today, last 7 days, last 30 days)
+     - Total leads captured (same ranges)
+     - Total bookings (if supported)
+     - Error rate / failed responses (if you can detect this)
+   - Charts/graphs:
+     - Conversations over time
+     - Leads over time
+     - Top active assistants
+   - Quick actions:
+     - “Create New Client”
+     - “Create New Assistant”
+     - “Open Recent Client”
+   - This page is for ME only. Make it feel like a pro SaaS control panel.
+
+2) **Clients**
+   - Table/list of all clients with:
+     - Business Name
+     - Primary Contact Name
+     - Email
+     - Status (Active / Paused / Trial)
+     - Number of assistants
+     - Current plan

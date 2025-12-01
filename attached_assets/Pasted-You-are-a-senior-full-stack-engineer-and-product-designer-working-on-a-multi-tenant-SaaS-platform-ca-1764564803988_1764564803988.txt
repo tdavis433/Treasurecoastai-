@@ -1,0 +1,379 @@
+You are a senior full-stack engineer and product designer working on a multi-tenant SaaS platform called **Treasure Coast AI**.
+
+STACK & CONTEXT
+- Tech stack: Next.js + React + TypeScript + Tailwind CSS (or similar modern React stack).
+- Multi-tenant SaaS:
+  - SUPER-ADMIN / AGENCY AREA → for me (the agency owner).
+  - CLIENT DASHBOARD → for each business (read-only-ish, simple controls).
+- You already have the company vision:
+
+Treasure Coast AI is an agency-first AI assistant platform where:
+- I (the agency) create and manage AI assistants for local businesses.
+- Clients log in only to view results and basic settings.
+- Visitors chat with a widget on the client’s website.
+
+Your job in THIS TASK:
+Redesign and fully implement the **SUPER-ADMIN / AGENCY DASHBOARD** so it gives me:
+- Total control over clients, bots, data, automations, and integrations.
+- A clean, powerful UI to create/edit/manage AI assistants for each client.
+- Automatic per-client login + client dashboard when I add a new client.
+- Room to grow: no artificial limits on what kinds of assistants I can build.
+
+--------------------------------
+HIGH-LEVEL REQUIREMENTS
+--------------------------------
+
+1. Super-admin dashboard must be the **central command center**:
+   - I can see all clients, all assistants, and high-level stats.
+   - I can drill down into any client and any assistant quickly.
+   - I can configure everything AI-related at the agency level (models, keys, defaults) and at the assistant level (tone, knowledge, behavior, integrations).
+
+2. Multi-tenant behavior:
+   - When I create a new client:
+     - A **Client record** is created.
+     - A **default “Owner” user account** is created for that client with login credentials.
+     - That user is restricted to the **client dashboard** only (no access to super-admin).
+   - Each client sees only their own:
+     - Assistants/bots
+     - Conversations
+     - Leads/bookings
+     - Analytics
+     - Settings
+
+3. No technical clutter for clients:
+   - All deep AI settings (API keys, models, system prompts, complex automations) live in the **super-admin** side only.
+   - Clients get a simplified dashboard (you already updated that in a separate task).
+
+4. Extreme power for me (super-admin):
+   - I should be able to build extremely advanced AI assistants even if clients only see a simple front end.
+   - The UI should make it easy to:
+     - Clone assistants, use templates, test changes safely, and push updates live.
+     - Manage many clients at once.
+
+--------------------------------
+INFORMATION ARCHITECTURE — SUPER-ADMIN
+--------------------------------
+
+Design the super-admin dashboard with a left sidebar (or top nav) containing at least these main sections:
+
+1) **Home / Command Center**
+   - At-a-glance for the whole platform:
+     - Total clients
+     - Total assistants/bots
+     - Total conversations (today, last 7 days, last 30 days)
+     - Total leads captured (same ranges)
+     - Total bookings (if supported)
+     - Error rate / failed responses (if you can detect this)
+   - Charts/graphs:
+     - Conversations over time
+     - Leads over time
+     - Top active assistants
+   - Quick actions:
+     - “Create New Client”
+     - “Create New Assistant”
+     - “Open Recent Client”
+   - This page is for ME only. Make it feel like a pro SaaS control panel.
+
+2) **Clients**
+   - Table/list of all clients with:
+     - Business Name
+     - Primary Contact Name
+     - Email
+     - Status (Active / Paused / Trial)
+     - Number of assistants
+     - Current plan
+   - Actions per client:
+     - View Client Overview (drill-in)
+     - Open as Client (impersonate client view in a new tab, safe & secure)
+     - Edit Client Settings
+     - Manage Client Users (owner + extra users if needed)
+     - Pause/Resume client (disables their bots globally if needed)
+   - “Create New Client” flow:
+     - Form fields:
+       - Business name
+       - Contact name
+       - Contact email
+       - Default subdomain/slug (e.g. faith-house, barber-shop-22)
+       - Plan selection (e.g. Starter / Pro / Custom)
+     - On submit:
+       - Create Client record.
+       - Create default Client User with role = CLIENT_OWNER.
+       - Generate a secure password or invitation link (store hashed as needed).
+       - Link this client to a **default assistant template** (e.g. generic Local Business Assistant).
+
+3) **Client Detail View (Super-Admin View)**
+   - When I click a client, open a focused page with tabs like:
+     - Overview
+     - Assistants
+     - Conversations
+     - Leads & Bookings
+     - Billing & Plan
+     - Users
+     - Settings
+   - Overview tab:
+     - High-level metrics for that client specifically:
+       - Conversations (last 7/30 days)
+       - Leads captured
+       - Bookings
+       - Top assistant for that client
+     - Quick actions:
+       - Create new assistant for this client
+       - Toggle all assistants ON/OFF
+       - Open client dashboard as that client
+
+4) **Assistants / Bots (Global)**
+   - A global list of ALL assistants/bots across all clients.
+   - Columns:
+     - Assistant Name
+     - Client Name
+     - Status (Active / Paused / Demo)
+     - Type (Website chat, SMS, WhatsApp, etc. — leave flexible)
+     - Conversations (last 7 days)
+     - Leads generated
+   - Filters:
+     - By client
+     - By status
+     - By channel/type
+   - Actions:
+     - Open Assistant Editor
+     - Duplicate assistant
+     - Pause/Activate
+     - View test chat
+
+5) **Assistant Editor (Super-Admin Only)**
+   - This is the core of your power. Build a multi-tab editor for each assistant with at least:
+
+   [Overview]
+   - Summary of:
+     - Which client it belongs to.
+     - Current status.
+     - Connected channels (website widget, SMS, etc.).
+     - Recent performance.
+
+   [Persona & Behavior]
+   - Fields:
+     - Assistant name
+     - Short description
+     - Role / persona settings (e.g. “Friendly sober-living intake assistant”)
+     - Tone/style presets (Friendly, Professional, Casual, Supportive, etc.)
+   - A large textarea to manage the **system prompt / core instructions**.
+   - Optional: a structured form that composes the system prompt from smaller fields (e.g. brand voice, do/don’t rules).
+
+   [Knowledge & Content]
+   - Connect to:
+     - Knowledge base entries (FAQs, docs).
+     - Website scraping / synced pages (if supported).
+     - Uploaded documents (PDFs, docs) — if already in the project or add schema for it.
+   - Show:
+     - List of knowledge sources.
+     - Status (in sync / requires re-index / error).
+     - Buttons:
+       - “Add FAQ”
+       - “Upload Document”
+       - “Resync Website”
+
+   [Flows & Automations]
+   - Simple interface to manage:
+     - Trigger → Action rules (keyword triggers, intents).
+     - Example:
+       - Trigger type: Keyword / Intent / Condition.
+       - Trigger value: “book”, “appointment”, “tour”, etc.
+       - Action: Send structured message, ask for contact info, redirect to booking link, create a lead, call a webhook, etc.
+   - Keep it data-driven (stored in JSON or DB) so you can expand later.
+
+   [Channels & Embeds]
+   - Configure:
+     - Website widget:
+       - Greeting text
+       - Call-to-action text
+       - Default language
+     - (Later) SMS / WhatsApp / other channels integrations.
+   - Show embed snippet for website widget (script tag).
+   - Channel-specific toggles.
+
+   [Testing & Sandbox]
+   - Built-in test chat window:
+     - Lets me talk to this assistant with:
+       - Prod mode (real settings).
+       - Sandbox mode (test settings, optional).
+   - Show raw request/response (for super-admin only) so I can debug prompts and behavior.
+
+   [Advanced AI Settings]
+   - Only visible to super-admin:
+     - Model selection (gpt-4.x, gpt-5.x, etc.).
+     - Temperature, max tokens, etc.
+     - Safety and fallback settings.
+   - All of this is hidden from clients, controlled only here.
+
+6) **Templates / Playbooks**
+   - Library of assistant templates for common niches:
+     - Sober Living Facility
+     - Barbershop
+     - Gym
+     - Dental Office
+     - Etc.
+   - Each template includes:
+     - Default persona and system prompt.
+     - Default FAQs structure.
+     - Default automations/workflows.
+   - Actions:
+     - “Use this template for client X”
+     - “Clone and customize template”
+   - This lets me spin up new clients faster.
+
+7) **Knowledge Sources (Global)**
+   - Optional global view of all knowledge:
+     - All FAQ sets per client/assistant.
+     - All uploaded documents.
+     - Website sources.
+   - Filters:
+     - By client
+     - By assistant
+   - Actions:
+     - Reindex all for a client.
+     - Reindex all for an assistant.
+   - This is for deeper maintenance work.
+
+8) **Integrations & API Keys**
+   - Agency-level settings for integrations:
+     - OpenAI / Anthropic / other LLM providers (API keys).
+     - Email provider (SendGrid/Mailgun/etc.).
+     - SMS provider (Twilio/etc.).
+     - Calendar/Booking (Calendly or custom).
+     - Payment provider (Stripe).
+   - Store keys securely (env setup + secure storage).
+   - UI:
+     - Forms to add/update keys (only viewable by super-admin).
+     - Status badges: Connected / Error / Not configured.
+
+9) **Billing & Plans**
+   - If Stripe or billing is present or planned:
+     - Define plans with:
+       - Name
+       - Description
+       - Price / month
+       - Limits (e.g. max assistants, conversations, leads/month).
+     - Assign plan to each client.
+     - Show per-client billing status:
+       - Active, Past Due, Trialing, Canceled.
+     - Link to Stripe Customer Portal / billing page.
+   - If billing is not fully built yet:
+     - Still design the data model & basic UI skeleton.
+     - Add TODO comments where deeper integration is needed.
+
+10) **Users & Access**
+   - Manage:
+     - Super-admin accounts.
+     - Client users (linked to clients).
+   - For each user:
+     - Email
+     - Role (SUPER_ADMIN, AGENCY_USER, CLIENT_OWNER, CLIENT_USER)
+     - Status (Active / Disabled)
+   - Actions:
+     - Invite new user.
+     - Reset password (or send reset link).
+     - Change roles.
+   - Enforce role-based access control in the UI and API.
+
+11) **System Health & Logs**
+   - Optional but very useful:
+     - Table of recent errors, failed API calls, or timeouts.
+     - Filter by client or assistant.
+   - Useful for debugging:
+     - Show which assistants are failing frequently.
+   - Only visible to super-admin.
+
+--------------------------------
+MULTI-TENANT / AUTH IMPLEMENTATION
+--------------------------------
+
+Make sure:
+- All data models explicitly link records to either:
+  - Agency/global scope, or
+  - Client scope (client_id foreign key).
+- Assistants are always tied to a client:
+  - assistant.client_id is required.
+- Client dashboard queries:
+  - Always filtered by that client’s ID.
+- Super-admin:
+  - Can see everything across all clients.
+- When creating a new client:
+  - Generate a unique subpath or subdomain (whatever the current routing supports), e.g. /client/{clientSlug} for their dashboard.
+  - Create login credentials for CLIENT_OWNER.
+  - Ensure they only access their own data.
+
+If the existing auth system needs adjustments to support these roles and tenant boundaries, refactor it cleanly:
+- Define a User model.
+- Define a Client model.
+- Define an Assistant model.
+- Link them with foreign keys.
+- Add middleware/guards/hooks to enforce access control in both API and UI.
+
+--------------------------------
+DESIGN & UX REQUIREMENTS
+--------------------------------
+
+- Keep everything **clean, minimal, and professional**.
+- Use consistent spacing, typography, and components.
+- Favor:
+  - Cards for stats.
+  - Tables for lists.
+  - Tabs or segmented controls for editor sections.
+- Use clear labels and descriptions. The super-admin can handle more technical language, but it should still be readable and organized.
+- Use clear primary actions on each page (“Save changes”, “Create assistant”, “Test assistant”).
+
+--------------------------------
+IMPLEMENTATION STEPS
+--------------------------------
+
+1) Map the current super-admin area:
+   - Find existing routes, pages, components for admin/super-admin.
+   - Identify anything that overlaps with this design.
+   - Decide what to keep, refactor, or delete.
+
+2) Implement navigation structure:
+   - Sidebar with sections:
+     - Home
+     - Clients
+     - Assistants
+     - Templates
+     - Knowledge
+     - Integrations
+     - Billing
+     - Users
+     - System / Logs
+   - Ensure active route highlighting.
+
+3) Implement core flows:
+   - Create Client → auto-create client user + default assistant.
+   - Create Assistant → link to client, open Assistant Editor.
+   - Update assistant settings → save to DB and used by chat backend.
+   - Configure integrations → save keys & show status.
+
+4) Wire to backend:
+   - Use existing database models if present, otherwise define and migrate.
+   - Ensure type-safe APIs (TypeScript).
+   - Keep endpoints secure and tenant-aware.
+
+5) Add QA & testing hooks:
+   - For each major page, ensure:
+     - Loading states
+     - Empty states
+     - Error handling
+   - For the Assistant Editor test chat:
+     - Call the same backend the real widget uses, but clearly label as “Test”.
+
+6) Final polish:
+   - Click through the entire super-admin flow:
+     - Create a new client.
+     - Auto-create their assistant.
+     - Configure assistant.
+     - Generate widget snippet.
+     - Verify the client user can log in and only see their own data.
+   - Fix any UX rough edges you find.
+
+CONSTRAINTS
+- Do NOT break the existing client dashboard routes.
+- Do NOT expose API keys or advanced settings to client users.
+- Preserve and improve existing security, auth, and role-based access control.
+- Keep the codebase clean, modular, and production-ready.
