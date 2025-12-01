@@ -126,6 +126,7 @@ export interface ClientRecord {
   type: string;
   bots: string[];
   status: string;
+  plan?: string;
   createdAt: string;
 }
 
@@ -869,6 +870,61 @@ export function updateClientStatus(
     return { success: false, error: 'Failed to save clients file' };
   } catch (error) {
     console.error('Error updating client status:', error);
+    return { success: false, error: String(error) };
+  }
+}
+
+export function updateClientPlan(
+  clientId: string, 
+  plan: string
+): { success: boolean; client?: ClientRecord; error?: string } {
+  try {
+    const clientsData = getClients();
+    const client = clientsData.clients.find(c => c.id === clientId);
+    
+    if (!client) {
+      return { success: false, error: `Client not found: ${clientId}` };
+    }
+    
+    client.plan = plan;
+    const saved = saveClients(clientsData);
+    
+    if (saved) {
+      return { success: true, client };
+    }
+    return { success: false, error: 'Failed to save clients file' };
+  } catch (error) {
+    console.error('Error updating client plan:', error);
+    return { success: false, error: String(error) };
+  }
+}
+
+export async function updateWorkspacePlan(
+  slug: string,
+  plan: string
+): Promise<{ success: boolean; workspace?: any; error?: string }> {
+  try {
+    const [workspace] = await db
+      .update(workspaces)
+      .set({ plan })
+      .where(eq(workspaces.slug, slug))
+      .returning();
+    
+    if (!workspace) {
+      return { success: false, error: `Workspace not found: ${slug}` };
+    }
+    
+    // Also update clients.json for consistency
+    const clientsData = getClients();
+    const client = clientsData.clients.find(c => c.id === slug);
+    if (client) {
+      client.plan = plan;
+      saveClients(clientsData);
+    }
+    
+    return { success: true, workspace };
+  } catch (error) {
+    console.error('Error updating workspace plan:', error);
     return { success: false, error: String(error) };
   }
 }

@@ -38,6 +38,8 @@ import {
   createBotConfig,
   registerClient,
   updateClientStatus,
+  updateClientPlan,
+  updateWorkspacePlan,
   getClientStatus,
   type BotConfig
 } from "./botConfig";
@@ -6404,6 +6406,39 @@ These suggestions should be relevant to what was just discussed and help guide t
     } catch (error) {
       console.error("Update workspace status error:", error);
       res.status(500).json({ error: "Failed to update workspace status" });
+    }
+  });
+
+  // Update workspace plan
+  app.patch("/api/super-admin/workspaces/:slug/plan", requireSuperAdmin, async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const { plan } = req.body;
+      
+      const validPlans = ['starter', 'professional', 'enterprise'];
+      if (!validPlans.includes(plan)) {
+        return res.status(400).json({ error: `Invalid plan. Must be one of: ${validPlans.join(', ')}` });
+      }
+      
+      // Update workspace plan in database
+      const result = await updateWorkspacePlan(slug, plan);
+      if (!result.success) {
+        return res.status(404).json({ error: result.error || "Failed to update workspace plan" });
+      }
+      
+      // Log this action
+      await storage.createSystemLog({
+        level: 'info',
+        source: 'super-admin',
+        message: `Workspace ${slug} plan changed to ${plan}`,
+        workspaceId: (workspace as any).id,
+        details: { previousPlan: (workspace as any).plan || 'starter', newPlan: plan },
+      });
+      
+      res.json({ success: true, slug, plan });
+    } catch (error) {
+      console.error("Update workspace plan error:", error);
+      res.status(500).json({ error: "Failed to update workspace plan" });
     }
   });
 
