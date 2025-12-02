@@ -894,6 +894,16 @@ export default function ControlCenter() {
                   Integrations
                 </Button>
                 <Button
+                  data-testid="button-section-requests"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setDashboardSection('requests')}
+                  className={dashboardSection === 'requests' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  Requests
+                </Button>
+                <Button
                   data-testid="button-section-billing"
                   variant="ghost"
                   size="sm"
@@ -2305,6 +2315,11 @@ export default function ControlCenter() {
               {/* Integrations Section - API keys and connections */}
               {dashboardSection === 'integrations' && (
                 <IntegrationsSectionPanel />
+              )}
+
+              {/* Bot Requests Section - Contact form submissions */}
+              {dashboardSection === 'requests' && (
+                <BotRequestsSectionPanel />
               )}
 
               {/* Billing & Plans Section */}
@@ -7361,6 +7376,204 @@ function KnowledgeSectionPanel({ bots, clients }: { bots: BotConfig[]; clients: 
           )}
         </>
       )}
+    </div>
+  );
+}
+
+// Bot Requests Section Panel - Contact form submissions from landing page
+function BotRequestsSectionPanel() {
+  const { toast } = useToast();
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  
+  interface BotRequest {
+    id: string;
+    name: string;
+    email: string;
+    phone: string | null;
+    message: string;
+    businessName: string | null;
+    businessType: string | null;
+    website: string | null;
+    status: string;
+    priority: string | null;
+    adminNotes: string | null;
+    source: string | null;
+    createdAt: string;
+    updatedAt: string;
+    contactedAt: string | null;
+    convertedAt: string | null;
+  }
+  
+  const { data, isLoading, refetch } = useQuery<{ requests: BotRequest[]; counts: Record<string, number>; total: number }>({
+    queryKey: ["/api/bot-requests", statusFilter],
+    queryFn: async () => {
+      const response = await fetch(`/api/bot-requests?status=${statusFilter}`, { credentials: "include" });
+      if (!response.ok) throw new Error('Failed to fetch');
+      return response.json();
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<BotRequest> }) => {
+      const response = await apiRequest("PATCH", `/api/bot-requests/${id}`, updates);
+      return response.json();
+    },
+    onSuccess: () => {
+      refetch();
+      toast({ title: "Updated", description: "Request status has been updated." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update request.", variant: "destructive" });
+    },
+  });
+
+  const getStatusBadge = (status: string) => {
+    const styles: Record<string, string> = {
+      new: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30",
+      contacted: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+      qualified: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+      converted: "bg-green-500/20 text-green-400 border-green-500/30",
+      declined: "bg-red-500/20 text-red-400 border-red-500/30",
+    };
+    return <Badge className={styles[status] || styles.new}>{status.charAt(0).toUpperCase() + status.slice(1)}</Badge>;
+  };
+
+  const getPriorityBadge = (priority: string | null) => {
+    if (!priority || priority === 'normal') return null;
+    const styles: Record<string, string> = {
+      high: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+      urgent: "bg-red-500/20 text-red-400 border-red-500/30",
+      low: "bg-white/10 text-white/50 border-white/20",
+    };
+    return <Badge className={styles[priority] || ""}>{priority.toUpperCase()}</Badge>;
+  };
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+            <Mail className="h-6 w-6 text-cyan-400" />
+            Bot Requests
+          </h2>
+          <p className="text-white/55 mt-1">Contact form submissions from the landing page</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-36 bg-white/5 border-white/10 text-white" data-testid="select-status-filter">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#1a1d24] border-white/10">
+              <SelectItem value="all" className="text-white hover:bg-white/10">All Requests</SelectItem>
+              <SelectItem value="new" className="text-white hover:bg-white/10">New</SelectItem>
+              <SelectItem value="contacted" className="text-white hover:bg-white/10">Contacted</SelectItem>
+              <SelectItem value="qualified" className="text-white hover:bg-white/10">Qualified</SelectItem>
+              <SelectItem value="converted" className="text-white hover:bg-white/10">Converted</SelectItem>
+              <SelectItem value="declined" className="text-white hover:bg-white/10">Declined</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => refetch()} 
+            className="border-white/20 text-white hover:bg-white/10"
+            data-testid="button-refresh-requests"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Stats Overview */}
+      {data?.counts && (
+        <div className="grid grid-cols-5 gap-3">
+          {[
+            { key: 'new', label: 'New', color: 'cyan' },
+            { key: 'contacted', label: 'Contacted', color: 'amber' },
+            { key: 'qualified', label: 'Qualified', color: 'blue' },
+            { key: 'converted', label: 'Converted', color: 'green' },
+            { key: 'declined', label: 'Declined', color: 'red' },
+          ].map(({ key, label, color }) => (
+            <GlassCard key={key} className="cursor-pointer hover:border-white/20" onClick={() => setStatusFilter(key)}>
+              <GlassCardContent className="p-4 text-center">
+                <div className={`text-2xl font-bold text-${color}-400`}>{data.counts[key] || 0}</div>
+                <div className="text-sm text-white/55">{label}</div>
+              </GlassCardContent>
+            </GlassCard>
+          ))}
+        </div>
+      )}
+
+      {/* Requests List */}
+      <GlassCard>
+        <GlassCardContent className="p-0">
+          {isLoading ? (
+            <div className="p-8 text-center text-white/55">Loading requests...</div>
+          ) : !data?.requests?.length ? (
+            <div className="p-8 text-center">
+              <Mail className="h-12 w-12 mx-auto text-white/20 mb-3" />
+              <p className="text-white/55">No requests yet</p>
+              <p className="text-white/40 text-sm mt-1">When visitors submit the contact form, their requests will appear here.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-white/10">
+              {data.requests.map((request) => (
+                <div key={request.id} className="p-4 hover:bg-white/5 transition-colors" data-testid={`request-${request.id}`}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium text-white">{request.name}</span>
+                        {getStatusBadge(request.status)}
+                        {getPriorityBadge(request.priority)}
+                      </div>
+                      <div className="flex items-center gap-3 text-sm text-white/55 mb-2">
+                        <span className="flex items-center gap-1">
+                          <Mail className="h-3 w-3" />
+                          {request.email}
+                        </span>
+                        {request.phone && (
+                          <span className="flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            {request.phone}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-white/70 line-clamp-2">{request.message}</p>
+                      <div className="flex items-center gap-2 mt-2 text-xs text-white/40">
+                        <span>Submitted {formatDate(request.createdAt)}</span>
+                        {request.contactedAt && <span>• Contacted {formatDate(request.contactedAt)}</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Select
+                        value={request.status}
+                        onValueChange={(newStatus) => updateMutation.mutate({ id: request.id, updates: { status: newStatus } })}
+                      >
+                        <SelectTrigger className="w-32 bg-white/5 border-white/10 text-white text-sm" data-testid={`select-request-status-${request.id}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#1a1d24] border-white/10">
+                          <SelectItem value="new" className="text-white hover:bg-white/10">New</SelectItem>
+                          <SelectItem value="contacted" className="text-white hover:bg-white/10">Contacted</SelectItem>
+                          <SelectItem value="qualified" className="text-white hover:bg-white/10">Qualified</SelectItem>
+                          <SelectItem value="converted" className="text-white hover:bg-white/10">Converted</SelectItem>
+                          <SelectItem value="declined" className="text-white hover:bg-white/10">Declined</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </GlassCardContent>
+      </GlassCard>
     </div>
   );
 }
