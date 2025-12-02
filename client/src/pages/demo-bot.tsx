@@ -329,7 +329,7 @@ function FloatingChatWidget({ botConfig, messages, setMessages, inputValue, setI
         className={cn(
           "w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-105",
           `bg-gradient-to-r ${colors.primary} text-white`,
-          showGreeting && !isOpen && "animate-pulse"
+          showGreeting && !isOpen && "animate-bounce"
         )}
         data-testid="button-toggle-chat"
         aria-label={isOpen ? "Minimize chat" : "Open chat"}
