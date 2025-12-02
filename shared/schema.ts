@@ -2185,3 +2185,58 @@ export const agentMetricsRelations = relations(agentMetrics, ({ one }) => ({
     references: [adminUsers.id],
   }),
 }));
+
+// =============================================
+// BOT REQUESTS - Contact form submissions from landing page
+// =============================================
+
+export const botRequests = pgTable("bot_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Contact information
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  message: text("message").notNull(),
+  
+  // Business details (extracted or provided)
+  businessName: text("business_name"),
+  businessType: text("business_type"),
+  website: text("website"),
+  
+  // Request status
+  status: text("status").notNull().default("new"), // new, contacted, qualified, converted, declined
+  priority: text("priority").default("normal"), // low, normal, high, urgent
+  
+  // Admin notes and follow-up
+  adminNotes: text("admin_notes"),
+  assignedTo: varchar("assigned_to"),
+  
+  // Tracking
+  source: text("source").default("landing_page"), // landing_page, referral, demo, etc.
+  utmSource: text("utm_source"),
+  utmMedium: text("utm_medium"),
+  utmCampaign: text("utm_campaign"),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  contactedAt: timestamp("contacted_at"),
+  convertedAt: timestamp("converted_at"),
+}, (table) => ({
+  statusIdx: index("bot_requests_status_idx").on(table.status),
+  emailIdx: index("bot_requests_email_idx").on(table.email),
+  createdAtIdx: index("bot_requests_created_at_idx").on(table.createdAt),
+}));
+
+export const insertBotRequestSchema = createInsertSchema(botRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  status: true,
+  contactedAt: true,
+  convertedAt: true,
+});
+
+export type InsertBotRequest = z.infer<typeof insertBotRequestSchema>;
+export type BotRequest = typeof botRequests.$inferSelect;
