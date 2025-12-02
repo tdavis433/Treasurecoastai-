@@ -49,16 +49,38 @@ export default function Home() {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Simulate form submission (would connect to backend in production)
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    toast({
-      title: "Request received!",
-      description: "We'll be in touch within 24 hours to discuss your AI assistant.",
-    });
-    
-    setContactForm({ name: '', email: '', phone: '', message: '' });
-    setIsSubmitting(false);
+    try {
+      const response = await fetch('/api/bot-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(contactForm),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        toast({
+          title: "Request received!",
+          description: "We'll be in touch within 24 hours to discuss your AI assistant.",
+        });
+        setContactForm({ name: '', email: '', phone: '', message: '' });
+      } else {
+        toast({
+          title: "Something went wrong",
+          description: data.error || "Please try again or contact us directly.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Contact form error:", error);
+      toast({
+        title: "Connection error",
+        description: "Please check your connection and try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const pricingPlans = [
