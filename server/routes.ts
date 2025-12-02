@@ -897,6 +897,93 @@ async function generateConversationSummary(sessionId: string, clientId: string =
   }
 }
 
+interface ConversationAnalysis {
+  summary: string;
+  userIntent: string;
+  topics: string[];
+  sentiment: 'positive' | 'neutral' | 'negative' | 'urgent';
+  bookingIntent: boolean;
+  leadQuality: 'hot' | 'warm' | 'cold';
+}
+
+async function analyzeConversation(
+  messages: Array<{ role: string; content: string }>,
+  businessType: string = 'general'
+): Promise<ConversationAnalysis | null> {
+  try {
+    if (!openai) {
+      console.log('[AI Analysis] OpenAI not configured');
+      return null;
+    }
+
+    const userMessages = messages.filter(m => m.role === 'user');
+    if (userMessages.length === 0) {
+      return null;
+    }
+
+    const conversationText = messages
+      .slice(-10)
+      .map(msg => `${msg.role}: ${msg.content}`)
+      .join("\n");
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `You are an AI that analyzes customer conversations for a ${businessType} business. Analyze the conversation and return a JSON object with:
+- summary: A 1-2 sentence summary of what the visitor wanted (max 100 chars)
+- userIntent: What the visitor was trying to accomplish (e.g., "Get pricing info", "Book appointment", "Ask about services", "General inquiry")
+- topics: Array of relevant topics discussed (max 3)
+- sentiment: Overall sentiment - "positive", "neutral", "negative", or "urgent"
+- bookingIntent: Boolean - true if visitor wants to schedule/book something
+- leadQuality: "hot" (ready to buy/book now), "warm" (interested, needs more info), or "cold" (just browsing)
+
+Return ONLY valid JSON, no other text.`
+        },
+        {
+          role: "user",
+          content: `Analyze this conversation:\n\n${conversationText}`
+        }
+      ],
+      max_completion_tokens: 300,
+      response_format: { type: "json_object" }
+    });
+
+    const responseText = completion.choices[0]?.message?.content;
+    if (!responseText) {
+      return null;
+    }
+
+    const analysis = JSON.parse(responseText) as ConversationAnalysis;
+    return analysis;
+  } catch (error) {
+    console.error('[AI Analysis] Error analyzing conversation:', error);
+    return null;
+  }
+}
+
+async function generateQuickSummary(userMessages: string[]): Promise<string> {
+  if (userMessages.length === 0) return '';
+  
+  const combined = userMessages.join(' ').slice(0, 500);
+  
+  const bookingKeywords = /appointment|schedule|book|visit|tour|come in|meet|call back/i;
+  const pricingKeywords = /price|cost|how much|afford|payment|fee|rate/i;
+  const infoKeywords = /hours|location|address|open|available|services|what do you/i;
+  
+  if (bookingKeywords.test(combined)) {
+    return 'Interested in scheduling appointment/visit';
+  } else if (pricingKeywords.test(combined)) {
+    return 'Asking about pricing/costs';
+  } else if (infoKeywords.test(combined)) {
+    return 'General information inquiry';
+  }
+  
+  const firstQuestion = userMessages[0].slice(0, 80);
+  return firstQuestion.length > 75 ? firstQuestion + '...' : firstQuestion;
+}
+
 async function sendSmsNotification(
   phoneNumber: string,
   message: string,
@@ -1696,20 +1783,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Auto-capture leads from qualifying chat sessions
-      const contactInfo = extractContactInfo(messages);
-      const conversationPreview = lastUserMessage?.content?.slice(0, 200) || '';
-      
-      // Run lead capture asynchronously to not slow down chat response
-      autoCaptureLead(
-        clientId,
-        botId,
-        actualSessionId,
-        contactInfo,
-        conversationPreview,
-        sessionData.appointmentRequested || false
-      ).catch(err => console.error('[Auto-Lead] Background capture failed:', err));
-
       // Check for external booking URL if booking intent detected
       let externalBookingUrl: string | null = null;
       if (mentionsAppointment) {
@@ -1719,6 +1792,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Send response immediately for best UX
       res.json({ 
         reply,
         meta: { 
@@ -1730,6 +1804,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
           externalBookingUrl
         }
       });
+      
+      // Run AI analysis and lead capture asynchronously (after response sent)
+      (async () => {
+        try {
+          const contactInfo = extractContactInfo(messages);
+          const userMessageTexts = messages.filter(m => m.role === 'user').map(m => m.content);
+          const conversationPreview = await generateQuickSummary(userMessageTexts) || lastUserMessage?.content?.slice(0, 200) || '';
+          
+          // Run AI analysis for richer insights
+          const analysis = await analyzeConversation(messages, botConfig.businessProfile?.type || 'general');
+          
+          // Update session with AI analysis
+          if (analysis) {
+            const sessionMetadata = {
+              ...(sessionData.metadata || {}),
+              aiSummary: analysis.summary,
+              userIntent: analysis.userIntent,
+              sentiment: analysis.sentiment,
+              leadQuality: analysis.leadQuality,
+              bookingIntent: analysis.bookingIntent,
+              analyzedAt: new Date().toISOString()
+            };
+            
+            await storage.createOrUpdateChatSession({
+              ...sessionData,
+              appointmentRequested: analysis.bookingIntent || sessionData.appointmentRequested,
+              metadata: sessionMetadata
+            });
+            console.log(`[AI Analysis] Session ${actualSessionId} enriched with AI summary`);
+          }
+          
+          // Capture lead with AI insights
+          await autoCaptureLead(
+            clientId,
+            botId,
+            actualSessionId,
+            contactInfo,
+            conversationPreview,
+            analysis?.bookingIntent || sessionData.appointmentRequested || false,
+            analysis
+          );
+        } catch (err) {
+          console.error('[AI Analysis] Background processing failed:', err);
+        }
+      })();
     } catch (error) {
       console.error("Multi-tenant chat error:", error);
       res.status(500).json({ error: "Failed to process chat message" });
@@ -1913,6 +2032,50 @@ These suggestions should be relevant to what was just discussed and help guide t
         botReply: cleanReply
       });
 
+      // Run AI analysis and lead capture asynchronously (streaming - after response sent)
+      (async () => {
+        try {
+          const contactInfo = extractContactInfo(messages);
+          const userMessageTexts = messages.filter(m => m.role === 'user').map(m => m.content);
+          const conversationPreview = await generateQuickSummary(userMessageTexts) || lastUserMessage?.content?.slice(0, 200) || '';
+          
+          // Run AI analysis for richer insights
+          const analysis = await analyzeConversation(messages, 'general');
+          
+          // Update session with AI analysis
+          if (analysis) {
+            const sessionMetadata = {
+              aiSummary: analysis.summary,
+              userIntent: analysis.userIntent,
+              sentiment: analysis.sentiment,
+              leadQuality: analysis.leadQuality,
+              bookingIntent: analysis.bookingIntent,
+              analyzedAt: new Date().toISOString()
+            };
+            
+            await storage.createOrUpdateChatSession({
+              ...sessionData,
+              appointmentRequested: analysis.bookingIntent || sessionData.appointmentRequested,
+              metadata: sessionMetadata
+            });
+            console.log(`[AI Analysis] Streaming session ${actualSessionId} enriched`);
+          }
+          
+          // Capture lead with AI insights
+          await autoCaptureLead(
+            clientId,
+            botId,
+            actualSessionId,
+            contactInfo,
+            conversationPreview,
+            analysis?.bookingIntent || sessionData.appointmentRequested || false,
+            analysis
+          );
+        } catch (err) {
+          console.error('[AI Analysis] Streaming processing failed:', err);
+        }
+      })();
+
     } catch (error) {
       console.error("Streaming chat error:", error);
       if (!res.headersSent) {
@@ -2068,18 +2231,22 @@ These suggestions should be relevant to what was just discussed and help guide t
     return result;
   }
 
-  // Auto-create or update lead from chat session
+  // Auto-create or update lead from chat session with optional AI analysis
   async function autoCaptureLead(
     clientId: string,
     botId: string,
     sessionId: string,
     contactInfo: ExtractedContactInfo,
     conversationPreview: string,
-    appointmentRequested: boolean
+    appointmentRequested: boolean,
+    aiAnalysis?: ConversationAnalysis | null
   ): Promise<void> {
     try {
+      // Use AI-derived booking intent if available, fallback to regex detection
+      const hasBookingIntent = aiAnalysis?.bookingIntent || appointmentRequested;
+      
       // Check if we have any qualifying info
-      if (!contactInfo.email && !contactInfo.phone && !appointmentRequested) {
+      if (!contactInfo.email && !contactInfo.phone && !hasBookingIntent) {
         return; // No qualifying info to create lead
       }
       
@@ -2097,6 +2264,23 @@ These suggestions should be relevant to what was just discussed and help guide t
         )
       );
       
+      // Determine priority from AI analysis or booking intent
+      const determinePriority = (): string => {
+        if (aiAnalysis?.leadQuality === 'hot') return 'high';
+        if (aiAnalysis?.leadQuality === 'warm') return 'medium';
+        if (hasBookingIntent) return 'high';
+        return 'medium';
+      };
+      
+      // Build metadata with AI insights
+      const leadMetadata: Record<string, any> = {};
+      if (aiAnalysis) {
+        if (aiAnalysis.userIntent) leadMetadata.userIntent = aiAnalysis.userIntent;
+        if (aiAnalysis.summary) leadMetadata.aiSummary = aiAnalysis.summary;
+        if (aiAnalysis.leadQuality) leadMetadata.leadQuality = aiAnalysis.leadQuality;
+        if (aiAnalysis.sentiment) leadMetadata.sentiment = aiAnalysis.sentiment;
+      }
+      
       if (existingLead) {
         // SECURITY: Verify lead belongs to this client before updating
         if (existingLead.clientId !== clientId) {
@@ -2107,21 +2291,32 @@ These suggestions should be relevant to what was just discussed and help guide t
         // Update existing lead with new info
         const updates: Partial<typeof existingLead> = {
           sessionId, // Link to latest session
-          conversationPreview,
+          conversationPreview: aiAnalysis?.summary || conversationPreview,
         };
         
         if (contactInfo.name && !existingLead.name) updates.name = contactInfo.name;
         if (contactInfo.email && !existingLead.email) updates.email = contactInfo.email;
         if (contactInfo.phone && !existingLead.phone) updates.phone = contactInfo.phone;
         
-        // Bump priority if appointment requested
-        if (appointmentRequested && existingLead.priority !== 'high') {
+        // Update priority based on AI analysis or booking intent
+        const newPriority = determinePriority();
+        if (newPriority === 'high' && existingLead.priority !== 'high') {
           updates.priority = 'high';
+        }
+        
+        // Merge AI metadata
+        if (Object.keys(leadMetadata).length > 0) {
+          updates.metadata = { ...(existingLead.metadata || {}), ...leadMetadata };
         }
         
         await storage.updateLead(existingLead.id, updates);
         console.log(`[Auto-Lead] Updated existing lead ${existingLead.id} for session ${sessionId}`);
       } else {
+        // Build tags array
+        const tags: string[] = [];
+        if (hasBookingIntent) tags.push('appointment_request');
+        if (aiAnalysis?.leadQuality === 'hot') tags.push('hot_lead');
+        
         // Create new lead - always use the provided clientId/botId
         const newLead = await storage.createLead({
           clientId,
@@ -2132,16 +2327,16 @@ These suggestions should be relevant to what was just discussed and help guide t
           phone: contactInfo.phone,
           source: 'chat',
           status: 'new',
-          priority: appointmentRequested ? 'high' : 'medium',
+          priority: determinePriority(),
           notes: null,
-          tags: appointmentRequested ? ['appointment_request'] : [],
-          metadata: {},
-          conversationPreview,
+          tags,
+          metadata: Object.keys(leadMetadata).length > 0 ? leadMetadata : {},
+          conversationPreview: aiAnalysis?.summary || conversationPreview,
           messageCount: null,
           lastContactedAt: null,
         });
         
-        console.log(`[Auto-Lead] Created new lead ${newLead.id} for session ${sessionId}`);
+        console.log(`[Auto-Lead] Created new lead ${newLead.id} for session ${sessionId} (quality: ${aiAnalysis?.leadQuality || 'unknown'})`);
         
         // Increment lead counter
         await incrementLeadCount(clientId);
