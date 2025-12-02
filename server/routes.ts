@@ -1815,10 +1815,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Run AI analysis for richer insights
           const analysis = await analyzeConversation(messages, botConfig.businessProfile?.type || 'general');
           
-          // Update session with AI analysis
+          // Update session with AI analysis - fetch fresh session state to avoid race conditions
           if (analysis) {
-            const sessionMetadata = {
-              ...(sessionData.metadata || {}),
+            // Fetch latest session state to avoid overwriting concurrent updates
+            const freshSession = await storage.getChatSession(actualSessionId);
+            const freshMetadata = (freshSession?.metadata as Record<string, unknown>) || {};
+            
+            const updatedMetadata = {
+              ...freshMetadata,
               aiSummary: analysis.summary,
               userIntent: analysis.userIntent,
               sentiment: analysis.sentiment,
@@ -1828,9 +1832,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             };
             
             await storage.createOrUpdateChatSession({
-              ...sessionData,
-              appointmentRequested: analysis.bookingIntent || sessionData.appointmentRequested,
-              metadata: sessionMetadata
+              sessionId: actualSessionId,
+              clientId,
+              botId,
+              messages: freshSession?.messages || [],
+              appointmentRequested: analysis.bookingIntent || freshSession?.appointmentRequested || false,
+              topics: freshSession?.topics as string[] || [],
+              metadata: updatedMetadata
             });
             console.log(`[AI Analysis] Session ${actualSessionId} enriched with AI summary`);
           }
@@ -2040,11 +2048,15 @@ These suggestions should be relevant to what was just discussed and help guide t
           const conversationPreview = await generateQuickSummary(userMessageTexts) || lastUserMessage?.content?.slice(0, 200) || '';
           
           // Run AI analysis for richer insights
-          const analysis = await analyzeConversation(messages, 'general');
+          const analysis = await analyzeConversation(messages, botConfig.businessProfile?.type || 'general');
           
-          // Update session with AI analysis
+          // Update session with AI analysis - fetch fresh session state to avoid race conditions
           if (analysis) {
-            const sessionMetadata = {
+            const freshSession = await storage.getChatSession(actualSessionId);
+            const freshMetadata = (freshSession?.metadata as Record<string, unknown>) || {};
+            
+            const updatedMetadata = {
+              ...freshMetadata,
               aiSummary: analysis.summary,
               userIntent: analysis.userIntent,
               sentiment: analysis.sentiment,
@@ -2054,9 +2066,13 @@ These suggestions should be relevant to what was just discussed and help guide t
             };
             
             await storage.createOrUpdateChatSession({
-              ...sessionData,
-              appointmentRequested: analysis.bookingIntent || sessionData.appointmentRequested,
-              metadata: sessionMetadata
+              sessionId: actualSessionId,
+              clientId,
+              botId,
+              messages: freshSession?.messages || [],
+              appointmentRequested: analysis.bookingIntent || freshSession?.appointmentRequested || false,
+              topics: freshSession?.topics as string[] || [],
+              metadata: updatedMetadata
             });
             console.log(`[AI Analysis] Streaming session ${actualSessionId} enriched`);
           }

@@ -65,6 +65,15 @@ Treasure Coast AI is an **agency-first** AI assistant platform. The agency (admi
 - Booking intent recognition with calendar link suggestions
 - Safety layer with graceful fallbacks
 
+### AI Conversation Analysis (Background Processing)
+- **Automatic Summary Generation**: GPT-4o-mini analyzes each conversation asynchronously
+- **User Intent Detection**: Identifies why the visitor is contacting (booking, pricing inquiry, general question, complaint)
+- **Sentiment Analysis**: Detects positive, neutral, negative, or frustrated tone
+- **Lead Quality Scoring**: Classifies leads as hot, warm, or cold based on engagement signals
+- **Booking Intent Detection**: AI supplements regex-based detection for smarter appointment scheduling
+- **Stored in Metadata**: Session metadata includes aiSummary, userIntent, sentiment, leadQuality, bookingIntent
+- **Lead Enrichment**: Leads receive AI-derived insights for better qualification and follow-up
+
 ### Chat Widget
 - Gorgeous glassmorphism design with neon accents
 - Smooth animations (pulse, slide-up, typing indicator)
