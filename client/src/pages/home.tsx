@@ -194,12 +194,14 @@ export default function Home() {
                   Client Login
                 </Button>
               </Link>
-              <Link href="/demos">
-                <Button className="btn-gradient-primary rounded-xl px-6 glow-cyan" data-testid="button-get-started-nav">
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  Get Started
-                </Button>
-              </Link>
+              <Button 
+                className="btn-gradient-primary rounded-xl px-6 glow-cyan" 
+                data-testid="button-get-started-nav"
+                onClick={() => document.getElementById('contact-form')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Get Started
+              </Button>
             </div>
           </div>
         </nav>
@@ -228,17 +230,16 @@ export default function Home() {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/demos">
-                <Button 
-                  size="lg" 
-                  className="btn-gradient-primary rounded-xl px-8 py-6 text-lg group glow-cyan-strong"
-                  data-testid="button-get-started-hero"
-                >
-                  <MessageSquare className="w-5 h-5 mr-2" />
-                  Get Started — We Build It For You
-                  <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </Link>
+              <Button 
+                size="lg" 
+                className="btn-gradient-primary rounded-xl px-8 py-6 text-lg group glow-cyan-strong"
+                data-testid="button-get-started-hero"
+                onClick={() => document.getElementById('contact-form')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                <MessageSquare className="w-5 h-5 mr-2" />
+                Get Started — We Build It For You
+                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+              </Button>
               <Link href="/demos">
                 <Button 
                   size="lg" 
@@ -247,7 +248,7 @@ export default function Home() {
                   data-testid="button-view-demos"
                 >
                   <Sparkles className="w-5 h-5 mr-2 text-primary" />
-                  See What We Build
+                  See What We Can Do
                 </Button>
               </Link>
             </div>
