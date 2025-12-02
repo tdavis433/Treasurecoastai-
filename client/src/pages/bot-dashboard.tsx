@@ -18,7 +18,7 @@ import {
   Calendar, Utensils, Scissors, Car, Dumbbell, Home, ClipboardList,
   Users, DollarSign, Shield, Search, Loader2, ExternalLink, Check,
   X, RefreshCw, Trash2, Plus, Download, BarChart3, Send, Bot,
-  Play, Eye, Code2, Zap
+  Play, Eye, Code2, Zap, Bell
 } from "lucide-react";
 
 interface BotFaq {
@@ -94,6 +94,15 @@ interface BotConfig {
     };
   };
   automations?: KeywordAutomation[];
+  notifications?: {
+    enabled: boolean;
+    emailNotifications: boolean;
+    notifyOnNewLead: boolean;
+    notifyOnBooking: boolean;
+    notifyOnCrisis: boolean;
+    dailySummary: boolean;
+    notificationEmail: string;
+  };
   systemPrompt: string;
   faqs: BotFaq[];
   metadata?: {
@@ -715,6 +724,10 @@ export default function BotDashboard() {
               <Zap className="h-4 w-4" />
               Automations
             </TabsTrigger>
+            <TabsTrigger value="notifications" className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-pink-500/20 data-[state=active]:to-rose-500/20 data-[state=active]:text-pink-400 data-[state=active]:border data-[state=active]:border-pink-400/30 data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white transition-all" data-testid="tab-notifications">
+              <Bell className="h-4 w-4" />
+              Notifications
+            </TabsTrigger>
             {renderBusinessTypeTabs()}
           </TabsList>
 
@@ -853,6 +866,13 @@ export default function BotDashboard() {
 
           <TabsContent value="automations">
             <AutomationsTab 
+              config={editedConfig}
+              updateConfig={updateConfig}
+            />
+          </TabsContent>
+
+          <TabsContent value="notifications">
+            <NotificationsTab 
               config={editedConfig}
               updateConfig={updateConfig}
             />
@@ -1935,6 +1955,164 @@ function AutomationsTab({ config, updateConfig }: {
               </div>
               <p>Conversation continues naturally with AI handling follow-ups</p>
             </div>
+          </div>
+        </GlassCardContent>
+      </GlassCard>
+    </div>
+  );
+}
+
+function NotificationsTab({ config, updateConfig }: {
+  config: BotConfig;
+  updateConfig: (updates: Partial<BotConfig>) => void;
+}) {
+  const { toast } = useToast();
+  
+  const notifications = config.notifications || {
+    enabled: true,
+    emailNotifications: true,
+    notifyOnNewLead: true,
+    notifyOnBooking: true,
+    notifyOnCrisis: true,
+    dailySummary: false,
+    notificationEmail: config.businessProfile.email || '',
+  };
+
+  const updateNotifications = (updates: Partial<typeof notifications>) => {
+    updateConfig({ 
+      notifications: { ...notifications, ...updates } 
+    });
+    toast({ title: "Updated", description: "Notification settings updated. Don't forget to save!" });
+  };
+
+  return (
+    <div className="space-y-6">
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="flex items-center gap-2">
+            <Bell className="h-5 w-5 text-pink-400" />
+            Notification Settings
+          </GlassCardTitle>
+          <GlassCardDescription>
+            Configure how and when you receive alerts about this bot's activity
+          </GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10">
+              <div className="flex items-center gap-3">
+                <Bell className="h-5 w-5 text-white/60" />
+                <div>
+                  <p className="text-white font-medium">Enable Notifications</p>
+                  <p className="text-sm text-white/50">Master switch for all notifications</p>
+                </div>
+              </div>
+              <Switch
+                checked={notifications.enabled}
+                onCheckedChange={(checked) => updateNotifications({ enabled: checked })}
+                data-testid="switch-notifications-master"
+              />
+            </div>
+
+            <div className="space-y-4 opacity-100" style={{ opacity: notifications.enabled ? 1 : 0.5 }}>
+              <div>
+                <Label className="text-white/70">Notification Email</Label>
+                <Input
+                  value={notifications.notificationEmail}
+                  onChange={(e) => updateNotifications({ notificationEmail: e.target.value })}
+                  placeholder="alerts@business.com"
+                  className="bg-white/5 border-white/10 text-white mt-1"
+                  disabled={!notifications.enabled}
+                  data-testid="input-notification-email"
+                />
+                <p className="text-white/40 text-xs mt-1">Email address to receive notifications</p>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-white/70 font-medium">Alert Types</p>
+                
+                <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
+                  <div className="flex items-center gap-3">
+                    <Users className="h-4 w-4 text-green-400" />
+                    <div>
+                      <p className="text-white text-sm">New Lead Captured</p>
+                      <p className="text-xs text-white/40">When someone shares contact info</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={notifications.notifyOnNewLead}
+                    onCheckedChange={(checked) => updateNotifications({ notifyOnNewLead: checked })}
+                    disabled={!notifications.enabled}
+                    data-testid="switch-notify-lead"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
+                  <div className="flex items-center gap-3">
+                    <Calendar className="h-4 w-4 text-purple-400" />
+                    <div>
+                      <p className="text-white text-sm">Booking Request</p>
+                      <p className="text-xs text-white/40">When someone requests an appointment</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={notifications.notifyOnBooking}
+                    onCheckedChange={(checked) => updateNotifications({ notifyOnBooking: checked })}
+                    disabled={!notifications.enabled}
+                    data-testid="switch-notify-booking"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
+                  <div className="flex items-center gap-3">
+                    <AlertTriangle className="h-4 w-4 text-red-400" />
+                    <div>
+                      <p className="text-white text-sm">Crisis Detected</p>
+                      <p className="text-xs text-white/40">When urgent/sensitive issues are flagged</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={notifications.notifyOnCrisis}
+                    onCheckedChange={(checked) => updateNotifications({ notifyOnCrisis: checked })}
+                    disabled={!notifications.enabled}
+                    data-testid="switch-notify-crisis"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
+                  <div className="flex items-center gap-3">
+                    <BarChart3 className="h-4 w-4 text-cyan-400" />
+                    <div>
+                      <p className="text-white text-sm">Daily Summary</p>
+                      <p className="text-xs text-white/40">Daily report of bot activity</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={notifications.dailySummary}
+                    onCheckedChange={(checked) => updateNotifications({ dailySummary: checked })}
+                    disabled={!notifications.enabled}
+                    data-testid="switch-daily-summary"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </GlassCardContent>
+      </GlassCard>
+
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="text-sm">About Notifications</GlassCardTitle>
+        </GlassCardHeader>
+        <GlassCardContent>
+          <div className="space-y-3 text-sm text-white/70">
+            <p>Notifications help you stay on top of important bot activity without constantly checking the dashboard.</p>
+            <ul className="list-disc list-inside space-y-1 text-white/60">
+              <li>New Lead: Get alerted when a visitor shares their contact info</li>
+              <li>Booking: Know immediately when someone wants to schedule</li>
+              <li>Crisis: Be notified of urgent issues requiring human attention</li>
+              <li>Daily Summary: Get a quick overview of the day's conversations</li>
+            </ul>
           </div>
         </GlassCardContent>
       </GlassCard>
