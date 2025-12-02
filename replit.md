@@ -179,6 +179,14 @@ shared/
   - Added FAQ Section: 5 expandable accordion items with common questions
   - Added Contact Form: Name, email, phone, message fields with toast notification on submit
   - All sections styled with premium glassmorphism design matching existing aesthetic
+- **Bot Dashboard Notifications Tab (Dec 2024)**:
+  - Added Notifications tab to bot-dashboard.tsx with Bell icon in pink/rose gradient styling
+  - Master toggle to enable/disable all notifications for the bot
+  - Notification email input field for where alerts are sent
+  - Individual toggles for: New Lead Captured, Booking Request, Crisis Detected, Daily Summary
+  - All toggles disabled when master switch is off (with visual opacity reduction)
+  - "About Notifications" info card explaining each notification type
+  - BotConfig interface updated with notifications property
 
 ## Control Center Features (Admin Only)
 The admin Control Center at `/super-admin` provides comprehensive "god mode" platform management:
