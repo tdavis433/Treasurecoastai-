@@ -54,7 +54,25 @@ import {
   Bell,
   Activity,
   Filter,
+  ChevronDown,
+  ChevronUp,
+  CheckCircle2,
+  PhoneCall,
+  User,
+  Loader2,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
 import { format } from "date-fns";
 import { useLocation } from "wouter";
@@ -159,7 +177,30 @@ interface ChatSession {
   topics: string[];
 }
 
+interface ChatMessage {
+  id: string;
+  sessionId: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+}
+
+interface SessionState {
+  id: string;
+  sessionId: string;
+  status: 'open' | 'in_progress' | 'resolved' | 'closed';
+  isRead: boolean;
+}
+
 type SectionType = 'overview' | 'conversations' | 'leads' | 'bookings' | 'settings';
+
+const LEAD_STATUS_OPTIONS = [
+  { value: 'new', label: 'New', color: 'bg-green-500/20 text-green-400 border-green-400/40' },
+  { value: 'contacted', label: 'Contacted', color: 'bg-blue-500/20 text-blue-400 border-blue-400/40' },
+  { value: 'qualified', label: 'Qualified', color: 'bg-purple-500/20 text-purple-400 border-purple-400/40' },
+  { value: 'converted', label: 'Converted', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-400/40' },
+  { value: 'lost', label: 'Lost', color: 'bg-red-500/20 text-red-400 border-red-400/40' },
+];
 
 interface AuthUser {
   id: string;
@@ -185,6 +226,11 @@ export default function ClientDashboard() {
   const [statsRange, setStatsRange] = useState<'all' | '7' | '30'>('7');
   const [bookingsDateRange, setBookingsDateRange] = useState<'all' | '7' | '30'>('all');
   const [bookingsSearch, setBookingsSearch] = useState('');
+  const [expandedSession, setExpandedSession] = useState<string | null>(null);
+  const [sessionMessages, setSessionMessages] = useState<Record<string, ChatMessage[]>>({});
+  const [sessionStates, setSessionStates] = useState<Record<string, SessionState>>({});
+  const [loadingSession, setLoadingSession] = useState<string | null>(null);
+  const [updatingLeadId, setUpdatingLeadId] = useState<string | null>(null);
 
   const { data: currentUser, isLoading: authLoading } = useQuery<AuthUser>({
     queryKey: ["/api/auth/me"],
@@ -279,6 +325,133 @@ export default function ClientDashboard() {
     } catch (error) {
       toast({ title: "Error", description: "Network error during logout.", variant: "destructive" });
     }
+  };
+
+  // Fetch session messages when expanding a conversation
+  const fetchSessionMessages = async (sessionId: string, sessionBotId: string) => {
+    if (sessionMessages[sessionId]) return; // Already loaded
+    
+    // Use session's botId, or fallback to profile/stats botId
+    const effectiveBotId = sessionBotId || profile?.botId || stats?.botId || '';
+    if (!effectiveBotId) {
+      console.error("No botId available for fetching session messages");
+      return;
+    }
+    
+    setLoadingSession(sessionId);
+    try {
+      const response = await fetch(`/api/client/inbox/sessions/${sessionId}?botId=${effectiveBotId}`, { credentials: "include" });
+      if (response.ok) {
+        const data = await response.json();
+        setSessionMessages(prev => ({ ...prev, [sessionId]: data.messages || [] }));
+      }
+    } catch (error) {
+      console.error("Failed to fetch session messages:", error);
+    } finally {
+      setLoadingSession(null);
+    }
+  };
+
+  // Fetch session state
+  const fetchSessionState = async (sessionId: string, sessionBotId: string) => {
+    if (sessionStates[sessionId]) return sessionStates[sessionId];
+    
+    // Use session's botId, or fallback to profile/stats botId
+    const effectiveBotId = sessionBotId || profile?.botId || stats?.botId || '';
+    if (!effectiveBotId) {
+      console.error("No botId available for fetching session state");
+      return null;
+    }
+    
+    try {
+      const response = await fetch(`/api/client/inbox/sessions/${sessionId}/state?botId=${effectiveBotId}`, { credentials: "include" });
+      if (response.ok) {
+        const state = await response.json();
+        setSessionStates(prev => ({ ...prev, [sessionId]: state }));
+        return state;
+      }
+    } catch (error) {
+      console.error("Failed to fetch session state:", error);
+    }
+    return null;
+  };
+
+  // Toggle session expansion
+  const handleToggleSession = async (session: ChatSession) => {
+    if (expandedSession === session.sessionId) {
+      setExpandedSession(null);
+    } else {
+      setExpandedSession(session.sessionId);
+      await Promise.all([
+        fetchSessionMessages(session.sessionId, session.botId),
+        fetchSessionState(session.sessionId, session.botId)
+      ]);
+    }
+  };
+
+  // Mark session as resolved
+  const handleMarkResolved = async (sessionId: string, sessionBotId?: string) => {
+    // Use session's botId, or fallback to profile/stats botId
+    const effectiveBotId = sessionBotId || profile?.botId || stats?.botId || '';
+    
+    // Require a valid botId before making the request
+    if (!effectiveBotId) {
+      toast({ 
+        title: "Unable to update", 
+        description: "Please try again in a moment.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/client/inbox/sessions/${sessionId}/state?botId=${effectiveBotId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status: "resolved", isRead: true })
+      });
+      
+      if (response.ok) {
+        const updatedState = await response.json();
+        setSessionStates(prev => ({ ...prev, [sessionId]: updatedState }));
+        toast({ title: "Marked as resolved", description: "Conversation has been marked as resolved." });
+      } else {
+        throw new Error("Failed to update");
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to mark as resolved.", variant: "destructive" });
+    }
+  };
+
+  // Update lead status
+  const handleUpdateLeadStatus = async (leadId: string, newStatus: string) => {
+    setUpdatingLeadId(leadId);
+    try {
+      const response = await fetch(`/api/client/leads/${leadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status: newStatus })
+      });
+      
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ["/api/client/leads"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/client/stats"] });
+        toast({ title: "Status updated", description: `Lead status changed to ${newStatus}.` });
+      } else {
+        throw new Error("Failed to update");
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to update lead status.", variant: "destructive" });
+    } finally {
+      setUpdatingLeadId(null);
+    }
+  };
+
+  // Click to call
+  const handleClickToCall = (phone: string) => {
+    window.location.href = `tel:${phone}`;
   };
 
   if (authLoading || !currentUser) {
@@ -897,50 +1070,151 @@ export default function ClientDashboard() {
               ))}
             </div>
           ) : filteredSessions && filteredSessions.length > 0 ? (
-            <ScrollArea className="h-[500px]">
+            <ScrollArea className="h-[600px]">
               <div className="space-y-3">
-                {filteredSessions.map((session) => (
-                  <div
-                    key={session.id}
-                    className="p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors cursor-pointer"
-                    data-testid={`conversation-${session.id}`}
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start gap-3">
-                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-cyan-500/30 to-blue-500/30 flex items-center justify-center mt-1">
-                          <MessageSquare className="h-5 w-5 text-cyan-400" />
-                        </div>
-                        <div>
-                          <p className="text-white font-medium">Visitor Conversation</p>
-                          <p className="text-sm text-white/50 mt-1">
-                            {session.userMessageCount} visitor messages, {session.botMessageCount} assistant replies
-                          </p>
-                          <div className="flex items-center gap-2 mt-2 flex-wrap">
-                            {session.appointmentRequested && (
-                              <Badge className="bg-purple-500/20 text-purple-400 border-purple-400/40 text-xs">
-                                <Calendar className="h-3 w-3 mr-1" />
-                                Requested Booking
-                              </Badge>
-                            )}
-                            {session.topics && session.topics.slice(0, 2).map((topic, idx) => (
-                              <Badge key={idx} className="bg-white/10 text-white/60 border-white/20 text-xs">
-                                {topic}
-                              </Badge>
-                            ))}
+                {filteredSessions.map((session) => {
+                  const isExpanded = expandedSession === session.sessionId;
+                  const messages = sessionMessages[session.sessionId] || [];
+                  const state = sessionStates[session.sessionId];
+                  const isResolved = state?.status === 'resolved';
+                  const isLoadingMessages = loadingSession === session.sessionId;
+                  
+                  return (
+                    <Collapsible
+                      key={session.id}
+                      open={isExpanded}
+                      onOpenChange={() => handleToggleSession(session)}
+                    >
+                      <div
+                        className={`rounded-lg bg-white/5 border transition-colors ${
+                          isExpanded ? 'border-cyan-400/40' : 'border-white/10 hover:bg-white/10'
+                        }`}
+                        data-testid={`conversation-${session.id}`}
+                      >
+                        <CollapsibleTrigger asChild>
+                          <div className="p-4 cursor-pointer">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex items-start gap-3">
+                                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-cyan-500/30 to-blue-500/30 flex items-center justify-center mt-1">
+                                  <MessageSquare className="h-5 w-5 text-cyan-400" />
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-white font-medium">Visitor Conversation</p>
+                                    {isResolved && (
+                                      <Badge className="bg-green-500/20 text-green-400 border-green-400/40 text-xs">
+                                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                                        Resolved
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-white/50 mt-1">
+                                    {session.userMessageCount} visitor messages, {session.botMessageCount} assistant replies
+                                  </p>
+                                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                    {session.appointmentRequested && (
+                                      <Badge className="bg-purple-500/20 text-purple-400 border-purple-400/40 text-xs">
+                                        <Calendar className="h-3 w-3 mr-1" />
+                                        Requested Booking
+                                      </Badge>
+                                    )}
+                                    {session.topics && session.topics.slice(0, 2).map((topic, idx) => (
+                                      <Badge key={idx} className="bg-white/10 text-white/60 border-white/20 text-xs">
+                                        {topic}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <div className="text-right flex-shrink-0">
+                                  <p className="text-xs text-white/50">
+                                    {format(new Date(session.startedAt), "MMM d, yyyy")}
+                                  </p>
+                                  <p className="text-xs text-white/40 mt-1">
+                                    {format(new Date(session.startedAt), "h:mm a")}
+                                  </p>
+                                </div>
+                                <div className="text-white/40">
+                                  {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                        </div>
+                        </CollapsibleTrigger>
+                        
+                        <CollapsibleContent>
+                          <div className="px-4 pb-4 border-t border-white/10">
+                            {isLoadingMessages ? (
+                              <div className="py-8 flex items-center justify-center">
+                                <Loader2 className="h-6 w-6 animate-spin text-cyan-400" />
+                                <span className="ml-2 text-white/60">Loading conversation...</span>
+                              </div>
+                            ) : messages.length > 0 ? (
+                              <>
+                                <div className="mt-4 space-y-3 max-h-[300px] overflow-y-auto">
+                                  {messages.map((msg, idx) => (
+                                    <div
+                                      key={msg.id || idx}
+                                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                                    >
+                                      <div
+                                        className={`max-w-[80%] p-3 rounded-lg ${
+                                          msg.role === 'user'
+                                            ? 'bg-cyan-500/20 text-white border border-cyan-400/30'
+                                            : 'bg-white/10 text-white/90 border border-white/20'
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2 mb-1">
+                                          {msg.role === 'user' ? (
+                                            <User className="h-3 w-3 text-cyan-400" />
+                                          ) : (
+                                            <Bot className="h-3 w-3 text-purple-400" />
+                                          )}
+                                          <span className="text-xs text-white/50">
+                                            {msg.role === 'user' ? 'Visitor' : 'Assistant'}
+                                          </span>
+                                          {msg.timestamp && (
+                                            <span className="text-xs text-white/30">
+                                              {format(new Date(msg.timestamp), "h:mm a")}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                                
+                                {!isResolved && (
+                                  <div className="mt-4 pt-4 border-t border-white/10 flex justify-end">
+                                    <Button
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMarkResolved(session.sessionId, session.botId);
+                                      }}
+                                      className="bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-400/40"
+                                      data-testid={`button-mark-resolved-${session.id}`}
+                                    >
+                                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                                      Mark as Resolved
+                                    </Button>
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <div className="py-6 text-center text-white/40">
+                                <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                <p className="text-sm">No messages found for this conversation</p>
+                              </div>
+                            )}
+                          </div>
+                        </CollapsibleContent>
                       </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-xs text-white/50">
-                          {format(new Date(session.startedAt), "MMM d, yyyy")}
-                        </p>
-                        <p className="text-xs text-white/40 mt-1">
-                          {format(new Date(session.startedAt), "h:mm a")}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                    </Collapsible>
+                  );
+                })}
               </div>
             </ScrollArea>
           ) : (
@@ -1084,64 +1358,101 @@ export default function ClientDashboard() {
             ) : filteredLeads.length > 0 ? (
               <ScrollArea className="h-[500px]">
                 <div className="space-y-3">
-                  {filteredLeads.map((lead: any, idx: number) => (
-                    <div
-                      key={lead.id || idx}
-                      className="p-4 rounded-lg bg-white/5 border border-white/10"
-                      data-testid={`lead-row-${lead.id || idx}`}
-                    >
-                      <div className="flex items-center justify-between gap-4 flex-wrap">
-                        <div className="flex items-center gap-4">
-                          <div className="h-12 w-12 rounded-full bg-gradient-to-br from-green-500/30 to-emerald-500/30 flex items-center justify-center">
-                            <span className="text-lg font-medium text-green-400">
-                              {(lead.name || 'V')[0].toUpperCase()}
-                            </span>
-                          </div>
-                          <div>
-                            <p className="text-white font-medium">{lead.name || 'Visitor'}</p>
-                            <div className="flex items-center gap-4 mt-1 text-sm text-white/50">
-                              {lead.email && (
-                                <span className="flex items-center gap-1">
-                                  <Mail className="h-3 w-3" />
-                                  {lead.email}
-                                </span>
-                              )}
-                              {lead.phone && (
-                                <span className="flex items-center gap-1">
-                                  <Phone className="h-3 w-3" />
-                                  {lead.phone}
-                                </span>
-                              )}
+                  {filteredLeads.map((lead: any, idx: number) => {
+                    const statusOption = LEAD_STATUS_OPTIONS.find(s => s.value === (lead.status || 'new'));
+                    const isUpdating = updatingLeadId === lead.id;
+                    
+                    return (
+                      <div
+                        key={lead.id || idx}
+                        className="p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/8 transition-colors"
+                        data-testid={`lead-row-${lead.id || idx}`}
+                      >
+                        <div className="flex items-start justify-between gap-4 flex-wrap">
+                          <div className="flex items-center gap-4">
+                            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-green-500/30 to-emerald-500/30 flex items-center justify-center">
+                              <span className="text-lg font-medium text-green-400">
+                                {(lead.name || 'V')[0].toUpperCase()}
+                              </span>
                             </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <Badge className={`${lead.status === 'new' ? 'bg-green-500/20 text-green-400 border-green-400/40' : lead.status === 'contacted' ? 'bg-blue-500/20 text-blue-400 border-blue-400/40' : 'bg-white/10 text-white/60 border-white/20'}`}>
-                            {lead.status || 'new'}
-                          </Badge>
-                          <span className="text-xs text-white/40">
-                            {lead.createdAt ? format(new Date(lead.createdAt), "MMM d, yyyy") : '—'}
-                          </span>
-                        </div>
-                      </div>
-                      {(lead.conversationPreview || lead.notes) && (
-                        <div className="mt-3 pl-16 space-y-2">
-                          {lead.conversationPreview && (
-                            <div className="flex items-start gap-2">
-                              <Sparkles className="h-3 w-3 text-cyan-400 mt-1 flex-shrink-0" />
-                              <div>
-                                <p className="text-xs text-cyan-400 font-medium">What they wanted:</p>
-                                <p className="text-sm text-white/60">{lead.conversationPreview}</p>
+                            <div>
+                              <p className="text-white font-medium">{lead.name || 'Visitor'}</p>
+                              <div className="flex items-center gap-3 mt-1 text-sm text-white/50 flex-wrap">
+                                {lead.email && (
+                                  <a 
+                                    href={`mailto:${lead.email}`}
+                                    className="flex items-center gap-1 hover:text-cyan-400 transition-colors"
+                                    data-testid={`link-email-${lead.id}`}
+                                  >
+                                    <Mail className="h-3 w-3" />
+                                    {lead.email}
+                                  </a>
+                                )}
+                                {lead.phone && (
+                                  <button
+                                    onClick={() => handleClickToCall(lead.phone)}
+                                    className="flex items-center gap-1 hover:text-green-400 transition-colors group"
+                                    data-testid={`button-call-${lead.id}`}
+                                  >
+                                    <PhoneCall className="h-3 w-3 group-hover:animate-pulse" />
+                                    {lead.phone}
+                                  </button>
+                                )}
                               </div>
                             </div>
-                          )}
-                          {lead.notes && (
-                            <p className="text-sm text-white/50">{lead.notes}</p>
-                          )}
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Select
+                              value={lead.status || 'new'}
+                              onValueChange={(value) => handleUpdateLeadStatus(lead.id, value)}
+                              disabled={isUpdating}
+                            >
+                              <SelectTrigger 
+                                className={`w-32 h-8 text-xs border ${statusOption?.color || 'bg-white/10 text-white/60 border-white/20'}`}
+                                data-testid={`select-lead-status-${lead.id}`}
+                              >
+                                {isUpdating ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <SelectValue />
+                                )}
+                              </SelectTrigger>
+                              <SelectContent className="bg-[#1a1d23] border-white/20">
+                                {LEAD_STATUS_OPTIONS.map((option) => (
+                                  <SelectItem 
+                                    key={option.value} 
+                                    value={option.value}
+                                    className="text-white hover:bg-white/10"
+                                  >
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <span className="text-xs text-white/40">
+                              {lead.createdAt ? format(new Date(lead.createdAt), "MMM d, yyyy") : '—'}
+                            </span>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  ))}
+                        {(lead.conversationPreview || lead.notes) && (
+                          <div className="mt-3 pl-16 space-y-2">
+                            {lead.conversationPreview && (
+                              <div className="flex items-start gap-2">
+                                <Sparkles className="h-3 w-3 text-cyan-400 mt-1 flex-shrink-0" />
+                                <div>
+                                  <p className="text-xs text-cyan-400 font-medium">What they wanted:</p>
+                                  <p className="text-sm text-white/60">{lead.conversationPreview}</p>
+                                </div>
+                              </div>
+                            )}
+                            {lead.notes && (
+                              <p className="text-sm text-white/50">{lead.notes}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </ScrollArea>
             ) : (
