@@ -334,7 +334,11 @@ export default function ClientDashboard() {
     // Use session's botId, or fallback to profile/stats botId
     const effectiveBotId = sessionBotId || profile?.botId || stats?.botId || '';
     if (!effectiveBotId) {
-      console.error("No botId available for fetching session messages");
+      toast({ 
+        title: "Unable to load messages", 
+        description: "Please try again in a moment.", 
+        variant: "destructive" 
+      });
       return;
     }
     
@@ -344,9 +348,12 @@ export default function ClientDashboard() {
       if (response.ok) {
         const data = await response.json();
         setSessionMessages(prev => ({ ...prev, [sessionId]: data.messages || [] }));
+      } else {
+        // API returned error - show toast
+        toast({ title: "Error", description: "Failed to load conversation messages.", variant: "destructive" });
       }
     } catch (error) {
-      console.error("Failed to fetch session messages:", error);
+      toast({ title: "Error", description: "Network error loading conversation.", variant: "destructive" });
     } finally {
       setLoadingSession(null);
     }
@@ -359,7 +366,7 @@ export default function ClientDashboard() {
     // Use session's botId, or fallback to profile/stats botId
     const effectiveBotId = sessionBotId || profile?.botId || stats?.botId || '';
     if (!effectiveBotId) {
-      console.error("No botId available for fetching session state");
+      // botId missing - fetchSessionMessages will show the error toast
       return null;
     }
     
@@ -369,9 +376,12 @@ export default function ClientDashboard() {
         const state = await response.json();
         setSessionStates(prev => ({ ...prev, [sessionId]: state }));
         return state;
+      } else {
+        // API returned error - show toast
+        toast({ title: "Error", description: "Failed to load conversation status.", variant: "destructive" });
       }
     } catch (error) {
-      console.error("Failed to fetch session state:", error);
+      toast({ title: "Error", description: "Network error loading status.", variant: "destructive" });
     }
     return null;
   };
