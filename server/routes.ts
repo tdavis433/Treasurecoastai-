@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import express from "express";
 import crypto from "crypto";
 import { storage, db } from "./storage";
-import { insertAppointmentSchema, insertClientSettingsSchema, adminUsers, type AdminRole, bots, botSettings, leads, appointments, clientSettings, workspaces, workspaceMemberships } from "@shared/schema";
+import { insertAppointmentSchema, insertClientSettingsSchema, adminUsers, type AdminRole, bots, botSettings, leads, appointments, clientSettings, workspaces, workspaceMemberships, botRequests, insertBotRequestSchema } from "@shared/schema";
 import OpenAI from "openai";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -2629,6 +2629,98 @@ These suggestions should be relevant to what was just discussed and help guide t
     } catch (error) {
       console.error("Get appointments error:", error);
       res.status(500).json({ error: "Failed to fetch appointments" });
+    }
+  });
+
+  // =============================================
+  // BOT REQUEST ENDPOINTS - Contact form submissions
+  // =============================================
+
+  // Submit a bot request from landing page (public endpoint)
+  app.post("/api/bot-requests", async (req, res) => {
+    try {
+      const validatedData = insertBotRequestSchema.parse(req.body);
+      
+      const [newRequest] = await db.insert(botRequests).values({
+        ...validatedData,
+        source: "landing_page",
+      }).returning();
+      
+      console.log(`[Bot Request] New submission from ${validatedData.email}: ${validatedData.name}`);
+      
+      res.json({ success: true, message: "Request received! We'll be in touch within 24 hours." });
+    } catch (error) {
+      console.error("Bot request submission error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid form data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to submit request" });
+    }
+  });
+
+  // Get all bot requests (admin only)
+  app.get("/api/bot-requests", requireSuperAdmin, async (req, res) => {
+    try {
+      const { status, limit = "50", offset = "0" } = req.query;
+      
+      let query = db.select().from(botRequests).orderBy(sql`${botRequests.createdAt} DESC`);
+      
+      if (status && status !== "all") {
+        query = db.select().from(botRequests).where(eq(botRequests.status, status as string)).orderBy(sql`${botRequests.createdAt} DESC`);
+      }
+      
+      const requests = await query.limit(parseInt(limit as string)).offset(parseInt(offset as string));
+      
+      // Get counts by status
+      const counts = await db.select({
+        status: botRequests.status,
+        count: sql<number>`count(*)::int`,
+      }).from(botRequests).groupBy(botRequests.status);
+      
+      const statusCounts = counts.reduce((acc, curr) => {
+        acc[curr.status] = curr.count;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      res.json({ 
+        requests, 
+        counts: statusCounts,
+        total: Object.values(statusCounts).reduce((a, b) => a + b, 0)
+      });
+    } catch (error) {
+      console.error("Get bot requests error:", error);
+      res.status(500).json({ error: "Failed to fetch requests" });
+    }
+  });
+
+  // Update a bot request (admin only)
+  app.patch("/api/bot-requests/:id", requireSuperAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      
+      // Handle status changes
+      if (updates.status === "contacted" && !updates.contactedAt) {
+        updates.contactedAt = new Date();
+      }
+      if (updates.status === "converted" && !updates.convertedAt) {
+        updates.convertedAt = new Date();
+      }
+      updates.updatedAt = new Date();
+      
+      const [updated] = await db.update(botRequests)
+        .set(updates)
+        .where(eq(botRequests.id, id))
+        .returning();
+      
+      if (!updated) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+      
+      res.json({ success: true, request: updated });
+    } catch (error) {
+      console.error("Update bot request error:", error);
+      res.status(500).json({ error: "Failed to update request" });
     }
   });
 
