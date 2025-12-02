@@ -514,6 +514,12 @@ export default function ClientDashboard() {
   // Range label for display
   const rangeLabel = statsRange === '7' ? 'last 7 days' : statsRange === '30' ? 'last 30 days' : 'all time';
 
+  // Helper to find lead associated with a session
+  const getLeadForSession = (sessionId: string) => {
+    if (!leadsData?.leads) return null;
+    return leadsData.leads.find((lead: any) => lead.sessionId === sessionId) || null;
+  };
+
   const sidebarStyle = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
@@ -1152,6 +1158,51 @@ export default function ClientDashboard() {
                               </div>
                             ) : messages.length > 0 ? (
                               <>
+                                {/* Lead Contact Info - if lead is associated with this session */}
+                                {(() => {
+                                  const lead = getLeadForSession(session.sessionId);
+                                  if (lead && (lead.name || lead.email || lead.phone)) {
+                                    return (
+                                      <div className="mt-4 p-3 rounded-lg bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-400/30">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <Users className="h-4 w-4 text-cyan-400" />
+                                          <span className="text-sm font-medium text-cyan-400">Visitor Contact Info</span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-4 text-sm">
+                                          {lead.name && (
+                                            <div className="flex items-center gap-2">
+                                              <User className="h-3 w-3 text-white/40" />
+                                              <span className="text-white" data-testid={`text-lead-name-${session.id}`}>{lead.name}</span>
+                                            </div>
+                                          )}
+                                          {lead.email && (
+                                            <a 
+                                              href={`mailto:${lead.email}`} 
+                                              className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 transition-colors"
+                                              onClick={(e) => e.stopPropagation()}
+                                              data-testid={`link-lead-email-${session.id}`}
+                                            >
+                                              <Mail className="h-3 w-3" />
+                                              <span>{lead.email}</span>
+                                            </a>
+                                          )}
+                                          {lead.phone && (
+                                            <a 
+                                              href={`tel:${lead.phone}`} 
+                                              className="flex items-center gap-2 text-green-400 hover:text-green-300 transition-colors"
+                                              onClick={(e) => e.stopPropagation()}
+                                              data-testid={`link-lead-phone-${session.id}`}
+                                            >
+                                              <Phone className="h-3 w-3" />
+                                              <span>{lead.phone}</span>
+                                            </a>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })()}
                                 <div className="mt-4 space-y-3 max-h-[300px] overflow-y-auto">
                                   {messages.map((msg, idx) => (
                                     <div
