@@ -1,0 +1,252 @@
+You are a senior QA engineer and full-stack developer testing the Treasure Coast AI web app.
+
+Your job:
+Run a FULL end-to-end test of the “create a bot → configure it in admin → view it in client dashboard → stress test chats → verify booking/purchase link + analytics” flow.
+
+Assume:
+- The app is running on http://localhost:3000 (or whatever dev URL is configured).
+- There is a working landing page, admin panel, and client dashboard already wired up.
+- If any route or button text is slightly different from what I describe, ADAPT to the real UI. Don’t stop – find the closest match and continue.
+
+────────────────────────────────
+1. LANDING PAGE FLOW – VISITOR → “GET A BOT”
+────────────────────────────────
+1. Start a browser session against the running app (http://localhost:3000 by default).
+2. Load the landing page.
+3. Verify basic things render with no errors in the console (no uncaught exceptions, no 500s, no missing chunks).
+
+4. On the landing page, locate the main CTA to start the process, something like:
+   - “Get Your AI Assistant”
+   - “Get a Bot Built for You”
+   - “Start Free Demo”
+   If the exact text is different, pick the main CTA that clearly starts the bot-creation flow.
+
+5. Click that CTA and confirm it routes to a “create bot / get started” page or form. 
+   - If routing fails or the button does nothing, log that as a BUG with details (URL, console error, stack trace if any).
+
+────────────────────────────────
+2. BOT CREATION FORM – ENTER RICH BUSINESS INFO
+────────────────────────────────
+On the “create a bot” / onboarding form:
+
+1. Fill out all fields with realistic data for a fake business. Use something like:
+
+   Business name: “Neon Harbor Fitness”
+   Industry/Niche: “Gym / Fitness Studio”
+   Location: “Treasure Coast, FL”
+   Business description: “24/7 key-card gym focused on strength training and small group coaching.”
+   Primary goals for the bot:
+     - Answer FAQs about memberships, hours, and classes
+     - Capture leads (name, email, phone)
+     - Book intro sessions
+   FAQ samples:
+     - “What are your hours?”
+     - “Do you offer day passes?”
+     - “How much is a membership?”
+     - “Can I bring a guest?”
+   Brand tone: “Friendly, confident, modern, a bit high-energy.”
+   Booking / purchase link (VERY IMPORTANT): 
+     - Use something like: https://example.com/booking/neon-harbor-fitness
+     - This represents the client’s real booking / checkout page. 
+
+2. If the form allows:
+   - Upload or paste a knowledge base / extra info.
+   - Select bot type / category if there is a dropdown (support bot, sales bot, booking bot, etc).
+   - Set business hours.
+   - Set default greeting message.
+   - Set lead capture fields (name, email, phone).
+
+3. Submit the form.
+
+4. Confirm:
+   - A new bot record is created in the database.
+   - The app routes to either:
+     - a “success / thank you” page, or
+     - directly to an admin or “setup in progress” screen.
+
+5. If there are any validation issues, broken flows, or confusing error messages, log them as BUGS with:
+   - Exact field
+   - Error text
+   - Expected behavior
+   - Actual behavior
+
+────────────────────────────────
+3. ADMIN PANEL – CONFIGURE THE NEW BOT PERFECTLY
+────────────────────────────────
+Now switch into the ADMIN / SUPER-ADMIN experience.
+
+1. Open the admin panel route (for example: /super-admin, /admin, /dashboard/admin – find the correct one by inspecting routes / code).
+2. Log in using any seeded admin credentials or environment variables. If credentials are not obvious, inspect the codebase (.env.example, seeding scripts, README) to find them.
+
+3. In the admin UI:
+   - Locate the client or bot that was just created for “Neon Harbor Fitness”.
+   - Open its detailed settings / configuration page.
+
+4. Verify you can see ALL the onboarding info you submitted:
+   - Business name, niche, description
+   - Bot goals
+   - FAQ seeds
+   - Brand tone
+   - Booking / purchase link URL
+
+5. Using the admin panel, polish the bot config so it’s “production-ready”:
+   - Make sure FAQ/knowledge fields are filled cleanly.
+   - Confirm lead capture is enabled (and what fields are required).
+   - Ensure that at least one flow/intent includes a call-to-action that uses the booking/purchase link.
+     Example: when user says “book a session”, the bot should respond with something that includes the URL and/or a button linking to it.
+
+6. Save the bot configuration and confirm:
+   - No validation or network errors.
+   - Bot status is set to ACTIVE (not paused/demo).
+   - Any usage limits, temperature, or model settings are reasonable.
+
+────────────────────────────────
+4. CLIENT DASHBOARD – LOG IN AS THE CLIENT & VERIFY
+────────────────────────────────
+Now simulate the actual client logging into their dashboard.
+
+1. Identify how client credentials are created from the onboarding flow:
+   - Is a client user created automatically with email + temp password?
+   - Is there a magic link?
+   - Is there a default test client user you can log in as?
+
+2. Using either:
+   - The newly created client credentials, or
+   - A seeded “client” user for the same Neon Harbor Fitness tenant,
+   log into the CLIENT DASHBOARD (not admin).
+
+3. In the client dashboard, verify:
+   - The new bot appears in their list of bots.
+   - Bot status is “Active” (or similar).
+   - Client can see:
+     - Conversations / Inbox (even if empty at first)
+     - Lead list / captured contacts
+     - Analytics / basic stats (if implemented)
+     - Bot settings (read-only or editable depending on design)
+
+4. Confirm the booking/purchase URL is visible wherever it should be in the client dashboard (settings panel, bot overview, etc.). If it’s missing, log as a BUG.
+
+────────────────────────────────
+5. STRESS TEST THE BOT – CHAT + EDGE CASES
+────────────────────────────────
+Now simulate real users hammering the bot.
+
+1. Open the live chat widget / bot test area:
+   - Could be an embedded widget preview,
+   - A dedicated /demo/:botId route,
+   - Or a “Test Chat” modal inside admin/client dashboard.
+
+2. Run a structured test chat session:
+   - Ask at least 30–50 different messages, including:
+     - FAQs we configured:
+       - “What are your hours?”
+       - “How much is a membership?”
+       - “Do you have day passes?”
+     - Off-topic questions:
+       - “Tell me a joke.”
+       - “What’s the weather?”
+     - Edge cases:
+       - Very short messages: “???” “hi” “yo”
+       - Long rambling questions.
+       - Typos: “membrship”, “gim”, “treasur coast”.
+     - Booking intent:
+       - “I want to book a session.”
+       - “How do I sign up?”
+       - “Where do I pay?”
+
+3. Confirm the bot:
+   - Responds quickly with no 500 errors.
+   - Stays on brand (friendly, confident, modern).
+   - Handles unknown questions gracefully.
+   - When user expresses booking intent, the bot:
+     - Either responds with the booking URL we configured,
+     - Or presents a button / link that leads to https://example.com/booking/neon-harbor-fitness (or whatever we set).
+   - Does NOT leak system prompts, API keys, stack traces, or raw error messages.
+
+4. While stress testing, watch the dev tools / terminal logs for:
+   - API timeouts
+   - OpenAI errors
+   - rate limit issues
+   - unhandled promise rejections
+
+Log any serious issues as BUGS.
+
+────────────────────────────────
+6. CLIENT DASHBOARD – VERIFY LOGGING & ANALYTICS
+────────────────────────────────
+After the stress test chat session:
+
+1. Go back to the CLIENT DASHBOARD for the same bot.
+
+2. Verify:
+   - All conversations you had with the bot are visible in:
+     - Conversation history / Inbox
+     - Or logging / transcripts section
+   - Message content matches what you actually sent and received (no missing, duplicated, or misordered messages).
+
+3. If lead capture is enabled:
+   - Confirm any lead forms triggered by the chat are recorded in the Leads section.
+   - Check that data is correct (name, email, phone).
+
+4. If analytics exist:
+   - Confirm the metrics update (conversation counts, users, etc.).
+   - If there is any obvious mismatch (e.g., you had 30 messages but analytics say 0), log as BUG.
+
+────────────────────────────────
+7. BOOKING / PURCHASE LINK – END-TO-END CHECK
+────────────────────────────────
+Now thoroughly verify the BOOKING / PURCHASE link behavior.
+
+1. Confirm that:
+   - The booking/purchase URL you set in the admin panel for this bot:
+     - is saved correctly in the database / config.
+     - is accessible in the client dashboard.
+
+2. In the chat:
+   - Trigger the bot to send the booking link again via booking intent messages.
+   - Click the link/button from the bot’s response.
+
+3. Ensure:
+   - The browser navigates to the exact URL configured (no wrong domain, no broken routing).
+   - No mixed-content or security errors.
+   - The link works both in:
+     - The test/demo chat
+     - Any embedded client widget view (if available).
+
+If anything about the link flow fails or is not configurable per bot, log that as a BUG and propose how to fix it (e.g., “Add a bookingUrl field to the Bot model and wire it into the booking intent response.”)
+
+────────────────────────────────
+8. OUTPUT – DETAILED QA REPORT + FIXES
+────────────────────────────────
+At the end, produce a structured report in Markdown with:
+
+1. **Overview**
+   - Which URLs you used
+   - Which user roles you tested (visitor, admin, client)
+
+2. **Passed Checks**
+   - List all flows that worked correctly (landing → create bot, admin config, client dashboard, chat, booking link, etc.).
+
+3. **Bugs Found**
+   For each bug:
+   - Title
+   - Severity (Critical / Major / Minor)
+   - Steps to reproduce
+   - Expected behavior
+   - Actual behavior
+   - Relevant logs / stack traces
+   - File/route references if known
+
+4. **Improvements / Suggestions**
+   - UX improvements
+   - Missing feedback, unclear copy, edge cases
+
+5. **Follow-Up Tasks**
+   - Concrete dev tasks for fixing each bug or polishing the experience.
+
+If you find bugs that you can safely fix inside this Replit project, go ahead and:
+   - Implement the fix
+   - Re-run the relevant part of the test
+   - Update the report noting that the issue is FIXED and referencing the commit or files changed.
+
+Your goal: behave like an expert QA + engineer making sure the “Landing → Get a Bot → Admin Config → Client Dashboard → Chat Stress Test → Booking Link → Analytics” flow is rock solid and production-ready.

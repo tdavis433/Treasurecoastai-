@@ -68,7 +68,13 @@
       "For personal training questions, collect contact info to have a trainer reach out"
     ],
     "crisisHandling": {
-      "onCrisisKeywords": ["kill myself", "suicide", "overdose", "self harm", "I want to die"],
+      "onCrisisKeywords": [
+        "kill myself",
+        "suicide",
+        "overdose",
+        "self harm",
+        "I want to die"
+      ],
       "responseTemplate": "I'm not able to handle emergencies. If you are in immediate danger or having a medical emergency, call 911 or your local emergency number right now."
     }
   },
@@ -148,13 +154,34 @@
   "automations": {
     "officeHours": {
       "schedule": {
-        "monday": { "open": "05:00", "close": "21:00" },
-        "tuesday": { "open": "05:00", "close": "21:00" },
-        "wednesday": { "open": "05:00", "close": "21:00" },
-        "thursday": { "open": "05:00", "close": "21:00" },
-        "friday": { "open": "05:00", "close": "21:00" },
-        "saturday": { "open": "07:00", "close": "17:00" },
-        "sunday": { "open": "08:00", "close": "14:00" }
+        "monday": {
+          "open": "05:00",
+          "close": "21:00"
+        },
+        "tuesday": {
+          "open": "05:00",
+          "close": "21:00"
+        },
+        "wednesday": {
+          "open": "05:00",
+          "close": "21:00"
+        },
+        "thursday": {
+          "open": "05:00",
+          "close": "21:00"
+        },
+        "friday": {
+          "open": "05:00",
+          "close": "21:00"
+        },
+        "saturday": {
+          "open": "07:00",
+          "close": "17:00"
+        },
+        "sunday": {
+          "open": "08:00",
+          "close": "14:00"
+        }
       },
       "timezone": "America/New_York",
       "afterHoursMessage": "Thanks for reaching out to Iron Coast Fitness! Our staff is currently away, but members have 24/7 facility access. For membership inquiries, we'll be happy to help during staffed hours: Mon-Fri 5am-9pm, Sat 7am-5pm, Sun 8am-2pm.",
@@ -162,8 +189,21 @@
     },
     "leadCapture": {
       "enabled": true,
-      "triggerKeywords": ["join", "membership", "sign up", "trial", "tour", "personal training", "contact me"],
-      "captureFields": ["name", "email", "phone", "goals"],
+      "triggerKeywords": [
+        "join",
+        "membership",
+        "sign up",
+        "trial",
+        "tour",
+        "personal training",
+        "contact me"
+      ],
+      "captureFields": [
+        "name",
+        "email",
+        "phone",
+        "goals"
+      ],
       "successMessage": "Thanks for your interest in Iron Coast Fitness! A team member will reach out within 24 hours to schedule your free tour and trial pass. You can also call us at (772) 555-4567!"
     }
   },
@@ -202,5 +242,8 @@
     "templateCategory": "Gym / Fitness",
     "createdAt": "2025-11-27",
     "version": "2.0"
-  }
+  },
+  "businessType": "gym_fitness",
+  "businessName": "Iron Coast Fitness",
+  "isDemo": true
 }

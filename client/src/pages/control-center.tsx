@@ -3335,6 +3335,7 @@ function KnowledgePanel({ bot, clientType }: { bot: BotConfig; clientType?: stri
     location: bot.businessProfile?.location || '',
     hours: formatHoursForDisplay(bot.businessProfile?.hours),
     services: bot.businessProfile?.services?.join(', ') || '',
+    onlineBookingUrl: bot.businessProfile?.booking?.onlineBookingUrl || '',
   });
 
   // Re-sync form data when bot changes (including after other panel saves)
@@ -3349,6 +3350,7 @@ function KnowledgePanel({ bot, clientType }: { bot: BotConfig; clientType?: stri
         location: bot.businessProfile?.location || '',
         hours: formatHoursForDisplay(bot.businessProfile?.hours),
         services: bot.businessProfile?.services?.join(', ') || '',
+        onlineBookingUrl: bot.businessProfile?.booking?.onlineBookingUrl || '',
       });
       setFaqs(bot.faqs || []);
       setEditingFaqIndex(null);
@@ -3379,6 +3381,10 @@ function KnowledgePanel({ bot, clientType }: { bot: BotConfig; clientType?: stri
             location: formData.location,
             hours: parseHoursFromString(formData.hours),
             services: formData.services.split(',').map(s => s.trim()).filter(Boolean),
+            booking: {
+              ...latestBot.businessProfile?.booking,
+              onlineBookingUrl: formData.onlineBookingUrl || undefined,
+            },
           },
           faqs: faqs,
         };
@@ -3624,6 +3630,29 @@ function KnowledgePanel({ bot, clientType }: { bot: BotConfig; clientType?: stri
               <Input value={formData.services} onChange={(e) => setFormData({ ...formData, services: e.target.value })} className="bg-white/5 border-white/10 text-white mt-1" placeholder="Haircuts, Coloring, Styling" />
             ) : (
               <p className="text-sm mt-1 text-white">{formData.services || '-'}</p>
+            )}
+          </div>
+          <div>
+            <Label className="text-white/70 flex items-center gap-2">
+              <ExternalLink className="h-4 w-4" />
+              Online Booking URL
+            </Label>
+            {isEditing ? (
+              <Input 
+                value={formData.onlineBookingUrl} 
+                onChange={(e) => setFormData({ ...formData, onlineBookingUrl: e.target.value })} 
+                className="bg-white/5 border-white/10 text-white mt-1" 
+                placeholder="https://calendly.com/your-booking-link"
+                data-testid="input-booking-url"
+              />
+            ) : (
+              <p className="text-sm mt-1 text-white">
+                {formData.onlineBookingUrl ? (
+                  <a href={formData.onlineBookingUrl} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">
+                    {formData.onlineBookingUrl}
+                  </a>
+                ) : '-'}
+              </p>
             )}
           </div>
         </GlassCardContent>
