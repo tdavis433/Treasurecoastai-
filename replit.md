@@ -172,6 +172,13 @@ shared/
   - "What they wanted" field: Shows conversation context for each lead
   - Notification email display in Settings section
   - Last activity timestamp shown on Activity card
+- **Landing Page Enhancements (Dec 2024)**:
+  - Fixed routing: Landing page (home.tsx) now at root "/" instead of "/faith-house"
+  - Added Pricing Section: 3 tiers (Starter $297, Professional $497, Enterprise Custom) with features lists
+  - Added Testimonials Section: 3 testimonial cards with star ratings and business owner quotes
+  - Added FAQ Section: 5 expandable accordion items with common questions
+  - Added Contact Form: Name, email, phone, message fields with toast notification on submit
+  - All sections styled with premium glassmorphism design matching existing aesthetic
 
 ## Control Center Features (Admin Only)
 The admin Control Center at `/super-admin` provides comprehensive "god mode" platform management:
