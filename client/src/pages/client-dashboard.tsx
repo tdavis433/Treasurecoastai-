@@ -176,6 +176,12 @@ interface ChatSession {
   crisisDetected: boolean;
   appointmentRequested: boolean;
   topics: string[];
+  metadata?: {
+    aiSummary?: string;
+    userIntent?: string;
+    sentiment?: 'positive' | 'neutral' | 'negative';
+    keyTopics?: string[];
+  };
 }
 
 interface ChatMessage {
@@ -1128,6 +1134,19 @@ export default function ClientDashboard() {
                                   <p className="text-sm text-white/50 mt-1">
                                     {session.userMessageCount} visitor messages, {session.botMessageCount} assistant replies
                                   </p>
+                                  {session.metadata?.aiSummary && (
+                                    <p className="text-sm text-white/70 mt-2 italic" data-testid={`text-ai-summary-${session.id}`}>
+                                      "{session.metadata.aiSummary}"
+                                    </p>
+                                  )}
+                                  {session.metadata?.userIntent && (
+                                    <div className="flex items-center gap-2 mt-2">
+                                      <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-400/40 text-xs" data-testid={`badge-intent-${session.id}`}>
+                                        <Sparkles className="h-3 w-3 mr-1" />
+                                        Intent: {session.metadata.userIntent}
+                                      </Badge>
+                                    </div>
+                                  )}
                                   <div className="flex items-center gap-2 mt-2 flex-wrap">
                                     {session.appointmentRequested && (
                                       <Badge className="bg-purple-500/20 text-purple-400 border-purple-400/40 text-xs">
