@@ -60,6 +60,7 @@ import {
   PhoneCall,
   User,
   Loader2,
+  Palette,
 } from "lucide-react";
 import {
   Select,
@@ -1854,6 +1855,94 @@ export default function ClientDashboard() {
           </div>
         </GlassCardContent>
       </GlassCard>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <GlassCard data-testid="card-widget-appearance">
+          <GlassCardHeader>
+            <GlassCardTitle className="flex items-center gap-2">
+              <Palette className="h-5 w-5 text-pink-400" />
+              Widget Appearance
+            </GlassCardTitle>
+            <GlassCardDescription>
+              Your chat widget's current style (managed by our team)
+            </GlassCardDescription>
+          </GlassCardHeader>
+          <GlassCardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                <div>
+                  <p className="text-sm text-white/60">Theme</p>
+                  <p className="text-white font-medium">Treasure Coast Default</p>
+                </div>
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-500 border border-white/20" data-testid="color-preview-primary" />
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                <div>
+                  <p className="text-sm text-white/60">Position</p>
+                  <p className="text-white font-medium">Bottom Right</p>
+                </div>
+                <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-400/40">Active</Badge>
+              </div>
+              <p className="text-xs text-white/40 mt-2">
+                Your widget is configured with our premium theme. Contact our team to request custom branding.
+              </p>
+            </div>
+          </GlassCardContent>
+        </GlassCard>
+
+        <GlassCard data-testid="card-notifications">
+          <GlassCardHeader>
+            <GlassCardTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5 text-amber-400" />
+              Notification Settings
+            </GlassCardTitle>
+            <GlassCardDescription>
+              How you receive alerts (managed by our team)
+            </GlassCardDescription>
+          </GlassCardHeader>
+          <GlassCardContent>
+            <div className="space-y-4">
+              <div className={`flex items-center justify-between p-3 rounded-lg ${
+                stats?.notificationEmail 
+                  ? 'bg-green-500/10 border border-green-400/30' 
+                  : 'bg-white/5 border border-white/10'
+              }`}>
+                <div className="flex items-center gap-3">
+                  <div className={`h-2 w-2 rounded-full ${stats?.notificationEmail ? 'bg-green-400' : 'bg-white/30'}`} />
+                  <div>
+                    <p className="text-white font-medium">Email Notifications</p>
+                    <p className="text-sm text-white/50">
+                      {stats?.notificationEmail || 'No email configured'}
+                    </p>
+                  </div>
+                </div>
+                <Badge 
+                  className={stats?.notificationEmail 
+                    ? 'bg-green-500/20 text-green-400 border-green-400/40' 
+                    : 'bg-white/10 text-white/50 border-white/20'
+                  }
+                  data-testid="badge-notifications-enabled"
+                >
+                  {stats?.notificationEmail ? 'Enabled' : 'Not Set'}
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                <div className="flex items-center gap-3">
+                  <div className="h-2 w-2 rounded-full bg-white/30" />
+                  <div>
+                    <p className="text-white font-medium">Daily Summary</p>
+                    <p className="text-sm text-white/50">Coming soon</p>
+                  </div>
+                </div>
+                <Badge className="bg-white/10 text-white/50 border-white/20">Planned</Badge>
+              </div>
+              <p className="text-xs text-white/40 mt-2">
+                Need to update notification preferences? Contact our team.
+              </p>
+            </div>
+          </GlassCardContent>
+        </GlassCard>
+      </div>
 
       <GlassCard data-testid="card-widget-code">
         <GlassCardHeader>

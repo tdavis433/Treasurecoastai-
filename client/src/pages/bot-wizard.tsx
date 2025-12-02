@@ -417,6 +417,45 @@ export default function BotWizard() {
 
                   <Separator />
 
+                  {/* Website Scraper Section */}
+                  <div className="p-4 rounded-lg border-2 border-dashed border-primary/30 bg-primary/5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Globe className="h-5 w-5 text-primary" />
+                      <Label className="text-base font-semibold">Auto-Fill from Website</Label>
+                      <Badge variant="secondary" className="text-xs">Beta</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Paste a business website URL and we'll automatically extract business information, services, and FAQs.
+                    </p>
+                    <div className="flex gap-2">
+                      <Input 
+                        placeholder="https://example-business.com" 
+                        className="flex-1"
+                        data-testid="input-scraper-url"
+                      />
+                      <Button 
+                        type="button"
+                        variant="default"
+                        className="gap-2"
+                        data-testid="button-scrape-website"
+                        onClick={() => {
+                          toast({
+                            title: "Website Scraper",
+                            description: "This feature is coming soon! For now, please fill in the details manually or contact our team for assistance.",
+                          });
+                        }}
+                      >
+                        <Sparkles className="h-4 w-4" />
+                        Extract Info
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Tip: Works best with business websites that have an About page, Services page, or Contact page.
+                    </p>
+                  </div>
+
+                  <Separator />
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}

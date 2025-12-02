@@ -123,8 +123,30 @@ function FloatingChatWidget({ botConfig, messages, setMessages, inputValue, setI
   sessionId: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [showGreeting, setShowGreeting] = useState(false);
+  const [greetingDismissed, setGreetingDismissed] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const colors = businessTypeColors[botConfig.businessProfile.type] || businessTypeColors.restaurant;
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!isOpen && !greetingDismissed) {
+        setShowGreeting(true);
+      }
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [isOpen, greetingDismissed]);
+
+  const handleOpenChat = () => {
+    setIsOpen(true);
+    setShowGreeting(false);
+    setGreetingDismissed(true);
+  };
+
+  const dismissGreeting = () => {
+    setShowGreeting(false);
+    setGreetingDismissed(true);
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -242,19 +264,72 @@ function FloatingChatWidget({ botConfig, messages, setMessages, inputValue, setI
                 <Send className="h-4 w-4" />
               </Button>
             </div>
-            <p className="text-[10px] text-gray-400 mt-2 text-center">
-              Powered by Treasure Coast AI
-            </p>
+            <div className="mt-2 flex items-center justify-between">
+              <p className="text-[10px] text-gray-400">
+                Powered by Treasure Coast AI
+              </p>
+              <button
+                onClick={() => window.open('mailto:support@treasurecoastai.com?subject=Human%20Support%20Request', '_blank')}
+                className="text-[10px] text-blue-500 hover:text-blue-600 flex items-center gap-1"
+                data-testid="button-talk-to-human"
+              >
+                <Users className="h-3 w-3" />
+                Talk to a person
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Proactive Greeting Bubble */}
+      {showGreeting && !isOpen && (
+        <div 
+          className="absolute bottom-16 right-0 w-72 bg-white rounded-2xl shadow-xl border border-gray-200 p-4 animate-in slide-in-from-bottom-4 fade-in duration-300"
+          data-testid="proactive-greeting"
+        >
+          <button 
+            onClick={dismissGreeting}
+            className="absolute top-2 right-2 p-1 hover:bg-gray-100 rounded-full text-gray-400"
+            data-testid="button-dismiss-greeting"
+          >
+            <X className="h-4 w-4" />
+          </button>
+          <div className="flex items-start gap-3">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-r ${colors.primary}`}>
+              {businessTypeIcons[botConfig.businessProfile.type] || <MessageCircle className="h-5 w-5 text-white" />}
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-900">Hi there!</p>
+              <p className="text-xs text-gray-600 mt-1">
+                Have questions about {botConfig.businessProfile.businessName}? I'm here to help!
+              </p>
+              <Button 
+                size="sm" 
+                onClick={handleOpenChat}
+                className={`mt-3 w-full bg-gradient-to-r ${colors.primary} hover:opacity-90 text-white text-xs`}
+                data-testid="button-greeting-chat"
+              >
+                <MessageCircle className="h-3 w-3 mr-1" />
+                Start Chat
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
       {/* Toggle Button */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (isOpen) {
+            setIsOpen(false);
+          } else {
+            handleOpenChat();
+          }
+        }}
         className={cn(
           "w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-105",
-          `bg-gradient-to-r ${colors.primary} text-white`
+          `bg-gradient-to-r ${colors.primary} text-white`,
+          showGreeting && !isOpen && "animate-pulse"
         )}
         data-testid="button-toggle-chat"
         aria-label={isOpen ? "Minimize chat" : "Open chat"}
@@ -557,6 +632,50 @@ export default function DemoBotPage() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Get This For Your Business CTA Section */}
+      <section className="py-16 bg-gradient-to-br from-[#0A0A0F] via-cyan-900/20 to-[#0A0A0F] border-t border-white/5">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <Badge className="mb-4 bg-cyan-500/10 text-cyan-400 border-cyan-500/20 px-4 py-1" data-testid="badge-cta">
+            Ready to Get Started?
+          </Badge>
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4" data-testid="text-cta-title">
+            Want This For{" "}
+            <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+              Your Business?
+            </span>
+          </h2>
+          <p className="text-lg text-white/60 mb-8 max-w-2xl mx-auto">
+            We'll build and manage a custom AI assistant just like this one for your business. 
+            Capture leads, book appointments, and answer customer questions 24/7.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link href="/#contact">
+              <Button 
+                size="lg" 
+                className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white px-8 py-6 text-lg gap-2 shadow-lg shadow-cyan-500/25 glow-cyan-strong"
+                data-testid="button-get-this-for-business"
+              >
+                <Sparkles className="h-5 w-5" />
+                Get This For My Business
+              </Button>
+            </Link>
+            <Link href="/demos">
+              <Button 
+                size="lg" 
+                variant="outline" 
+                className="border-white/20 text-white hover:bg-white/10 px-8 py-6 text-lg gap-2"
+                data-testid="button-see-more-demos"
+              >
+                See More Demos
+              </Button>
+            </Link>
+          </div>
+          <p className="text-sm text-white/40 mt-6">
+            No tech skills required — we handle everything for you.
+          </p>
         </div>
       </section>
 

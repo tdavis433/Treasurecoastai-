@@ -336,7 +336,7 @@ export default function DemosPage() {
                       {bot.description}
                     </GlassCardDescription>
                   </GlassCardHeader>
-                  <GlassCardContent>
+                  <GlassCardContent className="space-y-2">
                     <Link href={`/demo/${bot.botId}`}>
                       <Button 
                         className="w-full gap-2 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 hover:from-cyan-500/20 hover:to-blue-500/20 text-white border border-cyan-500/20 hover:border-cyan-500/40 shine-overlay transition-all duration-300" 
@@ -346,6 +346,17 @@ export default function DemosPage() {
                         <MessageCircle className="h-4 w-4 text-cyan-400" />
                         Try Demo
                         <ChevronRight className="h-4 w-4 ml-auto group-hover:translate-x-1 transition-transform text-cyan-400" />
+                      </Button>
+                    </Link>
+                    <Link href="/#contact">
+                      <Button 
+                        className="w-full gap-2 bg-gradient-to-r from-purple-500/10 to-pink-500/10 hover:from-purple-500/20 hover:to-pink-500/20 text-white border border-purple-500/20 hover:border-purple-500/40 transition-all duration-300" 
+                        variant="outline"
+                        size="sm"
+                        data-testid={`button-get-this-${bot.botId}`}
+                      >
+                        <Sparkles className="h-3 w-3 text-purple-400" />
+                        Get This For My Business
                       </Button>
                     </Link>
                   </GlassCardContent>
