@@ -149,6 +149,23 @@ export interface IStorage {
   deleteLead(id: string): Promise<void>;
   getLeadBySessionId(sessionId: string, clientId: string): Promise<Lead | undefined>;
   
+  // Booking leads and analytics
+  getBookingLeads(clientId: string, filters?: {
+    status?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ leads: Lead[]; total: number }>;
+  getBookingAnalytics(clientId: string, startDate?: Date, endDate?: Date): Promise<{
+    totalBookingIntents: number;
+    totalLinkClicks: number;
+    pendingBookings: number;
+    completedBookings: number;
+    dailyTrends: { date: string; intents: number; clicks: number }[];
+  }>;
+  logBookingIntentEvent(data: { clientId: string; botId: string; sessionId: string; leadId?: string }): Promise<void>;
+  logBookingLinkClickEvent(data: { clientId: string; botId: string; sessionId: string; leadId?: string; bookingUrl: string }): Promise<void>;
+  
   // Inbox - conversation messages (overloaded - clientId optional for admin access)
   getSessionMessages(sessionId: string, clientId?: string): Promise<ChatAnalyticsEvent[]>;
   
@@ -909,6 +926,205 @@ export class DbStorage implements IStorage {
       ))
       .limit(1);
     return lead;
+  }
+
+  // Booking leads and analytics
+  async getBookingLeads(clientId: string, filters?: {
+    status?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ leads: Lead[]; total: number }> {
+    const conditions = [
+      eq(leads.clientId, clientId),
+      eq(leads.bookingIntent, true)
+    ];
+    
+    if (filters?.status) {
+      conditions.push(eq(leads.bookingStatus, filters.status));
+    }
+    
+    if (filters?.search) {
+      const searchTerm = `%${filters.search}%`;
+      conditions.push(
+        or(
+          like(leads.name, searchTerm),
+          like(leads.email, searchTerm),
+          like(leads.phone, searchTerm),
+          like(leads.serviceRequested, searchTerm)
+        )!
+      );
+    }
+    
+    const whereClause = and(...conditions);
+    
+    // Get total count
+    const countResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(leads)
+      .where(whereClause);
+    
+    const total = Number(countResult[0]?.count || 0);
+    
+    // Get paginated results
+    let query = db
+      .select()
+      .from(leads)
+      .where(whereClause)
+      .orderBy(desc(leads.createdAt));
+    
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as typeof query;
+    }
+    
+    if (filters?.offset) {
+      query = query.offset(filters.offset) as typeof query;
+    }
+    
+    const results = await query;
+    
+    return { leads: results, total };
+  }
+
+  async getBookingAnalytics(clientId: string, startDate?: Date, endDate?: Date): Promise<{
+    totalBookingIntents: number;
+    totalLinkClicks: number;
+    pendingBookings: number;
+    completedBookings: number;
+    dailyTrends: { date: string; intents: number; clicks: number }[];
+  }> {
+    const now = new Date();
+    const defaultStartDate = startDate || new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const defaultEndDate = endDate || now;
+    
+    // Count booking intents from analytics events
+    const intentConditions = [
+      eq(chatAnalyticsEvents.clientId, clientId),
+      eq(chatAnalyticsEvents.eventType, 'booking_intent'),
+      gte(chatAnalyticsEvents.createdAt, defaultStartDate),
+      lte(chatAnalyticsEvents.createdAt, defaultEndDate)
+    ];
+    
+    const intentCountResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(chatAnalyticsEvents)
+      .where(and(...intentConditions));
+    
+    const totalBookingIntents = Number(intentCountResult[0]?.count || 0);
+    
+    // Count booking link clicks from analytics events
+    const clickConditions = [
+      eq(chatAnalyticsEvents.clientId, clientId),
+      eq(chatAnalyticsEvents.eventType, 'booking_link_click'),
+      gte(chatAnalyticsEvents.createdAt, defaultStartDate),
+      lte(chatAnalyticsEvents.createdAt, defaultEndDate)
+    ];
+    
+    const clickCountResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(chatAnalyticsEvents)
+      .where(and(...clickConditions));
+    
+    const totalLinkClicks = Number(clickCountResult[0]?.count || 0);
+    
+    // Count pending and completed bookings from leads
+    const pendingConditions = [
+      eq(leads.clientId, clientId),
+      eq(leads.bookingIntent, true),
+      eq(leads.bookingStatus, 'pending_external_booking')
+    ];
+    
+    const pendingCountResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(leads)
+      .where(and(...pendingConditions));
+    
+    const pendingBookings = Number(pendingCountResult[0]?.count || 0);
+    
+    const completedConditions = [
+      eq(leads.clientId, clientId),
+      eq(leads.bookingIntent, true),
+      eq(leads.bookingStatus, 'redirected')
+    ];
+    
+    const completedCountResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(leads)
+      .where(and(...completedConditions));
+    
+    const completedBookings = Number(completedCountResult[0]?.count || 0);
+    
+    // Get daily trends for the last 30 days
+    const dailyTrends: { date: string; intents: number; clicks: number }[] = [];
+    
+    // Generate dates for the range
+    const currentDate = new Date(defaultStartDate);
+    while (currentDate <= defaultEndDate) {
+      const dateStr = currentDate.toISOString().split('T')[0];
+      const nextDate = new Date(currentDate);
+      nextDate.setDate(nextDate.getDate() + 1);
+      
+      // Count intents for this day
+      const dayIntentResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(chatAnalyticsEvents)
+        .where(and(
+          eq(chatAnalyticsEvents.clientId, clientId),
+          eq(chatAnalyticsEvents.eventType, 'booking_intent'),
+          gte(chatAnalyticsEvents.createdAt, currentDate),
+          lte(chatAnalyticsEvents.createdAt, nextDate)
+        ));
+      
+      const dayClickResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(chatAnalyticsEvents)
+        .where(and(
+          eq(chatAnalyticsEvents.clientId, clientId),
+          eq(chatAnalyticsEvents.eventType, 'booking_link_click'),
+          gte(chatAnalyticsEvents.createdAt, currentDate),
+          lte(chatAnalyticsEvents.createdAt, nextDate)
+        ));
+      
+      dailyTrends.push({
+        date: dateStr,
+        intents: Number(dayIntentResult[0]?.count || 0),
+        clicks: Number(dayClickResult[0]?.count || 0)
+      });
+      
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    return {
+      totalBookingIntents,
+      totalLinkClicks,
+      pendingBookings,
+      completedBookings,
+      dailyTrends
+    };
+  }
+
+  async logBookingIntentEvent(data: { clientId: string; botId: string; sessionId: string; leadId?: string }): Promise<void> {
+    await db.insert(chatAnalyticsEvents).values({
+      clientId: data.clientId,
+      botId: data.botId,
+      sessionId: data.sessionId,
+      eventType: 'booking_intent',
+      metadata: { leadId: data.leadId, timestamp: new Date().toISOString() }
+    });
+  }
+
+  async logBookingLinkClickEvent(data: { clientId: string; botId: string; sessionId: string; leadId?: string; bookingUrl: string }): Promise<void> {
+    await db.insert(chatAnalyticsEvents).values({
+      clientId: data.clientId,
+      botId: data.botId,
+      sessionId: data.sessionId,
+      eventType: 'booking_link_click',
+      metadata: { 
+        leadId: data.leadId, 
+        bookingUrl: data.bookingUrl,
+        timestamp: new Date().toISOString() 
+      }
+    });
   }
 
   async getSessionMessages(sessionId: string, clientId?: string): Promise<ChatAnalyticsEvent[]> {
