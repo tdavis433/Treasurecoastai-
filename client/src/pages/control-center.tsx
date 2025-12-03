@@ -4004,7 +4004,8 @@ function ChannelsPanel({ bot, client }: { bot: BotConfig; client: Client }) {
     },
   });
 
-  const embedCode = `<script src="${window.location.origin}/widget/embed.js" data-bot-id="${bot.botId}"></script>`;
+  // Use bot.clientId (the workspace slug) for embed code - this is required for the widget to work
+  const embedCode = `<script src="${window.location.origin}/widget/embed.js" data-client-id="${bot.clientId}" data-bot-id="${bot.botId}"></script>`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(embedCode);
@@ -6113,9 +6114,10 @@ function InstallPanel({ bot, client }: { bot: BotConfig; client: Client }) {
   
   const baseUrl = window.location.origin;
   
+  // Use bot.clientId (the workspace slug) for embed code - this is required for the widget to work
   const embedCode = `<script
   src="${baseUrl}/widget/embed.js"
-  data-client-id="${client.id}"
+  data-client-id="${bot.clientId}"
   data-bot-id="${bot.botId}"
   data-primary-color="${primaryColor}"
   data-position="${position}"
