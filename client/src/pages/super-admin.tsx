@@ -6060,7 +6060,8 @@ function TestChatPanel({ clientId, botId, botName }: { clientId: string; botId: 
 
     const requestBody = {
       messages: fullHistory,
-      sessionId
+      sessionId,
+      source: "admin_preview"
     };
     
     const debugRequest: DebugInfo = {

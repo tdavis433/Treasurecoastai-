@@ -1,0 +1,165 @@
+Got it — you basically want ONE brain, ONE behavior for the bot, no matter where it shows up:
+	•	admin preview
+	•	demo page (FloatingChatWidget)
+	•	public widget.js embed
+	•	client site
+
+Here’s a single prompt you can paste into Replit to unify everything and make sure all chat surfaces use the same logic + features (booking, lead capture, needs-review, etc.).
+
+⸻
+
+🔧 REPLIT PROMPT — UNIFY ALL CHAT WIDGETS (DEMO, CLIENT, ADMIN, PUBLIC)
+
+You are working on the Treasure Coast AI platform.
+
+Goal:
+Make sure the exact same chatbot behavior and capabilities are available everywhere:
+	•	Super-admin/admin “test bot” / preview in the dashboard
+	•	Demo pages (e.g. demo-bot.tsx using FloatingChatWidget)
+	•	Public embeddable widget (widget.js + <script> snippet)
+	•	Any other internal test widget pages
+
+All of these must use one shared implementation so features are never out of sync.
+
+Key features that must work identically everywhere:
+	•	AI conversation backend
+	•	lead capture (name, contact, intent, etc.)
+	•	booking intent detection + redirect to external booking URL
+	•	logging of conversations & leads
+	•	“Needs Review” flagging
+	•	analytics tracking (message counts, booking clicks, etc.)
+
+Do NOT create separate logic per widget. Unify them.
+
+⸻
+
+1. Create a Single Shared Chat Client Layer
+
+Refactor the frontend so that all chat surfaces use the same underlying module.
+
+Create something like:
+
+// client/src/lib/chatClient.ts (or similar)
+export function createChatClient(config: {
+  clientId: string;
+  botId: string;
+  widgetToken?: string;
+  source: "admin_preview" | "public_widget" | "demo_page" | "client_site";
+}) {
+  // Handles:
+  // - sending messages to chat API
+  // - handling streaming or responses
+  // - lead capture events
+  // - booking events
+  // - analytics tracking
+}
+
+And a shared React hook:
+
+// client/src/hooks/useChatAssistant.ts
+export function useChatAssistant(config) {
+  // Wrap createChatClient + local UI state
+}
+
+All UI components (FloatingChatWidget, admin preview chat, widget.js wrapper) should call this shared hook/client instead of each rolling their own logic.
+
+⸻
+
+2. Wire All Widgets to the Shared Logic
+
+Update the following (names may differ, adapt to your actual structure):
+	•	client/src/pages/demo-bot.tsx (FloatingChatWidget)
+	•	Any admin preview page/component (e.g. Bot Preview in Control Center)
+	•	The public embed script handler (public/widget.js or similar)
+	•	Any standalone widget test page (widget-test.html + associated JS)
+
+Each of these should:
+	1.	Pass the correct clientId / workspaceId and botId.
+	2.	Pass source (e.g. "demo_page" or "public_widget").
+	3.	Use the same useChatAssistant hook to:
+	•	send messages
+	•	receive responses
+	•	trigger lead/booking events
+
+Remove duplicated chat-request logic from any of these components and centralize it into the shared module.
+
+⸻
+
+3. Ensure Booking & Lead Capture Works Everywhere
+
+Wherever the bot is used (demo, admin, public, client site), the following must happen:
+	•	When the AI decides to capture a lead or detect booking intent, the server-side logic should fire:
+	•	create/update a lead record
+	•	mark bookingIntent = true if applicable
+	•	track link clicks & events
+
+The frontend widget (no matter which one) should:
+	•	Render booking links as buttons/links using the same UI logic.
+	•	Use the same event tracking function for clicks (e.g. trackBookingClick(leadId)).
+
+If there is any widget that currently skips lead capture or booking events, update it to call the shared client layer.
+
+⸻
+
+4. Respect Security Everywhere
+
+For the public widget:
+	•	continue enforcing:
+	•	widgetToken validation
+	•	allowedDomains check
+	•	config (clientId, botId, widgetToken) should be passed into the shared chat client.
+
+For admin/demo widgets:
+	•	they may bypass widgetToken & domain checks (since they are internal), but they must still:
+	•	call the same chat endpoint
+	•	tag source = "admin_preview" or "demo_page" so analytics can distinguish them from real traffic.
+
+Do not duplicate security logic — keep it server-side and shared.
+
+⸻
+
+5. Testing: Prove All 3+ Surfaces Behave the Same
+
+After refactoring to a shared chat client, run an end-to-end manual test in 3 places:
+	1.	Admin preview / test chat
+	2.	Demo page (FloatingChatWidget)
+	3.	Public widget test page (widget.js embed)
+
+In each:
+	•	Ask general questions (hours, services) → verify consistent answers.
+	•	Trigger lead capture (“Can someone contact me about X?”) → verify leads appear identically in dashboards.
+	•	Trigger booking (“I want to book an appointment…”) → verify:
+	•	same booking flow
+	•	same external booking URL
+	•	same style of response
+	•	booking leads + clicks are recorded.
+
+If any behavior differs between surfaces, fix it in the shared chat client/hook, not locally.
+
+⸻
+
+6. Avoid Future Drift
+
+Add a small developer note / comment block in the shared module explaining:
+
+“All chat widgets (admin preview, demo pages, public widget.js, client sites) MUST use this shared chat client. Do not reimplement chat logic directly in components; wire them into this module instead. This keeps booking, lead capture, and analytics behavior consistent across the platform.”
+
+This is critical to prevent the issue you just saw (FloatingChatWidget behaving differently from the public widget).
+
+⸻
+
+7. Deliverable
+
+When done, you should be able to say:
+	•	“No matter where the chatbot appears — demo, admin preview, client site embed — it uses the same backend, same booking logic, same lead capture, and same analytics. All I change is clientId, botId, and config; behavior is identical.”
+
+Please implement this refactor and then run a short QA summary describing:
+	•	Which components now use the shared client
+	•	How you verified all chat surfaces behave identically
+	•	Any remaining edge cases.
+
+⸻
+
+That tells Replit exactly what you want:
+
+One unified chatbot brain — full capacity, everywhere.

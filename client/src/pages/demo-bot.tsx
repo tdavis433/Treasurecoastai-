@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +32,7 @@ import {
   ExternalLink
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useChatAssistant, Message } from "@/hooks/useChatAssistant";
 
 interface BotConfig {
   botId: string;
@@ -54,12 +54,7 @@ interface BotConfig {
   isDemo: boolean;
 }
 
-interface Message {
-  role: "assistant" | "user";
-  content: string;
-  bookingUrl?: string;
-  paymentUrl?: string;
-}
+// Message interface is imported from useChatAssistant hook
 
 const businessTypeIcons: Record<string, React.ReactNode> = {
   sober_living: <Heart className="h-6 w-6" />,
@@ -117,20 +112,36 @@ const businessTypeFeatures: Record<string, string[]> = {
   tattoo: ["Custom Designs", "Sterile Environment", "Experienced Artists", "Aftercare Support"],
 };
 
-function FloatingChatWidget({ botConfig, messages, setMessages, inputValue, setInputValue, chatMutation, sessionId }: {
-  botConfig: BotConfig;
-  messages: Message[];
-  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
-  inputValue: string;
-  setInputValue: React.Dispatch<React.SetStateAction<string>>;
-  chatMutation: any;
-  sessionId: string;
-}) {
+/**
+ * FloatingChatWidget - Uses the shared useChatAssistant hook
+ * 
+ * This ensures consistent behavior across all chat surfaces:
+ * - booking button display
+ * - lead capture
+ * - analytics tracking
+ */
+function FloatingChatWidget({ botConfig }: { botConfig: BotConfig }) {
   const [isOpen, setIsOpen] = useState(false);
   const [showGreeting, setShowGreeting] = useState(false);
   const [greetingDismissed, setGreetingDismissed] = useState(false);
+  const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const colors = businessTypeColors[botConfig.businessProfile.type] || businessTypeColors.restaurant;
+
+  const initialGreeting = `Hi! Welcome to ${botConfig.businessProfile.businessName}. I'm here to help answer your questions. What can I help you with today?`;
+
+  const { 
+    messages, 
+    isLoading, 
+    error, 
+    sendMessage, 
+    handleBookingClick 
+  } = useChatAssistant({
+    clientId: botConfig.clientId,
+    botId: botConfig.botId,
+    source: "demo_page",
+    initialGreeting,
+  });
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -159,11 +170,9 @@ function FloatingChatWidget({ botConfig, messages, setMessages, inputValue, setI
   }, [messages, isOpen]);
 
   const handleSend = () => {
-    if (inputValue.trim() && !chatMutation.isPending) {
-      const userMessage = inputValue.trim();
-      setMessages(prev => [...prev, { role: "user", content: userMessage }]);
+    if (inputValue.trim() && !isLoading) {
+      sendMessage(inputValue.trim());
       setInputValue("");
-      chatMutation.mutate(userMessage);
     }
   };
 
@@ -230,12 +239,10 @@ function FloatingChatWidget({ botConfig, messages, setMessages, inputValue, setI
                   
                   {/* Booking Button - Show when assistant message has booking URL */}
                   {message.role === "assistant" && message.bookingUrl && (
-                    <a
-                      href={message.bookingUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      onClick={() => handleBookingClick(message.bookingUrl!)}
                       className={cn(
-                        "mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90 shadow-lg",
+                        "mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90 shadow-lg cursor-pointer",
                         `bg-gradient-to-r ${colors.primary}`
                       )}
                       data-testid={`button-book-appointment-${index}`}
@@ -243,12 +250,12 @@ function FloatingChatWidget({ botConfig, messages, setMessages, inputValue, setI
                       <Calendar className="h-4 w-4" />
                       Book Appointment
                       <ExternalLink className="h-3 w-3" />
-                    </a>
+                    </button>
                   )}
                 </div>
               ))}
               
-              {chatMutation.isPending && (
+              {isLoading && (
                 <div className="flex justify-start">
                   <div className="bg-gray-100 rounded-2xl px-4 py-2 text-sm">
                     <span className="inline-flex gap-1">
@@ -272,13 +279,13 @@ function FloatingChatWidget({ botConfig, messages, setMessages, inputValue, setI
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Type a message..."
-                disabled={chatMutation.isPending}
+                disabled={isLoading}
                 className="flex-1 rounded-full border-gray-200 focus:border-gray-300 text-sm"
               />
               <Button
                 data-testid="widget-button-send"
                 onClick={handleSend}
-                disabled={!inputValue.trim() || chatMutation.isPending}
+                disabled={!inputValue.trim() || isLoading}
                 size="icon"
                 className={`rounded-full bg-gradient-to-r ${colors.primary} hover:opacity-90`}
                 aria-label="Send message"
@@ -369,53 +376,12 @@ function FloatingChatWidget({ botConfig, messages, setMessages, inputValue, setI
 export default function DemoBotPage() {
   const params = useParams<{ botId: string }>();
   const botId = params.botId;
-  
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [inputValue, setInputValue] = useState("");
-  const [sessionId] = useState(() => `demo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
 
-  const { data: botConfig, isLoading, error } = useQuery<BotConfig>({
+  const { data: botConfig, isLoading: isBotLoading, error } = useQuery<BotConfig>({
     queryKey: ['/api/demo', botId],
   });
 
-  useEffect(() => {
-    if (botConfig && messages.length === 0) {
-      setMessages([{
-        role: "assistant",
-        content: `Hi! Welcome to ${botConfig.businessProfile.businessName}. I'm here to help answer your questions. What can I help you with today?`
-      }]);
-    }
-  }, [botConfig, messages.length]);
-
-  const chatMutation = useMutation({
-    mutationFn: async (userMessage: string) => {
-      const response = await apiRequest("POST", `/api/chat/${botConfig?.clientId}/${botId}`, {
-        messages: [
-          ...messages,
-          { role: "user", content: userMessage }
-        ],
-        sessionId,
-        language: "en"
-      });
-      return response.json();
-    },
-    onSuccess: (data: { reply: string; meta?: { externalBookingUrl?: string; externalPaymentUrl?: string } }) => {
-      setMessages(prev => [...prev, { 
-        role: "assistant", 
-        content: data.reply,
-        bookingUrl: data.meta?.externalBookingUrl || undefined,
-        paymentUrl: data.meta?.externalPaymentUrl || undefined
-      }]);
-    },
-    onError: () => {
-      setMessages(prev => [...prev, { 
-        role: "assistant", 
-        content: "I'm sorry, I encountered an error. Please try again." 
-      }]);
-    }
-  });
-
-  if (isLoading) {
+  if (isBotLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="h-96 bg-gray-200 animate-pulse" />
@@ -721,16 +687,8 @@ export default function DemoBotPage() {
         </div>
       </footer>
 
-      {/* Floating Chat Widget */}
-      <FloatingChatWidget
-        botConfig={botConfig}
-        messages={messages}
-        setMessages={setMessages}
-        inputValue={inputValue}
-        setInputValue={setInputValue}
-        chatMutation={chatMutation}
-        sessionId={sessionId}
-      />
+      {/* Floating Chat Widget - Uses unified useChatAssistant hook */}
+      <FloatingChatWidget botConfig={botConfig} />
     </div>
   );
 }
