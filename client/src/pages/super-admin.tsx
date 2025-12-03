@@ -71,7 +71,8 @@ import {
   TrendingUp, Users2, AlertCircle, Activity, RefreshCw, Download, Layers,
   Shield, FileWarning, CheckCircle2, XCircle, Filter, Calendar, UserPlus,
   MoreVertical, MoreHorizontal, Workflow, Palette, ChevronDown, SendHorizontal, MessageCircle,
-  CheckCircle, PauseCircle, LayoutGrid, List, Crown, User, HelpCircle, Flag, Database
+  CheckCircle, PauseCircle, LayoutGrid, List, Crown, User, HelpCircle, Flag, Database,
+  Loader2, Pencil, Info
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";

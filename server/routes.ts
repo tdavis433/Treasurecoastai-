@@ -1865,8 +1865,18 @@ Always be positive and solution-oriented. If someone wants to get started, direc
         await incrementLeadCount(clientId);
       }
 
-      // Build system prompt from bot config
-      const systemPrompt = buildSystemPromptFromConfig(botConfig);
+      // Fetch client settings for external booking/payment URLs
+      const clientSettings = await storage.getSettings(clientId);
+      
+      // Inject external URLs into bot config for system prompt building
+      const botConfigWithUrls = {
+        ...botConfig,
+        externalBookingUrl: clientSettings?.externalBookingUrl || undefined,
+        externalPaymentUrl: clientSettings?.externalPaymentUrl || undefined,
+      };
+
+      // Build system prompt from bot config with booking URLs
+      const systemPrompt = buildSystemPromptFromConfig(botConfigWithUrls);
 
       if (!openai) {
         return res.status(503).json({ error: "AI service not configured" });
@@ -1951,13 +1961,24 @@ Always be positive and solution-oriented. If someone wants to get started, direc
         });
       }
 
-      // Check for external booking URL if booking intent detected
-      let externalBookingUrl: string | null = null;
+      // Use already-fetched clientSettings for booking URL
+      const externalBookingUrl = mentionsAppointment ? (clientSettings?.externalBookingUrl || null) : null;
+      const externalPaymentUrl = mentionsAppointment ? (clientSettings?.externalPaymentUrl || null) : null;
+
+      // Log booking intent analytics event if booking detected
       if (mentionsAppointment) {
-        const settings = await storage.getSettings(clientId);
-        if (settings?.externalBookingUrl) {
-          externalBookingUrl = settings.externalBookingUrl;
-        }
+        await storage.logAnalyticsEvent({
+          clientId,
+          botId,
+          sessionId: actualSessionId,
+          eventType: 'booking_intent',
+          actor: 'user',
+          messageContent: lastUserMessage?.content || "",
+          metadata: { 
+            hasBookingUrl: !!externalBookingUrl,
+            bookingUrl: externalBookingUrl,
+          } as Record<string, any>,
+        });
       }
 
       // Send response immediately for best UX
@@ -1969,7 +1990,8 @@ Always be positive and solution-oriented. If someone wants to get started, direc
           sessionId: actualSessionId, 
           responseTimeMs: responseTime,
           showBooking: mentionsAppointment,
-          externalBookingUrl
+          externalBookingUrl,
+          externalPaymentUrl
         }
       });
       
@@ -2099,8 +2121,18 @@ Always be positive and solution-oriented. If someone wants to get started, direc
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.flushHeaders();
 
+      // Fetch client settings for external booking/payment URLs
+      const clientSettings = await storage.getSettings(clientId);
+      
+      // Inject external URLs into bot config for system prompt building
+      const botConfigWithUrls = {
+        ...botConfig,
+        externalBookingUrl: clientSettings?.externalBookingUrl || undefined,
+        externalPaymentUrl: clientSettings?.externalPaymentUrl || undefined,
+      };
+
       // Build system prompt with suggested replies instruction
-      const systemPrompt = buildSystemPromptFromConfig(botConfig);
+      const systemPrompt = buildSystemPromptFromConfig(botConfigWithUrls);
       const enhancedPrompt = `${systemPrompt}
 
 IMPORTANT: After your response, always include 2-3 suggested follow-up questions the user might want to ask. Format them as JSON at the very end of your response on a new line like this:
@@ -2156,6 +2188,11 @@ These suggestions should be relevant to what was just discussed and help guide t
         }
       }
 
+      // Check for booking intent
+      const mentionsAppointment = /appointment|schedule|book|reserve|meeting/i.test(lastUserMessage?.content || "");
+      const streamingExternalBookingUrl = mentionsAppointment ? (clientSettings?.externalBookingUrl || null) : null;
+      const streamingExternalPaymentUrl = mentionsAppointment ? (clientSettings?.externalPaymentUrl || null) : null;
+
       // Send final message with metadata
       res.write(`data: ${JSON.stringify({ 
         type: 'done', 
@@ -2164,7 +2201,10 @@ These suggestions should be relevant to what was just discussed and help guide t
           clientId, 
           botId, 
           sessionId: actualSessionId, 
-          responseTimeMs: responseTime 
+          responseTimeMs: responseTime,
+          showBooking: mentionsAppointment,
+          externalBookingUrl: streamingExternalBookingUrl,
+          externalPaymentUrl: streamingExternalPaymentUrl
         }
       })}\n\n`);
       
@@ -2183,7 +2223,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         botMessageCount: (existingSession?.botMessageCount || 0) + 1,
         totalResponseTimeMs: (existingSession?.totalResponseTimeMs || 0) + responseTime,
         crisisDetected: existingSession?.crisisDetected || false,
-        appointmentRequested: existingSession?.appointmentRequested || false,
+        appointmentRequested: existingSession?.appointmentRequested || mentionsAppointment,
         topics: [...(existingSession?.topics as string[] || [])],
       };
       
@@ -2192,6 +2232,22 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
 
       await storage.createOrUpdateChatSession(sessionData);
+      
+      // Log booking intent analytics event if booking detected
+      if (mentionsAppointment) {
+        await storage.logAnalyticsEvent({
+          clientId,
+          botId,
+          sessionId: actualSessionId,
+          eventType: 'booking_intent',
+          actor: 'user',
+          messageContent: lastUserMessage?.content || "",
+          metadata: { 
+            hasBookingUrl: !!streamingExternalBookingUrl,
+            bookingUrl: streamingExternalBookingUrl,
+          } as Record<string, any>,
+        });
+      }
       await incrementMessageCount(clientId);
       
       await storage.updateOrCreateDailyAnalytics({
