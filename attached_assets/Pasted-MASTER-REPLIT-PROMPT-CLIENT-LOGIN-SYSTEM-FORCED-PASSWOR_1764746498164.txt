@@ -1,0 +1,256 @@
+MASTER REPLIT PROMPT — CLIENT LOGIN SYSTEM + FORCED PASSWORD CHANGE
+
+You are modifying the Treasure Coast AI platform.
+
+Treasure Coast AI is an agency-first AI assistant system:
+	•	The agency (super-admin/admin) builds & manages all AI assistants.
+	•	Clients only log in to view results (conversations, leads, analytics).
+	•	Clients never build bots, configure flows, or edit prompts.
+	•	Each client is isolated by workspaceId or clientId.
+
+Your task is to build a complete, secure Client Login System that includes:
+	1.	Super Admin “Client Logins” UI for creating and managing client users.
+	2.	Backend endpoints for creating, resetting, and disabling client users.
+	3.	Forced password change on first login (must-change-password flow).
+	4.	Clean, role-based routing so clients land in the existing client dashboard and can ONLY view their own data.
+
+Do NOT add any self-service bot editing or builder features for clients.
+
+⸻
+
+1. Database Changes
+
+Update the users table (or equivalent) to support client login management and forced password reset:
+
+Add columns if they don’t exist already:
+	•	role (string) — e.g. "super_admin" | "admin" | "client"
+	•	workspaceId (or clientId) — foreign key tying the user to a specific client workspace.
+	•	mustChangePassword — boolean NOT NULL DEFAULT true
+	•	disabled — boolean NOT NULL DEFAULT false
+	•	Optionally: lastLoginAt — timestamp (for future UX, not required for core feature).
+
+Migration rules:
+	•	Existing admin/super-admin users → set mustChangePassword = false by default.
+	•	Existing users remain disabled = false.
+
+Use the same ORM & migration tools already used in the project (Drizzle, etc.).
+
+⸻
+
+2. Backend: Super Admin Client User Management
+
+If not present, create these routes (names can adjust to match existing patterns):
+	•	GET /api/super-admin/workspaces/:workspaceId/users
+	•	POST /api/super-admin/workspaces/:workspaceId/users
+	•	POST /api/super-admin/workspaces/:workspaceId/users/:userId/reset-password
+	•	POST /api/super-admin/workspaces/:workspaceId/users/:userId/disable
+
+All of these must be protected with requireSuperAdmin.
+
+2.1 GET /api/super-admin/workspaces/:workspaceId/users
+	•	Return a list of users with:
+	•	id
+	•	email
+	•	role
+	•	createdAt
+	•	disabled
+	•	mustChangePassword
+	•	Filter to workspaceId and (optionally) role = "client".
+
+2.2 POST /api/super-admin/workspaces/:workspaceId/users
+Purpose: Create a client login.
+	•	Expect JSON body:
+	•	email: string
+	•	password: string (temporary)
+	•	name?: string (if your schema supports it)
+	•	Validate with Zod:
+	•	Email is valid.
+	•	Password passes the existing “strong password” schema.
+	•	Check that email isn’t already in use.
+	•	Hash the password (using same bcrypt / hashing as current login).
+	•	Create user with:
+	•	email
+	•	passwordHash
+	•	role = "client"
+	•	workspaceId = from the route param
+	•	mustChangePassword = true
+	•	disabled = false
+	•	Return newly created user info (no password).
+
+Important: Never return passwords or password hashes.
+
+2.3 POST /api/super-admin/workspaces/:workspaceId/users/:userId/reset-password
+	•	Protected by requireSuperAdmin.
+	•	Accept:
+	•	newPassword
+	•	Validate strong password.
+	•	Hash and update passwordHash.
+	•	Set mustChangePassword = true so they’re forced to set a new one at next login.
+	•	Do not return the password.
+
+2.4 POST /api/super-admin/workspaces/:workspaceId/users/:userId/disable
+	•	Protected by requireSuperAdmin.
+	•	Set disabled = true.
+	•	Login handler must reject disabled users with a generic error: “Account disabled. Contact support.”
+
+(Optional: add enable endpoint to reverse disabled status.)
+
+⸻
+
+3. Backend: Login & Forced Password Change Flow
+
+The platform already has a login endpoint (e.g. POST /api/auth/login).
+
+Modify it as follows:
+
+3.1 On successful login (correct email/password & not disabled):
+	•	Set session values:
+	•	userId
+	•	role
+	•	workspaceId (or clientId)
+	•	If user.mustChangePassword === true:
+	•	Return a response indicating this status, e.g.
+{ success: true, forcePasswordChange: true, role: user.role }
+	•	If user.mustChangePassword === false:
+	•	Normal login response, e.g.
+{ success: true, forcePasswordChange: false, role: user.role }
+	•	If disabled === true, reject login with:
+	•	{ success: false, error: "Account disabled. Contact support." }
+
+3.2 Add Change Password Endpoint
+Create POST /api/auth/change-password:
+	•	Protected route: user must be logged in (via session).
+	•	Input:
+	•	newPassword
+	•	confirmPassword
+	•	Validate:
+	•	New password passes strong password schema.
+	•	newPassword === confirmPassword.
+	•	Hash new password and update current user’s passwordHash.
+	•	Set mustChangePassword = false.
+	•	Optionally set lastLoginAt = now() if you want.
+	•	Return success.
+
+⸻
+
+4. Frontend: Force Password Change Screen
+
+Add a new page/route in the client/admin app:
+
+/change-password
+
+Requirements:
+	•	User must be logged in to visit it.
+	•	UI:
+	•	Dark neon / Treasure Coast AI styling (match existing dashboard UI).
+	•	Fields:
+	•	New Password
+	•	Confirm New Password
+	•	Button: “Update Password”
+	•	On submit:
+	•	Call POST /api/auth/change-password.
+	•	On success:
+	•	Redirect based on role:
+	•	If role === "client" → /client/dashboard
+	•	If role === "admin" → /admin/dashboard
+	•	If role === "super_admin" → /super-admin/control-center
+	•	Show toast/notification on success or failure.
+
+⸻
+
+5. Frontend: Enforce Redirect to Change Password
+
+Add a small piece of logic to your auth/layout layer:
+	•	If the logged-in user has mustChangePassword === true (get this from a GET /api/auth/me or from login response & store it):
+	•	They should NOT be allowed on any dashboard route except /change-password.
+	•	Implement a guard in your main app router:
+	•	If user is logged in AND mustChangePassword === true AND current route is NOT /change-password:
+	•	Redirect to /change-password.
+
+This ensures they can’t avoid changing their password.
+
+⸻
+
+6. Frontend: Super Admin “Client Logins” UI
+
+In the Super Admin UI, in the screen where you view a single client/workspace (the same place you see bots/settings/usage), add a new section:
+
+6.1 Layout
+Add a card or tab titled: Client Logins.
+
+Inside this section:
+	1.	A short description:
+“Create and manage login credentials for this client. These users can only view their dashboard data and cannot edit bots.”
+	2.	A table listing existing client users for that workspace:
+	•	Columns:
+	•	Email
+	•	Role (hard-coded “Client”)
+	•	Created At
+	•	Status (Active / Disabled)
+	•	Must Change Password (Yes/No)
+	•	Actions: Reset Password, Disable (and optionally Enable)
+	3.	A button: “Create Client Login” at top-right of the card.
+
+6.2 Create Client Login Modal
+When you click Create Client Login:
+	•	Open a modal/drawer with fields:
+	•	Email (required)
+	•	Temporary Password (required)
+	•	Confirm Password (required)
+	•	Validate password using the same strong rules.
+	•	On submit:
+	•	Call POST /api/super-admin/workspaces/:workspaceId/users.
+	•	On success:
+	•	Close modal.
+	•	Refresh table.
+	•	Show toast: “Client login created. Share the temporary password with the client. They’ll be forced to change it on first login.”
+
+Important: Don’t display the password again after creation.
+
+6.3 Actions: Reset Password & Disable
+	•	Reset Password:
+	•	Opens modal:
+	•	New Password
+	•	Confirm Password
+	•	Calls POST /api/super-admin/workspaces/:workspaceId/users/:userId/reset-password.
+	•	On success, show toast: “Password reset. Share the new temporary password with the client. They’ll be asked to change it on next login.”
+	•	Disable:
+	•	Shows confirm dialog: “Disable this login? They will no longer be able to sign in.”
+	•	Calls POST /api/super-admin/workspaces/:workspaceId/users/:userId/disable.
+	•	Table updates status to Disabled.
+
+Use existing cards, tables, buttons, modals, and toast components so it matches the rest of the Super Admin UI.
+
+⸻
+
+7. Role-Based Routing & Permissions
+
+Ensure:
+	•	All /api/super-admin/... routes use requireSuperAdmin.
+	•	Client users (role = "client") can only access:
+	•	/client/... routes.
+	•	No admin or super-admin routes.
+	•	On login:
+	•	If role is client and mustChangePassword === false → send them to /client/dashboard.
+	•	If role is client and mustChangePassword === true → send them to /change-password.
+
+This must be consistent across both backend routing and frontend navigation.
+
+⸻
+
+8. Acceptance Criteria
+
+This feature is complete when all of the following are true:
+	1.	As super admin, I can open a client in Super Admin and see a Client Logins section.
+	2.	I can create a new client login:
+	•	Email + temporary password.
+	•	User is stored with role = "client", correct workspaceId, mustChangePassword = true.
+	3.	The client can log in with that email/password and is immediately forced to /change-password.
+	4.	After setting a new password, the client is redirected to /client/dashboard and can see their data.
+	5.	The client cannot access any admin/super-admin routes.
+	6.	If I disable a client login, they can no longer log in.
+	7.	If I reset a client’s password, the old password stops working and they must set a new one at next login.
+	8.	All new routes are protected properly, all validations use Zod (or existing schema style), and UI matches the dark neon Treasure Coast AI styling.
+
+Do NOT add any ability for clients to edit bots, automations, prompts, knowledge base, or flows.
+This system is strictly for login access to the existing client dashboard as read-only viewers.

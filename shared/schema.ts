@@ -218,12 +218,16 @@ export const adminUsers = pgTable("admin_users", {
   passwordHash: text("password_hash").notNull(),
   role: text("role").notNull().default("client_admin"),
   clientId: varchar("client_id"),
+  mustChangePassword: boolean("must_change_password").notNull().default(true),
+  disabled: boolean("disabled").notNull().default(false),
+  lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({
   id: true,
   createdAt: true,
+  lastLoginAt: true,
 });
 
 export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;
