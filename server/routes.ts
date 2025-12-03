@@ -3022,11 +3022,22 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
+      // Check if user is disabled
+      if (user.disabled) {
+        return res.status(401).json({ error: "Account disabled. Contact support." });
+      }
+
       const isValid = await bcrypt.compare(password, user.passwordHash);
       
       if (!isValid) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
+
+      // Update lastLoginAt
+      await db
+        .update(adminUsers)
+        .set({ lastLoginAt: new Date() })
+        .where(eq(adminUsers.id, user.id));
 
       req.session.regenerate((err) => {
         if (err) {
@@ -3041,7 +3052,17 @@ These suggestions should be relevant to what was just discussed and help guide t
             console.error("Session save error:", saveErr);
             return res.status(500).json({ error: "Session save failed" });
           }
-          res.json({ success: true, user: { id: user.id, username: user.username, role: user.role, clientId: user.clientId } });
+          res.json({ 
+            success: true, 
+            forcePasswordChange: user.mustChangePassword ?? false,
+            user: { 
+              id: user.id, 
+              username: user.username, 
+              role: user.role, 
+              clientId: user.clientId,
+              mustChangePassword: user.mustChangePassword ?? false
+            } 
+          });
         });
       });
     } catch (error) {
@@ -3050,6 +3071,66 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
       console.error("Login error:", error);
       res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  // Change password endpoint - for forced password change flow
+  const changePasswordSchema = z.object({
+    newPassword: z.string().min(8, "Password must be at least 8 characters")
+      .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+      .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+      .regex(/[0-9]/, "Password must contain at least one number"),
+    confirmPassword: z.string(),
+  }).refine(data => data.newPassword === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
+  app.post("/api/auth/change-password", async (req, res) => {
+    try {
+      // Check if user is logged in
+      if (!req.session.userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const validatedData = changePasswordSchema.parse(req.body);
+      
+      // Get current user
+      const [user] = await db
+        .select()
+        .from(adminUsers)
+        .where(eq(adminUsers.id, req.session.userId))
+        .limit(1);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Hash new password
+      const passwordHash = await bcrypt.hash(validatedData.newPassword, 10);
+
+      // Update password and clear mustChangePassword flag
+      await db
+        .update(adminUsers)
+        .set({
+          passwordHash,
+          mustChangePassword: false,
+          lastLoginAt: new Date(),
+        })
+        .where(eq(adminUsers.id, user.id));
+
+      res.json({ 
+        success: true, 
+        message: "Password changed successfully",
+        redirect: user.role === 'super_admin' ? '/super-admin' : '/client/dashboard'
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const firstError = error.errors[0];
+        return res.status(400).json({ error: firstError.message });
+      }
+      console.error("Change password error:", error);
+      res.status(500).json({ error: "Failed to change password" });
     }
   });
 
@@ -3239,6 +3320,8 @@ These suggestions should be relevant to what was just discussed and help guide t
         id: adminUsers.id,
         username: adminUsers.username,
         role: adminUsers.role,
+        clientId: adminUsers.clientId,
+        mustChangePassword: adminUsers.mustChangePassword,
       }).from(adminUsers).where(eq(adminUsers.id, req.session.userId!)).limit(1);
       
       if (!user[0]) {
