@@ -122,10 +122,10 @@ app.use('/widget', cors(widgetCorsOptions));
 app.use('/api/widget', cors(widgetCorsOptions));
 
 // Security: Rate limiting to prevent abuse
-// Skip rate limiting for Stripe webhooks and health checks
+// In development mode, use higher limits to allow QA testing (isDev is declared above)
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per window
+  max: isDev ? 1000 : 100, // Higher limit in dev for testing
   message: { error: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -137,7 +137,7 @@ const apiLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // Limit each IP to 10 login attempts per window
+  max: isDev ? 100 : 10, // Higher limit in dev for testing
   message: { error: 'Too many login attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -145,7 +145,7 @@ const authLimiter = rateLimit({
 
 const chatLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: 30, // Limit each IP to 30 chat messages per minute
+  max: isDev ? 100 : 30, // Higher limit in dev for testing
   message: { error: 'Too many messages, please slow down.' },
   standardHeaders: true,
   legacyHeaders: false,

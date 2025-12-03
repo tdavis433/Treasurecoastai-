@@ -9368,7 +9368,7 @@ function ClientLoginsSectionPanel({ workspaces }: ClientLoginsSectionPanelProps)
             </p>
             <Button
               onClick={() => {
-                setCreateForm({ ...createForm, temporaryPassword: generatePassword() });
+                setCreateForm({ ...createForm, password: generatePassword() });
                 setShowCreateModal(true);
               }}
               className="mt-4 bg-cyan-500 hover:bg-cyan-600"
