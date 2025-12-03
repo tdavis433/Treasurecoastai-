@@ -4,6 +4,8 @@ interface Message {
   role: "assistant" | "user";
   content: string;
   suggestedReplies?: string[];
+  bookingUrl?: string | null;
+  paymentUrl?: string | null;
 }
 
 interface StreamingChatOptions {
@@ -25,7 +27,7 @@ export function useStreamingChat(options: StreamingChatOptions) {
   const sendMessage = useCallback(async (
     messages: Message[],
     onChunk?: (content: string) => void
-  ): Promise<{ content: string; suggestedReplies: string[] }> => {
+  ): Promise<{ content: string; suggestedReplies: string[]; bookingUrl?: string | null; paymentUrl?: string | null }> => {
     setIsStreaming(true);
     setStreamingContent("");
     onStreamStart?.();
@@ -58,6 +60,8 @@ export function useStreamingChat(options: StreamingChatOptions) {
         const decoder = new TextDecoder();
         let fullContent = "";
         let suggestedReplies: string[] = [];
+        let bookingUrl: string | null = null;
+        let paymentUrl: string | null = null;
 
         if (reader) {
           let buffer = "";
@@ -82,6 +86,8 @@ export function useStreamingChat(options: StreamingChatOptions) {
                     onChunk?.(parsed.content);
                   } else if (parsed.type === "done") {
                     suggestedReplies = parsed.suggestedReplies || [];
+                    bookingUrl = parsed.meta?.externalBookingUrl || null;
+                    paymentUrl = parsed.meta?.externalPaymentUrl || null;
                   } else if (parsed.type === "error") {
                     throw new Error(parsed.message);
                   }
@@ -99,7 +105,7 @@ export function useStreamingChat(options: StreamingChatOptions) {
         setStreamingContent("");
         onStreamEnd?.(suggestedReplies);
         
-        return { content: fullContent, suggestedReplies };
+        return { content: fullContent, suggestedReplies, bookingUrl, paymentUrl };
       } else {
         const data = await response.json();
         setIsStreaming(false);
@@ -108,7 +114,9 @@ export function useStreamingChat(options: StreamingChatOptions) {
         
         return { 
           content: data.reply || "", 
-          suggestedReplies: data.suggestedReplies || [] 
+          suggestedReplies: data.suggestedReplies || [],
+          bookingUrl: data.meta?.externalBookingUrl || null,
+          paymentUrl: data.meta?.externalPaymentUrl || null
         };
       }
     } catch (error) {
@@ -120,7 +128,7 @@ export function useStreamingChat(options: StreamingChatOptions) {
         throw error;
       }
       
-      return { content: "", suggestedReplies: [] };
+      return { content: "", suggestedReplies: [], bookingUrl: null, paymentUrl: null };
     }
   }, [clientId, botId, language, sessionId, onStreamStart, onStreamEnd, onError]);
 

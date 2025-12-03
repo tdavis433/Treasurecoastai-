@@ -1,4 +1,4 @@
-import { X, Send, Languages, RotateCcw, User } from "lucide-react";
+import { X, Send, Languages, RotateCcw, User, Calendar, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect, useRef, ReactNode } from "react";
@@ -8,6 +8,8 @@ interface Message {
   role: "assistant" | "user";
   content: string;
   suggestedReplies?: string[];
+  bookingUrl?: string | null;
+  paymentUrl?: string | null;
 }
 
 interface QuickAction {
@@ -34,6 +36,7 @@ interface ChatWindowProps {
   quickActions?: QuickAction[];
   onHumanHandoff?: () => void;
   showHumanHandoff?: boolean;
+  onBookingClick?: (url: string, type: 'booking' | 'payment') => void;
 }
 
 const defaultQuickActions: QuickAction[] = [
@@ -62,6 +65,7 @@ export default function ChatWindow({
   quickActions = defaultQuickActions,
   onHumanHandoff,
   showHumanHandoff = false,
+  onBookingClick,
 }: ChatWindowProps) {
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -171,6 +175,35 @@ export default function ChatWindow({
                 {message.content}
               </div>
             </div>
+            {message.role === "assistant" && message.bookingUrl && index === messages.length - 1 && !isLoading && (
+              <div className="flex flex-col gap-2 pl-2 mt-2">
+                <a
+                  href={message.bookingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => onBookingClick?.(message.bookingUrl!, 'booking')}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-cyan-600 text-white font-medium text-sm shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:from-cyan-600 hover:to-cyan-700 transition-all duration-200"
+                  data-testid="button-book-appointment"
+                >
+                  <Calendar className="h-4 w-4" />
+                  {language === "es" ? "Completar Reserva" : "Complete Booking"}
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+                {message.paymentUrl && (
+                  <a
+                    href={message.paymentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => onBookingClick?.(message.paymentUrl!, 'payment')}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-purple-600 text-white font-medium text-sm shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 hover:from-purple-600 hover:to-purple-700 transition-all duration-200"
+                    data-testid="button-payment"
+                  >
+                    {language === "es" ? "Proceder al Pago" : "Proceed to Payment"}
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
+              </div>
+            )}
             {message.role === "assistant" && message.suggestedReplies && message.suggestedReplies.length > 0 && index === messages.length - 1 && !isLoading && (
               <div className="flex flex-wrap gap-1.5 pl-2">
                 {message.suggestedReplies.map((reply, replyIndex) => (

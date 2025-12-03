@@ -55,6 +55,8 @@ interface BotConfig {
 interface Message {
   role: "assistant" | "user";
   content: string;
+  bookingUrl?: string;
+  paymentUrl?: string;
 }
 
 const businessTypeIcons: Record<string, React.ReactNode> = {
@@ -377,8 +379,13 @@ export default function DemoBotPage() {
       });
       return response.json();
     },
-    onSuccess: (data: { reply: string }) => {
-      setMessages(prev => [...prev, { role: "assistant", content: data.reply }]);
+    onSuccess: (data: { reply: string; meta?: { externalBookingUrl?: string; externalPaymentUrl?: string } }) => {
+      setMessages(prev => [...prev, { 
+        role: "assistant", 
+        content: data.reply,
+        bookingUrl: data.meta?.externalBookingUrl || undefined,
+        paymentUrl: data.meta?.externalPaymentUrl || undefined
+      }]);
     },
     onError: () => {
       setMessages(prev => [...prev, { 
