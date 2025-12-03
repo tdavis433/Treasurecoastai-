@@ -6569,6 +6569,189 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // =============================================
+  // CLIENT BOOKING ENDPOINTS (VIEW-ONLY)
+  // =============================================
+
+  // Get booking leads for client (view-only)
+  app.get("/api/client/bookings", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      const { status, search, limit, offset } = req.query;
+      
+      const result = await storage.getBookingLeads(clientId, {
+        status: status as string | undefined,
+        search: search as string | undefined,
+        limit: limit ? parseInt(limit as string) : 50,
+        offset: offset ? parseInt(offset as string) : 0,
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Get booking leads error:", error);
+      res.status(500).json({ error: "Failed to fetch booking leads" });
+    }
+  });
+
+  // Get booking analytics for client (view-only)
+  app.get("/api/client/bookings/analytics", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      const { startDate, endDate } = req.query;
+      
+      const analytics = await storage.getBookingAnalytics(
+        clientId,
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+      
+      res.json(analytics);
+    } catch (error) {
+      console.error("Get booking analytics error:", error);
+      res.status(500).json({ error: "Failed to fetch booking analytics" });
+    }
+  });
+
+  // Track booking link click (called from widget when user clicks booking URL)
+  app.post("/api/bookings/link-click", async (req, res) => {
+    try {
+      const { clientId, botId, sessionId, leadId, bookingUrl } = req.body;
+      
+      if (!clientId || !botId || !sessionId || !bookingUrl) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      
+      // Log the click event
+      await storage.logBookingLinkClickEvent({
+        clientId,
+        botId,
+        sessionId,
+        leadId,
+        bookingUrl
+      });
+      
+      // Update lead status if leadId provided
+      if (leadId) {
+        try {
+          await storage.updateLead(leadId, {
+            bookingStatus: 'redirected',
+            bookingUrlUsed: bookingUrl
+          });
+        } catch (e) {
+          console.warn("Failed to update lead status after link click:", e);
+        }
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Track booking link click error:", error);
+      res.status(500).json({ error: "Failed to track link click" });
+    }
+  });
+
+  // =============================================
+  // SUPER-ADMIN BOOKING URL MANAGEMENT
+  // =============================================
+
+  // Get client booking settings (super-admin only)
+  app.get("/api/super-admin/clients/:clientId/booking", requireSuperAdmin, async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      const settings = await storage.getSettings(clientId);
+      
+      res.json({
+        externalBookingUrl: settings?.externalBookingUrl || null,
+        externalPaymentUrl: settings?.externalPaymentUrl || null,
+      });
+    } catch (error) {
+      console.error("Get client booking settings error:", error);
+      res.status(500).json({ error: "Failed to fetch booking settings" });
+    }
+  });
+
+  // Update client booking settings (super-admin only)
+  app.patch("/api/super-admin/clients/:clientId/booking", requireSuperAdmin, async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      const { externalBookingUrl, externalPaymentUrl } = req.body;
+      
+      // Basic URL validation if provided
+      if (externalBookingUrl && typeof externalBookingUrl === 'string') {
+        try {
+          new URL(externalBookingUrl);
+        } catch {
+          return res.status(400).json({ error: "Invalid booking URL format" });
+        }
+      }
+      
+      if (externalPaymentUrl && typeof externalPaymentUrl === 'string') {
+        try {
+          new URL(externalPaymentUrl);
+        } catch {
+          return res.status(400).json({ error: "Invalid payment URL format" });
+        }
+      }
+      
+      const updates: any = {};
+      if (externalBookingUrl !== undefined) {
+        updates.externalBookingUrl = externalBookingUrl || null;
+      }
+      if (externalPaymentUrl !== undefined) {
+        updates.externalPaymentUrl = externalPaymentUrl || null;
+      }
+      
+      const updated = await storage.updateSettings(clientId, updates);
+      
+      res.json({
+        success: true,
+        externalBookingUrl: updated.externalBookingUrl,
+        externalPaymentUrl: updated.externalPaymentUrl,
+      });
+    } catch (error) {
+      console.error("Update client booking settings error:", error);
+      res.status(500).json({ error: "Failed to update booking settings" });
+    }
+  });
+
+  // Get booking leads for admin (super-admin access to any client)
+  app.get("/api/super-admin/clients/:clientId/bookings", requireSuperAdmin, async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      const { status, search, limit, offset } = req.query;
+      
+      const result = await storage.getBookingLeads(clientId, {
+        status: status as string | undefined,
+        search: search as string | undefined,
+        limit: limit ? parseInt(limit as string) : 50,
+        offset: offset ? parseInt(offset as string) : 0,
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Get admin booking leads error:", error);
+      res.status(500).json({ error: "Failed to fetch booking leads" });
+    }
+  });
+
+  // Get booking analytics for admin (super-admin access to any client)
+  app.get("/api/super-admin/clients/:clientId/bookings/analytics", requireSuperAdmin, async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      const { startDate, endDate } = req.query;
+      
+      const analytics = await storage.getBookingAnalytics(
+        clientId,
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+      
+      res.json(analytics);
+    } catch (error) {
+      console.error("Get admin booking analytics error:", error);
+      res.status(500).json({ error: "Failed to fetch booking analytics" });
+    }
+  });
+
+  // =============================================
   // SUPER-ADMIN ANALYTICS OVERVIEW
   // =============================================
 
