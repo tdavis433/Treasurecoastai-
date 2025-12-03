@@ -1,7 +1,7 @@
-# Treasure Coast AI - Agency-First AI Chatbot Platform
+# Treasure Coast AI - Agency-First AI Assistant Platform
 
 ## Overview
-Treasure Coast AI is an agency-first AI assistant platform designed to empower agencies to build and manage custom AI chatbots for local businesses. The core mission is to provide local businesses with a 24/7 AI assistant capable of capturing leads, booking appointments, and answering questions. Clients access a view-only dashboard to monitor results, while the agency handles all bot creation and management. The platform aims to be a premium, dark luxury SaaS with neon-glass accents, targeting the local business market with a streamlined, agency-managed solution for AI-driven customer interaction.
+Treasure Coast AI is an agency-first AI assistant platform designed to empower agencies to build and manage custom AI assistants for local businesses. The core mission is to provide local businesses with a 24/7 AI assistant capable of capturing leads, booking appointments, and answering questions. Clients access a view-only dashboard to monitor results, while the agency handles all bot creation and management. The platform aims to be a premium, dark luxury SaaS with neon-glass accents, targeting the local business market with a streamlined, agency-managed solution for AI-driven customer interaction.
 
 ## User Preferences
 Not specified.
@@ -22,7 +22,7 @@ The platform adopts a "Dark Luxury SaaS with Neon-Glass Accents" aesthetic, draw
 *   **Needs Review / Flagged Conversations System:** AI automatically flags conversations requiring admin attention (e.g., crisis, bot confusion, dissatisfaction, hot leads) for review in a dedicated dashboard.
 *   **Chat Widget:** Customizable, glassmorphism-designed widget with neon accents, smooth animations, and mobile responsiveness for client websites.
 *   **Client Analytics (View Only):** Provides conversation history, lead management, booking overviews, and simple settings (display-only).
-*   **Control Center (Admin Only):** Comprehensive platform management including client and assistant management, template galleries, global knowledge management, API key hub, billing, system logs, and user role management.
+*   **Super Admin Dashboard (`/super-admin`):** Single consolidated admin hub for complete platform management including client and assistant management, template galleries, global knowledge management, API key hub, billing, system logs, and user role management.
 *   **Assistant Editor (Bot Builder):** Tools for defining AI persona and system prompts, managing knowledge/content, setting up automations/flows, customizing channels & embeds, and a testing sandbox.
 
 ### Technical Implementation
