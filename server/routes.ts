@@ -1493,8 +1493,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const { clientId, botId } = paramsValidation.data;
       
-      // Phase 2.4: Validate widget token if provided (optional for backwards compatibility)
+      // Load bot configuration first to check security settings
+      const botConfig = await getBotConfigAsync(clientId, botId);
+      if (!botConfig) {
+        return res.status(404).json({ error: `Bot not found: ${clientId}/${botId}` });
+      }
+
+      // Phase 2.4: Widget token validation with security settings
       const authHeader = req.headers.authorization;
+      const isProduction = process.env.NODE_ENV === 'production';
+      const requireToken = botConfig.security?.requireWidgetToken ?? false;
+      
       if (authHeader?.startsWith('Bearer ')) {
         const token = authHeader.substring(7);
         const tokenResult = verifyWidgetToken(token);
@@ -1507,9 +1516,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (tokenResult.clientId !== clientId || tokenResult.botId !== botId) {
           return res.status(403).json({ error: 'Token mismatch - clientId/botId does not match token' });
         }
+      } else if (requireToken) {
+        // This bot requires a widget token - reject without one
+        return res.status(401).json({ 
+          error: 'Widget token required',
+          message: 'This bot requires authentication. Please obtain a token from /api/widget/config'
+        });
+      } else if (isProduction) {
+        // Log warning in production for requests without tokens
+        console.warn(`[SECURITY] Chat request without widget token for ${clientId}/${botId}`);
       }
-      // Note: Token validation is currently optional to maintain backwards compatibility
-      // Enable strict mode by checking if token is required for each client via settings
+      
+      // Domain validation if allowedDomains is configured
+      if (botConfig.security?.allowedDomains && botConfig.security.allowedDomains.length > 0) {
+        const origin = req.get('origin') || req.get('referer');
+        if (origin) {
+          try {
+            const originDomain = new URL(origin).hostname;
+            const isAllowed = botConfig.security.allowedDomains.some(domain => 
+              originDomain === domain || originDomain.endsWith(`.${domain}`)
+            );
+            if (!isAllowed) {
+              console.warn(`[SECURITY] Request from unauthorized domain ${originDomain} for ${clientId}/${botId}`);
+              return res.status(403).json({ 
+                error: 'Domain not authorized',
+                message: 'This widget is not authorized to run on this domain'
+              });
+            }
+          } catch {
+            // Invalid URL - log and continue
+            console.warn(`[SECURITY] Invalid origin header for ${clientId}/${botId}: ${origin}`);
+          }
+        }
+      }
       
       // Validate body
       const bodyValidation = validateRequest(chatBodySchema, req.body);
@@ -1518,11 +1557,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const { messages, sessionId, language } = bodyValidation.data;
 
-      // Load bot configuration (try database first, then JSON fallback)
-      const botConfig = await getBotConfigAsync(clientId, botId);
-      if (!botConfig) {
-        return res.status(404).json({ error: `Bot not found: ${clientId}/${botId}` });
-      }
+      // Note: botConfig already loaded above for security checks
 
       // Check client status - only allow active clients to use the bot
       const clientStatus = getClientStatus(clientId);

@@ -95,6 +95,15 @@ export interface BotAutomationConfig {
   };
 }
 
+export interface BotSecuritySettings {
+  requireWidgetToken?: boolean;
+  allowedDomains?: string[];
+  rateLimitOverride?: {
+    windowMs?: number;
+    maxRequests?: number;
+  };
+}
+
 export interface BotConfig {
   clientId: string;
   botId: string;
@@ -107,6 +116,7 @@ export interface BotConfig {
   automations?: BotAutomationConfig;
   personality?: BotPersonality;
   quickActions?: BotQuickAction[];
+  security?: BotSecuritySettings;
   metadata?: {
     isDemo: boolean;
     isTemplate?: boolean;
@@ -171,6 +181,11 @@ async function loadBotFromDatabase(botId: string): Promise<BotConfig | null> {
     const personality = (settingsRecord?.personality || {}) as BotPersonality;
     const quickActions = (settingsRecord?.quickActions || []) as BotQuickAction[];
     
+    // Extract security settings from botSettings metadata or dedicated field
+    const settingsMetadata = (settingsRecord?.metadata || {}) as Record<string, unknown>;
+    const securitySettings: BotSecuritySettings | undefined = settingsMetadata.security ? 
+      settingsMetadata.security as BotSecuritySettings : undefined;
+    
     const config: BotConfig = {
       clientId: workspaceRecord?.slug || botRecord.workspaceId,
       botId: botRecord.botId,
@@ -191,6 +206,7 @@ async function loadBotFromDatabase(botId: string): Promise<BotConfig | null> {
       automations,
       personality,
       quickActions,
+      security: securitySettings,
       metadata: {
         isDemo: botRecord.isDemo,
         createdAt: botRecord.createdAt.toISOString().split('T')[0],

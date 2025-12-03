@@ -33,6 +33,12 @@ The platform adopts a "Dark Luxury SaaS with Neon-Glass Accents" aesthetic, draw
 *   **Payments:** Stripe integration.
 *   **Authentication:** Admin accounts (`/super-admin`) and client accounts (`/client/dashboard`) with view-only access.
 *   **API Endpoints:** Structured for core chat interactions, widget configuration, and protected routes for admin and client dashboards to manage clients, bots, analytics, conversations, leads, and stats.
+*   **Security:**
+    - Rate limiting: General API (100 req/15min), Auth (10 req/15min), Chat (30 req/min)
+    - Widget tokens: HMAC-signed tokens with expiration for widget authentication
+    - Per-bot security settings: `requireWidgetToken`, `allowedDomains` via BotSecuritySettings
+    - Domain validation: Origin/Referer checking against allowlist
+    - Helmet for secure HTTP headers and CSP
 
 ## External Dependencies
 *   **OpenAI GPT-4:** For AI engine and conversation analysis.
