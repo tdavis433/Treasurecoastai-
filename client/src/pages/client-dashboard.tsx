@@ -57,11 +57,13 @@ import {
   Filter,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   CheckCircle2,
   PhoneCall,
   User,
   Loader2,
   Palette,
+  ExternalLink,
 } from "lucide-react";
 import {
   Select,
@@ -217,6 +219,14 @@ interface TopQuestion {
   percentage: number;
 }
 
+interface BookingAnalytics {
+  totalBookingIntents: number;
+  totalLinkClicks: number;
+  pendingBookings: number;
+  completedBookings: number;
+  dailyTrends: { date: string; intents: number; clicks: number }[];
+}
+
 type SectionType = 'overview' | 'conversations' | 'leads' | 'bookings' | 'settings';
 
 const LEAD_STATUS_OPTIONS = [
@@ -347,6 +357,23 @@ export default function ClientDashboard() {
     queryFn: async () => {
       const response = await fetch(`/api/client/analytics/top-questions?days=30&limit=8`, { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch top questions");
+      return response.json();
+    },
+    enabled: !!currentUser,
+  });
+
+  // Booking analytics data (booking intents, link clicks, redirects)
+  const { data: bookingAnalytics, isLoading: bookingAnalyticsLoading } = useQuery<BookingAnalytics>({
+    queryKey: ["/api/client/bookings/analytics", bookingsDateRange],
+    queryFn: async () => {
+      const days = bookingsDateRange === '7' ? 7 : bookingsDateRange === '30' ? 30 : 90;
+      const endDate = new Date().toISOString();
+      const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+      const url = bookingsDateRange === 'all' 
+        ? `/api/client/bookings/analytics`
+        : `/api/client/bookings/analytics?startDate=${startDate}&endDate=${endDate}`;
+      const response = await fetch(url, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch booking analytics");
       return response.json();
     },
     enabled: !!currentUser,
@@ -1764,10 +1791,35 @@ export default function ClientDashboard() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-white mb-2">Bookings</h2>
-        <p className="text-white/60">Appointment requests your assistant has collected from visitors</p>
+        <p className="text-white/60">Booking activity and appointment requests from your AI assistant</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Booking Flow Analytics */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <GlassCard data-testid="card-booking-intents">
+          <GlassCardContent className="pt-6 text-center">
+            <div className="h-12 w-12 rounded-xl bg-cyan-500/20 flex items-center justify-center mx-auto mb-3">
+              <MessageSquare className="h-6 w-6 text-cyan-400" />
+            </div>
+            <div className="text-3xl font-bold text-cyan-400">
+              {bookingAnalyticsLoading ? '...' : bookingAnalytics?.totalBookingIntents || 0}
+            </div>
+            <p className="text-sm text-white/60 mt-1">Booking Intents</p>
+            <p className="text-xs text-white/40 mt-1">AI detected interest</p>
+          </GlassCardContent>
+        </GlassCard>
+        <GlassCard data-testid="card-link-clicks">
+          <GlassCardContent className="pt-6 text-center">
+            <div className="h-12 w-12 rounded-xl bg-purple-500/20 flex items-center justify-center mx-auto mb-3">
+              <ExternalLink className="h-6 w-6 text-purple-400" />
+            </div>
+            <div className="text-3xl font-bold text-purple-400">
+              {bookingAnalyticsLoading ? '...' : bookingAnalytics?.totalLinkClicks || 0}
+            </div>
+            <p className="text-sm text-white/60 mt-1">Link Clicks</p>
+            <p className="text-xs text-white/40 mt-1">Redirected to book</p>
+          </GlassCardContent>
+        </GlassCard>
         <GlassCard data-testid="card-pending-bookings">
           <GlassCardContent className="pt-6 text-center">
             <div className="h-12 w-12 rounded-xl bg-amber-500/20 flex items-center justify-center mx-auto mb-3">
@@ -1775,6 +1827,7 @@ export default function ClientDashboard() {
             </div>
             <div className="text-3xl font-bold text-amber-400">{pendingBookings}</div>
             <p className="text-sm text-white/60 mt-1">Pending</p>
+            <p className="text-xs text-white/40 mt-1">Awaiting action</p>
           </GlassCardContent>
         </GlassCard>
         <GlassCard data-testid="card-confirmed-bookings">
@@ -1784,18 +1837,72 @@ export default function ClientDashboard() {
             </div>
             <div className="text-3xl font-bold text-green-400">{completedBookings}</div>
             <p className="text-sm text-white/60 mt-1">Confirmed</p>
+            <p className="text-xs text-white/40 mt-1">Completed bookings</p>
           </GlassCardContent>
         </GlassCard>
         <GlassCard data-testid="card-total-bookings">
           <GlassCardContent className="pt-6 text-center">
-            <div className="h-12 w-12 rounded-xl bg-purple-500/20 flex items-center justify-center mx-auto mb-3">
-              <Calendar className="h-6 w-6 text-purple-400" />
+            <div className="h-12 w-12 rounded-xl bg-white/10 flex items-center justify-center mx-auto mb-3">
+              <Calendar className="h-6 w-6 text-white/70" />
             </div>
             <div className="text-3xl font-bold text-white">{pendingBookings + completedBookings}</div>
             <p className="text-sm text-white/60 mt-1">Total Requests</p>
+            <p className="text-xs text-white/40 mt-1">All bookings</p>
           </GlassCardContent>
         </GlassCard>
       </div>
+
+      {/* Conversion funnel info */}
+      {bookingAnalytics && bookingAnalytics.totalBookingIntents > 0 && (
+        <GlassCard data-testid="card-booking-funnel">
+          <GlassCardHeader>
+            <GlassCardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-cyan-400" />
+              Booking Funnel
+            </GlassCardTitle>
+            <GlassCardDescription>
+              How visitors progress through the booking flow
+            </GlassCardDescription>
+          </GlassCardHeader>
+          <GlassCardContent>
+            <div className="flex items-center justify-between gap-4 text-sm">
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-white/70">Intent Detection</span>
+                  <span className="text-cyan-400 font-medium">{bookingAnalytics.totalBookingIntents}</span>
+                </div>
+                <Progress value={100} className="h-2 bg-white/10" />
+              </div>
+              <ChevronRight className="h-4 w-4 text-white/30" />
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-white/70">Link Clicks</span>
+                  <span className="text-purple-400 font-medium">{bookingAnalytics.totalLinkClicks}</span>
+                </div>
+                <Progress 
+                  value={bookingAnalytics.totalBookingIntents > 0 
+                    ? (bookingAnalytics.totalLinkClicks / bookingAnalytics.totalBookingIntents) * 100 
+                    : 0} 
+                  className="h-2 bg-white/10" 
+                />
+              </div>
+              <ChevronRight className="h-4 w-4 text-white/30" />
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-white/70">Confirmed</span>
+                  <span className="text-green-400 font-medium">{bookingAnalytics.completedBookings}</span>
+                </div>
+                <Progress 
+                  value={bookingAnalytics.totalBookingIntents > 0 
+                    ? (bookingAnalytics.completedBookings / bookingAnalytics.totalBookingIntents) * 100 
+                    : 0} 
+                  className="h-2 bg-white/10" 
+                />
+              </div>
+            </div>
+          </GlassCardContent>
+        </GlassCard>
+      )}
 
       <GlassCard data-testid="card-bookings-list">
         <GlassCardHeader>
