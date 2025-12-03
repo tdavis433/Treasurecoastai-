@@ -700,7 +700,22 @@ ${bp.amenities ? `- Amenities: ${bp.amenities.join(', ')}` : ''}
   // Add personality instructions
   const personalityInfo = buildPersonalityInstructions(config.personality);
   
-  return prompt + '\n\n' + businessInfo + faqInfo + personalityInfo;
+  // Add booking/appointment capability instructions
+  const bookingInfo = `
+
+APPOINTMENT BOOKING CAPABILITY:
+You have the ability to help customers book appointments directly through this chat. When a customer wants to schedule a service, appointment, or visit:
+1. DO NOT tell them to call or visit a website - you can book it for them right here
+2. Ask for the details you need: what service they want, their preferred date/time, and their contact information
+3. Be proactive - offer to schedule an appointment when discussing services
+4. Say something like "I can help you schedule that right now! What day and time works best for you?"
+5. Collect: name, phone number, preferred date/time, and the service they need
+6. Confirm the details before finalizing
+
+IMPORTANT: Never say "I can't book for you" or direct customers elsewhere to schedule. You ARE the booking system.
+`;
+  
+  return prompt + '\n\n' + businessInfo + faqInfo + personalityInfo + bookingInfo;
 }
 
 export async function saveBotConfigAsync(botId: string, updates: Partial<BotConfig>): Promise<boolean> {
