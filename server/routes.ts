@@ -904,6 +904,8 @@ interface ConversationAnalysis {
   sentiment: 'positive' | 'neutral' | 'negative' | 'urgent';
   bookingIntent: boolean;
   leadQuality: 'hot' | 'warm' | 'cold';
+  needsReview: boolean;
+  reviewReason: string | null;
 }
 
 async function analyzeConversation(
@@ -938,6 +940,17 @@ async function analyzeConversation(
 - sentiment: Overall sentiment - "positive", "neutral", "negative", or "urgent"
 - bookingIntent: Boolean - true if visitor wants to schedule/book something
 - leadQuality: "hot" (ready to buy/book now), "warm" (interested, needs more info), or "cold" (just browsing)
+- needsReview: Boolean - true if this conversation needs human admin review
+- reviewReason: String explaining why review is needed, or null if not needed
+
+Set needsReview to TRUE if:
+1. Visitor expresses crisis, emergency, distress, or safety concerns
+2. Visitor asks questions the bot couldn't answer or seemed confused about
+3. Visitor expresses frustration, anger, or strong dissatisfaction
+4. Bot gave conflicting or potentially incorrect information
+5. Visitor mentions legal issues, complaints, or threats
+6. Lead is "hot" (high-value opportunity requiring prompt follow-up)
+7. Visitor requests to speak with a human or manager
 
 Return ONLY valid JSON, no other text.`
         },
@@ -946,7 +959,7 @@ Return ONLY valid JSON, no other text.`
           content: `Analyze this conversation:\n\n${conversationText}`
         }
       ],
-      max_completion_tokens: 300,
+      max_completion_tokens: 350,
       response_format: { type: "json_object" }
     });
 
@@ -1818,7 +1831,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Update session with AI analysis - fetch fresh session state to avoid race conditions
           if (analysis) {
             // Fetch latest session state to avoid overwriting concurrent updates
-            const freshSession = await storage.getChatSession(actualSessionId);
+            const freshSession = await storage.getChatSession(actualSessionId, clientId, botId);
             const freshMetadata = (freshSession?.metadata as Record<string, unknown>) || {};
             
             const updatedMetadata = {
@@ -1835,12 +1848,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
               sessionId: actualSessionId,
               clientId,
               botId,
-              messages: freshSession?.messages || [],
               appointmentRequested: analysis.bookingIntent || freshSession?.appointmentRequested || false,
               topics: freshSession?.topics as string[] || [],
-              metadata: updatedMetadata
+              metadata: updatedMetadata,
+              needsReview: analysis.needsReview,
+              reviewReason: analysis.reviewReason
             });
-            console.log(`[AI Analysis] Session ${actualSessionId} enriched with AI summary`);
+            
+            if (analysis.needsReview) {
+              console.log(`[AI Analysis] Session ${actualSessionId} FLAGGED for review: ${analysis.reviewReason}`);
+            } else {
+              console.log(`[AI Analysis] Session ${actualSessionId} enriched with AI summary`);
+            }
           }
           
           // Capture lead with AI insights
@@ -2052,7 +2071,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           
           // Update session with AI analysis - fetch fresh session state to avoid race conditions
           if (analysis) {
-            const freshSession = await storage.getChatSession(actualSessionId);
+            const freshSession = await storage.getChatSession(actualSessionId, clientId, botId);
             const freshMetadata = (freshSession?.metadata as Record<string, unknown>) || {};
             
             const updatedMetadata = {
@@ -2069,12 +2088,18 @@ These suggestions should be relevant to what was just discussed and help guide t
               sessionId: actualSessionId,
               clientId,
               botId,
-              messages: freshSession?.messages || [],
               appointmentRequested: analysis.bookingIntent || freshSession?.appointmentRequested || false,
               topics: freshSession?.topics as string[] || [],
-              metadata: updatedMetadata
+              metadata: updatedMetadata,
+              needsReview: analysis.needsReview,
+              reviewReason: analysis.reviewReason
             });
-            console.log(`[AI Analysis] Streaming session ${actualSessionId} enriched`);
+            
+            if (analysis.needsReview) {
+              console.log(`[AI Analysis] Streaming session ${actualSessionId} FLAGGED for review: ${analysis.reviewReason}`);
+            } else {
+              console.log(`[AI Analysis] Streaming session ${actualSessionId} enriched`);
+            }
           }
           
           // Capture lead with AI insights
@@ -7434,6 +7459,132 @@ These suggestions should be relevant to what was just discussed and help guide t
     } catch (error) {
       console.error("Get recent invoices error:", error);
       res.status(500).json({ error: "Failed to get recent invoices" });
+    }
+  });
+
+  // =============================================
+  // NEEDS REVIEW / FLAGGED CONVERSATIONS API
+  // =============================================
+
+  // Get all flagged conversations that need admin review
+  app.get("/api/super-admin/needs-review", requireSuperAdmin, async (req, res) => {
+    try {
+      const { clientId, status, limit = '50' } = req.query;
+      
+      const flaggedConversations = await storage.getFlaggedConversations({
+        clientId: clientId as string,
+        status: status as string,
+        limit: parseInt(limit as string)
+      });
+      
+      res.json({ conversations: flaggedConversations });
+    } catch (error) {
+      console.error("Get flagged conversations error:", error);
+      res.status(500).json({ error: "Failed to get flagged conversations" });
+    }
+  });
+
+  // Get count of pending reviews
+  app.get("/api/super-admin/needs-review/count", requireSuperAdmin, async (req, res) => {
+    try {
+      const count = await storage.getFlaggedConversationsCount();
+      res.json({ count });
+    } catch (error) {
+      console.error("Get flagged count error:", error);
+      res.status(500).json({ error: "Failed to get count" });
+    }
+  });
+
+  // Mark a conversation as reviewed
+  app.post("/api/super-admin/needs-review/:sessionId/review", requireSuperAdmin, async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      const { adminNotes, action } = req.body; // action: 'resolved', 'add_to_faq', 'update_knowledge'
+      const adminUser = (req.session as any).user;
+      
+      await storage.markConversationReviewed(sessionId, {
+        reviewedBy: adminUser?.username || 'admin',
+        adminNotes,
+        action
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Mark reviewed error:", error);
+      res.status(500).json({ error: "Failed to mark as reviewed" });
+    }
+  });
+
+  // Dismiss a flagged conversation (mark as not needing review)
+  app.post("/api/super-admin/needs-review/:sessionId/dismiss", requireSuperAdmin, async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      const adminUser = (req.session as any).user;
+      
+      await storage.dismissFlaggedConversation(sessionId, adminUser?.username || 'admin');
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Dismiss flagged error:", error);
+      res.status(500).json({ error: "Failed to dismiss" });
+    }
+  });
+
+  // Get conversation messages for review
+  app.get("/api/super-admin/sessions/:sessionId/messages", requireSuperAdmin, async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      
+      const messages = await storage.getSessionMessages(sessionId);
+      const session = await storage.getSessionById(sessionId);
+      
+      res.json({ messages, session });
+    } catch (error) {
+      console.error("Get session messages error:", error);
+      res.status(500).json({ error: "Failed to get messages" });
+    }
+  });
+
+  // Admin notes for clients
+  app.get("/api/super-admin/clients/:clientId/notes", requireSuperAdmin, async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      const notes = await storage.getClientNotes(clientId);
+      res.json({ notes });
+    } catch (error) {
+      console.error("Get client notes error:", error);
+      res.status(500).json({ error: "Failed to get notes" });
+    }
+  });
+
+  app.post("/api/super-admin/clients/:clientId/notes", requireSuperAdmin, async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      const { content, category } = req.body;
+      const adminUser = (req.session as any).user;
+      
+      const note = await storage.addClientNote({
+        clientId,
+        content,
+        category,
+        createdBy: adminUser?.username || 'admin'
+      });
+      
+      res.json({ note });
+    } catch (error) {
+      console.error("Add client note error:", error);
+      res.status(500).json({ error: "Failed to add note" });
+    }
+  });
+
+  app.delete("/api/super-admin/clients/:clientId/notes/:noteId", requireSuperAdmin, async (req, res) => {
+    try {
+      const { noteId } = req.params;
+      await storage.deleteClientNote(noteId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete client note error:", error);
+      res.status(500).json({ error: "Failed to delete note" });
     }
   });
 

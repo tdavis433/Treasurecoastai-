@@ -13,7 +13,7 @@ import {
   Trash2, Plus, X, Sparkles, Building2, Calendar, ClipboardList, Edit2, 
   GripVertical, ChevronDown, ChevronUp, Save, Phone, Mail, Globe, MapPin,
   BarChart3, MessageSquare, Users, Zap, AlertTriangle, DollarSign, CreditCard,
-  TrendingUp, TrendingDown, ExternalLink
+  TrendingUp, TrendingDown, ExternalLink, Flag, Eye, CheckCircle, RefreshCw, StickyNote
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
@@ -216,6 +216,31 @@ interface AuthUser {
   role: 'super_admin' | 'client_admin';
 }
 
+interface FlaggedConversation {
+  id: string;
+  sessionId: string;
+  clientId: string;
+  botId: string;
+  startedAt: string;
+  userMessageCount: number;
+  needsReview: boolean;
+  reviewReason: string | null;
+  metadata: {
+    aiSummary?: string;
+    userIntent?: string;
+    sentiment?: string;
+    leadQuality?: string;
+  };
+}
+
+interface NeedsReviewData {
+  conversations: FlaggedConversation[];
+}
+
+interface NeedsReviewCount {
+  count: number;
+}
+
 export default function SuperAdmin() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -296,6 +321,18 @@ export default function SuperAdmin() {
   const { data: billingOverview, isLoading: billingLoading } = useQuery<BillingOverview>({
     queryKey: ["/api/super-admin/billing/overview"],
     enabled: currentUser?.role === "super_admin",
+  });
+
+  // Needs Review / Flagged conversations
+  const { data: needsReviewData, isLoading: needsReviewLoading, refetch: refetchNeedsReview } = useQuery<NeedsReviewData>({
+    queryKey: ["/api/super-admin/needs-review"],
+    enabled: currentUser?.role === "super_admin",
+  });
+
+  const { data: needsReviewCount } = useQuery<NeedsReviewCount>({
+    queryKey: ["/api/super-admin/needs-review/count"],
+    enabled: currentUser?.role === "super_admin",
+    refetchInterval: 60000, // Refresh count every minute
   });
 
   const [generalForm, setGeneralForm] = useState<Partial<GeneralSettings>>({});
@@ -500,6 +537,40 @@ export default function SuperAdmin() {
     },
   });
 
+  // Dismiss flagged conversation mutation
+  const dismissFlaggedMutation = useMutation({
+    mutationFn: async (sessionId: string) => {
+      const response = await apiRequest("POST", `/api/super-admin/needs-review/${sessionId}/dismiss`, {});
+      if (!response.ok) throw new Error("Failed to dismiss");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/needs-review"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/needs-review/count"] });
+      toast({ title: "Dismissed", description: "Conversation removed from review queue." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to dismiss conversation.", variant: "destructive" });
+    },
+  });
+
+  // Mark as reviewed mutation
+  const markReviewedMutation = useMutation({
+    mutationFn: async ({ sessionId, adminNotes }: { sessionId: string; adminNotes?: string }) => {
+      const response = await apiRequest("POST", `/api/super-admin/needs-review/${sessionId}/review`, { adminNotes });
+      if (!response.ok) throw new Error("Failed to mark as reviewed");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/needs-review"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/needs-review/count"] });
+      toast({ title: "Reviewed", description: "Conversation marked as reviewed." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to mark as reviewed.", variant: "destructive" });
+    },
+  });
+
   const updateMutation = useMutation({
     mutationFn: async (data: Partial<ClientSettings>) => {
       const response = await apiRequest("PATCH", "/api/settings", data);
@@ -663,6 +734,150 @@ export default function SuperAdmin() {
             </Select>
           </div>
         </div>
+
+        {/* NEEDS REVIEW SECTION - Priority Admin Action */}
+        {(needsReviewCount?.count || 0) > 0 && (
+          <GlassCard className="border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-orange-500/5">
+            <GlassCardHeader className="flex flex-row items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-amber-500/20">
+                  <Flag className="h-5 w-5 text-amber-400" />
+                </div>
+                <div>
+                  <GlassCardTitle className="flex items-center gap-2">
+                    Needs Your Review
+                    <NeonBadge variant="danger" className="text-xs animate-pulse">
+                      {needsReviewCount?.count || 0} pending
+                    </NeonBadge>
+                  </GlassCardTitle>
+                  <GlassCardDescription>Conversations that need admin attention</GlassCardDescription>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refetchNeedsReview()}
+                className="text-white/70 border-white/20"
+                data-testid="button-refresh-review"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
+            </GlassCardHeader>
+            <GlassCardContent>
+              {needsReviewLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Sparkles className="h-5 w-5 animate-pulse text-cyan-400" />
+                  <span className="ml-2 text-white/55">Loading...</span>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {needsReviewData?.conversations?.slice(0, 5).map((conv) => {
+                    const client = clients?.find(c => c.id === conv.clientId);
+                    const bot = allBots?.find(b => b.botId === conv.botId);
+                    return (
+                      <div 
+                        key={conv.id}
+                        className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-amber-400/30 transition-colors"
+                        data-testid={`flagged-conv-${conv.sessionId}`}
+                      >
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-white truncate">
+                                {bot?.businessName || conv.botId}
+                              </span>
+                              <span className="text-white/40">•</span>
+                              <span className="text-sm text-white/55">
+                                {client?.name || conv.clientId}
+                              </span>
+                              {conv.metadata?.sentiment && (
+                                <NeonBadge 
+                                  variant={
+                                    conv.metadata.sentiment === 'positive' ? 'success' : 
+                                    conv.metadata.sentiment === 'negative' ? 'danger' : 
+                                    conv.metadata.sentiment === 'urgent' ? 'danger' : 
+                                    'default'
+                                  } 
+                                  className="text-xs"
+                                >
+                                  {conv.metadata.sentiment}
+                                </NeonBadge>
+                              )}
+                              {conv.metadata?.leadQuality && (
+                                <NeonBadge 
+                                  variant={conv.metadata.leadQuality === 'hot' ? 'success' : 'default'} 
+                                  className="text-xs"
+                                >
+                                  {conv.metadata.leadQuality} lead
+                                </NeonBadge>
+                              )}
+                            </div>
+                            {conv.metadata?.aiSummary && (
+                              <p className="text-sm text-white/60 mt-1 line-clamp-2">
+                                {conv.metadata.aiSummary}
+                              </p>
+                            )}
+                            {conv.reviewReason && (
+                              <p className="text-xs text-amber-400/80 mt-1">
+                                Reason: {conv.reviewReason}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-3 mt-2 text-xs text-white/40">
+                              <span>{conv.userMessageCount} messages</span>
+                              <span>•</span>
+                              <span>{new Date(conv.startedAt).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setLocation(`/admin/inbox?session=${conv.sessionId}`)}
+                              className="text-cyan-400 border-cyan-400/30 hover:bg-cyan-400/10"
+                              data-testid={`button-view-${conv.sessionId}`}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              View
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => markReviewedMutation.mutate({ sessionId: conv.sessionId })}
+                              className="text-green-400 border-green-400/30 hover:bg-green-400/10"
+                              disabled={markReviewedMutation.isPending}
+                              data-testid={`button-resolve-${conv.sessionId}`}
+                            >
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              Resolved
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => dismissFlaggedMutation.mutate(conv.sessionId)}
+                              className="text-white/40 hover:text-white/70"
+                              disabled={dismissFlaggedMutation.isPending}
+                              data-testid={`button-dismiss-${conv.sessionId}`}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {(needsReviewData?.conversations?.length || 0) > 5 && (
+                    <div className="text-center pt-2">
+                      <p className="text-sm text-white/40">
+                        Showing 5 of {needsReviewData?.conversations?.length} flagged conversations
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </GlassCardContent>
+          </GlassCard>
+        )}
 
         {/* All Chatbots - Individual Listing */}
         <GlassCard>

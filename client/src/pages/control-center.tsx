@@ -71,7 +71,7 @@ import {
   TrendingUp, Users2, AlertCircle, Activity, RefreshCw, Download, Layers,
   Shield, FileWarning, CheckCircle2, XCircle, Filter, Calendar, UserPlus,
   MoreVertical, MoreHorizontal, Workflow, Palette, ChevronDown, SendHorizontal, MessageCircle,
-  CheckCircle, PauseCircle, LayoutGrid, List, Crown, User, HelpCircle
+  CheckCircle, PauseCircle, LayoutGrid, List, Crown, User, HelpCircle, Flag
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -192,7 +192,7 @@ export default function ControlCenter() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
-  const [dashboardSection, setDashboardSection] = useState<'overview' | 'workspaces' | 'assistants' | 'templates' | 'knowledge' | 'integrations' | 'billing' | 'analytics' | 'logs' | 'users'>('overview');
+  const [dashboardSection, setDashboardSection] = useState<'overview' | 'workspaces' | 'assistants' | 'templates' | 'knowledge' | 'integrations' | 'billing' | 'analytics' | 'logs' | 'users' | 'requests'>('overview');
   const [logFilters, setLogFilters] = useState({ level: 'all', source: 'all', isResolved: 'all', clientId: 'all' });
   const [analyticsRange, setAnalyticsRange] = useState<number>(7);
   const [selectedBots, setSelectedBots] = useState<Set<string>>(new Set());
@@ -390,6 +390,70 @@ export default function ControlCenter() {
     queryKey: ["/api/super-admin/analytics/recent-activity"],
     enabled: currentUser?.role === "super_admin" && dashboardSection === 'analytics',
     refetchInterval: 30000,
+  });
+
+  // Needs Review / Flagged Conversations
+  const { data: needsReviewData, isLoading: needsReviewLoading, refetch: refetchNeedsReview } = useQuery<{
+    conversations: Array<{
+      id: string;
+      sessionId: string;
+      clientId: string;
+      botId: string;
+      startedAt: string;
+      userMessageCount: number;
+      needsReview: boolean;
+      reviewReason: string | null;
+      metadata: {
+        aiSummary?: string;
+        userIntent?: string;
+        sentiment?: string;
+        leadQuality?: string;
+      };
+    }>;
+  }>({
+    queryKey: ["/api/super-admin/needs-review"],
+    enabled: currentUser?.role === "super_admin",
+    refetchInterval: 60000, // Refresh every minute
+  });
+
+  const { data: needsReviewCount } = useQuery<{ count: number }>({
+    queryKey: ["/api/super-admin/needs-review/count"],
+    enabled: currentUser?.role === "super_admin",
+    refetchInterval: 60000,
+  });
+
+  // Dismiss flagged conversation mutation
+  const dismissFlaggedMutation = useMutation({
+    mutationFn: async (sessionId: string) => {
+      const response = await apiRequest("POST", `/api/super-admin/needs-review/${sessionId}/dismiss`, {});
+      if (!response.ok) throw new Error("Failed to dismiss");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/needs-review"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/needs-review/count"] });
+      toast({ title: "Dismissed", description: "Conversation removed from review queue." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to dismiss conversation.", variant: "destructive" });
+    },
+  });
+
+  // Mark as reviewed mutation
+  const markReviewedMutation = useMutation({
+    mutationFn: async ({ sessionId, adminNotes }: { sessionId: string; adminNotes?: string }) => {
+      const response = await apiRequest("POST", `/api/super-admin/needs-review/${sessionId}/review`, { adminNotes });
+      if (!response.ok) throw new Error("Failed to mark as reviewed");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/needs-review"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/needs-review/count"] });
+      toast({ title: "Reviewed", description: "Conversation marked as reviewed." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to mark as reviewed.", variant: "destructive" });
+    },
   });
 
   // Filter out pure template bots - show real client bots AND demo bots
@@ -966,6 +1030,148 @@ export default function ControlCenter() {
 
               {dashboardSection === 'overview' && (
               <>
+              {/* NEEDS REVIEW SECTION - Priority Admin Action */}
+              {(needsReviewCount?.count || 0) > 0 && (
+                <GlassCard className="border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-orange-500/5 mb-6">
+                  <GlassCardHeader className="flex flex-row items-start justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-amber-500/20">
+                        <Flag className="h-5 w-5 text-amber-400" />
+                      </div>
+                      <div>
+                        <GlassCardTitle className="flex items-center gap-2">
+                          Needs Your Review
+                          <Badge className="bg-red-500/20 text-red-400 text-xs animate-pulse">
+                            {needsReviewCount?.count || 0} pending
+                          </Badge>
+                        </GlassCardTitle>
+                        <GlassCardDescription>Conversations that need admin attention</GlassCardDescription>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => refetchNeedsReview()}
+                      className="border-white/20 text-white/70"
+                      data-testid="button-refresh-review"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Refresh
+                    </Button>
+                  </GlassCardHeader>
+                  <GlassCardContent>
+                    {needsReviewLoading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <RefreshCw className="h-5 w-5 animate-spin text-cyan-400" />
+                        <span className="ml-2 text-white/55">Loading...</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {needsReviewData?.conversations?.slice(0, 5).map((conv) => {
+                          const client = clients?.find(c => c.id === conv.clientId);
+                          const bot = allBots?.find(b => b.botId === conv.botId);
+                          return (
+                            <div 
+                              key={conv.id}
+                              className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-amber-400/30 transition-colors"
+                              data-testid={`flagged-conv-${conv.sessionId}`}
+                            >
+                              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-medium text-white truncate">
+                                      {bot?.businessProfile?.businessName || bot?.name || conv.botId}
+                                    </span>
+                                    <span className="text-white/40">•</span>
+                                    <span className="text-sm text-white/55">
+                                      {client?.name || conv.clientId}
+                                    </span>
+                                    {conv.metadata?.sentiment && (
+                                      <Badge 
+                                        className={
+                                          conv.metadata.sentiment === 'positive' ? 'bg-green-500/20 text-green-400' : 
+                                          conv.metadata.sentiment === 'negative' ? 'bg-red-500/20 text-red-400' : 
+                                          conv.metadata.sentiment === 'urgent' ? 'bg-red-500/20 text-red-400' : 
+                                          'bg-white/10 text-white/60'
+                                        }
+                                      >
+                                        {conv.metadata.sentiment}
+                                      </Badge>
+                                    )}
+                                    {conv.metadata?.leadQuality && (
+                                      <Badge 
+                                        className={conv.metadata.leadQuality === 'hot' ? 'bg-green-500/20 text-green-400' : 'bg-white/10 text-white/60'}
+                                      >
+                                        {conv.metadata.leadQuality} lead
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  {conv.metadata?.aiSummary && (
+                                    <p className="text-sm text-white/60 mt-1 line-clamp-2">
+                                      {conv.metadata.aiSummary}
+                                    </p>
+                                  )}
+                                  {conv.reviewReason && (
+                                    <p className="text-xs text-amber-400/80 mt-1">
+                                      Reason: {conv.reviewReason}
+                                    </p>
+                                  )}
+                                  <div className="flex items-center gap-3 mt-2 text-xs text-white/40">
+                                    <span>{conv.userMessageCount} messages</span>
+                                    <span>•</span>
+                                    <span>{new Date(conv.startedAt).toLocaleDateString()}</span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setLocation(`/admin/inbox?session=${conv.sessionId}`)}
+                                    className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
+                                    data-testid={`button-view-${conv.sessionId}`}
+                                  >
+                                    <Eye className="h-4 w-4 mr-1" />
+                                    View
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => markReviewedMutation.mutate({ sessionId: conv.sessionId })}
+                                    className="border-green-500/30 text-green-400 hover:bg-green-500/10"
+                                    disabled={markReviewedMutation.isPending}
+                                    data-testid={`button-resolve-${conv.sessionId}`}
+                                  >
+                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                    Resolved
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => dismissFlaggedMutation.mutate(conv.sessionId)}
+                                    className="text-white/40 hover:text-white/70"
+                                    disabled={dismissFlaggedMutation.isPending}
+                                    data-testid={`button-dismiss-${conv.sessionId}`}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {(needsReviewData?.conversations?.length || 0) > 5 && (
+                          <div className="text-center pt-2">
+                            <p className="text-sm text-white/40">
+                              Showing 5 of {needsReviewData?.conversations?.length} flagged conversations
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </GlassCardContent>
+                </GlassCard>
+              )}
+
               {/* Time Range Toggle & Quick Actions */}
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2 p-1 bg-white/5 rounded-lg border border-white/10">

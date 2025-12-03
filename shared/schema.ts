@@ -263,11 +263,17 @@ export const chatSessions = pgTable("chat_sessions", {
   appointmentRequested: boolean("appointment_requested").notNull().default(false),
   topics: json("topics").$type<string[]>().default([]),
   metadata: json("metadata").$type<Record<string, any>>().default({}),
+  needsReview: boolean("needs_review").notNull().default(false),
+  reviewReason: text("review_reason"),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewedBy: varchar("reviewed_by"),
+  adminNotes: text("admin_notes"),
 }, (table) => ({
   sessionIdIdx: index("chat_sessions_session_id_idx").on(table.sessionId),
   clientIdIdx: index("chat_sessions_client_id_idx").on(table.clientId),
   botIdIdx: index("chat_sessions_bot_id_idx").on(table.botId),
   startedAtIdx: index("chat_sessions_started_at_idx").on(table.startedAt),
+  needsReviewIdx: index("chat_sessions_needs_review_idx").on(table.needsReview),
 }));
 
 export const insertChatSessionSchema = createInsertSchema(chatSessions).omit({

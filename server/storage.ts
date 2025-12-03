@@ -149,8 +149,8 @@ export interface IStorage {
   deleteLead(id: string): Promise<void>;
   getLeadBySessionId(sessionId: string, clientId: string): Promise<Lead | undefined>;
   
-  // Inbox - conversation messages
-  getSessionMessages(sessionId: string, clientId: string): Promise<ChatAnalyticsEvent[]>;
+  // Inbox - conversation messages (overloaded - clientId optional for admin access)
+  getSessionMessages(sessionId: string, clientId?: string): Promise<ChatAnalyticsEvent[]>;
   
   // Workspace membership validation
   getUserWorkspaceMemberships(userId: string): Promise<WorkspaceMembership[]>;
@@ -220,6 +220,29 @@ export interface IStorage {
   getScrapedWebsiteById(id: string): Promise<ScrapedWebsite | undefined>;
   updateScrapedWebsite(id: string, updates: Partial<ScrapedWebsite>): Promise<ScrapedWebsite>;
   deleteScrapedWebsite(id: string): Promise<void>;
+  
+  // Flagged Conversations / Needs Review (Admin Tools)
+  getFlaggedConversations(filters?: { clientId?: string; status?: string; limit?: number }): Promise<ChatSession[]>;
+  getFlaggedConversationsCount(): Promise<number>;
+  markConversationReviewed(sessionId: string, data: { reviewedBy: string; adminNotes?: string; action?: string }): Promise<void>;
+  dismissFlaggedConversation(sessionId: string, reviewedBy: string): Promise<void>;
+  getSessionMessages(sessionId: string): Promise<ChatAnalyticsEvent[]>;
+  getSessionById(sessionId: string): Promise<ChatSession | undefined>;
+  
+  // Client Admin Notes
+  getClientNotes(clientId: string): Promise<AdminNote[]>;
+  addClientNote(note: { clientId: string; content: string; category?: string; createdBy: string }): Promise<AdminNote>;
+  deleteClientNote(noteId: string): Promise<void>;
+}
+
+// Admin Notes type (stored in clients metadata or separate table)
+export interface AdminNote {
+  id: string;
+  clientId: string;
+  content: string;
+  category?: string;
+  createdBy: string;
+  createdAt: Date;
 }
 
 export class DbStorage implements IStorage {
@@ -538,6 +561,13 @@ export class DbStorage implements IStorage {
     
     if (existing) {
       const topicsArray = Array.isArray(session.topics) ? session.topics : (existing.topics as string[] || []);
+      
+      // Merge metadata instead of overwriting
+      const mergedMetadata = {
+        ...(existing.metadata as Record<string, unknown> || {}),
+        ...(session.metadata as Record<string, unknown> || {})
+      };
+      
       const [updated] = await db
         .update(chatSessions)
         .set({
@@ -548,6 +578,9 @@ export class DbStorage implements IStorage {
           appointmentRequested: session.appointmentRequested ?? existing.appointmentRequested,
           topics: topicsArray as any,
           endedAt: session.endedAt ?? existing.endedAt,
+          metadata: mergedMetadata as any,
+          needsReview: session.needsReview ?? existing.needsReview,
+          reviewReason: session.reviewReason ?? existing.reviewReason,
         })
         .where(eq(chatSessions.id, existing.id))
         .returning();
@@ -878,14 +911,15 @@ export class DbStorage implements IStorage {
     return lead;
   }
 
-  async getSessionMessages(sessionId: string, clientId: string): Promise<ChatAnalyticsEvent[]> {
+  async getSessionMessages(sessionId: string, clientId?: string): Promise<ChatAnalyticsEvent[]> {
+    const conditions = [eq(chatAnalyticsEvents.sessionId, sessionId)];
+    if (clientId) {
+      conditions.push(eq(chatAnalyticsEvents.clientId, clientId));
+    }
     const results = await db
       .select()
       .from(chatAnalyticsEvents)
-      .where(and(
-        eq(chatAnalyticsEvents.sessionId, sessionId),
-        eq(chatAnalyticsEvents.clientId, clientId)
-      ))
+      .where(and(...conditions))
       .orderBy(chatAnalyticsEvents.createdAt);
     return results;
   }
@@ -1639,6 +1673,153 @@ export class DbStorage implements IStorage {
 
   async deleteScrapedWebsite(id: string): Promise<void> {
     await db.delete(scrapedWebsites).where(eq(scrapedWebsites.id, id));
+  }
+
+  // =========================================
+  // FLAGGED CONVERSATIONS / NEEDS REVIEW
+  // =========================================
+
+  async getFlaggedConversations(filters?: { clientId?: string; status?: string; limit?: number }): Promise<ChatSession[]> {
+    const conditions = [eq(chatSessions.needsReview, true)];
+    
+    if (filters?.clientId) {
+      conditions.push(eq(chatSessions.clientId, filters.clientId));
+    }
+    
+    // If status is 'pending', only show unreviewed. If 'resolved', show reviewed.
+    if (filters?.status === 'pending') {
+      conditions.push(sql`${chatSessions.reviewedAt} IS NULL`);
+    } else if (filters?.status === 'resolved') {
+      conditions.push(sql`${chatSessions.reviewedAt} IS NOT NULL`);
+    }
+    
+    return db
+      .select()
+      .from(chatSessions)
+      .where(and(...conditions))
+      .orderBy(desc(chatSessions.startedAt))
+      .limit(filters?.limit || 50);
+  }
+
+  async getFlaggedConversationsCount(): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(chatSessions)
+      .where(and(
+        eq(chatSessions.needsReview, true),
+        sql`${chatSessions.reviewedAt} IS NULL`
+      ));
+    return Number(result[0]?.count || 0);
+  }
+
+  async markConversationReviewed(sessionId: string, data: { reviewedBy: string; adminNotes?: string; action?: string }): Promise<void> {
+    await db
+      .update(chatSessions)
+      .set({
+        reviewedAt: new Date(),
+        reviewedBy: data.reviewedBy,
+        adminNotes: data.adminNotes || null,
+        needsReview: false,
+      } as any)
+      .where(eq(chatSessions.sessionId, sessionId));
+  }
+
+  async dismissFlaggedConversation(sessionId: string, reviewedBy: string): Promise<void> {
+    await db
+      .update(chatSessions)
+      .set({
+        needsReview: false,
+        reviewedAt: new Date(),
+        reviewedBy,
+        reviewReason: 'dismissed',
+      } as any)
+      .where(eq(chatSessions.sessionId, sessionId));
+  }
+
+  async getSessionById(sessionId: string): Promise<ChatSession | undefined> {
+    const [result] = await db
+      .select()
+      .from(chatSessions)
+      .where(eq(chatSessions.sessionId, sessionId));
+    return result;
+  }
+
+  // =========================================
+  // CLIENT ADMIN NOTES
+  // =========================================
+  
+  // Notes stored in client metadata for simplicity
+  async getClientNotes(clientId: string): Promise<AdminNote[]> {
+    const [client] = await db
+      .select()
+      .from(schema.clients)
+      .where(eq(schema.clients.id, clientId));
+    
+    if (!client) return [];
+    
+    // Notes stored in a separate lightweight approach using clientSettings
+    const [settings] = await db
+      .select()
+      .from(clientSettings)
+      .where(eq(clientSettings.clientId, clientId));
+    
+    const metadata = settings?.metadata as Record<string, any> || {};
+    return (metadata.adminNotes || []) as AdminNote[];
+  }
+
+  async addClientNote(note: { clientId: string; content: string; category?: string; createdBy: string }): Promise<AdminNote> {
+    const newNote: AdminNote = {
+      id: `note_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      clientId: note.clientId,
+      content: note.content,
+      category: note.category,
+      createdBy: note.createdBy,
+      createdAt: new Date(),
+    };
+    
+    const [settings] = await db
+      .select()
+      .from(clientSettings)
+      .where(eq(clientSettings.clientId, note.clientId));
+    
+    const metadata = (settings?.metadata as Record<string, any>) || {};
+    const existingNotes = (metadata.adminNotes || []) as AdminNote[];
+    existingNotes.unshift(newNote);
+    
+    if (settings) {
+      await db
+        .update(clientSettings)
+        .set({ 
+          metadata: { ...metadata, adminNotes: existingNotes } as any,
+          updatedAt: new Date() 
+        } as any)
+        .where(eq(clientSettings.clientId, note.clientId));
+    }
+    
+    return newNote;
+  }
+
+  async deleteClientNote(noteId: string): Promise<void> {
+    // Get all client settings and find the note
+    const allSettings = await db.select().from(clientSettings);
+    
+    for (const settings of allSettings) {
+      const metadata = (settings.metadata as Record<string, any>) || {};
+      const notes = (metadata.adminNotes || []) as AdminNote[];
+      const noteIndex = notes.findIndex(n => n.id === noteId);
+      
+      if (noteIndex !== -1) {
+        notes.splice(noteIndex, 1);
+        await db
+          .update(clientSettings)
+          .set({ 
+            metadata: { ...metadata, adminNotes: notes } as any,
+            updatedAt: new Date() 
+          } as any)
+          .where(eq(clientSettings.id, settings.id));
+        return;
+      }
+    }
   }
 }
 
