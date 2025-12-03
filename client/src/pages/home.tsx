@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { TreasureCoastLogo } from "@/components/treasure-coast-logo";
 import { useToast } from "@/hooks/use-toast";
+import { PlatformHelpBot } from "@/components/platform-help-bot";
 import { 
   Sparkles, 
   Globe, 
@@ -767,6 +768,9 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* Platform Help Bot */}
+      <PlatformHelpBot variant="landing" />
     </div>
   );
 }

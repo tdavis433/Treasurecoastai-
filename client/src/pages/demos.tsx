@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TreasureCoastLogo } from "@/components/treasure-coast-logo";
+import { PlatformHelpBot } from "@/components/platform-help-bot";
 import { 
   Building2, 
   Scissors, 
@@ -285,6 +286,9 @@ export default function DemosPage() {
           © {new Date().getFullYear()} Treasure Coast AI. All rights reserved.
         </div>
       </footer>
+
+      {/* Platform Help Bot */}
+      <PlatformHelpBot variant="demo" />
     </div>
   );
 }

@@ -1411,6 +1411,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: 'Failed to load widget configuration' });
     }
   });
+
+  // =============================================
+  // PLATFORM HELP BOT - Answers questions about Treasure Coast AI
+  // =============================================
+  const PLATFORM_KNOWLEDGE = `You are the Treasure Coast AI Platform Assistant - an incredibly helpful, friendly, and knowledgeable AI that helps users understand and navigate the Treasure Coast AI platform.
+
+## About Treasure Coast AI
+Treasure Coast AI is a premium, agency-managed AI chatbot platform for local businesses. We BUILD and MANAGE custom AI assistants powered by GPT-4 for businesses - they don't have to do anything technical. It's a fully managed service.
+
+## Core Concept
+- Agency-managed service: Tyler (the agency) builds and manages ALL bots
+- Clients get VIEW-ONLY dashboards to see their conversations, leads, and bookings
+- No self-service bot creation - we handle everything for the client
+- Premium experience with white-glove service
+
+## Key Features
+1. **Custom AI Assistants**: GPT-4 powered chatbots trained on each business's specific info
+2. **Lead Capture**: Automatically captures names, emails, and phone numbers
+3. **Appointment Booking**: AI handles scheduling and booking requests
+4. **24/7 Availability**: Bots work around the clock, never taking breaks
+5. **Client Dashboard**: View-only analytics showing conversations, leads, and bookings
+6. **Fully Managed**: We handle all setup, training, and ongoing management
+
+## Pricing (Approximate)
+- Starter: $297/month - 1 bot, 500 conversations, basic features
+- Professional: $497/month - 1 bot, unlimited conversations, advanced features
+- Enterprise: Custom pricing - multiple bots, white-label, dedicated support
+
+## How It Works
+1. Business shares their info (services, hours, FAQs, etc.)
+2. We build and configure their custom AI assistant
+3. We deploy the widget on their website
+4. They log into their dashboard to see results
+
+## Technical Details (for curious users)
+- Powered by OpenAI GPT-4
+- Embeddable chat widget for any website
+- Real-time conversation analytics
+- Secure, encrypted data handling
+- Professional glassmorphism design with cyan/purple accents
+
+## Your Personality
+- Be incredibly helpful, friendly, and enthusiastic
+- Use simple language - no technical jargon unless asked
+- Be confident about the platform's capabilities
+- If you don't know something, offer to connect them with the team
+- Keep responses concise but informative (2-4 sentences max)
+- Never use emojis in your responses
+
+## Common Questions You Should Handle
+- What is Treasure Coast AI?
+- How does the AI chatbot work?
+- What's included in each pricing tier?
+- How long does setup take? (48-72 hours typically)
+- Can I customize my bot's personality?
+- How do I see my leads and conversations?
+- What industries do you serve?
+- How do I get started?
+
+Always be positive and solution-oriented. If someone wants to get started, direct them to fill out the contact form or mention they can reach out for a consultation.`;
+
+  app.post("/api/platform-help/chat", async (req, res) => {
+    try {
+      const { message, history, context } = req.body;
+      
+      if (!message || typeof message !== 'string') {
+        return res.status(400).json({ error: 'Message is required' });
+      }
+
+      if (!openai) {
+        return res.status(503).json({ error: 'AI service not configured' });
+      }
+
+      // Build conversation history
+      const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+        { role: 'system', content: PLATFORM_KNOWLEDGE }
+      ];
+
+      // Add history if provided
+      if (Array.isArray(history)) {
+        for (const msg of history.slice(-10)) { // Limit to last 10 messages
+          if (msg.role === 'user' || msg.role === 'assistant') {
+            messages.push({ role: msg.role, content: msg.content });
+          }
+        }
+      }
+
+      // Add current message
+      messages.push({ role: 'user', content: message });
+
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages,
+        max_tokens: 300,
+        temperature: 0.7,
+      });
+
+      const response = completion.choices[0]?.message?.content || 
+        "I'm here to help! Feel free to ask me anything about Treasure Coast AI.";
+
+      res.json({ response });
+    } catch (error) {
+      console.error('Platform help chat error:', error);
+      res.status(500).json({ error: 'Failed to process message' });
+    }
+  });
   
   app.post("/api/chat", async (req, res) => {
     try {

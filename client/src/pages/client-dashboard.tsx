@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TreasureCoastLogo } from "@/components/treasure-coast-logo";
+import { PlatformHelpBot } from "@/components/platform-help-bot";
 import {
   SidebarProvider,
   Sidebar,
@@ -2339,6 +2340,9 @@ export default function ClientDashboard() {
             {renderContent()}
           </main>
         </div>
+
+        {/* Platform Help Bot */}
+        <PlatformHelpBot variant="dashboard" />
       </div>
     </SidebarProvider>
   );
