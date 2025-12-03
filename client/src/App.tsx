@@ -1,6 +1,6 @@
-import { Switch, Route, Redirect } from "wouter";
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "@/pages/home";
@@ -19,9 +19,37 @@ import AutomationsPage from "@/pages/automations";
 import WidgetSettingsPage from "@/pages/widget-settings";
 import Login from "@/pages/login";
 import Signup from "@/pages/signup";
+import ChangePassword from "@/pages/change-password";
 import NotFound from "@/pages/not-found";
 import DemosPage from "@/pages/demos";
 import DemoBotPage from "@/pages/demo-bot";
+import { useEffect } from "react";
+
+function PasswordChangeGuard({ children }: { children: React.ReactNode }) {
+  const [location, setLocation] = useLocation();
+  
+  const { data: user, isLoading } = useQuery<{ 
+    id: string; 
+    username: string; 
+    role: string; 
+    mustChangePassword: boolean 
+  }>({
+    queryKey: ["/api/auth/me"],
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (!isLoading && user?.mustChangePassword && location !== "/change-password") {
+      setLocation("/change-password");
+    }
+  }, [user, isLoading, location, setLocation]);
+
+  if (isLoading) {
+    return null;
+  }
+
+  return <>{children}</>;
+}
 
 function Router() {
   return (
@@ -29,6 +57,9 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/demos" component={DemosPage} />
       <Route path="/demo/:botId" component={DemoBotPage} />
+      <Route path="/login" component={Login} />
+      <Route path="/signup" component={Signup} />
+      <Route path="/change-password" component={ChangePassword} />
       <Route path="/admin/dashboard" component={AdminDashboard} />
       <Route path="/admin/appointments" component={AdminAppointments} />
       <Route path="/admin/analytics" component={AdminAnalytics} />
@@ -43,8 +74,6 @@ function Router() {
       <Route path="/client/dashboard" component={ClientDashboard} />
       <Route path="/client/leads" component={LeadsPage} />
       <Route path="/client/inbox" component={InboxPage} />
-      <Route path="/login" component={Login} />
-      <Route path="/signup" component={Signup} />
       <Route path="/super-admin/clients/:slug" component={ClientDetailAdmin} />
       <Route path="/super-admin" component={ControlCenter} />
       <Route path="/super-admin/control-center">
@@ -60,7 +89,9 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Router />
+        <PasswordChangeGuard>
+          <Router />
+        </PasswordChangeGuard>
       </TooltipProvider>
     </QueryClientProvider>
   );

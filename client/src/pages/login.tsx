@@ -24,6 +24,19 @@ export default function Login() {
     onSuccess: async (data) => {
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/check"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      
+      // Check if user needs to change password
+      if (data.forcePasswordChange) {
+        toast({
+          title: "Password change required",
+          description: "Please set a new password to continue.",
+        });
+        setTimeout(() => {
+          window.location.href = "/change-password";
+        }, 500);
+        return;
+      }
+      
       toast({
         title: "Welcome back!",
         description: "Redirecting to your dashboard...",
@@ -36,10 +49,10 @@ export default function Login() {
         }
       }, 500);
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Login failed",
-        description: "Invalid username or password",
+        description: error.message || "Invalid username or password",
         variant: "destructive",
       });
     },
