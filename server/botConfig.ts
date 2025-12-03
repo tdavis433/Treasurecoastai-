@@ -491,6 +491,7 @@ export async function updateWorkspace(slug: string, data: {
   plan?: string;
   status?: string;
   settings?: any;
+  adminNotes?: string;
 }): Promise<any> {
   try {
     const updateData: any = { updatedAt: new Date() };
@@ -499,6 +500,7 @@ export async function updateWorkspace(slug: string, data: {
     if (data.plan !== undefined) updateData.plan = data.plan;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.settings !== undefined) updateData.settings = data.settings;
+    if (data.adminNotes !== undefined) updateData.adminNotes = data.adminNotes;
     
     const [workspace] = await db.update(workspaces)
       .set(updateData)

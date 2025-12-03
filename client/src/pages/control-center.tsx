@@ -71,7 +71,7 @@ import {
   TrendingUp, Users2, AlertCircle, Activity, RefreshCw, Download, Layers,
   Shield, FileWarning, CheckCircle2, XCircle, Filter, Calendar, UserPlus,
   MoreVertical, MoreHorizontal, Workflow, Palette, ChevronDown, SendHorizontal, MessageCircle,
-  CheckCircle, PauseCircle, LayoutGrid, List, Crown, User, HelpCircle, Flag
+  CheckCircle, PauseCircle, LayoutGrid, List, Crown, User, HelpCircle, Flag, Database
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -203,7 +203,7 @@ export default function ControlCenter() {
   const [editingUser, setEditingUser] = useState<{ id: string; username: string; role: string } | null>(null);
   const [showCreateWorkspaceModal, setShowCreateWorkspaceModal] = useState(false);
   const [newWorkspaceForm, setNewWorkspaceForm] = useState({ name: '', slug: '', clientEmail: '', plan: 'starter' });
-  const [editingWorkspace, setEditingWorkspace] = useState<{ slug: string; name: string; plan: string; ownerId?: string } | null>(null);
+  const [editingWorkspace, setEditingWorkspace] = useState<{ slug: string; name: string; plan: string; ownerId?: string; adminNotes?: string } | null>(null);
   const [generatedCredentials, setGeneratedCredentials] = useState<{ email: string; temporaryPassword: string; dashboardUrl: string } | null>(null);
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
 
@@ -534,6 +534,25 @@ export default function ControlCenter() {
       toast({ title: "Bot Deleted", description: "The chatbot has been permanently deleted." });
     },
   });
+
+  // Rebuild Knowledge mutation
+  const rebuildKnowledgeMutation = useMutation({
+    mutationFn: async (botId: string) => {
+      const response = await apiRequest("POST", `/api/super-admin/bots/${botId}/rebuild-knowledge`, {});
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to rebuild knowledge");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/bots"] });
+      toast({ title: "Knowledge Rebuilt", description: "Bot knowledge base has been refreshed from the website." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Rebuild Failed", description: error.message, variant: "destructive" });
+    },
+  });
   
   // Update workspace status
   const updateWorkspaceStatusMutation = useMutation({
@@ -646,7 +665,7 @@ export default function ControlCenter() {
   });
 
   const updateWorkspaceMutation = useMutation({
-    mutationFn: async ({ slug, ...data }: { slug: string; name?: string; ownerId?: string; plan?: string }) => {
+    mutationFn: async ({ slug, ...data }: { slug: string; name?: string; ownerId?: string; plan?: string; adminNotes?: string }) => {
       const response = await apiRequest("PATCH", `/api/super-admin/workspaces/${slug}`, data);
       return response.json();
     },
@@ -1850,6 +1869,17 @@ export default function ControlCenter() {
                             </SelectContent>
                           </Select>
                         </div>
+                        <div className="space-y-2">
+                          <label className="text-sm text-white/85">Admin Notes</label>
+                          <p className="text-xs text-white/40">Private notes only visible to you (not shared with client)</p>
+                          <Textarea
+                            placeholder="Add internal notes about this client..."
+                            value={editingWorkspace?.adminNotes || ''}
+                            onChange={(e) => setEditingWorkspace(w => w ? { ...w, adminNotes: e.target.value } : null)}
+                            className="min-h-[80px] bg-white/5 border-white/10 text-white placeholder:text-white/40 resize-none"
+                            data-testid="textarea-admin-notes"
+                          />
+                        </div>
                       </div>
                       <AlertDialogFooter>
                         <AlertDialogCancel className="bg-transparent border-white/10 text-white hover:bg-white/10">
@@ -1859,7 +1889,8 @@ export default function ControlCenter() {
                           onClick={() => editingWorkspace && updateWorkspaceMutation.mutate({ 
                             slug: editingWorkspace.slug, 
                             name: editingWorkspace.name,
-                            plan: editingWorkspace.plan 
+                            plan: editingWorkspace.plan,
+                            adminNotes: editingWorkspace.adminNotes
                           })}
                           disabled={updateWorkspaceMutation.isPending}
                           className="bg-cyan-500 hover:bg-cyan-600 text-white"
@@ -1922,7 +1953,7 @@ export default function ControlCenter() {
                                   </DropdownMenuItem>
                                   <DropdownMenuItem 
                                     className="text-white hover:bg-white/10 gap-2"
-                                    onClick={(e) => { e.stopPropagation(); setEditingWorkspace({ slug: workspace.slug, name: workspace.name, plan: workspace.plan }); }}
+                                    onClick={(e) => { e.stopPropagation(); setEditingWorkspace({ slug: workspace.slug, name: workspace.name, plan: workspace.plan, adminNotes: (workspace as any).adminNotes || '' }); }}
                                     data-testid={`button-edit-workspace-${workspace.slug}`}
                                   >
                                     <Settings className="h-4 w-4" />
@@ -2577,6 +2608,27 @@ export default function ControlCenter() {
                   >
                     <Eye className="h-4 w-4 mr-2" />
                     Preview
+                  </Button>
+                  <Button
+                    data-testid="button-rebuild-knowledge"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => rebuildKnowledgeMutation.mutate(selectedBot.botId)}
+                    disabled={rebuildKnowledgeMutation.isPending || !selectedBot.businessProfile?.website}
+                    className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+                    title={!selectedBot.businessProfile?.website ? "Add a website URL to the bot first" : "Re-scrape website and update knowledge base"}
+                  >
+                    {rebuildKnowledgeMutation.isPending ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Rebuilding...
+                      </>
+                    ) : (
+                      <>
+                        <Database className="h-4 w-4 mr-2" />
+                        Rebuild Knowledge
+                      </>
+                    )}
                   </Button>
                   <Select
                     value={selectedClient.status}

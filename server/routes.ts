@@ -3792,6 +3792,60 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
+  // Rebuild Knowledge - Re-scrape a bot's website and update knowledge base
+  app.post("/api/super-admin/bots/:botId/rebuild-knowledge", requireSuperAdmin, async (req, res) => {
+    try {
+      const { botId } = req.params;
+      const user = (req as any).user;
+      
+      // Get bot config to find website URL
+      const botConfig = await getBotConfigByBotIdAsync(botId) || getBotConfigByBotId(botId);
+      if (!botConfig) {
+        return res.status(404).json({ error: "Bot not found" });
+      }
+
+      const websiteUrl = botConfig.businessProfile?.website;
+      if (!websiteUrl) {
+        return res.status(400).json({ error: "Bot has no website URL configured. Please add a website URL in the bot settings first." });
+      }
+
+      // Use the bot's workspace/client ID for proper scoping
+      const workspaceId = (botConfig as any).workspaceId || botConfig.clientId || "default";
+      
+      // Trigger re-scrape of the website
+      console.log(`[Rebuild Knowledge] Starting re-scrape for bot ${botId}, URL: ${websiteUrl}`);
+      const scrapeResult = await scrapeWebsite(websiteUrl, workspaceId, botId);
+
+      if (!scrapeResult.success) {
+        return res.status(500).json({ 
+          success: false, 
+          error: scrapeResult.error || "Failed to scrape website" 
+        });
+      }
+
+      // Apply the scraped data to the bot
+      const applyResult = await applyScrapedDataToBot(scrapeResult.scrapeId, botId, user?.id || "admin");
+      
+      if (!applyResult.success) {
+        return res.status(500).json({ 
+          success: false, 
+          error: applyResult.error || "Failed to apply scraped data to bot" 
+        });
+      }
+
+      console.log(`[Rebuild Knowledge] Successfully rebuilt knowledge for bot ${botId}`);
+      
+      res.json({ 
+        success: true, 
+        message: "Knowledge base rebuilt successfully",
+        scrapeId: scrapeResult.scrapeId
+      });
+    } catch (error) {
+      console.error("[Rebuild Knowledge] Error:", error);
+      res.status(500).json({ error: "Failed to rebuild knowledge base" });
+    }
+  });
+
   // Get bot stats for admin dashboard
   app.get("/api/admin/bot-stats", requireSuperAdmin, async (req, res) => {
     try {
@@ -6628,6 +6682,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           lastActive: lastActive?.toISOString() || null,
           createdAt: ws.createdAt,
           settings: ws.settings || {},
+          adminNotes: ws.adminNotes || '',
         };
       }));
       
@@ -7048,11 +7103,11 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
-  // Update workspace (name, plan, settings, owner)
+  // Update workspace (name, plan, settings, owner, adminNotes)
   app.patch("/api/super-admin/workspaces/:slug", requireSuperAdmin, async (req, res) => {
     try {
       const { slug } = req.params;
-      const { name, ownerId, plan, settings } = req.body;
+      const { name, ownerId, plan, settings, adminNotes } = req.body;
       
       const existing = await getWorkspaceBySlug(slug);
       if (!existing) {
@@ -7067,7 +7122,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         }
       }
       
-      const workspace = await updateWorkspace(slug, { name, ownerId, plan, settings });
+      const workspace = await updateWorkspace(slug, { name, ownerId, plan, settings, adminNotes });
       
       // Log this action
       await storage.createSystemLog({
@@ -7075,7 +7130,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         source: 'super-admin',
         message: `Workspace ${slug} updated`,
         workspaceId: workspace.id,
-        details: { name, plan, ownerId },
+        details: { name, plan, ownerId, adminNotes: adminNotes ? 'updated' : undefined },
       });
       
       res.json(workspace);
