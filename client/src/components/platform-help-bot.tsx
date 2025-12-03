@@ -265,7 +265,7 @@ export function PlatformHelpBot({ variant = 'landing', className = '' }: Platfor
                       </div>
                       <h4 className="text-white font-medium mb-1">Hey there!</h4>
                       <p className="text-white/60 text-sm">
-                        I'm here to help you learn about our AI chatbot platform. Ask me anything!
+                        I'm here to help you learn about our AI assistant platform. Ask me anything!
                       </p>
                     </div>
                     
