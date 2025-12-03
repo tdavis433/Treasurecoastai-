@@ -24,5 +24,17 @@
       "answer": "We are open Mon-Sun 11am-9pm."
     }
   ],
-  "rules": {}
+  "rules": {},
+  "businessType": "restaurant",
+  "businessName": "QA Test Restaurant",
+  "isDemo": false,
+  "automations": {},
+  "personality": {},
+  "quickActions": [],
+  "widgetSettings": {
+    "primaryColor": "#7ee600",
+    "position": "bottom-right",
+    "greeting": "Hi! How can I help you today?",
+    "showAvatar": true
+  }
 }

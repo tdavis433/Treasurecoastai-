@@ -1901,9 +1901,23 @@ Always be positive and solution-oriented. If someone wants to get started, direc
       sessionData.botMessageCount += 1;
       sessionData.totalResponseTimeMs += responseTime;
       
-      // Check if message mentions appointment
-      const mentionsAppointment = /appointment|schedule|book|reserve|meeting/i.test(lastUserMessage?.content || "");
-      if (mentionsAppointment) {
+      // Check if conversation mentions appointment/booking intent
+      // More targeted regex - only explicit booking/scheduling phrases, not generic words like "service"
+      const bookingKeywords = /\b(book|booking|schedule|scheduling|appointment|reserve|reservation)\b|\bset up (a |an )?(appointment|meeting|visit|consultation)\b|\bwant to (come in|visit|see you)\b/i;
+      // Also check for affirmative responses when AI has PREVIOUSLY prompted for booking
+      const affirmativeKeywords = /\b(yes|yeah|sure|please|ok|okay|sounds good|that works|let'?s do|perfect|great)\b/i;
+      const aiAskedAboutBooking = /\b(schedule|book|appointment|come in|visit|when|preferred|date|time)\b/i;
+      
+      // Get the PREVIOUS assistant message (not the current reply)
+      const previousAssistantMessage = messages.filter(m => m.role === 'assistant').slice(-1)[0]?.content || "";
+      
+      const directBookingIntent = bookingKeywords.test(lastUserMessage?.content || "");
+      const isAffirmativeToBookingPrompt = affirmativeKeywords.test(lastUserMessage?.content || "") && aiAskedAboutBooking.test(previousAssistantMessage);
+      const alreadyRequestedBooking = existingSession?.appointmentRequested || false;
+      
+      // Show booking if: direct intent, affirming a booking prompt, OR already in booking flow
+      const mentionsAppointment = directBookingIntent || isAffirmativeToBookingPrompt || alreadyRequestedBooking;
+      if (directBookingIntent || isAffirmativeToBookingPrompt) {
         sessionData.appointmentRequested = true;
       }
 
@@ -2188,8 +2202,22 @@ These suggestions should be relevant to what was just discussed and help guide t
         }
       }
 
-      // Check for booking intent
-      const mentionsAppointment = /appointment|schedule|book|reserve|meeting/i.test(lastUserMessage?.content || "");
+      // Check for booking intent - explicit phrases, affirmative responses, or already in booking flow
+      const streamingBookingKeywords = /\b(book|booking|schedule|scheduling|appointment|reserve|reservation)\b|\bset up (a |an )?(appointment|meeting|visit|consultation)\b|\bwant to (come in|visit|see you)\b/i;
+      const affirmativeKeywords = /\b(yes|yeah|sure|please|ok|okay|sounds good|that works|let'?s do|perfect|great)\b/i;
+      const aiAskedAboutBooking = /\b(schedule|book|appointment|come in|visit|when|preferred|date|time)\b/i;
+      
+      // Get the PREVIOUS assistant message (not the current reply)
+      const previousAssistantMessage = messages.filter(m => m.role === 'assistant').slice(-1)[0]?.content || "";
+      
+      const directBookingIntent = streamingBookingKeywords.test(lastUserMessage?.content || "");
+      const isAffirmativeToBookingPrompt = affirmativeKeywords.test(lastUserMessage?.content || "") && aiAskedAboutBooking.test(previousAssistantMessage);
+      
+      // Check if session already has booking request
+      const existingSessionForBooking = await storage.getChatSession(actualSessionId, clientId, botId);
+      const alreadyRequestedBooking = existingSessionForBooking?.appointmentRequested || false;
+      
+      const mentionsAppointment = directBookingIntent || isAffirmativeToBookingPrompt || alreadyRequestedBooking;
       const streamingExternalBookingUrl = mentionsAppointment ? (clientSettings?.externalBookingUrl || null) : null;
       const streamingExternalPaymentUrl = mentionsAppointment ? (clientSettings?.externalPaymentUrl || null) : null;
 
@@ -2223,7 +2251,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         botMessageCount: (existingSession?.botMessageCount || 0) + 1,
         totalResponseTimeMs: (existingSession?.totalResponseTimeMs || 0) + responseTime,
         crisisDetected: existingSession?.crisisDetected || false,
-        appointmentRequested: existingSession?.appointmentRequested || mentionsAppointment,
+        appointmentRequested: existingSession?.appointmentRequested || directBookingIntent || isAffirmativeToBookingPrompt,
         topics: [...(existingSession?.topics as string[] || [])],
       };
       

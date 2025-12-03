@@ -709,40 +709,53 @@ ${bp.amenities ? `- Amenities: ${bp.amenities.join(', ')}` : ''}
   const personalityInfo = buildPersonalityInstructions(config.personality);
   
   // Add booking/appointment capability instructions
-  let bookingInfo = `
+  let bookingInfo = '';
+  
+  // If external booking URL is configured, use redirect-only behavior
+  if (config.externalBookingUrl) {
+    bookingInfo = `
 
-APPOINTMENT BOOKING CAPABILITY:
-You have the ability to help customers book appointments directly through this chat. When a customer wants to schedule a service, appointment, or visit:
-1. DO NOT tell them to call or visit a website - you can book it for them right here
-2. Ask for the details you need: what service they want, their preferred date/time, and their contact information
-3. Be proactive - offer to schedule an appointment when discussing services
-4. Say something like "I can help you schedule that right now! What day and time works best for you?"
-5. Collect: name, phone number, preferred date/time, and the service they need
-6. Confirm the details before finalizing
+APPOINTMENT/BOOKING INSTRUCTIONS - REDIRECT ONLY:
+**CRITICAL: You CANNOT and MUST NOT confirm, complete, or finalize any bookings yourself.**
+You are a lead capture assistant. Your job is to collect customer information and then redirect them to the booking platform.
 
-IMPORTANT: Never say "I can't book for you" or direct customers elsewhere to schedule. You ARE the booking system.
+When a customer expresses interest in booking, scheduling, or making an appointment:
+1. Warmly acknowledge their interest
+2. Collect their details: name, phone number, preferred date/time, and the service they want
+3. AFTER collecting this information, you MUST say something like:
+   "Perfect! I've noted your preferences. To complete your booking, please click the 'Book Appointment' button below - it will take you to our scheduling page where you can finalize your appointment."
+
+ABSOLUTELY FORBIDDEN:
+- NEVER say "I've booked your appointment" or "Your booking is confirmed"
+- NEVER say "Booking in the system" or imply you are processing their booking
+- NEVER say the appointment is scheduled, reserved, or finalized
+- NEVER give them a confirmation number or booking reference
+- NEVER pretend you have access to a calendar or scheduling system
+
+CORRECT BEHAVIOR:
+- Collect their information as a lead
+- ALWAYS tell them to use the booking button/link that will appear below your message
+- Make it clear the ACTUAL booking happens on the external platform
+- You can say: "A booking button will appear below - just click it to finalize your appointment!"
+
+External booking platform: ${config.externalBookingUrl}
 `;
-
-  // Add external booking/payment URLs if configured
-  if (config.externalBookingUrl || config.externalPaymentUrl) {
-    bookingInfo += `
-AFTER BOOKING - PROVIDE LINKS:
-After you've collected all the booking information and confirmed the appointment:`;
-    
-    if (config.externalBookingUrl) {
-      bookingInfo += `
-- Direct the customer to complete their booking at: ${config.externalBookingUrl}
-  Say something like: "Great! To finalize your appointment, please complete your booking here: ${config.externalBookingUrl}"`;
-    }
     
     if (config.externalPaymentUrl) {
       bookingInfo += `
-- If payment is required, direct them to: ${config.externalPaymentUrl}
-  Say something like: "You can complete your payment securely here: ${config.externalPaymentUrl}"`;
+For payments, direct them to: ${config.externalPaymentUrl}
+`;
     }
-    
-    bookingInfo += `
-Always provide these links after confirming the appointment details - this is how customers finalize their booking.
+  } else {
+    // No external booking URL - just capture leads
+    bookingInfo = `
+
+APPOINTMENT/BOOKING INSTRUCTIONS - LEAD CAPTURE ONLY:
+When customers ask about booking or appointments:
+1. Collect their information: name, phone number, preferred date/time, and service interest
+2. Let them know that our team will contact them shortly to confirm their appointment
+3. NEVER say you've booked their appointment or that it's confirmed
+4. Say something like: "Thanks! I've captured your details. Our team will reach out shortly to confirm your appointment."
 `;
   }
   
