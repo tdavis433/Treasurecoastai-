@@ -3461,12 +3461,21 @@ These suggestions should be relevant to what was just discussed and help guide t
     try {
       const { workspaceId } = req.params;
       
-      // Get workspace to find its slug (clientId)
-      const [workspace] = await db
+      // Get workspace to find its slug (clientId) - check both by ID and by slug
+      let [workspace] = await db
         .select()
         .from(workspaces)
         .where(eq(workspaces.id, workspaceId))
         .limit(1);
+      
+      // If not found by ID, try finding by slug
+      if (!workspace) {
+        [workspace] = await db
+          .select()
+          .from(workspaces)
+          .where(eq(workspaces.slug, workspaceId))
+          .limit(1);
+      }
       
       if (!workspace) {
         return res.status(404).json({ error: "Workspace not found" });

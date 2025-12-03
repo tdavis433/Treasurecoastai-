@@ -216,7 +216,7 @@ export default function ClientDetailAdmin() {
 
   const { data: workspaceUsers, isLoading: usersLoading } = useQuery<Array<{
     id: number;
-    username: string;
+    email: string;
     role: string;
     createdAt?: string;
   }>>({
@@ -224,7 +224,8 @@ export default function ClientDetailAdmin() {
     queryFn: async () => {
       const response = await fetch(`/api/super-admin/workspaces/${slug}/users`, { credentials: "include" });
       if (!response.ok) return [];
-      return response.json();
+      const data = await response.json();
+      return data.users || [];
     },
     enabled: !!slug && activeTab === 'users',
   });
@@ -687,11 +688,11 @@ export default function ClientDetailAdmin() {
                         <div className="flex items-center gap-3">
                           <div className="h-10 w-10 rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20 flex items-center justify-center">
                             <span className="text-cyan-400 font-medium text-sm">
-                              {user.username.slice(0, 2).toUpperCase()}
+                              {user.email?.slice(0, 2).toUpperCase() || '??'}
                             </span>
                           </div>
                           <div>
-                            <p className="text-white font-medium text-sm">{user.username}</p>
+                            <p className="text-white font-medium text-sm">{user.email}</p>
                             <p className="text-xs text-white/55">
                               {user.createdAt ? `Joined ${new Date(user.createdAt).toLocaleDateString()}` : 'Member'}
                             </p>
