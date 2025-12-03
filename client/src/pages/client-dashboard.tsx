@@ -77,6 +77,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { format } from "date-fns";
 import { useLocation } from "wouter";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -199,6 +200,22 @@ interface SessionState {
   isRead: boolean;
 }
 
+interface MessageTrend {
+  date: string;
+  totalConversations: number;
+  totalMessages: number;
+  userMessages: number;
+  botMessages: number;
+  crisisEvents: number;
+  appointmentRequests: number;
+}
+
+interface TopQuestion {
+  topic: string;
+  count: number;
+  percentage: number;
+}
+
 type SectionType = 'overview' | 'conversations' | 'leads' | 'bookings' | 'settings';
 
 const LEAD_STATUS_OPTIONS = [
@@ -299,6 +316,38 @@ export default function ClientDashboard() {
     total: number;
   }>({
     queryKey: ["/api/client/leads"],
+    enabled: !!currentUser,
+  });
+
+  // Message trends data for chart
+  const { data: trendsData, isLoading: trendsLoading } = useQuery<{
+    clientId: string;
+    days: number;
+    trends: MessageTrend[];
+  }>({
+    queryKey: ["/api/client/analytics/trends", statsRange],
+    queryFn: async () => {
+      const days = statsRange === '7' ? 7 : statsRange === '30' ? 30 : 30;
+      const response = await fetch(`/api/client/analytics/trends?days=${days}`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch trends");
+      return response.json();
+    },
+    enabled: !!currentUser,
+  });
+
+  // Top questions/topics data
+  const { data: topQuestionsData, isLoading: topQuestionsLoading } = useQuery<{
+    clientId: string;
+    days: number;
+    totalSessions: number;
+    topQuestions: TopQuestion[];
+  }>({
+    queryKey: ["/api/client/analytics/top-questions"],
+    queryFn: async () => {
+      const response = await fetch(`/api/client/analytics/top-questions?days=30&limit=8`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch top questions");
+      return response.json();
+    },
     enabled: !!currentUser,
   });
 
@@ -935,6 +984,143 @@ export default function ClientDashboard() {
           </GlassCardContent>
         </GlassCard>
       </div>
+
+      {/* Message Trends Chart - Full Width */}
+      <GlassCard data-testid="card-message-trends">
+        <GlassCardHeader>
+          <GlassCardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-cyan-400" />
+            Message Trends
+          </GlassCardTitle>
+          <GlassCardDescription>
+            Conversation activity over time
+          </GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent>
+          {trendsLoading ? (
+            <div className="h-64 bg-white/5 rounded-lg animate-pulse" />
+          ) : trendsData?.trends && trendsData.trends.length > 0 ? (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trendsData.trends}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="rgba(255,255,255,0.4)"
+                    tick={{ fill: 'rgba(255,255,255,0.6)', fontSize: 11 }}
+                    tickFormatter={(value) => format(new Date(value), 'MMM d')}
+                  />
+                  <YAxis 
+                    stroke="rgba(255,255,255,0.4)"
+                    tick={{ fill: 'rgba(255,255,255,0.6)', fontSize: 11 }}
+                    allowDecimals={false}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#1a1d24', 
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '8px',
+                      color: '#fff'
+                    }}
+                    labelFormatter={(value) => format(new Date(value), 'MMMM d, yyyy')}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="totalConversations" 
+                    name="Conversations"
+                    stroke="#00d4ff" 
+                    strokeWidth={2}
+                    dot={{ fill: '#00d4ff', r: 3 }}
+                    activeDot={{ r: 5, fill: '#00d4ff' }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="totalMessages" 
+                    name="Messages"
+                    stroke="#a855f7" 
+                    strokeWidth={2}
+                    dot={{ fill: '#a855f7', r: 3 }}
+                    activeDot={{ r: 5, fill: '#a855f7' }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="text-center py-12 text-white/40">
+              <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p className="font-medium">No trend data available</p>
+              <p className="text-sm">As conversations happen, trends will appear here</p>
+            </div>
+          )}
+        </GlassCardContent>
+      </GlassCard>
+
+      {/* Top Questions Section */}
+      <GlassCard data-testid="card-top-questions">
+        <GlassCardHeader>
+          <GlassCardTitle className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5 text-purple-400" />
+            Popular Topics
+          </GlassCardTitle>
+          <GlassCardDescription>
+            What visitors ask about most
+          </GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent>
+          {topQuestionsLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3, 4, 5].map(i => (
+                <div key={i} className="h-10 bg-white/5 rounded animate-pulse" />
+              ))}
+            </div>
+          ) : topQuestionsData?.topQuestions && topQuestionsData.topQuestions.length > 0 ? (
+            <div className="space-y-3">
+              {topQuestionsData.topQuestions.map((question, index) => {
+                const colors = [
+                  'from-cyan-500 to-blue-500',
+                  'from-purple-500 to-pink-500',
+                  'from-green-500 to-emerald-500',
+                  'from-amber-500 to-orange-500',
+                  'from-blue-500 to-indigo-500',
+                  'from-rose-500 to-red-500',
+                  'from-teal-500 to-cyan-500',
+                  'from-violet-500 to-purple-500',
+                ];
+                const colorClass = colors[index % colors.length];
+                const maxCount = topQuestionsData.topQuestions[0]?.count || 1;
+                const percentage = (question.count / maxCount) * 100;
+                
+                return (
+                  <div key={question.topic} className="group">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm text-white/80 font-medium truncate pr-4">
+                        {question.topic}
+                      </span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge className="bg-white/10 text-white/60 text-xs border-0">
+                          {question.count} mentions
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full bg-gradient-to-r ${colorClass} rounded-full transition-all duration-500`}
+                        style={{ width: `${Math.max(percentage, 5)}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-white/40">
+              <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p className="font-medium">No topic data yet</p>
+              <p className="text-sm">As conversations happen, popular topics will appear here</p>
+            </div>
+          )}
+        </GlassCardContent>
+      </GlassCard>
 
       <GlassCard data-testid="card-quick-actions">
         <GlassCardHeader>

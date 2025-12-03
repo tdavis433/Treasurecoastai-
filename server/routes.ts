@@ -5138,6 +5138,82 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
+  // Get top questions/topics for client - analyzes conversation themes
+  app.get("/api/client/analytics/top-questions", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      const days = parseInt(req.query.days as string) || 30;
+      const limit = parseInt(req.query.limit as string) || 10;
+      
+      // Get bot for this client
+      const allBots = getAllBotConfigs();
+      const botConfig = allBots.find(bot => bot.clientId === clientId);
+      const botId = botConfig?.botId;
+      
+      // Get recent sessions with their topics
+      const cutoffDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+      const allSessions = await storage.getClientRecentSessions(clientId, botId, 500);
+      
+      // Filter sessions by the cutoff date
+      const sessions = allSessions.filter(session => {
+        const sessionDate = new Date(session.startedAt);
+        return sessionDate >= cutoffDate;
+      });
+      
+      // Aggregate topic frequencies
+      const topicCounts: Record<string, number> = {};
+      
+      sessions.forEach(session => {
+        // Get topics from session topics array
+        const topics = (session.topics as string[]) || [];
+        topics.forEach(topic => {
+          if (topic && topic.trim()) {
+            const normalizedTopic = topic.toLowerCase().trim();
+            topicCounts[normalizedTopic] = (topicCounts[normalizedTopic] || 0) + 1;
+          }
+        });
+        
+        // Also check metadata for keyTopics if available
+        const metadata = session.metadata as any;
+        if (metadata?.keyTopics) {
+          const keyTopics = Array.isArray(metadata.keyTopics) ? metadata.keyTopics : [];
+          keyTopics.forEach((topic: string) => {
+            if (topic && topic.trim()) {
+              const normalizedTopic = topic.toLowerCase().trim();
+              topicCounts[normalizedTopic] = (topicCounts[normalizedTopic] || 0) + 1;
+            }
+          });
+        }
+        
+        // Also count user intent if available
+        if (metadata?.userIntent && metadata.userIntent.trim()) {
+          const normalizedIntent = metadata.userIntent.toLowerCase().trim();
+          topicCounts[normalizedIntent] = (topicCounts[normalizedIntent] || 0) + 1;
+        }
+      });
+      
+      // Sort by frequency and take top N
+      const topQuestions = Object.entries(topicCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, limit)
+        .map(([topic, count]) => ({
+          topic: topic.charAt(0).toUpperCase() + topic.slice(1),
+          count,
+          percentage: Math.round((count / sessions.length) * 100) || 0,
+        }));
+      
+      res.json({
+        clientId,
+        days,
+        totalSessions: sessions.length,
+        topQuestions,
+      });
+    } catch (error) {
+      console.error("Get client top questions error:", error);
+      res.status(500).json({ error: "Failed to fetch top questions" });
+    }
+  });
+
   // =============================================
   // CLIENT ANALYTICS EXPORT ENDPOINTS
   // =============================================
