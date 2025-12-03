@@ -55,10 +55,15 @@ export default function ClientDetailAdmin() {
   
   const [activeTab, setActiveTab] = useState<'overview' | 'assistants' | 'conversations' | 'leads' | 'billing' | 'users' | 'settings'>('overview');
   const [showCreateAssistantModal, setShowCreateAssistantModal] = useState(false);
+  const [showInviteUserModal, setShowInviteUserModal] = useState(false);
   const [newAssistantForm, setNewAssistantForm] = useState({
     botId: '',
     name: '',
     businessType: 'auto_repair',
+  });
+  const [newUserForm, setNewUserForm] = useState({
+    email: '',
+    password: '',
   });
 
   const businessTypes = [
@@ -98,6 +103,29 @@ export default function ClientDetailAdmin() {
       setShowCreateAssistantModal(false);
       setNewAssistantForm({ botId: '', name: '', businessType: 'auto_repair' });
       queryClient.invalidateQueries({ queryKey: ["/api/super-admin/workspaces", slug] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const createUserMutation = useMutation({
+    mutationFn: async (data: { workspaceId: string; email: string; password: string }) => {
+      const response = await apiRequest("POST", `/api/super-admin/workspaces/${data.workspaceId}/users`, {
+        email: data.email,
+        password: data.password,
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to create user");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "User Created", description: "Client login credentials have been created successfully." });
+      setShowInviteUserModal(false);
+      setNewUserForm({ email: '', password: '' });
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/workspaces", slug, "users"] });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -639,10 +667,11 @@ export default function ClientDetailAdmin() {
                   variant="outline"
                   size="sm"
                   className="border-white/10 text-white/70 hover:bg-white/10"
-                  onClick={() => toast({ title: "Coming Soon", description: "User invitation flow will be added." })}
+                  onClick={() => setShowInviteUserModal(true)}
+                  data-testid="button-invite-user"
                 >
                   <UserPlus className="h-4 w-4 mr-2" />
-                  Invite User
+                  Create Login
                 </Button>
               </div>
 
@@ -855,6 +884,93 @@ export default function ClientDetailAdmin() {
                 <>
                   <Plus className="h-4 w-4 mr-2" />
                   Create Assistant
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create User Login Modal */}
+      <Dialog open={showInviteUserModal} onOpenChange={setShowInviteUserModal}>
+        <DialogContent className="bg-[#1a1d24] border-white/10 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-cyan-400" />
+              Create Client Login
+            </DialogTitle>
+            <DialogDescription className="text-white/55">
+              Create login credentials for {workspaceData?.name || 'this client'} to access their dashboard.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="user-email" className="text-white/70">Email Address</Label>
+              <Input
+                id="user-email"
+                type="email"
+                value={newUserForm.email}
+                onChange={(e) => setNewUserForm(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="client@example.com"
+                className="bg-white/5 border-white/10 text-white"
+                data-testid="input-user-email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="user-password" className="text-white/70">Password</Label>
+              <Input
+                id="user-password"
+                type="password"
+                value={newUserForm.password}
+                onChange={(e) => setNewUserForm(prev => ({ ...prev, password: e.target.value }))}
+                placeholder="Min 8 chars, 1 uppercase, 1 number"
+                className="bg-white/5 border-white/10 text-white"
+                data-testid="input-user-password"
+              />
+              <p className="text-xs text-white/40">Password must be at least 8 characters with 1 uppercase letter and 1 number</p>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 mb-4">
+            <p className="text-amber-200/80 text-sm">
+              <strong className="text-amber-400">Note:</strong> The client will be able to log in at <code className="bg-black/30 px-1 rounded">/login</code> and view their dashboard with conversations and leads.
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="ghost" 
+              onClick={() => setShowInviteUserModal(false)}
+              className="text-white/70"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!newUserForm.email || !newUserForm.password || !workspaceData?.id) {
+                  toast({ title: "Error", description: "Please fill in all fields.", variant: "destructive" });
+                  return;
+                }
+                createUserMutation.mutate({
+                  workspaceId: workspaceData.id,
+                  email: newUserForm.email,
+                  password: newUserForm.password,
+                });
+              }}
+              disabled={!newUserForm.email || !newUserForm.password || createUserMutation.isPending}
+              className="bg-cyan-500 hover:bg-cyan-600 text-white"
+              data-testid="button-confirm-create-user"
+            >
+              {createUserMutation.isPending ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Create Login
                 </>
               )}
             </Button>
