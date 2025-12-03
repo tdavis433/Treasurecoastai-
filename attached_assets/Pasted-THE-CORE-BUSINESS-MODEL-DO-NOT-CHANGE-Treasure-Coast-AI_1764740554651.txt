@@ -1,0 +1,282 @@
+THE CORE BUSINESS MODEL (DO NOT CHANGE)
+
+Treasure Coast AI is an agency-first AI assistant platform where:
+
+1. The agency (Tyler Davis) builds & manages every AI assistant.
+
+Clients NEVER build bots, never configure flows, never train models, and never set up automations.
+
+2. Clients only VIEW results, not edit systems.
+
+Their dashboard is “read-only” for:
+
+Conversations
+
+Leads
+
+Analytics
+
+Booking clicks
+
+AI insights
+
+Chat history summaries
+
+Clients can ONLY:
+
+Paste the chat widget snippet on their website
+
+Optional: update basic business info (hours, phone number, booking link)
+
+Everything else is locked behind admin-only functionality.
+
+3. Clients stay subscribed because only the agency updates & optimizes the bots.
+
+The value of the platform is:
+
+Continuous monitoring
+
+Continuous improvements
+
+Fixing edge cases
+
+Updating knowledge
+
+Adding FAQs
+
+Improving automation triggers
+
+Increasing conversion rates
+
+Reviewing “Needs Attention” flags
+
+Weekly performance summaries
+
+The client cannot replace you because:
+
+YOU fix what the AI misses
+
+YOU improve the bot over time
+
+YOU ensure it stays accurate
+
+YOU keep the bot’s performance high
+
+This is the entire retention strategy.
+
+4. One embed snippet = entire bot system.
+
+Clients copy/paste one snippet that includes:
+
+Client ID
+
+Bot ID
+
+Secure widget token
+
+Theme/styling
+
+Positioning
+
+After that:
+
+AI assistant handles everything automatically
+
+Leads flow into dashboard
+
+Conversations are logged
+
+Analytics update automatically
+
+Insights are generated
+
+The client does nothing else.
+
+🔧 THE DEVELOPMENT RULESET (REPLIT MUST FOLLOW THIS)
+
+Replit must ensure:
+
+A. Admin-Only Functionality
+
+Only Tyler (super-admin) can:
+
+Build bots
+
+Edit bots
+
+Train/update knowledge
+
+Adjust automations
+
+Manage crisis logic
+
+Change business logic
+
+Edit FAQs
+
+Regenerate chat agent behavior
+
+Create or modify templates
+
+Adjust lead scoring
+
+Inspect errors and fix them
+
+No exceptions.
+
+B. Client Dashboard MUST Stay Simple
+
+Client dashboard CAN include:
+
+Conversations view
+
+Leads
+
+Simple analytics
+
+Bot performance metrics
+
+Business info (display only)
+
+Link click analytics
+
+Response summaries
+
+Client dashboard CANNOT include:
+
+Bot editor
+
+Automation builder
+
+Knowledge base editing
+
+Flow builder
+
+Dataset uploads
+
+Prompt configuration
+
+Template switching
+
+Multi-bot creation
+
+The client does not build anything.
+They only view what the AI + agency produces.
+
+C. Maintenance is the Core of the Business
+
+The platform must be built so Tyler can easily:
+
+See flagged issues
+
+See unknown questions
+
+See crisis messages
+
+See low-confidence answers
+
+See high-value leads
+
+Update knowledge quickly
+
+Rebuild the bot’s understanding
+
+Test the bot
+
+Deploy updates instantly
+
+These features directly create recurring revenue.
+
+D. Analytics Must Prove Value
+
+The system must show clients:
+
+Leads captured
+
+Conversations handled
+
+Response times
+
+Busiest hours
+
+Missed opportunities
+
+Top customer questions
+
+Conversion funnel
+
+Weekly improvement stats
+
+AI hours saved
+
+This keeps the client seeing ROI.
+
+E. Security Rules
+
+Widget token REQUIRED in production
+
+Domain restriction required
+
+All bot building is server-side only
+
+All admin actions authenticated
+
+Client cannot alter backend settings
+
+Sensitive routes locked down
+
+🧩 THE PRODUCT POSITIONING (FOR REPLIT TO FOLLOW)
+
+Treasure Coast AI is not:
+
+A chatbot builder
+
+A no-code platform
+
+A DIY flow editor
+
+A customer-managed bot system
+
+Treasure Coast AI is:
+
+An AI assistant agency platform
+
+Built, managed, and maintained by Tyler
+
+Automated in front-end UI but manually optimized
+
+Designed so clients only receive value, not complexity
+
+Designed for local & SMB businesses
+
+A “24/7 AI employee” service
+
+🏗️ THE FINAL DEVELOPMENT MANDATE
+
+Every feature built in Replit must ask:
+
+“Does this increase client value WITHOUT giving them the ability to break or build bots?”
+
+If yes → build it.
+If no → do NOT build it.
+If unclear → default to admin-only capability.
+
+This keeps the platform on the correct path.
+
+🎯 WHAT THIS BUSINESS MODEL ACHIEVES
+
+Clients are never overwhelmed
+
+Bots are always high-performing
+
+Only the agency can maintain quality
+
+Clients stay subscribed for years
+
+Platform avoids feature bloat
+
+Development stays simple and profitable
+
+The system scales without chaos
+
+You become indispensable

@@ -1,0 +1,263 @@
+CRITICAL — MUST ADD / FIX BEFORE REAL CLIENTS (NO EXCEPTIONS)
+I. PLATFORM SECURITY & ARCHITECTURE
+
+Make widget token mandatory in production (no anonymous chat access).
+
+Add per-client domain allowlist (bot only works on client’s website).
+
+Add session cookie sameSite: 'lax'.
+
+Force strong passwords on first login (admins & staff).
+
+Mandatory password change for default generated accounts.
+
+Rate-limit chat endpoint per bot (prevent spam).
+
+Do not allow clients to hit ANY admin routes even by accident.
+
+Move all sensitive API env keys to server-only runtime.
+
+Add audit logs for: plan changes, bot status changes, user creation/deletion.
+
+Secure CORS rules to specific route groups.
+
+II. CLIENT EXPERIENCE — EMBED & DASHBOARD
+
+Add embed snippet generator (one-click copy-paste).
+
+Block all chatbot editing functionality in client dashboard.
+
+Client dashboard = View only: Leads, Conversations, Analytics.
+
+Add warning when no widget is embedded (“Your bot is not active”).
+
+Add bot status indicator (active, paused, over-limit, needs update).
+
+Automatic fallback message when bot is paused or over limit.
+
+Clients should never upload JSON or build flows — remove all UI for that.
+
+Make admin-only settings clearly marked.
+
+III. BOT & AUTOMATION ENGINE
+
+Create a unified bot configuration system (admin-only).
+
+Allow crisis detection settings (admin-only).
+
+Centralize triggers/keywords/intents in UI so YOU can tweak them.
+
+Force admin approval for ANY bot changes.
+
+Require bot re-generation/update whenever business info changes.
+
+IV. ANALYTICS CORE (NEEDS TO EXIST DAY 1)
+
+Message count per day.
+
+Leads captured per day.
+
+Booking link clicks.
+
+Return visitor count.
+
+Conversation completion rate.
+
+Fallback rate (AI failed to answer).
+
+Response time analytics.
+
+High-intent question detection (# of hot leads).
+
+These are non-negotiable for client retention.
+
+🔥 HIGH PRIORITY — NEEDED FOR SUBSCRIPTION RETENTION
+V. ADMIN POWER-TOOLS (YOU ONLY)
+
+"Needs Review" section in admin dashboard.
+
+Unknown question flagging (AI couldn't answer → flagged for you).
+
+Conversation summaries auto-generated.
+
+Auto-tag conversations by topic.
+
+Lead scoring (hot/warm/cold).
+
+Auto-detect customer contact info.
+
+Auto-detect buying intent.
+
+Auto-assign lead type (service request, appointment, pricing, etc.).
+
+“Fix this bot” button to rebuild knowledge.
+
+Knowledge refresh from website scraper.
+
+VI. KNOWLEDGE BASE SYSTEM
+
+Admin-only FAQ management.
+
+Support articles or business info pages.
+
+PDF/document ingestion (admin-only).
+
+Rebuild bot knowledge on demand.
+
+Versioning for bot configs (so you can revert).
+
+VII. CLIENT DASHBOARD — VALUE SHOWCASE
+
+Graphs for messages / leads / engagement.
+
+Top customer questions list.
+
+Business hours performance chart.
+
+Conversion funnel chart (messages → leads → bookings clicked).
+
+Popular services/products topics.
+
+Sentiment analysis (positive, neutral, negative).
+
+Heatmap: busiest times of day.
+
+Lead value estimation (admin sets average sale value).
+
+VIII. BILLING & PLAN MANAGEMENT
+
+Admin-side plan selection.
+
+Stripe billing portal link for clients.
+
+Usage meter on client dashboard.
+
+Usage meter on admin dashboard.
+
+Overage behavior (pause bot or soft-limit).
+
+Plan upgrade CTA.
+
+Invoice history page (even basic).
+
+⚡ MEDIUM PRIORITY — ESSENTIAL FOR SCALING
+IX. CHAT WIDGET IMPROVEMENTS
+
+3 widget themes (light, dark, coastal blue).
+
+Custom chat bubble color (admin sets, not client).
+
+Custom welcome message.
+
+Bot avatar upload (admin-only).
+
+Mobile-friendly widget redesign.
+
+Widget session tracking (improve visitor-to-lead conversion tracking).
+
+X. CLIENT EXPERIENCE IMPROVEMENTS
+
+Conversation export (CSV or PDF).
+
+Lead export.
+
+"What your customers are asking" insights feed.
+
+“Customer pain points of the week” summary.
+
+“Top missed opportunities” (admin sees + optional client summary).
+
+Auto-email weekly summary for clients.
+
+Optional SMS notifications for new leads.
+
+XI. ADMIN EXPERIENCE IMPROVEMENTS
+
+Bot testing sandbox inside admin panel.
+
+Admin notes per client.
+
+Admin task checklist (weekly maintenance tasks).
+
+Client performance ranking (which client gets the most value).
+
+Flag clients who need outreach.
+
+Error log viewer.
+
+Live system metrics (latency, message errors).
+
+OpenAI token usage dashboard per client.
+
+Ability to impersonate a client view.
+
+🎨 POLISH — MAKES IT LOOK LIKE A TOP-DOLLAR AGENCY SaaS
+XII. PREMIUM UX
+
+Full mobile optimization (client dashboard first).
+
+Custom client branding on dashboard top bar.
+
+Glass + coastal neon theme consistency (extend to all pages).
+
+Typography cleanup (consistent size/weights).
+
+Empty states on all tables with helpful prompts.
+
+Skeleton loading states.
+
+Improved dark mode color system.
+
+XIII. PREMIUM FEATURES
+
+AI Insight Cards:
+
+“Your bot saved X hours this week”
+
+“Most asked question this month”
+
+“Your busiest time: 4-7 PM”
+
+Forecasting (leads predicted next week).
+
+Customer sentiment trend (up/down).
+
+Automated suggestions for bot improvements.
+
+Dragon Mode (optional):
+
+Bot becomes more assertive during high-intent lead conversations.
+
+XIV. SPECIALIZED INDUSTRY MODES
+
+Sober living mode (crisis scripts, safe wording).
+
+Restaurant mode (menus, ordering, delivery links).
+
+Barbershop mode (styles, prices, booking flows).
+
+Gym mode (class schedules, membership flows).
+
+Realtor mode (listing summaries, showing schedules).
+
+Auto service mode (common fix requests, quote builders).
+
+You already have templates — just bake them into UI.
+
+XV. FUTURE OPTIONAL (Only When Scaling Big)
+
+AI phone agent add-on.
+
+Email reply automation.
+
+SMS AI follow-up sequences.
+
+Pipeline/CRM lite.
+
+Customer segmentation.
+
+Multi-location business support.
+
+NPS scoring.
+
+AI competitor analysis (bot learns what competitors offer).
