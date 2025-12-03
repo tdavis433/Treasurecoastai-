@@ -1265,6 +1265,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     next();
   }, express.static(widgetPath));
+
+  // Serve test pages for widget testing (only in development)
+  const testPath = path.join(process.cwd(), 'public', 'test');
+  app.use('/test', (req: Request, res: Response, next: NextFunction) => {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    next();
+  }, express.static(testPath));
   
   // Generate default quick actions based on bot type
   function getDefaultQuickActions(botType?: string, businessName?: string): Array<{id: string; label: string; labelEs?: string}> {

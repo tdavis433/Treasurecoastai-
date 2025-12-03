@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sunrise Auto Repair - Widget Test</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .hero {
+      background: rgba(255,255,255,0.95);
+      border-radius: 16px;
+      padding: 60px 40px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+      margin-bottom: 30px;
+    }
+    .logo {
+      font-size: 3rem;
+      margin-bottom: 20px;
+    }
+    h1 {
+      color: #1e3a5f;
+      font-size: 2.5rem;
+      margin-bottom: 15px;
+    }
+    .tagline {
+      color: #666;
+      font-size: 1.2rem;
+      margin-bottom: 30px;
+    }
+    .services {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+      text-align: left;
+    }
+    .service {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 10px;
+      border-left: 4px solid #06b6d4;
+    }
+    .service h3 {
+      color: #1e3a5f;
+      font-size: 1rem;
+      margin-bottom: 8px;
+    }
+    .service p {
+      color: #666;
+      font-size: 0.9rem;
+    }
+    .info-bar {
+      background: #1e3a5f;
+      color: white;
+      padding: 20px 30px;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-around;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .info-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .info-item span {
+      font-size: 1.1rem;
+    }
+    .test-info {
+      background: rgba(255,255,255,0.9);
+      border-radius: 12px;
+      padding: 25px;
+      margin-top: 30px;
+    }
+    .test-info h2 {
+      color: #1e3a5f;
+      margin-bottom: 15px;
+    }
+    .test-info p {
+      color: #444;
+      line-height: 1.6;
+    }
+    .test-list {
+      list-style: none;
+      margin-top: 15px;
+    }
+    .test-list li {
+      padding: 8px 0;
+      border-bottom: 1px solid #eee;
+      color: #333;
+    }
+    .test-list li:before {
+      content: 'V ';
+      color: #06b6d4;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="hero">
+      <div class="logo">&#128295;</div>
+      <h1>Sunrise Auto Repair</h1>
+      <p class="tagline">Your trusted neighborhood auto repair shop in Fort Pierce, FL</p>
+      
+      <div class="services">
+        <div class="service">
+          <h3>Oil Changes</h3>
+          <p>Quick 30-45 minute service</p>
+        </div>
+        <div class="service">
+          <h3>Brake Repair</h3>
+          <p>Full brake system service</p>
+        </div>
+        <div class="service">
+          <h3>Engine Diagnostics</h3>
+          <p>Computer diagnostics included</p>
+        </div>
+        <div class="service">
+          <h3>AC & Heating</h3>
+          <p>Stay comfortable year-round</p>
+        </div>
+      </div>
+      
+      <div class="info-bar">
+        <div class="info-item">
+          <span>1234 Palm Beach Blvd</span>
+        </div>
+        <div class="info-item">
+          <span>(772) 555-AUTO</span>
+        </div>
+        <div class="info-item">
+          <span>Mon-Fri 7AM-6PM</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="test-info">
+      <h2>Widget Test Page</h2>
+      <p>This page tests the Treasure Coast AI chat widget for Sunrise Auto Repair. Try these conversations:</p>
+      <ul class="test-list">
+        <li>Ask about business hours</li>
+        <li>Ask about services offered</li>
+        <li>Ask for directions/location</li>
+        <li>Request a service appointment</li>
+        <li>Ask about pricing for oil change</li>
+        <li>Ask if they work on foreign cars</li>
+      </ul>
+    </div>
+  </div>
+  
+  <!-- Treasure Coast AI Chat Widget - using workspace SLUG as client-id -->
+  <script src="/widget/embed.js" data-client-id="sunrise_auto_test" data-bot-id="sunrise_auto_test_bot"></script>
+</body>
+</html>
