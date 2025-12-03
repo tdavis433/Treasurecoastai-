@@ -225,7 +225,7 @@ export default function Home() {
             </h1>
 
             <p className="text-xl md:text-2xl text-white/70 max-w-3xl mx-auto mb-10 leading-relaxed">
-              We build and manage custom AI chatbots for local businesses. 
+              We build and manage custom AI assistants for local businesses. 
               Capture leads, book appointments, and delight customers around the clock — 
               while you focus on running your business.
             </p>
