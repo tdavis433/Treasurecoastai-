@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { db } from './storage';
-import { bots, botSettings, workspaces, botTemplates } from '@shared/schema';
+import { bots, botSettings, workspaces, botTemplates, clientSettings } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 
 export interface BotBusinessProfile {
@@ -117,6 +117,8 @@ export interface BotConfig {
   personality?: BotPersonality;
   quickActions?: BotQuickAction[];
   security?: BotSecuritySettings;
+  externalBookingUrl?: string;
+  externalPaymentUrl?: string;
   metadata?: {
     isDemo: boolean;
     isTemplate?: boolean;
@@ -174,6 +176,10 @@ async function loadBotFromDatabase(botId: string): Promise<BotConfig | null> {
     
     const [workspaceRecord] = await db.select().from(workspaces).where(eq(workspaces.id, botRecord.workspaceId)).limit(1);
     
+    // Fetch client settings to get external booking/payment URLs
+    const clientId = workspaceRecord?.slug || botRecord.workspaceId;
+    const [clientSettingsRecord] = await db.select().from(clientSettings).where(eq(clientSettings.clientId, clientId)).limit(1);
+    
     const businessProfile = botRecord.businessProfile as BotBusinessProfile;
     const rules = (settingsRecord?.rules || {}) as BotRules;
     const faqs = (settingsRecord?.faqs || []) as BotFaq[];
@@ -187,7 +193,7 @@ async function loadBotFromDatabase(botId: string): Promise<BotConfig | null> {
       settingsMetadata.security as BotSecuritySettings : undefined;
     
     const config: BotConfig = {
-      clientId: workspaceRecord?.slug || botRecord.workspaceId,
+      clientId,
       botId: botRecord.botId,
       name: botRecord.name,
       description: botRecord.description || '',
@@ -207,6 +213,8 @@ async function loadBotFromDatabase(botId: string): Promise<BotConfig | null> {
       personality,
       quickActions,
       security: securitySettings,
+      externalBookingUrl: clientSettingsRecord?.externalBookingUrl || undefined,
+      externalPaymentUrl: clientSettingsRecord?.externalPaymentUrl || undefined,
       metadata: {
         isDemo: botRecord.isDemo,
         createdAt: botRecord.createdAt.toISOString().split('T')[0],
@@ -701,7 +709,7 @@ ${bp.amenities ? `- Amenities: ${bp.amenities.join(', ')}` : ''}
   const personalityInfo = buildPersonalityInstructions(config.personality);
   
   // Add booking/appointment capability instructions
-  const bookingInfo = `
+  let bookingInfo = `
 
 APPOINTMENT BOOKING CAPABILITY:
 You have the ability to help customers book appointments directly through this chat. When a customer wants to schedule a service, appointment, or visit:
@@ -714,6 +722,29 @@ You have the ability to help customers book appointments directly through this c
 
 IMPORTANT: Never say "I can't book for you" or direct customers elsewhere to schedule. You ARE the booking system.
 `;
+
+  // Add external booking/payment URLs if configured
+  if (config.externalBookingUrl || config.externalPaymentUrl) {
+    bookingInfo += `
+AFTER BOOKING - PROVIDE LINKS:
+After you've collected all the booking information and confirmed the appointment:`;
+    
+    if (config.externalBookingUrl) {
+      bookingInfo += `
+- Direct the customer to complete their booking at: ${config.externalBookingUrl}
+  Say something like: "Great! To finalize your appointment, please complete your booking here: ${config.externalBookingUrl}"`;
+    }
+    
+    if (config.externalPaymentUrl) {
+      bookingInfo += `
+- If payment is required, direct them to: ${config.externalPaymentUrl}
+  Say something like: "You can complete your payment securely here: ${config.externalPaymentUrl}"`;
+    }
+    
+    bookingInfo += `
+Always provide these links after confirming the appointment details - this is how customers finalize their booking.
+`;
+  }
   
   return prompt + '\n\n' + businessInfo + faqInfo + personalityInfo + bookingInfo;
 }
