@@ -1273,6 +1273,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   }, express.static(testPath));
   
+  // Serve widget-test.html for testing embedded widget
+  app.get('/widget-test.html', (req: Request, res: Response) => {
+    const testFile = path.join(process.cwd(), 'public', 'widget-test.html');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.sendFile(testFile);
+  });
+  
   // Generate default quick actions based on bot type
   function getDefaultQuickActions(botType?: string, businessName?: string): Array<{id: string; label: string; labelEs?: string}> {
     const defaults: Record<string, Array<{id: string; label: string; labelEs?: string}>> = {

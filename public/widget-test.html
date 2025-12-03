@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sunset Coffee Shop - Widget Test Page</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #fff;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+    h1 {
+      font-size: 3rem;
+      background: linear-gradient(90deg, #00d4ff, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+    }
+    .tagline {
+      color: rgba(255,255,255,0.7);
+      font-size: 1.2rem;
+    }
+    .hero {
+      background: rgba(255,255,255,0.05);
+      border-radius: 20px;
+      padding: 60px 40px;
+      text-align: center;
+      border: 1px solid rgba(255,255,255,0.1);
+      margin-bottom: 40px;
+    }
+    .hero h2 {
+      font-size: 2rem;
+      margin-bottom: 20px;
+    }
+    .hero p {
+      color: rgba(255,255,255,0.7);
+      max-width: 600px;
+      margin: 0 auto 30px;
+      line-height: 1.6;
+    }
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 30px;
+      margin-bottom: 60px;
+    }
+    .feature-card {
+      background: rgba(255,255,255,0.05);
+      border-radius: 16px;
+      padding: 30px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .feature-card h3 {
+      color: #00d4ff;
+      margin-bottom: 15px;
+    }
+    .feature-card p {
+      color: rgba(255,255,255,0.6);
+      line-height: 1.6;
+    }
+    .test-info {
+      background: rgba(168, 85, 247, 0.1);
+      border: 1px solid rgba(168, 85, 247, 0.3);
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 40px;
+    }
+    .test-info h4 {
+      color: #a855f7;
+      margin-bottom: 10px;
+    }
+    .test-info p {
+      color: rgba(255,255,255,0.7);
+      font-size: 0.9rem;
+    }
+    footer {
+      text-align: center;
+      padding: 40px;
+      color: rgba(255,255,255,0.4);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Sunset Coffee Shop</h1>
+      <p class="tagline">Artisan Coffee & Cozy Vibes</p>
+    </header>
+
+    <div class="hero">
+      <h2>Welcome to Our Coffee Paradise</h2>
+      <p>
+        Experience the finest artisan coffee in a warm, welcoming atmosphere. 
+        Our baristas craft each cup with love and expertise. Have questions? 
+        Chat with our AI assistant using the chat button in the bottom right corner!
+      </p>
+    </div>
+
+    <div class="features">
+      <div class="feature-card">
+        <h3>Premium Beans</h3>
+        <p>Ethically sourced coffee beans from the world's finest growing regions, roasted to perfection.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Expert Baristas</h3>
+        <p>Our skilled team crafts each beverage with precision and artistry.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Cozy Atmosphere</h3>
+        <p>A perfect space for work, relaxation, or catching up with friends.</p>
+      </div>
+    </div>
+
+    <div class="test-info" data-testid="widget-test-info">
+      <h4>AI Chat Widget Test Page</h4>
+      <p>
+        This page simulates a client website with the Treasure Coast AI chat widget embedded.
+        Look for the chat button in the bottom-right corner to interact with the Sunset Coffee Shop assistant.
+      </p>
+    </div>
+  </div>
+
+  <footer>
+    <p>Sunset Coffee Shop - Widget Integration Test</p>
+  </footer>
+
+  <!-- Treasure Coast AI Chat Widget -->
+  <script src="/widget/embed.js" 
+    data-client-id="sunset_coffee_qa" 
+    data-bot-id="sunset_coffee_bot">
+  </script>
+</body>
+</html>
