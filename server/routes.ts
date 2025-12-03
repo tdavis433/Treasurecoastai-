@@ -1869,10 +1869,13 @@ Always be positive and solution-oriented. If someone wants to get started, direc
       const clientSettings = await storage.getSettings(clientId);
       
       // Inject external URLs into bot config for system prompt building
+      // Check clientSettings first, then fall back to botConfig (for JSON-defined bots)
+      const resolvedExternalBookingUrl = clientSettings?.externalBookingUrl || botConfig.externalBookingUrl || undefined;
+      const resolvedExternalPaymentUrl = clientSettings?.externalPaymentUrl || botConfig.externalPaymentUrl || undefined;
       const botConfigWithUrls = {
         ...botConfig,
-        externalBookingUrl: clientSettings?.externalBookingUrl || undefined,
-        externalPaymentUrl: clientSettings?.externalPaymentUrl || undefined,
+        externalBookingUrl: resolvedExternalBookingUrl,
+        externalPaymentUrl: resolvedExternalPaymentUrl,
       };
 
       // Build system prompt from bot config with booking URLs
@@ -1975,9 +1978,9 @@ Always be positive and solution-oriented. If someone wants to get started, direc
         });
       }
 
-      // Use already-fetched clientSettings for booking URL
-      const externalBookingUrl = mentionsAppointment ? (clientSettings?.externalBookingUrl || null) : null;
-      const externalPaymentUrl = mentionsAppointment ? (clientSettings?.externalPaymentUrl || null) : null;
+      // Use resolved booking URL (clientSettings or botConfig fallback)
+      const externalBookingUrl = mentionsAppointment ? (resolvedExternalBookingUrl || null) : null;
+      const externalPaymentUrl = mentionsAppointment ? (resolvedExternalPaymentUrl || null) : null;
 
       // Log booking intent analytics event if booking detected
       if (mentionsAppointment) {
@@ -2139,10 +2142,13 @@ Always be positive and solution-oriented. If someone wants to get started, direc
       const clientSettings = await storage.getSettings(clientId);
       
       // Inject external URLs into bot config for system prompt building
+      // Check clientSettings first, then fall back to botConfig (for JSON-defined bots)
+      const resolvedExternalBookingUrl = clientSettings?.externalBookingUrl || botConfig.externalBookingUrl || undefined;
+      const resolvedExternalPaymentUrl = clientSettings?.externalPaymentUrl || botConfig.externalPaymentUrl || undefined;
       const botConfigWithUrls = {
         ...botConfig,
-        externalBookingUrl: clientSettings?.externalBookingUrl || undefined,
-        externalPaymentUrl: clientSettings?.externalPaymentUrl || undefined,
+        externalBookingUrl: resolvedExternalBookingUrl,
+        externalPaymentUrl: resolvedExternalPaymentUrl,
       };
 
       // Build system prompt with suggested replies instruction
@@ -2218,8 +2224,8 @@ These suggestions should be relevant to what was just discussed and help guide t
       const alreadyRequestedBooking = existingSessionForBooking?.appointmentRequested || false;
       
       const mentionsAppointment = directBookingIntent || isAffirmativeToBookingPrompt || alreadyRequestedBooking;
-      const streamingExternalBookingUrl = mentionsAppointment ? (clientSettings?.externalBookingUrl || null) : null;
-      const streamingExternalPaymentUrl = mentionsAppointment ? (clientSettings?.externalPaymentUrl || null) : null;
+      const streamingExternalBookingUrl = mentionsAppointment ? (resolvedExternalBookingUrl || null) : null;
+      const streamingExternalPaymentUrl = mentionsAppointment ? (resolvedExternalPaymentUrl || null) : null;
 
       // Send final message with metadata
       res.write(`data: ${JSON.stringify({ 

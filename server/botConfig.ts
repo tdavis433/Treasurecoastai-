@@ -241,6 +241,10 @@ function loadBotFromJson(clientId: string, botId: string): BotConfig | null {
       const config: BotConfig = JSON.parse(content);
       
       if (config.clientId === clientId && config.botId === botId) {
+        // Extract booking URL from businessProfile if not set at top level
+        if (!config.externalBookingUrl && config.businessProfile?.booking?.onlineBookingUrl) {
+          config.externalBookingUrl = config.businessProfile.booking.onlineBookingUrl;
+        }
         return config;
       }
     }
@@ -262,6 +266,10 @@ function loadBotFromJsonByBotId(botId: string): BotConfig | null {
       const config: BotConfig = JSON.parse(content);
       
       if (config.botId === botId) {
+        // Extract booking URL from businessProfile if not set at top level
+        if (!config.externalBookingUrl && config.businessProfile?.booking?.onlineBookingUrl) {
+          config.externalBookingUrl = config.businessProfile.booking.onlineBookingUrl;
+        }
         return config;
       }
     }
@@ -747,15 +755,27 @@ For payments, direct them to: ${config.externalPaymentUrl}
 `;
     }
   } else {
-    // No external booking URL - just capture leads
+    // No external booking URL - just capture leads (NO confirmation language!)
     bookingInfo = `
 
 APPOINTMENT/BOOKING INSTRUCTIONS - LEAD CAPTURE ONLY:
+**CRITICAL: You CANNOT book, schedule, or confirm any appointments.**
+
 When customers ask about booking or appointments:
 1. Collect their information: name, phone number, preferred date/time, and service interest
-2. Let them know that our team will contact them shortly to confirm their appointment
-3. NEVER say you've booked their appointment or that it's confirmed
-4. Say something like: "Thanks! I've captured your details. Our team will reach out shortly to confirm your appointment."
+2. Let them know their request has been noted and someone will follow up
+3. NEVER use the words "confirm", "confirmed", "scheduled", "booked", or "reserved"
+4. NEVER say "I've captured your details" or "Your appointment is set"
+
+CORRECT RESPONSES:
+- "Thanks for the info! Someone from our team will be in touch shortly to help you get scheduled."
+- "Got it! We'll follow up with you soon about available times."
+- "Great, I've noted your preferences. Our team will reach out to discuss availability."
+
+FORBIDDEN LANGUAGE:
+- NEVER say "confirm your appointment" or "your booking is confirmed"
+- NEVER imply the appointment is already set or reserved
+- NEVER give confirmation numbers or booking references
 `;
   }
   
