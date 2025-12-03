@@ -1918,9 +1918,15 @@ Always be positive and solution-oriented. If someone wants to get started, direc
       const isAffirmativeToBookingPrompt = affirmativeKeywords.test(lastUserMessage?.content || "") && aiAskedAboutBooking.test(previousAssistantMessage);
       const alreadyRequestedBooking = existingSession?.appointmentRequested || false;
       
-      // Show booking if: direct intent, affirming a booking prompt, OR already in booking flow
-      const mentionsAppointment = directBookingIntent || isAffirmativeToBookingPrompt || alreadyRequestedBooking;
-      if (directBookingIntent || isAffirmativeToBookingPrompt) {
+      // Check if ANY message in the conversation history has booking intent
+      const conversationHasBookingIntent = messages.some(m => m.role === 'user' && bookingKeywords.test(m.content || ""));
+      
+      // Check if AI response mentions booking button/scheduling (indicating booking flow is active)
+      const aiMentionsBookingButton = /\b(book\s*appointment|click.*button|scheduling\s*page|finalize.*booking|complete.*booking)\b/i.test(reply);
+      
+      // Show booking if: direct intent, affirming a booking prompt, already in booking flow, OR any message had booking intent
+      const mentionsAppointment = directBookingIntent || isAffirmativeToBookingPrompt || alreadyRequestedBooking || conversationHasBookingIntent || aiMentionsBookingButton;
+      if (directBookingIntent || isAffirmativeToBookingPrompt || conversationHasBookingIntent) {
         sessionData.appointmentRequested = true;
       }
 
@@ -2223,7 +2229,13 @@ These suggestions should be relevant to what was just discussed and help guide t
       const existingSessionForBooking = await storage.getChatSession(actualSessionId, clientId, botId);
       const alreadyRequestedBooking = existingSessionForBooking?.appointmentRequested || false;
       
-      const mentionsAppointment = directBookingIntent || isAffirmativeToBookingPrompt || alreadyRequestedBooking;
+      // Check if ANY message in the conversation history has booking intent
+      const conversationHasBookingIntent = messages.some(m => m.role === 'user' && streamingBookingKeywords.test(m.content || ""));
+      
+      // Check if AI response mentions booking button/scheduling (indicating booking flow is active)
+      const aiMentionsBookingButton = /\b(book\s*appointment|click.*button|scheduling\s*page|finalize.*booking|complete.*booking)\b/i.test(cleanReply);
+      
+      const mentionsAppointment = directBookingIntent || isAffirmativeToBookingPrompt || alreadyRequestedBooking || conversationHasBookingIntent || aiMentionsBookingButton;
       const streamingExternalBookingUrl = mentionsAppointment ? (resolvedExternalBookingUrl || null) : null;
       const streamingExternalPaymentUrl = mentionsAppointment ? (resolvedExternalPaymentUrl || null) : null;
 
@@ -2257,7 +2269,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         botMessageCount: (existingSession?.botMessageCount || 0) + 1,
         totalResponseTimeMs: (existingSession?.totalResponseTimeMs || 0) + responseTime,
         crisisDetected: existingSession?.crisisDetected || false,
-        appointmentRequested: existingSession?.appointmentRequested || directBookingIntent || isAffirmativeToBookingPrompt,
+        appointmentRequested: existingSession?.appointmentRequested || directBookingIntent || isAffirmativeToBookingPrompt || conversationHasBookingIntent,
         topics: [...(existingSession?.topics as string[] || [])],
       };
       
