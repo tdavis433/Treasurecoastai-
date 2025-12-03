@@ -192,7 +192,7 @@ export default function ControlCenter() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
-  const [dashboardSection, setDashboardSection] = useState<'overview' | 'workspaces' | 'assistants' | 'templates' | 'knowledge' | 'integrations' | 'billing' | 'analytics' | 'logs' | 'users' | 'requests'>('overview');
+  const [dashboardSection, setDashboardSection] = useState<'overview' | 'workspaces' | 'assistants' | 'templates' | 'knowledge' | 'integrations' | 'billing' | 'analytics' | 'logs' | 'users' | 'requests' | 'client-logins'>('overview');
   const [logFilters, setLogFilters] = useState({ level: 'all', source: 'all', isResolved: 'all', clientId: 'all' });
   const [analyticsRange, setAnalyticsRange] = useState<number>(7);
   const [selectedBots, setSelectedBots] = useState<Set<string>>(new Set());
@@ -1016,6 +1016,16 @@ export default function ControlCenter() {
                 >
                   <Shield className="h-4 w-4 mr-2" />
                   Users
+                </Button>
+                <Button
+                  data-testid="button-section-client-logins"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setDashboardSection('client-logins')}
+                  className={dashboardSection === 'client-logins' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
+                >
+                  <User className="h-4 w-4 mr-2" />
+                  Client Logins
                 </Button>
                 <Button
                   data-testid="button-section-logs"
@@ -2492,6 +2502,13 @@ export default function ControlCenter() {
                   onUpdateRole={(userId, newRole) => updateUserMutation.mutate({ id: userId, role: newRole })}
                   onDeleteUser={(userId) => deleteUserMutation.mutate(userId)}
                   isCreating={createUserMutation.isPending}
+                />
+              )}
+
+              {/* Client Logins Section - Manage client login accounts */}
+              {dashboardSection === 'client-logins' && (
+                <ClientLoginsSectionPanel 
+                  workspaces={workspacesData?.workspaces || []}
                 />
               )}
 
@@ -9078,5 +9095,600 @@ function UsersSectionPanel({
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// Client Logins Section Panel
+interface ClientLoginWorkspace {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+}
+
+interface ClientUser {
+  id: number;
+  username: string;
+  email: string | null;
+  role: string;
+  clientId: string | null;
+  disabled: boolean;
+  mustChangePassword: boolean;
+  lastLoginAt: string | null;
+  createdAt: string | null;
+}
+
+interface ClientLoginsSectionPanelProps {
+  workspaces: ClientLoginWorkspace[];
+}
+
+function ClientLoginsSectionPanel({ workspaces }: ClientLoginsSectionPanelProps) {
+  const { toast } = useToast();
+  const [selectedWorkspace, setSelectedWorkspace] = useState<string>('all');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<ClientUser | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [createForm, setCreateForm] = useState({
+    email: '',
+    password: '',
+    name: '',
+    workspaceId: '',
+  });
+
+  // Fetch client users for selected workspace - use Promise.all for parallel fetching
+  const { data: clientUsers, isLoading, refetch } = useQuery<ClientUser[]>({
+    queryKey: ['/api/super-admin/client-logins', selectedWorkspace],
+    queryFn: async () => {
+      if (selectedWorkspace === 'all') {
+        // Fetch all workspaces in parallel
+        const promises = workspaces.map(async (ws) => {
+          try {
+            const res = await apiRequest("GET", `/api/super-admin/workspaces/${ws.id}/users`);
+            return await res.json();
+          } catch (e) {
+            console.error(`Failed to fetch users for workspace ${ws.id}`, e);
+            return [];
+          }
+        });
+        const results = await Promise.all(promises);
+        return results.flat();
+      } else {
+        const res = await apiRequest("GET", `/api/super-admin/workspaces/${selectedWorkspace}/users`);
+        return await res.json();
+      }
+    },
+    enabled: workspaces.length > 0,
+  });
+
+  const invalidateClientLogins = () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/super-admin/client-logins'] });
+  };
+
+  const createUserMutation = useMutation({
+    mutationFn: async (data: { email: string; password: string; name?: string; workspaceId: string }) => {
+      const res = await apiRequest("POST", `/api/super-admin/workspaces/${data.workspaceId}/users`, {
+        email: data.email,
+        password: data.password,
+        name: data.name || undefined,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Client Login Created", description: "The client can now log in with their temporary password." });
+      setShowCreateModal(false);
+      setCreateForm({ email: '', password: '', name: '', workspaceId: '' });
+      invalidateClientLogins();
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message || "Failed to create client login", variant: "destructive" });
+    },
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (data: { userId: number; workspaceId: string; newPassword: string }) => {
+      if (!data.newPassword || data.newPassword.length < 8) {
+        throw new Error("Password must be at least 8 characters");
+      }
+      const res = await apiRequest("POST", `/api/super-admin/workspaces/${data.workspaceId}/users/${data.userId}/reset-password`, {
+        newPassword: data.newPassword,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Password Reset", description: "The client will need to change their password on next login." });
+      setShowResetPasswordModal(false);
+      setSelectedUser(null);
+      invalidateClientLogins();
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message || "Failed to reset password", variant: "destructive" });
+    },
+  });
+
+  const toggleDisableMutation = useMutation({
+    mutationFn: async (data: { userId: number; workspaceId: string; action: 'disable' | 'enable' }) => {
+      const res = await apiRequest("POST", `/api/super-admin/workspaces/${data.workspaceId}/users/${data.userId}/${data.action}`);
+      return res.json();
+    },
+    onSuccess: (_, variables) => {
+      toast({ 
+        title: variables.action === 'disable' ? "Account Disabled" : "Account Enabled", 
+        description: `The client account has been ${variables.action}d.` 
+      });
+      invalidateClientLogins();
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message || "Failed to update account status", variant: "destructive" });
+    },
+  });
+
+  const filteredUsers = (clientUsers || []).filter(user => {
+    const matchesSearch = !searchQuery || 
+      user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch;
+  });
+
+  const getWorkspaceName = (clientId: string | null) => {
+    if (!clientId) return 'Unknown';
+    const ws = workspaces.find(w => w.id === clientId);
+    return ws?.name || clientId;
+  };
+
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
+    let password = '';
+    for (let i = 0; i < 12; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-xl font-semibold text-white">Client Logins</h2>
+          <p className="text-sm text-white/55">Create and manage login accounts for your clients</p>
+        </div>
+        <Button
+          onClick={() => {
+            setCreateForm({ ...createForm, password: generatePassword() });
+            setShowCreateModal(true);
+          }}
+          className="bg-cyan-500 hover:bg-cyan-600 text-white"
+          data-testid="button-create-client-login"
+        >
+          <UserPlus className="h-4 w-4 mr-2" />
+          Create Client Login
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <GlassCard>
+          <GlassCardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-cyan-500/10 border border-cyan-500/20">
+                <Users className="h-5 w-5 text-cyan-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">{clientUsers?.length || 0}</p>
+                <p className="text-xs text-white/55">Total Logins</p>
+              </div>
+            </div>
+          </GlassCardContent>
+        </GlassCard>
+        <GlassCard>
+          <GlassCardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-green-500/10 border border-green-500/20">
+                <CheckCircle className="h-5 w-5 text-green-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">
+                  {clientUsers?.filter(u => !u.disabled).length || 0}
+                </p>
+                <p className="text-xs text-white/55">Active</p>
+              </div>
+            </div>
+          </GlassCardContent>
+        </GlassCard>
+        <GlassCard>
+          <GlassCardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-amber-500/10 border border-amber-500/20">
+                <Shield className="h-5 w-5 text-amber-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">
+                  {clientUsers?.filter(u => u.mustChangePassword).length || 0}
+                </p>
+                <p className="text-xs text-white/55">Pending Password</p>
+              </div>
+            </div>
+          </GlassCardContent>
+        </GlassCard>
+        <GlassCard>
+          <GlassCardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-red-500/10 border border-red-500/20">
+                <XCircle className="h-5 w-5 text-red-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">
+                  {clientUsers?.filter(u => u.disabled).length || 0}
+                </p>
+                <p className="text-xs text-white/55">Disabled</p>
+              </div>
+            </div>
+          </GlassCardContent>
+        </GlassCard>
+      </div>
+
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+          <input
+            type="text"
+            placeholder="Search by username or email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/40 focus:outline-none focus:border-cyan-400/50"
+            data-testid="input-search-client-logins"
+          />
+        </div>
+        <Select value={selectedWorkspace} onValueChange={setSelectedWorkspace}>
+          <SelectTrigger className="w-[200px] bg-white/5 border-white/10 text-white" data-testid="select-workspace-filter">
+            <SelectValue placeholder="Filter by client" />
+          </SelectTrigger>
+          <SelectContent className="bg-[#1a1d24] border-white/10">
+            <SelectItem value="all" className="text-white">All Clients</SelectItem>
+            {workspaces.map(ws => (
+              <SelectItem key={ws.id} value={ws.id} className="text-white">
+                {ws.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="h-8 w-8 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
+        </div>
+      ) : filteredUsers.length === 0 ? (
+        <GlassCard>
+          <GlassCardContent className="py-12 text-center">
+            <User className="h-12 w-12 mx-auto mb-3 text-white/30" />
+            <p className="text-white/55">
+              {searchQuery ? 'No client logins match your search' : 'No client logins created yet'}
+            </p>
+            <Button
+              onClick={() => {
+                setCreateForm({ ...createForm, temporaryPassword: generatePassword() });
+                setShowCreateModal(true);
+              }}
+              className="mt-4 bg-cyan-500 hover:bg-cyan-600"
+              data-testid="button-create-first-login"
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              Create First Client Login
+            </Button>
+          </GlassCardContent>
+        </GlassCard>
+      ) : (
+        <div className="space-y-3">
+          {filteredUsers.map(user => (
+            <GlassCard key={user.id} data-testid={`card-client-login-${user.id}`}>
+              <GlassCardContent className="py-4">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div className="flex items-center gap-3">
+                    <div className={`h-12 w-12 rounded-lg flex items-center justify-center ${user.disabled ? 'bg-red-500/10' : 'bg-cyan-500/10'}`}>
+                      <User className={`h-6 w-6 ${user.disabled ? 'text-red-400' : 'text-cyan-400'}`} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium text-white">{user.username}</p>
+                        {user.disabled && (
+                          <Badge className="bg-red-500/20 text-red-400 border-red-500/30">Disabled</Badge>
+                        )}
+                        {user.mustChangePassword && !user.disabled && (
+                          <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">Password Change Required</Badge>
+                        )}
+                        {!user.disabled && !user.mustChangePassword && (
+                          <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Active</Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-white/50 mt-1 flex-wrap">
+                        {user.email && (
+                          <span className="flex items-center gap-1">
+                            <Mail className="h-3 w-3" />
+                            {user.email}
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1">
+                          <Building2 className="h-3 w-3" />
+                          {getWorkspaceName(user.clientId)}
+                        </span>
+                        {user.lastLoginAt ? (
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            Last login: {new Date(user.lastLoginAt).toLocaleDateString()}
+                          </span>
+                        ) : (
+                          <span className="text-amber-400/70">Never logged in</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-white/55 hover:text-white hover:bg-white/10" 
+                        data-testid={`button-client-login-actions-${user.id}`}
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-[#1a1d24] border-white/10">
+                      <DropdownMenuLabel className="text-white/70">Actions</DropdownMenuLabel>
+                      <DropdownMenuSeparator className="bg-white/10" />
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setShowResetPasswordModal(true);
+                        }}
+                        className="text-white hover:bg-white/10 cursor-pointer"
+                        data-testid={`button-reset-password-${user.id}`}
+                      >
+                        <Shield className="h-4 w-4 mr-2" />
+                        Reset Password
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          if (user.clientId) {
+                            toggleDisableMutation.mutate({
+                              userId: user.id,
+                              workspaceId: user.clientId,
+                              action: user.disabled ? 'enable' : 'disable',
+                            });
+                          }
+                        }}
+                        className={`${user.disabled ? 'text-green-400 hover:bg-green-500/10' : 'text-amber-400 hover:bg-amber-500/10'} cursor-pointer`}
+                        data-testid={`button-toggle-disable-${user.id}`}
+                      >
+                        {user.disabled ? (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Enable Account
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="h-4 w-4 mr-2" />
+                            Disable Account
+                          </>
+                        )}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </GlassCardContent>
+            </GlassCard>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+        <DialogContent className="bg-[#1a1d24] border-white/10 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-cyan-400" />
+              Create Client Login
+            </DialogTitle>
+            <DialogDescription className="text-white/55">
+              Create a login account for your client to access their dashboard.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="text-white/80">Client / Workspace</Label>
+              <Select
+                value={createForm.workspaceId}
+                onValueChange={(v) => setCreateForm({ ...createForm, workspaceId: v })}
+              >
+                <SelectTrigger className="bg-white/5 border-white/10 text-white" data-testid="select-create-workspace">
+                  <SelectValue placeholder="Select a client" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1a1d24] border-white/10">
+                  {workspaces.map(ws => (
+                    <SelectItem key={ws.id} value={ws.id} className="text-white">
+                      {ws.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-white/80">Email Address</Label>
+              <Input
+                type="email"
+                placeholder="client@example.com"
+                value={createForm.email}
+                onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                className="bg-white/5 border-white/10 text-white"
+                data-testid="input-create-email"
+              />
+              <p className="text-xs text-white/40">This will be used as their login username.</p>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-white/80">Name (Optional)</Label>
+              <Input
+                placeholder="Client name"
+                value={createForm.name}
+                onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                className="bg-white/5 border-white/10 text-white"
+                data-testid="input-create-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-white/80">Temporary Password</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={createForm.password}
+                  onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                  className="bg-white/5 border-white/10 text-white font-mono"
+                  data-testid="input-create-password"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCreateForm({ ...createForm, password: generatePassword() })}
+                  className="border-white/10 text-white/70 hover:text-white hover:bg-white/10"
+                  data-testid="button-generate-password"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-white/40">Must be 8+ chars with uppercase, lowercase, and number. Client will change on first login.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setShowCreateModal(false)}
+              className="text-white/70 hover:text-white hover:bg-white/10"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => createUserMutation.mutate(createForm)}
+              disabled={!createForm.email || !createForm.password || !createForm.workspaceId || createUserMutation.isPending}
+              className="bg-cyan-500 hover:bg-cyan-600 text-white"
+              data-testid="button-confirm-create-login"
+            >
+              {createUserMutation.isPending ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                'Create Login'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showResetPasswordModal} onOpenChange={setShowResetPasswordModal}>
+        <DialogContent className="bg-[#1a1d24] border-white/10 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <Shield className="h-5 w-5 text-amber-400" />
+              Reset Password
+            </DialogTitle>
+            <DialogDescription className="text-white/55">
+              Set a new temporary password for {selectedUser?.username}. They will be required to change it on their next login.
+            </DialogDescription>
+          </DialogHeader>
+          <ClientResetPasswordForm
+            user={selectedUser}
+            onSubmit={(newPassword) => {
+              if (selectedUser?.clientId) {
+                resetPasswordMutation.mutate({
+                  userId: selectedUser.id,
+                  workspaceId: selectedUser.clientId,
+                  newPassword,
+                });
+              }
+            }}
+            onCancel={() => {
+              setShowResetPasswordModal(false);
+              setSelectedUser(null);
+            }}
+            isPending={resetPasswordMutation.isPending}
+            generatePassword={generatePassword}
+          />
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+interface ClientResetPasswordFormProps {
+  user: ClientUser | null;
+  onSubmit: (newPassword: string) => void;
+  onCancel: () => void;
+  isPending: boolean;
+  generatePassword: () => string;
+}
+
+function ClientResetPasswordForm({ user, onSubmit, onCancel, isPending, generatePassword }: ClientResetPasswordFormProps) {
+  const [newPassword, setNewPassword] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      setNewPassword(generatePassword());
+    }
+  }, [user]);
+
+  const isValidPassword = newPassword.length >= 8;
+
+  return (
+    <>
+      <div className="space-y-4 py-4">
+        <div className="space-y-2">
+          <Label className="text-white/80">New Temporary Password</Label>
+          <div className="flex gap-2">
+            <Input
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className={`bg-white/5 border-white/10 text-white font-mono ${!isValidPassword && newPassword ? 'border-red-500/50' : ''}`}
+              data-testid="input-reset-password"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => setNewPassword(generatePassword())}
+              className="border-white/10 text-white/70 hover:text-white hover:bg-white/10"
+              data-testid="button-regenerate-password"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
+          {!isValidPassword && newPassword && (
+            <p className="text-xs text-red-400">Password must be at least 8 characters</p>
+          )}
+        </div>
+      </div>
+      <DialogFooter>
+        <Button
+          variant="ghost"
+          onClick={onCancel}
+          className="text-white/70 hover:text-white hover:bg-white/10"
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={() => onSubmit(newPassword)}
+          disabled={!newPassword || !isValidPassword || isPending}
+          className="bg-amber-500 hover:bg-amber-600 text-white"
+          data-testid="button-confirm-reset-password"
+        >
+          {isPending ? (
+            <>
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              Resetting...
+            </>
+          ) : (
+            'Reset Password'
+          )}
+        </Button>
+      </DialogFooter>
+    </>
   );
 }

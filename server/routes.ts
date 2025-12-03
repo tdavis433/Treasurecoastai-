@@ -9,7 +9,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import path from "path";
 import fs from "fs";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, desc } from "drizzle-orm";
 import {
   getBotConfig,
   getBotConfigAsync,
