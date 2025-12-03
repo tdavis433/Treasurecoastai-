@@ -10,8 +10,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Bot, Users, Settings, BarChart3, MessageSquare, 
   Eye, Edit2, Trash2, Clock, CreditCard, Building2,
-  ChevronLeft, UserPlus, Shield
+  ChevronLeft, UserPlus, Shield, Plus, RefreshCw
 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface AuthUser {
   id: number;
@@ -50,6 +54,55 @@ export default function ClientDetailAdmin() {
   const slug = params?.slug;
   
   const [activeTab, setActiveTab] = useState<'overview' | 'assistants' | 'conversations' | 'leads' | 'billing' | 'users' | 'settings'>('overview');
+  const [showCreateAssistantModal, setShowCreateAssistantModal] = useState(false);
+  const [newAssistantForm, setNewAssistantForm] = useState({
+    botId: '',
+    name: '',
+    businessType: 'auto_repair',
+  });
+
+  const businessTypes = [
+    { value: 'auto_repair', label: 'Auto Repair' },
+    { value: 'restaurant', label: 'Restaurant' },
+    { value: 'cafe', label: 'Cafe' },
+    { value: 'fitness_center', label: 'Fitness Center' },
+    { value: 'dental_practice', label: 'Dental Practice' },
+    { value: 'salon', label: 'Salon & Spa' },
+    { value: 'real_estate', label: 'Real Estate' },
+    { value: 'sober_living', label: 'Sober Living' },
+    { value: 'medical_practice', label: 'Medical Practice' },
+    { value: 'home_services', label: 'Home Services' },
+    { value: 'other', label: 'Other' },
+  ];
+
+  const createAssistantMutation = useMutation({
+    mutationFn: async (data: { botId: string; clientId: string; name: string; businessType: string }) => {
+      const response = await apiRequest("POST", "/api/super-admin/bots", {
+        botId: data.botId,
+        clientId: data.clientId,
+        name: data.name,
+        description: `AI assistant for ${data.name}`,
+        businessProfile: {
+          businessName: data.name,
+          type: data.businessType,
+        },
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to create assistant");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Assistant Created", description: "The new assistant has been created successfully." });
+      setShowCreateAssistantModal(false);
+      setNewAssistantForm({ botId: '', name: '', businessType: 'auto_repair' });
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/workspaces", slug] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
 
   const { data: currentUser, isLoading: authLoading } = useQuery<AuthUser>({
     queryKey: ["/api/auth/me"],
@@ -374,6 +427,17 @@ export default function ClientDetailAdmin() {
           {/* Assistants Tab */}
           {activeTab === 'assistants' && (
             <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-white">Assistants</h3>
+                <Button 
+                  onClick={() => setShowCreateAssistantModal(true)}
+                  className="bg-cyan-500 hover:bg-cyan-600 text-white"
+                  data-testid="button-create-assistant"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Assistant
+                </Button>
+              </div>
               {clientBots.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {clientBots.map(bot => (
@@ -696,6 +760,107 @@ export default function ClientDetailAdmin() {
           )}
         </div>
       </div>
+
+      {/* Create Assistant Modal */}
+      <Dialog open={showCreateAssistantModal} onOpenChange={setShowCreateAssistantModal}>
+        <DialogContent className="bg-[#1a1d24] border-white/10 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <Bot className="h-5 w-5 text-cyan-400" />
+              Create New Assistant
+            </DialogTitle>
+            <DialogDescription className="text-white/55">
+              Create a new AI assistant for {workspaceData?.name || 'this client'}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="assistant-id" className="text-white/70">Assistant ID</Label>
+              <Input
+                id="assistant-id"
+                value={newAssistantForm.botId}
+                onChange={(e) => setNewAssistantForm(prev => ({ 
+                  ...prev, 
+                  botId: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_')
+                }))}
+                placeholder="e.g., sunset_coffee_bot"
+                className="bg-white/5 border-white/10 text-white"
+                data-testid="input-assistant-id"
+              />
+              <p className="text-xs text-white/40">Unique identifier (lowercase, underscores allowed)</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="assistant-name" className="text-white/70">Display Name</Label>
+              <Input
+                id="assistant-name"
+                value={newAssistantForm.name}
+                onChange={(e) => setNewAssistantForm(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="e.g., Sunset Coffee Assistant"
+                className="bg-white/5 border-white/10 text-white"
+                data-testid="input-assistant-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="business-type" className="text-white/70">Business Type</Label>
+              <Select 
+                value={newAssistantForm.businessType} 
+                onValueChange={(value) => setNewAssistantForm(prev => ({ ...prev, businessType: value }))}
+              >
+                <SelectTrigger className="bg-white/5 border-white/10 text-white" data-testid="select-business-type">
+                  <SelectValue placeholder="Select business type" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1a1d24] border-white/10">
+                  {businessTypes.map(type => (
+                    <SelectItem key={type.value} value={type.value} className="text-white hover:bg-white/10">
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="ghost" 
+              onClick={() => setShowCreateAssistantModal(false)}
+              className="text-white/70"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!newAssistantForm.botId || !newAssistantForm.name || !workspaceData?.slug) {
+                  toast({ title: "Error", description: "Please fill in all fields.", variant: "destructive" });
+                  return;
+                }
+                createAssistantMutation.mutate({
+                  botId: newAssistantForm.botId,
+                  clientId: workspaceData.slug,
+                  name: newAssistantForm.name,
+                  businessType: newAssistantForm.businessType,
+                });
+              }}
+              disabled={!newAssistantForm.botId || !newAssistantForm.name || createAssistantMutation.isPending}
+              className="bg-cyan-500 hover:bg-cyan-600 text-white"
+              data-testid="button-confirm-create-assistant"
+            >
+              {createAssistantMutation.isPending ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Assistant
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

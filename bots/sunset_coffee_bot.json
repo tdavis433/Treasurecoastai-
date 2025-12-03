@@ -1,0 +1,42 @@
+{
+  "botId": "sunset_coffee_bot",
+  "clientId": "sunset_coffee_qa",
+  "name": "Sunset Coffee Assistant",
+  "description": "AI assistant for Sunset Coffee Assistant",
+  "businessProfile": {
+    "businessName": "Sunset Coffee Assistant",
+    "type": "cafe",
+    "location": "",
+    "phone": "",
+    "email": "",
+    "website": "",
+    "hours": {
+      "officeHours": "Mon-Fri 9am-5pm"
+    },
+    "services": []
+  },
+  "systemPrompt": "You are a helpful assistant for Sunset Coffee Assistant. Provide clear, friendly information about the business, its services, and how customers can get in touch. Be professional and helpful.",
+  "faqs": [],
+  "rules": {
+    "allowedTopics": [
+      "general information",
+      "services",
+      "pricing",
+      "contact methods",
+      "hours of operation"
+    ],
+    "forbiddenTopics": [
+      "medical advice",
+      "legal advice",
+      "financial advice"
+    ],
+    "crisisHandling": {
+      "onCrisisKeywords": [
+        "emergency",
+        "help me",
+        "urgent"
+      ],
+      "responseTemplate": "If this is an emergency, please call 911 or your local emergency services immediately."
+    }
+  }
+}

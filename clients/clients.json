@@ -53,6 +53,16 @@
       ],
       "status": "active",
       "createdAt": "2025-11-30"
+    },
+    {
+      "id": "sunset_coffee_qa",
+      "name": "Sunset Coffee Assistant",
+      "type": "cafe",
+      "bots": [
+        "sunset_coffee_bot"
+      ],
+      "status": "active",
+      "createdAt": "2025-12-03"
     }
   ]
 }
