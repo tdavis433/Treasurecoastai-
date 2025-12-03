@@ -25,6 +25,9 @@ The platform adopts a "Dark Luxury SaaS with Neon-Glass Accents" aesthetic, draw
 *   **Super Admin Dashboard (`/super-admin`):** Single consolidated admin hub for complete platform management including client and assistant management, template galleries, global knowledge management, API key hub, billing, system logs, and user role management.
 *   **Assistant Editor (Bot Builder):** Tools for defining AI persona and system prompts, managing knowledge/content, setting up automations/flows, customizing channels & embeds, and a testing sandbox.
 
+### Core Architecture Principle: "ONE BRAIN ONE BEHAVIOR"
+All chat entry points (admin preview, public widget, demo page, API) use a single Unified Conversation Orchestrator to ensure consistent AI behavior across the platform.
+
 ### Technical Implementation
 *   **Frontend:** React 18, TypeScript, Tailwind CSS, shadcn/ui, Framer Motion.
 *   **Backend:** Express.js, Node.js.
@@ -40,8 +43,56 @@ The platform adopts a "Dark Luxury SaaS with Neon-Glass Accents" aesthetic, draw
     - Domain validation: Origin/Referer checking against allowlist
     - Helmet for secure HTTP headers and CSP
 
+## Key Architecture Components
+
+### Unified Conversation Orchestrator (`server/orchestrator.ts`)
+The central "brain" for all chat interactions. Responsibilities:
+- **Config Loading:** Loads bot configuration through the config cache
+- **Knowledge Retrieval:** Builds context from business profile, FAQs, and knowledge base
+- **OpenAI Prompts:** Constructs system prompts with persona, business context, and conversation rules
+- **Post-Processing:** Handles lead capture detection, booking intent detection, topic categorization
+- **Session Management:** Persists conversation data including topics array, appointmentRequested flag, leadCaptured status
+
+### Enhanced Bot Config Cache (`server/configCache.ts`)
+In-memory caching layer for bot configurations:
+- **TTL-based Caching:** Configurable time-to-live for cache entries
+- **Invalidation:** Manual cache invalidation on bot updates
+- **Performance:** Prevents repeated database queries for hot configs
+
+### Routes Layer (`server/routes.ts`)
+HTTP-specific handling delegated to routes:
+- **Security:** Token validation, domain validation, CORS
+- **Response Formatting:** Standardized API response shapes
+- **Rate Limiting:** Per-endpoint rate limits
+- **Error Handling:** Consistent error response format
+
+### Multi-Tenant Data Isolation
+All operations maintain strict tenant isolation:
+- Queries scoped by `clientId/workspaceId` + `botId`
+- Cross-tenant data access prevented at storage layer
+- Session data isolated per conversation
+
+### Session Data Tracking
+Each conversation session tracks:
+- `topics`: Array of categorized message topics (pricing, hours, location, services, appointments, etc.)
+- `appointmentRequested`: Boolean flag when booking intent detected
+- `leadCaptured`: Boolean flag when contact info captured
+- `messageCount`: Total messages in conversation
+
+### Daily Analytics
+Analytics tracking includes:
+- `conversationCount`: Total conversations per day
+- `leadCount`: Captured leads per day
+- `appointmentRequests`: Booking intent detections per day
+- `avgResponseTime`: Average AI response time
+
 ## External Dependencies
-*   **OpenAI GPT-4:** For AI engine and conversation analysis.
+*   **OpenAI GPT-4:** For AI engine and conversation analysis. Supports both `OPENAI_API_KEY` and `AI_INTEGRATIONS_OPENAI_API_KEY` environment variables.
 *   **Neon (PostgreSQL):** Database hosting.
 *   **Drizzle ORM:** Object-Relational Mapper for database interactions.
 *   **Stripe:** Payment processing and integration.
+
+## Future Enhancements
+*   **Knowledge Hub:** Unified knowledge management across bots
+*   **Background Job Processing:** Queue for heavy async tasks
+*   **Unified Metrics & Quotas Service:** Batched writes for analytics
