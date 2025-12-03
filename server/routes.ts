@@ -1598,13 +1598,12 @@ Always be positive and solution-oriented. If someone wants to get started, direc
   });
 
   // =============================================
-  // MULTI-TENANT CHAT ENDPOINTS
+  // MULTI-TENANT CHAT ENDPOINTS (UNIFIED ORCHESTRATOR)
   // =============================================
 
   // Multi-tenant chat endpoint: POST /api/chat/:clientId/:botId
+  // Uses the unified orchestrator for consistent behavior across all surfaces
   app.post("/api/chat/:clientId/:botId", async (req, res) => {
-    const startTime = Date.now();
-    
     try {
       // Validate params
       const paramsValidation = validateRequest(clientBotParamsSchema, req.params);
@@ -1619,7 +1618,7 @@ Always be positive and solution-oriented. If someone wants to get started, direc
         return res.status(404).json({ error: `Bot not found: ${clientId}/${botId}` });
       }
 
-      // Phase 2.4: Widget token validation with security settings
+      // HTTP-level security: Widget token validation
       const authHeader = req.headers.authorization;
       const isProduction = process.env.NODE_ENV === 'production';
       const requireToken = botConfig.security?.requireWidgetToken ?? false;
@@ -1632,22 +1631,19 @@ Always be positive and solution-oriented. If someone wants to get started, direc
           return res.status(401).json({ error: 'Invalid widget token', details: tokenResult.error });
         }
         
-        // Verify token matches URL params (prevent spoofing)
         if (tokenResult.clientId !== clientId || tokenResult.botId !== botId) {
           return res.status(403).json({ error: 'Token mismatch - clientId/botId does not match token' });
         }
       } else if (requireToken) {
-        // This bot requires a widget token - reject without one
         return res.status(401).json({ 
           error: 'Widget token required',
           message: 'This bot requires authentication. Please obtain a token from /api/widget/config'
         });
       } else if (isProduction) {
-        // Log warning in production for requests without tokens
         console.warn(`[SECURITY] Chat request without widget token for ${clientId}/${botId}`);
       }
       
-      // Domain validation if allowedDomains is configured
+      // HTTP-level security: Domain validation
       if (botConfig.security?.allowedDomains && botConfig.security.allowedDomains.length > 0) {
         const origin = req.get('origin') || req.get('referer');
         if (origin) {
@@ -1664,7 +1660,6 @@ Always be positive and solution-oriented. If someone wants to get started, direc
               });
             }
           } catch {
-            // Invalid URL - log and continue
             console.warn(`[SECURITY] Invalid origin header for ${clientId}/${botId}: ${origin}`);
           }
         }
@@ -1676,361 +1671,55 @@ Always be positive and solution-oriented. If someone wants to get started, direc
         return res.status(400).json({ error: bodyValidation.error });
       }
       const { messages, sessionId, language } = bodyValidation.data;
-
-      // Note: botConfig already loaded above for security checks
-
-      // Check client status - only allow active clients to use the bot
-      const clientStatus = getClientStatus(clientId);
-      if (clientStatus === 'paused') {
-        return res.status(503).json({ 
-          error: "Service temporarily unavailable",
-          message: "This service is currently paused. Please contact the business for more information.",
-          status: 'paused'
-        });
-      }
-
-      // Check plan limits before processing
-      const limitCheck = await checkMessageLimit(clientId);
-      if (!limitCheck.allowed) {
-        return res.status(429).json({
-          error: "Usage limit reached",
-          message: limitCheck.reason,
-          usage: limitCheck.usage
-        });
-      }
-
-      const lastUserMessage = messages[messages.length - 1];
+      
+      // Determine source from request context
+      const source = req.body.source || 'widget';
       const actualSessionId = sessionId || `session_${Date.now()}`;
       
-      // Categorize the message topic
-      const messageCategory = categorizeMessageTopic(lastUserMessage?.content || "");
-      
-      // Track session analytics
-      const existingSession = await storage.getChatSession(actualSessionId, clientId, botId);
-      const sessionData = {
-        sessionId: actualSessionId,
+      // Use unified orchestrator for all chat processing
+      const { orchestrator } = await import('./orchestrator');
+      const result = await orchestrator.processMessage({
         clientId,
         botId,
-        startedAt: existingSession?.startedAt || new Date(),
-        userMessageCount: (existingSession?.userMessageCount || 0) + 1,
-        botMessageCount: existingSession?.botMessageCount || 0,
-        totalResponseTimeMs: existingSession?.totalResponseTimeMs || 0,
-        crisisDetected: existingSession?.crisisDetected || false,
-        appointmentRequested: existingSession?.appointmentRequested || false,
-        topics: [...(existingSession?.topics as string[] || [])],
-      };
-      
-      // Add topic if not already tracked
-      if (messageCategory && !sessionData.topics.includes(messageCategory)) {
-        sessionData.topics.push(messageCategory);
-      }
-      
-      // Check for crisis keywords using bot-specific configuration
-      if (lastUserMessage?.role === "user" && detectCrisisInMessage(lastUserMessage.content, botConfig)) {
-        const crisisReply = getBotCrisisResponse(botConfig);
-        const responseTime = Date.now() - startTime;
-        
-        // Update session with crisis flag
-        sessionData.crisisDetected = true;
-        sessionData.botMessageCount += 1;
-        sessionData.totalResponseTimeMs += responseTime;
-        
-        // Log analytics event for crisis
-        await storage.logAnalyticsEvent({
-          clientId,
-          botId,
-          sessionId: actualSessionId,
-          eventType: 'crisis',
-          actor: 'user',
-          messageContent: lastUserMessage.content,
-          category: 'crisis',
-          responseTimeMs: responseTime,
-          metadata: { language: language ?? "en" } as any,
-        });
-        
-        await storage.createOrUpdateChatSession(sessionData);
-        
-        // Update daily analytics
-        await storage.updateOrCreateDailyAnalytics({
-          date: new Date().toISOString().split('T')[0],
-          clientId,
-          botId,
-          totalConversations: existingSession ? 0 : 1,
-          totalMessages: 2,
-          userMessages: 1,
-          botMessages: 1,
-          crisisEvents: 1,
-        });
-        
-        // Log to file
-        logConversationToFile({
-          timestamp: new Date().toISOString(),
-          clientId,
-          botId,
-          sessionId: actualSessionId,
-          userMessage: lastUserMessage.content,
-          botReply: crisisReply
-        });
-
-        return res.json({ 
-          reply: crisisReply,
-          meta: { clientId, botId, crisis: true, sessionId: actualSessionId }
-        });
-      }
-
-      // Process automations (keyword triggers, office hours, lead capture)
-      const automationContext: AutomationContext = {
-        clientId,
-        botId,
+        messages,
         sessionId: actualSessionId,
-        message: lastUserMessage?.content || "",
-        messageCount: sessionData.userMessageCount,
-        language,
-        officeHours: botConfig.automations?.officeHours
-      };
-      
-      const automationResult = processAutomations(
-        automationContext, 
-        botConfig.automations as BotAutomationConfig
-      );
-      
-      // If automation triggered with a response and should not continue to AI
-      if (automationResult.triggered && automationResult.response && !automationResult.shouldContinue) {
-        const responseTime = Date.now() - startTime;
-        
-        // Update session data
-        sessionData.botMessageCount += 1;
-        sessionData.totalResponseTimeMs += responseTime;
-        
-        // Log automation-triggered response
-        await storage.logAnalyticsEvent({
-          clientId,
-          botId,
-          sessionId: actualSessionId,
-          eventType: 'automation',
-          actor: 'bot',
-          messageContent: automationResult.response,
-          responseTimeMs: responseTime,
-          metadata: { 
-            language,
-            automationRuleId: automationResult.ruleId,
-            automationType: automationResult.metadata?.type
-          } as Record<string, any>,
-        });
-        
-        await storage.createOrUpdateChatSession(sessionData);
-        
-        // Increment usage counters
-        await incrementMessageCount(clientId);
-        await incrementAutomationCount(clientId);
-        
-        // Log to file
-        logConversationToFile({
-          timestamp: new Date().toISOString(),
-          clientId,
-          botId,
-          sessionId: actualSessionId,
-          userMessage: lastUserMessage?.content || "",
-          botReply: automationResult.response
-        });
-
-        return res.json({ 
-          reply: automationResult.response,
-          meta: { 
-            clientId, 
-            botId, 
-            sessionId: actualSessionId,
-            automation: true,
-            ruleId: automationResult.ruleId
-          }
-        });
-      }
-      
-      // Handle lead capture action (continue to AI but track the lead)
-      if (automationResult.action?.type === 'capture_lead' && automationResult.action.payload) {
-        await storage.logAnalyticsEvent({
-          clientId,
-          botId,
-          sessionId: actualSessionId,
-          eventType: 'lead_capture',
-          actor: 'system',
-          messageContent: lastUserMessage?.content || "",
-          metadata: { 
-            ...automationResult.action.payload,
-            language
-          } as any,
-        });
-        
-        // Increment lead counter
-        await incrementLeadCount(clientId);
-      }
-
-      // Fetch client settings for external booking/payment URLs
-      const clientSettings = await storage.getSettings(clientId);
-      
-      // Inject external URLs into bot config for system prompt building
-      // Check clientSettings first, then fall back to botConfig (for JSON-defined bots)
-      const resolvedExternalBookingUrl = clientSettings?.externalBookingUrl || botConfig.externalBookingUrl || undefined;
-      const resolvedExternalPaymentUrl = clientSettings?.externalPaymentUrl || botConfig.externalPaymentUrl || undefined;
-      const botConfigWithUrls = {
-        ...botConfig,
-        externalBookingUrl: resolvedExternalBookingUrl,
-        externalPaymentUrl: resolvedExternalPaymentUrl,
-      };
-
-      // Build system prompt from bot config with booking URLs
-      const systemPrompt = buildSystemPromptFromConfig(botConfigWithUrls);
-
-      if (!openai) {
-        return res.status(503).json({ error: "AI service not configured" });
-      }
-
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages
-        ],
-        max_completion_tokens: 500,
-      });
-
-      const defaultReply = language === "es" 
-        ? "Estoy aquí para ayudar. ¿Cómo puedo asistirte hoy?"
-        : "I'm here to help. How can I assist you today?";
-      const reply = completion.choices[0]?.message?.content || defaultReply;
-      const responseTime = Date.now() - startTime;
-      
-      // Update session data
-      sessionData.botMessageCount += 1;
-      sessionData.totalResponseTimeMs += responseTime;
-      
-      // Check if conversation mentions appointment/booking intent
-      // More targeted regex - only explicit booking/scheduling phrases, not generic words like "service"
-      const bookingKeywords = /\b(book|booking|schedule|scheduling|appointment|reserve|reservation)\b|\bset up (a |an )?(appointment|meeting|visit|consultation)\b|\bwant to (come in|visit|see you)\b/i;
-      // Also check for affirmative responses when AI has PREVIOUSLY prompted for booking
-      const affirmativeKeywords = /\b(yes|yeah|sure|please|ok|okay|sounds good|that works|let'?s do|perfect|great)\b/i;
-      const aiAskedAboutBooking = /\b(schedule|book|appointment|come in|visit|when|preferred|date|time)\b/i;
-      
-      // Get the PREVIOUS assistant message (not the current reply)
-      const previousAssistantMessage = messages.filter(m => m.role === 'assistant').slice(-1)[0]?.content || "";
-      
-      const directBookingIntent = bookingKeywords.test(lastUserMessage?.content || "");
-      const isAffirmativeToBookingPrompt = affirmativeKeywords.test(lastUserMessage?.content || "") && aiAskedAboutBooking.test(previousAssistantMessage);
-      const alreadyRequestedBooking = existingSession?.appointmentRequested || false;
-      
-      // Check if ANY message in the conversation history has booking intent
-      const conversationHasBookingIntent = messages.some(m => m.role === 'user' && bookingKeywords.test(m.content || ""));
-      
-      // Check if AI response mentions booking button/scheduling (indicating booking flow is active)
-      const aiMentionsBookingButton = /\b(book\s*appointment|click.*button|scheduling\s*page|finalize.*booking|complete.*booking)\b/i.test(reply);
-      
-      // Show booking if: direct intent, affirming a booking prompt, already in booking flow, OR any message had booking intent
-      const mentionsAppointment = directBookingIntent || isAffirmativeToBookingPrompt || alreadyRequestedBooking || conversationHasBookingIntent || aiMentionsBookingButton;
-      if (directBookingIntent || isAffirmativeToBookingPrompt || conversationHasBookingIntent) {
-        sessionData.appointmentRequested = true;
-      }
-
-      // Log analytics events
-      if (lastUserMessage?.role === "user") {
-        await storage.logAnalyticsEvent({
-          clientId,
-          botId,
-          sessionId: actualSessionId,
-          eventType: 'message',
-          actor: 'user',
-          messageContent: lastUserMessage.content,
-          category: messageCategory,
-          metadata: { language: language ?? "en" } as any,
-        });
-      }
-      
-      await storage.logAnalyticsEvent({
-        clientId,
-        botId,
-        sessionId: actualSessionId,
-        eventType: 'message',
-        actor: 'bot',
-        messageContent: reply,
-        responseTimeMs: responseTime,
-        metadata: { language } as any,
+        language: language || 'en',
+        source,
+        widgetToken: authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : undefined,
       });
       
-      await storage.createOrUpdateChatSession(sessionData);
-      
-      // Increment usage counter
-      await incrementMessageCount(clientId);
-      
-      // Update daily analytics
-      await storage.updateOrCreateDailyAnalytics({
-        date: new Date().toISOString().split('T')[0],
-        clientId,
-        botId,
-        totalConversations: existingSession ? 0 : 1,
-        totalMessages: 2,
-        userMessages: 1,
-        botMessages: 1,
-        appointmentRequests: mentionsAppointment ? 1 : 0,
-      });
-
-      // Log conversation to file
-      if (lastUserMessage?.role === "user") {
-        logConversationToFile({
-          timestamp: new Date().toISOString(),
-          clientId,
-          botId,
-          sessionId: actualSessionId,
-          userMessage: lastUserMessage.content,
-          botReply: reply
+      // Handle orchestrator errors
+      if (!result.success) {
+        const statusMap: Record<string, number> = {
+          'BOT_NOT_FOUND': 404,
+          'CLIENT_PAUSED': 503,
+          'LIMIT_EXCEEDED': 429,
+          'AI_UNAVAILABLE': 503,
+          'INTERNAL_ERROR': 500,
+        };
+        const status = statusMap[result.errorCode || 'INTERNAL_ERROR'] || 500;
+        return res.status(status).json({ 
+          error: result.error,
+          message: result.error,
+          status: result.errorCode === 'CLIENT_PAUSED' ? 'paused' : undefined,
         });
       }
-
-      // Use resolved booking URL (clientSettings or botConfig fallback)
-      const externalBookingUrl = mentionsAppointment ? (resolvedExternalBookingUrl || null) : null;
-      const externalPaymentUrl = mentionsAppointment ? (resolvedExternalPaymentUrl || null) : null;
-
-      // Log booking intent analytics event if booking detected
-      if (mentionsAppointment) {
-        await storage.logAnalyticsEvent({
-          clientId,
-          botId,
-          sessionId: actualSessionId,
-          eventType: 'booking_intent',
-          actor: 'user',
-          messageContent: lastUserMessage?.content || "",
-          metadata: { 
-            hasBookingUrl: !!externalBookingUrl,
-            bookingUrl: externalBookingUrl,
-          } as Record<string, any>,
-        });
-      }
-
-      // Send response immediately for best UX
+      
+      // Run AI analysis asynchronously (after response sent)
       res.json({ 
-        reply,
-        meta: { 
-          clientId, 
-          botId, 
-          sessionId: actualSessionId, 
-          responseTimeMs: responseTime,
-          showBooking: mentionsAppointment,
-          externalBookingUrl,
-          externalPaymentUrl
-        }
+        reply: result.reply,
+        meta: result.meta
       });
       
-      // Run AI analysis and lead capture asynchronously (after response sent)
+      // Background AI analysis for lead enrichment
       (async () => {
         try {
           const contactInfo = extractContactInfo(messages);
           const userMessageTexts = messages.filter(m => m.role === 'user').map(m => m.content);
-          const conversationPreview = await generateQuickSummary(userMessageTexts) || lastUserMessage?.content?.slice(0, 200) || '';
-          
-          // Run AI analysis for richer insights
+          const conversationPreview = await generateQuickSummary(userMessageTexts) || messages[messages.length - 1]?.content?.slice(0, 200) || '';
           const analysis = await analyzeConversation(messages, botConfig.businessProfile?.type || 'general');
           
-          // Update session with AI analysis - fetch fresh session state to avoid race conditions
           if (analysis) {
-            // Fetch latest session state to avoid overwriting concurrent updates
             const freshSession = await storage.getChatSession(actualSessionId, clientId, botId);
             const freshMetadata = (freshSession?.metadata as Record<string, unknown>) || {};
             
@@ -2054,22 +1743,15 @@ Always be positive and solution-oriented. If someone wants to get started, direc
               needsReview: analysis.needsReview,
               reviewReason: analysis.reviewReason
             });
-            
-            if (analysis.needsReview) {
-              console.log(`[AI Analysis] Session ${actualSessionId} FLAGGED for review: ${analysis.reviewReason}`);
-            } else {
-              console.log(`[AI Analysis] Session ${actualSessionId} enriched with AI summary`);
-            }
           }
           
-          // Capture lead with AI insights
           await autoCaptureLead(
             clientId,
             botId,
             actualSessionId,
             contactInfo,
             conversationPreview,
-            analysis?.bookingIntent || sessionData.appointmentRequested || false,
+            result.meta.showBooking,
             analysis
           );
         } catch (err) {
