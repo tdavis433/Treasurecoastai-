@@ -1,0 +1,112 @@
+You are working on the Treasure Coast AI platform.
+
+Goal:
+Verify that when I create a brand-new client from the admin UI, their AI assistant behaves exactly like the demo bots:
+	•	Answers FAQs correctly
+	•	Detects booking intent
+	•	Collects lead info
+	•	Sends the external booking link
+	•	Logs conversations & leads
+	•	Updates analytics
+
+This must all happen through the normal UI, no DB hacks.
+
+⸻
+
+1. Create a Brand-New Client via UI
+
+Using the super-admin dashboard only:
+	1.	Create a new client/workspace:
+	•	Name: “Test Barber Shop – Behavior Parity”
+	2.	Create a bot for this client:
+	•	Name: “Test Barber Bot”
+	3.	Fill in bot/client business info:
+	•	Hours
+	•	Address
+	•	Services (haircut, beard trim, skin fade, etc.)
+	4.	Set Booking URL (admin-only field):
+	•	e.g. https://example.com/test-barber/book
+
+Do not hard-code anything special for this client; just use the standard UI flow.
+
+⸻
+
+2. Run Demo Client Baseline
+
+Pick an existing demo client that you know works (e.g. “Sunset Coffee” or the barbershop demo).
+
+Using the demo page widget:
+	1.	Ask:
+	•	“What services do you offer?”
+	•	“What are your hours today?”
+	•	“Where are you located?”
+	2.	Trigger booking:
+	•	“I want to book an appointment for tomorrow.”
+	•	Provide name, contact, service, time.
+
+Record how the demo bot behaves:
+	•	wording format
+	•	sequence (asks questions → confirms → sends booking link)
+	•	that it sends an external booking link
+	•	that a lead appears in dashboards
+
+This is the baseline behavior.
+
+⸻
+
+3. Run the Same Flow on the New Client
+
+Now, using the public widget or demo page for the new “Test Barber Shop – Behavior Parity” client:
+	1.	Ask the same questions in the same order:
+	•	“What services do you offer?”
+	•	“What are your hours today?”
+	•	“Where are you located?”
+	2.	Trigger booking with similar messages:
+	•	“I want to book a haircut for tomorrow.”
+	•	Provide:
+	•	Name: Alex Test
+	•	Phone/email
+	•	Service: Haircut
+	•	Time: 3 PM
+
+All of this must go through the normal widget UI – no manual API calls.
+
+⸻
+
+4. Verify Behavior Parity
+
+Compare the new client bot to the demo bot:
+	1.	Answer style & flow
+	•	Does it answer hours/location/services correctly?
+	•	Does it ask for similar lead/booking details?
+	•	Does it clearly send the booking URL and tell the user to finish booking there?
+	2.	Booking link
+	•	Does it send the correct booking URL you set for this client?
+	•	Does it avoid claiming it processed payment or confirmed internally?
+	3.	Lead capture & dashboards
+	•	In the client dashboard for the new barber shop:
+	•	Lead exists for Alex Test
+	•	Marked as booking-related
+	•	Shows service + preferred time
+	•	In the admin dashboard:
+	•	Same lead + conversation visible
+	•	Analytics updated (convos, leads, bookings) just like for the demo client.
+	4.	Engine parity
+	•	Confirm both demo and new client are using the same conversation orchestrator / chat pipeline (no special-case code).
+
+If any behavior differs in a way that suggests separate logic paths (e.g., demo bot can book but new clients can’t), refactor so:
+	•	all chat entry points use the unified orchestrator,
+	•	the only differences come from configuration (business info, bookingUrl, knowledge), not code.
+
+⸻
+
+5. Final Report
+
+Produce a short Behavior Parity QA Report:
+	•	Did the new client’s assistant behave the same as the demo?
+	•	Any differences in:
+	•	booking flow
+	•	lead capture
+	•	responses
+	•	dashboards
+	•	What you fixed (if anything) to ensure all future new clients automatically get full demo-level capabilities with just configuration.
