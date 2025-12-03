@@ -6027,7 +6027,7 @@ interface DebugInfo {
 }
 
 function TestChatPanel({ clientId, botId, botName }: { clientId: string; botId: string; botName: string }) {
-  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; bookingUrl?: string }>>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId] = useState(() => `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
@@ -6035,7 +6035,7 @@ function TestChatPanel({ clientId, botId, botName }: { clientId: string; botId: 
   const [debugLogs, setDebugLogs] = useState<DebugInfo[]>([]);
   const [selectedDebugIndex, setSelectedDebugIndex] = useState<number | null>(null);
   // Use a ref to always have current message history for API calls
-  const messagesRef = useRef<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+  const messagesRef = useRef<Array<{ role: 'user' | 'assistant'; content: string; bookingUrl?: string }>>([]);
   const { toast } = useToast();
   
   // Keep ref in sync with state
@@ -6097,7 +6097,9 @@ function TestChatPanel({ clientId, botId, botName }: { clientId: string; botId: 
         throw new Error(data.error || `HTTP ${response.status}: Failed to get response`);
       }
       
-      setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
+      // Capture booking URL from API response metadata
+      const bookingUrl = data.meta?.externalBookingUrl || undefined;
+      setMessages(prev => [...prev, { role: 'assistant', content: data.reply, bookingUrl }]);
       setDebugLogs(prev => {
         const newLogs = [...prev, debugRequest];
         // Auto-select the latest log entry
@@ -6203,19 +6205,34 @@ function TestChatPanel({ clientId, botId, botName }: { clientId: string; botId: 
                   </div>
                 )}
                 {messages.map((message, i) => (
-                  <div
-                    key={i}
-                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
+                  <div key={i} className="space-y-2">
                     <div
-                      className={`max-w-[80%] rounded-2xl px-4 py-2 ${
-                        message.role === 'user'
-                          ? 'bg-cyan-500 text-white'
-                          : 'bg-white/10 text-white/90'
-                      }`}
+                      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
-                      {message.content}
+                      <div
+                        className={`max-w-[80%] rounded-2xl px-4 py-2 ${
+                          message.role === 'user'
+                            ? 'bg-cyan-500 text-white'
+                            : 'bg-white/10 text-white/90'
+                        }`}
+                      >
+                        {message.content}
+                      </div>
                     </div>
+                    {message.bookingUrl && (
+                      <div className="flex justify-start">
+                        <a
+                          href={message.bookingUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-purple-500 text-white rounded-lg font-medium hover:opacity-90 transition-opacity"
+                          data-testid="button-book-appointment"
+                        >
+                          <Calendar className="h-4 w-4" />
+                          Book Appointment
+                        </a>
+                      </div>
+                    )}
                   </div>
                 ))}
                 {isLoading && (
