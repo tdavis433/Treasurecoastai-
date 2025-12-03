@@ -28,7 +28,9 @@ import {
   Utensils,
   Sparkles,
   Users,
-  CheckCircle2
+  CheckCircle2,
+  Calendar,
+  ExternalLink
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -210,8 +212,8 @@ function FloatingChatWidget({ botConfig, messages, setMessages, inputValue, setI
                 <div
                   key={index}
                   className={cn(
-                    "flex",
-                    message.role === "user" ? "justify-end" : "justify-start"
+                    "flex flex-col",
+                    message.role === "user" ? "items-end" : "items-start"
                   )}
                 >
                   <div
@@ -225,6 +227,24 @@ function FloatingChatWidget({ botConfig, messages, setMessages, inputValue, setI
                   >
                     {message.content}
                   </div>
+                  
+                  {/* Booking Button - Show when assistant message has booking URL */}
+                  {message.role === "assistant" && message.bookingUrl && (
+                    <a
+                      href={message.bookingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={cn(
+                        "mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90 shadow-lg",
+                        `bg-gradient-to-r ${colors.primary}`
+                      )}
+                      data-testid={`button-book-appointment-${index}`}
+                    >
+                      <Calendar className="h-4 w-4" />
+                      Book Appointment
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
                 </div>
               ))}
               
