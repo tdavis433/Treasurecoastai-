@@ -2422,7 +2422,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       });
 
       // Update session state to flag for human review
-      await storage.updateSessionState(sessionId, {
+      await storage.updateSessionState(sessionId, clientId, {
         status: 'needs_attention',
         priority: 'high'
       });
@@ -6028,6 +6028,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Update a note
   app.patch("/api/client/inbox/notes/:noteId", requireClientAuth, async (req, res) => {
     try {
+      const clientId = (req as any).effectiveClientId;
       const { noteId } = req.params;
       const { content, isPinned } = req.body;
       
@@ -6035,9 +6036,13 @@ These suggestions should be relevant to what was just discussed and help guide t
       if (content !== undefined) updates.content = content;
       if (isPinned !== undefined) updates.isPinned = isPinned;
       
-      const note = await storage.updateConversationNote(noteId, updates);
+      // Pass clientId for tenant verification
+      const note = await storage.updateConversationNote(noteId, clientId, updates);
       res.json(note);
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message === 'Note not found or access denied') {
+        return res.status(404).json({ error: "Note not found" });
+      }
       console.error("Update note error:", error);
       res.status(500).json({ error: "Failed to update note" });
     }
@@ -6046,9 +6051,14 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Delete a note
   app.delete("/api/client/inbox/notes/:noteId", requireClientAuth, async (req, res) => {
     try {
-      await storage.deleteConversationNote(req.params.noteId);
+      const clientId = (req as any).effectiveClientId;
+      // Pass clientId for tenant verification
+      await storage.deleteConversationNote(req.params.noteId, clientId);
       res.status(204).send();
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message === 'Note not found or access denied') {
+        return res.status(404).json({ error: "Note not found" });
+      }
       console.error("Delete note error:", error);
       res.status(500).json({ error: "Failed to delete note" });
     }
@@ -6101,9 +6111,13 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
       if (tags !== undefined) updates.tags = tags;
       
-      const state = await storage.updateSessionState(sessionId, updates);
+      // Pass clientId for tenant verification
+      const state = await storage.updateSessionState(sessionId, clientId, updates);
       res.json(state);
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message === 'Session state not found or access denied') {
+        return res.status(404).json({ error: "Session not found" });
+      }
       console.error("Update session state error:", error);
       res.status(500).json({ error: "Failed to update session state" });
     }

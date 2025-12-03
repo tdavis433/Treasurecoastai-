@@ -177,12 +177,12 @@ export interface IStorage {
   // Conversation notes
   createConversationNote(note: InsertConversationNote): Promise<ConversationNote>;
   getConversationNotes(sessionId: string, clientId: string): Promise<ConversationNote[]>;
-  updateConversationNote(id: string, updates: Partial<ConversationNote>): Promise<ConversationNote>;
-  deleteConversationNote(id: string): Promise<void>;
+  updateConversationNote(id: string, clientId: string, updates: Partial<ConversationNote>): Promise<ConversationNote>;
+  deleteConversationNote(id: string, clientId: string): Promise<void>;
   
   // Session states
   getOrCreateSessionState(sessionId: string, clientId: string, botId: string): Promise<SessionState>;
-  updateSessionState(sessionId: string, updates: Partial<SessionState>): Promise<SessionState>;
+  updateSessionState(sessionId: string, clientId: string, updates: Partial<SessionState>): Promise<SessionState>;
   getSessionStates(clientId: string, filters?: {
     status?: string;
     isRead?: boolean;
@@ -1439,20 +1439,42 @@ export class DbStorage implements IStorage {
       .orderBy(desc(conversationNotes.createdAt));
   }
 
-  async updateConversationNote(id: string, updates: Partial<ConversationNote>): Promise<ConversationNote> {
+  async updateConversationNote(id: string, clientId: string, updates: Partial<ConversationNote>): Promise<ConversationNote> {
+    // Verify note belongs to client before updating
+    const existing = await db
+      .select()
+      .from(conversationNotes)
+      .where(and(eq(conversationNotes.id, id), eq(conversationNotes.clientId, clientId)))
+      .limit(1);
+    
+    if (existing.length === 0) {
+      throw new Error('Note not found or access denied');
+    }
+    
     const updateData = { ...updates, updatedAt: new Date() };
     const result = await db
       .update(conversationNotes)
       .set(updateData as any)
-      .where(eq(conversationNotes.id, id))
+      .where(and(eq(conversationNotes.id, id), eq(conversationNotes.clientId, clientId)))
       .returning();
     return result[0];
   }
 
-  async deleteConversationNote(id: string): Promise<void> {
+  async deleteConversationNote(id: string, clientId: string): Promise<void> {
+    // Verify note belongs to client before deleting
+    const existing = await db
+      .select()
+      .from(conversationNotes)
+      .where(and(eq(conversationNotes.id, id), eq(conversationNotes.clientId, clientId)))
+      .limit(1);
+    
+    if (existing.length === 0) {
+      throw new Error('Note not found or access denied');
+    }
+    
     await db
       .delete(conversationNotes)
-      .where(eq(conversationNotes.id, id));
+      .where(and(eq(conversationNotes.id, id), eq(conversationNotes.clientId, clientId)));
   }
 
   // =============================================
@@ -1485,12 +1507,23 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
-  async updateSessionState(sessionId: string, updates: Partial<SessionState>): Promise<SessionState> {
+  async updateSessionState(sessionId: string, clientId: string, updates: Partial<SessionState>): Promise<SessionState> {
+    // Verify session state belongs to client before updating
+    const existing = await db
+      .select()
+      .from(sessionStates)
+      .where(and(eq(sessionStates.sessionId, sessionId), eq(sessionStates.clientId, clientId)))
+      .limit(1);
+    
+    if (existing.length === 0) {
+      throw new Error('Session state not found or access denied');
+    }
+    
     const updateData = { ...updates, updatedAt: new Date() };
     const result = await db
       .update(sessionStates)
       .set(updateData as any)
-      .where(eq(sessionStates.sessionId, sessionId))
+      .where(and(eq(sessionStates.sessionId, sessionId), eq(sessionStates.clientId, clientId)))
       .returning();
     return result[0];
   }

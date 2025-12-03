@@ -1,0 +1,183 @@
+Exactly—that’s the core target:
+
+Every business completely separated… but every bot running on the same supercharged engine.
+
+So:
+	•	Separation = no data leaks, each client has their own bots, leads, analytics, users.
+	•	Unity = same chat brain, same booking logic, same lead capture, same analytics engine, same speed for everyone.
+
+Let’s lock in what that actually means in your platform and then I’ll give you a Replit prompt to enforce it.
+
+⸻
+
+1. How the platform should be structured (in plain English)
+
+🔒 Per-client separation (multi-tenant)
+
+For every request, everywhere:
+	•	Every bot + widget call must include:
+clientId/workspaceId + botId
+	•	DB queries must always be filtered by that clientId:
+	•	conversations
+	•	sessions
+	•	leads
+	•	analytics
+	•	client users (client_admin)
+	•	Client dashboards: only see their data.
+	•	Super admin: can see everything, but always scoped by selected client.
+
+If one client could ever see another client’s leads/convos, that’s a hard fail.
+
+⸻
+
+🧠 Shared “AI brain” & features
+
+No matter who the client is or where the chat appears:
+	•	Same chat pipeline (same endpoint, same code path).
+	•	Same logic for:
+	•	understanding questions
+	•	answering from knowledge
+	•	capturing leads
+	•	detecting booking intent
+	•	flagging “Needs Review”
+	•	logging messages & sessions
+	•	Only difference per client:
+	•	businessName, hours, services, tone, bookingUrl, etc.
+	•	their knowledge base content
+	•	their branding / widget color
+
+So the engine is shared, but each client has their own config + data.
+
+⸻
+
+⚡ Speed & “saves time/money” angle
+
+The platform should:
+	•	Handle all FAQs so staff doesn’t have to.
+	•	Capture booking/lead info right in the chat.
+	•	Show everything in dashboards so owners don’t dig through emails/texts.
+	•	Let you update bots centrally (one change → all bots behave better).
+
+That’s what actually saves them money and time.
+
+⸻
+
+2. Prompt for Replit: “Multi-Tenant, Unified Engine Audit”
+
+Here’s a prompt you can paste into Replit to force it to check that:
+	•	every client is isolated, and
+	•	every chatbot uses the same powerful engine/flow.
+
+⸻
+
+🔧 REPLIT PROMPT — MULTI-TENANT ISOLATION + UNIFIED ENGINE CHECK
+
+You are working on the Treasure Coast AI platform.
+
+Business rules (must always be true):
+	•	Every client/business has its own isolated workspace (clientId / workspaceId).
+	•	All chatbots share one core engine and flow (same endpoint, same logic).
+	•	Clients (client_admin) can only view their own data.
+	•	Super admins build/manage assistants; clients never configure bots.
+	•	The system must feel:
+	•	smart
+	•	fast
+	•	helpful
+	•	time-saving and cost-saving for clients.
+
+Your task:
+
+Audit and, if needed, refactor the platform so that all chat surfaces use the same engine, while every client’s data is fully separated.
+
+1. Check multi-tenant separation
+	1.	Find everywhere we:
+	•	store conversations
+	•	store leads
+	•	store analytics / events
+	•	store client users (client_admin)
+	2.	Verify that all queries and writes:
+	•	always filter by clientId / workspaceId
+	•	never mix data between different clients.
+	3.	Fix any place where:
+	•	clientId is optional or missing
+	•	a route doesn’t verify the current user’s clientId
+	•	a widget can hit an endpoint without proper tenant scoping.
+
+Add small, central helpers if needed, like:
+
+getTenantScopedConversations(clientId, botId, currentUser);
+
+So all routes use the same tenant checks.
+
+2. Check unified chat engine
+
+Find all the places chat is used:
+	•	admin preview chat
+	•	demo pages (FloatingChatWidget, etc.)
+	•	public widget (widget.js embed)
+	•	any test pages
+
+Make sure they all:
+	•	call the same chat API route
+	•	pass the same payload shape
+	•	use the same shared client/hook/module to:
+	•	send messages
+	•	receive answers
+	•	trigger lead capture
+	•	trigger booking flows
+	•	flag “Needs Review”
+	•	log analytics
+
+If any component has its own fetch/logic, refactor it to use the shared chat client.
+
+3. Booking & lead flows: same behavior for every client
+
+For all clients, everywhere the bot runs:
+	•	Booking requests must:
+	•	collect name/contact/service/time
+	•	save a booking-intent lead
+	•	send the correct bookingUrl to complete on the external system
+	•	Normal lead capture must:
+	•	save leads with the right clientId and botId
+	•	show up in both admin + client dashboards.
+
+Test this with at least two different clients to confirm:
+	•	Client A’s widget can’t ever touch Client B’s data.
+	•	Both use the same booking + lead behavior.
+
+4. Dashboards: same power, per-client data
+	•	Client dashboard:
+	•	only shows data for that client’s clientId
+	•	shows conversations, leads, bookings, analytics
+	•	no edit controls for bots/config.
+	•	Admin/super admin:
+	•	can switch clients and see only that client’s data
+	•	uses the same analytics & lead data sources.
+
+Fix any place where dashboards use different queries or logic for different routes.
+
+5. Final QA
+
+Run end-to-end tests for:
+	•	Two different clients with different booking URLs.
+	•	Chatbot on:
+	•	demo page
+	•	public widget embed
+	•	admin preview
+	•	Confirm:
+	•	Same behavior in all three places
+	•	Correct booking link per client
+	•	Leads and conversations appear only in the correct client’s dashboards.
+
+Produce a short report:
+	•	Where multi-tenant separation was weak & how it was fixed.
+	•	Where chat logic was duplicated & how it was unified.
+	•	Confirmation that every client is fully isolated but powered by the same engine.
+
+⸻
+
+If you run that, you’re basically telling Replit:
+
+“Make sure every client has their own world, but every bot runs on the same weaponized brain.”
+
+That’s exactly what you described: super powerful, fully separated, and actually saving them time and money.
