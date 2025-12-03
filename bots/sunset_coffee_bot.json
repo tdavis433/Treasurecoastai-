@@ -38,5 +38,15 @@
       ],
       "responseTemplate": "If this is an emergency, please call 911 or your local emergency services immediately."
     }
+  },
+  "security": {
+    "requireWidgetToken": true,
+    "allowedDomains": [
+      "sunsetcoffee.com",
+      "app.sunsetcoffee.com"
+    ],
+    "rateLimitOverride": {
+      "windowMs": 120000
+    }
   }
 }

@@ -106,6 +106,14 @@ interface BotConfig {
   };
   systemPrompt: string;
   faqs: BotFaq[];
+  security?: {
+    requireWidgetToken?: boolean;
+    allowedDomains?: string[];
+    rateLimitOverride?: {
+      windowMs?: number;
+      maxRequests?: number;
+    };
+  };
   metadata?: {
     isDemo: boolean;
     createdAt: string;
@@ -221,6 +229,16 @@ export default function BotDashboard() {
       setEditedConfig({
         ...editedConfig,
         rules: { ...editedConfig.rules, ...updates }
+      });
+      setHasChanges(true);
+    }
+  };
+
+  const updateSecurity = (updates: Partial<NonNullable<BotConfig['security']>>) => {
+    if (editedConfig) {
+      setEditedConfig({
+        ...editedConfig,
+        security: { ...(editedConfig.security ?? {}), ...updates }
       });
       setHasChanges(true);
     }
@@ -729,6 +747,10 @@ export default function BotDashboard() {
               <Bell className="h-4 w-4" />
               Notifications
             </TabsTrigger>
+            <TabsTrigger value="security" className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500/20 data-[state=active]:to-orange-500/20 data-[state=active]:text-red-400 data-[state=active]:border data-[state=active]:border-red-400/30 data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white transition-all" data-testid="tab-security">
+              <Shield className="h-4 w-4" />
+              Security
+            </TabsTrigger>
             {renderBusinessTypeTabs()}
           </TabsList>
 
@@ -876,6 +898,13 @@ export default function BotDashboard() {
             <NotificationsTab 
               config={editedConfig}
               updateConfig={updateConfig}
+            />
+          </TabsContent>
+
+          <TabsContent value="security">
+            <SecurityTab 
+              config={editedConfig}
+              updateSecurity={updateSecurity}
             />
           </TabsContent>
 
@@ -2184,6 +2213,166 @@ function NotificationsTab({ config, updateConfig }: {
               <li>Booking: Know immediately when someone wants to schedule</li>
               <li>Crisis: Be notified of urgent issues requiring human attention</li>
               <li>Daily Summary: Get a quick overview of the day's conversations</li>
+            </ul>
+          </div>
+        </GlassCardContent>
+      </GlassCard>
+    </div>
+  );
+}
+
+function SecurityTab({ config, updateSecurity }: {
+  config: BotConfig;
+  updateSecurity: (updates: Partial<NonNullable<BotConfig['security']>>) => void;
+}) {
+  const { toast } = useToast();
+  
+  const security = config.security || {
+    requireWidgetToken: false,
+    allowedDomains: [],
+    rateLimitOverride: undefined,
+  };
+
+  const handleDomainChange = (value: string) => {
+    const domains = value.split('\n').map(d => d.trim()).filter(d => d.length > 0);
+    updateSecurity({ allowedDomains: domains });
+  };
+
+  const handleToggleWidgetToken = (checked: boolean) => {
+    updateSecurity({ requireWidgetToken: checked });
+    toast({ 
+      title: checked ? "Widget Token Enabled" : "Widget Token Disabled", 
+      description: checked 
+        ? "The widget will require a valid token to function. Don't forget to save!" 
+        : "The widget will work without a token. Don't forget to save!"
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-red-400" />
+            Widget Security Settings
+          </GlassCardTitle>
+          <GlassCardDescription>
+            Configure security measures to protect your chat widget from unauthorized use
+          </GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10">
+              <div className="flex items-center gap-3">
+                <Shield className="h-5 w-5 text-orange-400" />
+                <div>
+                  <p className="text-white font-medium">Require Widget Token</p>
+                  <p className="text-sm text-white/50">Widget must include a valid HMAC-signed token to function</p>
+                </div>
+              </div>
+              <Switch
+                checked={security.requireWidgetToken || false}
+                onCheckedChange={handleToggleWidgetToken}
+                data-testid="switch-require-widget-token"
+              />
+            </div>
+
+            <div>
+              <Label className="text-white/70 flex items-center gap-2">
+                <Globe className="h-4 w-4" />
+                Allowed Domains
+              </Label>
+              <Textarea
+                value={(security.allowedDomains || []).join('\n')}
+                onChange={(e) => handleDomainChange(e.target.value)}
+                placeholder="example.com&#10;app.example.com&#10;*.example.com"
+                className="bg-white/5 border-white/10 text-white mt-1 min-h-[120px] font-mono text-sm"
+                data-testid="textarea-allowed-domains"
+              />
+              <p className="text-white/40 text-xs mt-1">
+                Enter one domain per line. Leave empty to allow all domains. Supports wildcards (e.g., *.example.com)
+              </p>
+            </div>
+
+            <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-amber-200 font-medium text-sm">Production Security Recommendations</p>
+                  <ul className="text-amber-200/70 text-xs mt-2 space-y-1 list-disc list-inside">
+                    <li>Enable Widget Token for production deployments</li>
+                    <li>Add specific domains where the widget will be embedded</li>
+                    <li>Review and update allowed domains when deploying to new sites</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </GlassCardContent>
+      </GlassCard>
+
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-cyan-400" />
+            Rate Limiting
+          </GlassCardTitle>
+          <GlassCardDescription>
+            Configure custom rate limits for this bot (optional)
+          </GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label className="text-white/70">Window (milliseconds)</Label>
+              <Input
+                type="number"
+                value={security.rateLimitOverride?.windowMs ?? ''}
+                onChange={(e) => updateSecurity({
+                  rateLimitOverride: {
+                    ...(security.rateLimitOverride ?? {}),
+                    windowMs: e.target.value ? parseInt(e.target.value) : undefined
+                  }
+                })}
+                placeholder="60000 (default: 1 minute)"
+                className="bg-white/5 border-white/10 text-white mt-1"
+                data-testid="input-rate-limit-window"
+              />
+            </div>
+            <div>
+              <Label className="text-white/70">Max Requests</Label>
+              <Input
+                type="number"
+                value={security.rateLimitOverride?.maxRequests ?? ''}
+                onChange={(e) => updateSecurity({
+                  rateLimitOverride: {
+                    ...(security.rateLimitOverride ?? {}),
+                    maxRequests: e.target.value ? parseInt(e.target.value) : undefined
+                  }
+                })}
+                placeholder="30 (default per minute)"
+                className="bg-white/5 border-white/10 text-white mt-1"
+                data-testid="input-rate-limit-max"
+              />
+            </div>
+          </div>
+          <p className="text-white/40 text-xs mt-2">
+            Leave empty to use platform defaults (30 requests per minute for chat). Custom limits override the defaults.
+          </p>
+        </GlassCardContent>
+      </GlassCard>
+
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="text-sm">About Widget Security</GlassCardTitle>
+        </GlassCardHeader>
+        <GlassCardContent>
+          <div className="space-y-3 text-sm text-white/70">
+            <p>These security settings help protect your chatbot from abuse and unauthorized usage.</p>
+            <ul className="list-disc list-inside space-y-1 text-white/60">
+              <li><strong className="text-white/80">Widget Token:</strong> Requires a cryptographically signed token for the widget to function</li>
+              <li><strong className="text-white/80">Allowed Domains:</strong> Restricts which websites can embed your chat widget</li>
+              <li><strong className="text-white/80">Rate Limiting:</strong> Controls how many messages a user can send per time window</li>
             </ul>
           </div>
         </GlassCardContent>

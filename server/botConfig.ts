@@ -717,11 +717,46 @@ export async function saveBotConfigAsync(botId: string, updates: Partial<BotConf
       
       await db.update(bots).set(botUpdates).where(eq(bots.botId, botId));
       
-      if (updates.faqs || updates.rules || updates.automations) {
+      // Check if we need to update bot settings (faqs, rules, automations, or security)
+      if (updates.faqs || updates.rules || updates.automations || updates.security) {
         const settingsUpdates: any = {};
         if (updates.faqs) settingsUpdates.faqs = updates.faqs;
         if (updates.rules) settingsUpdates.rules = updates.rules;
         if (updates.automations) settingsUpdates.automations = updates.automations;
+        
+        // Handle security settings - store in metadata field with deep merge
+        if (updates.security) {
+          // Get existing metadata to merge with new security settings
+          const [existingSettings] = await db.select().from(botSettings).where(eq(botSettings.botId, botId)).limit(1);
+          const existingMetadata = (existingSettings?.metadata || {}) as Record<string, unknown>;
+          const existingSecurity = (existingMetadata.security || {}) as BotSecuritySettings;
+          
+          // Deep merge security settings - only update fields that are explicitly set
+          const mergedSecurity: BotSecuritySettings = {
+            requireWidgetToken: updates.security.requireWidgetToken !== undefined 
+              ? updates.security.requireWidgetToken 
+              : existingSecurity.requireWidgetToken,
+            allowedDomains: updates.security.allowedDomains !== undefined 
+              ? updates.security.allowedDomains 
+              : existingSecurity.allowedDomains,
+            rateLimitOverride: updates.security.rateLimitOverride !== undefined
+              ? {
+                  windowMs: updates.security.rateLimitOverride.windowMs !== undefined
+                    ? updates.security.rateLimitOverride.windowMs
+                    : existingSecurity.rateLimitOverride?.windowMs,
+                  maxRequests: updates.security.rateLimitOverride.maxRequests !== undefined
+                    ? updates.security.rateLimitOverride.maxRequests
+                    : existingSecurity.rateLimitOverride?.maxRequests,
+                }
+              : existingSecurity.rateLimitOverride,
+          };
+          
+          settingsUpdates.metadata = {
+            ...existingMetadata,
+            security: mergedSecurity
+          };
+        }
+        
         settingsUpdates.updatedAt = new Date();
         
         await db.update(botSettings).set(settingsUpdates).where(eq(botSettings.botId, botId));

@@ -703,6 +703,18 @@ export const botSettings = pgTable("bot_settings", {
     prompt?: string;
   }>>().default([]),
   
+  // Metadata for storing security and other extensible settings
+  metadata: json("metadata").$type<{
+    security?: {
+      requireWidgetToken?: boolean;
+      allowedDomains?: string[];
+      rateLimitOverride?: {
+        windowMs?: number;
+        maxRequests?: number;
+      };
+    };
+  }>().default({}),
+  
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({
   botIdIdx: index("bot_settings_bot_id_idx").on(table.botId),
