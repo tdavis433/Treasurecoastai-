@@ -18,8 +18,9 @@ import {
   Calendar, Utensils, Scissors, Car, Dumbbell, Home, ClipboardList,
   Users, DollarSign, Shield, Search, Loader2, ExternalLink, Check,
   X, RefreshCw, Trash2, Plus, Download, BarChart3, Send, Bot,
-  Play, Eye, Code2, Zap, Bell
+  Play, Eye, Code2, Zap, Bell, Copy
 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface BotFaq {
   question: string;
@@ -1377,6 +1378,25 @@ interface BotStats {
 }
 
 function BotOverviewTab({ botId, botConfig }: { botId: string; botConfig: BotConfig }) {
+  const { toast } = useToast();
+  const [showEmbedModal, setShowEmbedModal] = useState(false);
+  const [copied, setCopied] = useState(false);
+  
+  const getEmbedCode = () => {
+    const host = window.location.origin;
+    return `<script src="${host}/widget/embed.js" 
+  data-client-id="${botConfig.clientId}" 
+  data-bot-id="${botId}">
+</script>`;
+  };
+
+  const copyEmbedCode = () => {
+    navigator.clipboard.writeText(getEmbedCode());
+    setCopied(true);
+    toast({ title: "Copied!", description: "Embed code copied to clipboard." });
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const { data: stats, isLoading } = useQuery<BotStats>({
     queryKey: ["/api/admin/bot-stats", botId],
     queryFn: async () => {
@@ -1522,6 +1542,7 @@ function BotOverviewTab({ botId, botConfig }: { botId: string; botConfig: BotCon
               <Button 
                 variant="outline" 
                 className="w-full justify-start text-left"
+                onClick={() => setShowEmbedModal(true)}
                 data-testid="button-get-embed-code"
               >
                 <Code2 className="h-4 w-4 mr-3 text-yellow-400" />
@@ -1531,6 +1552,57 @@ function BotOverviewTab({ botId, botConfig }: { botId: string; botConfig: BotCon
           </GlassCardContent>
         </GlassCard>
       </div>
+
+      {/* Embed Code Modal */}
+      <Dialog open={showEmbedModal} onOpenChange={setShowEmbedModal}>
+        <DialogContent className="bg-[#1a1d24] border-white/10 max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <Code2 className="h-5 w-5 text-yellow-400" />
+              Widget Embed Code
+            </DialogTitle>
+            <DialogDescription className="text-white/55">
+              Copy this code and paste it into your website's HTML, just before the closing &lt;/body&gt; tag.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-4 space-y-4">
+            <div className="relative">
+              <pre className="p-4 rounded-lg bg-black/40 border border-white/10 overflow-x-auto">
+                <code className="text-sm text-cyan-300" data-testid="embed-code-snippet">{getEmbedCode()}</code>
+              </pre>
+              <Button
+                onClick={copyEmbedCode}
+                size="sm"
+                className="absolute top-2 right-2 bg-white/10 hover:bg-white/20"
+                data-testid="button-copy-embed-code"
+              >
+                {copied ? (
+                  <>
+                    <Check className="h-4 w-4 mr-1 text-green-400" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4 mr-1" />
+                    Copy
+                  </>
+                )}
+              </Button>
+            </div>
+
+            <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+              <h4 className="text-amber-400 font-medium text-sm mb-2">Important Notes:</h4>
+              <ul className="text-amber-200/80 text-sm space-y-1 list-disc list-inside">
+                <li>The widget will appear as a chat button in the bottom-right corner</li>
+                <li>Make sure your website's domain is added to the allowed domains list</li>
+                <li>Client ID: <code className="bg-black/30 px-1 rounded">{botConfig.clientId}</code></li>
+                <li>Bot ID: <code className="bg-black/30 px-1 rounded">{botId}</code></li>
+              </ul>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
