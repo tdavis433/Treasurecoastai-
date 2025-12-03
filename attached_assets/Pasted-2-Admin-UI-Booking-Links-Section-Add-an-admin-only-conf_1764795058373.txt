@@ -1,0 +1,145 @@
+2. Admin UI — Booking & Links Section
+
+Add an admin-only configuration section for each client/bot:
+	•	Location: Super Admin / Admin → Client detail → Bot settings (or Business Info).
+	•	Section title: Booking & Links
+	•	Fields:
+	•	Booking URL (single text input)
+	•	Actions:
+	•	Save button with validation:
+	•	Optional field, but if provided, must be a valid URL (basic pattern check).
+	•	Only admin / super_admin can see & edit this.
+
+Do NOT expose this in the client dashboard.
+
+⸻
+
+3. Conversation Logic — Detect Booking Intent
+
+You already have an AI chat backend and some automations. Extend the logic to handle booking intent.
+
+Add or refine booking detection like this:
+	•	If user expresses intent such as:
+	•	“I want to book an appointment”
+	•	“Can I schedule a visit?”
+	•	“Can I come in Friday at 3?”
+	•	“How do I book?”
+	•	Then:
+	•	Trigger a booking flow:
+	1.	Collect lead info (if not already captured):
+	•	Name
+	•	Contact (phone or email)
+	•	Service requested
+	•	Preferred date/time (optional but nice)
+	2.	Save a lead record with:
+	•	bookingIntent = true
+	•	bookingStatus = “pending_redirect”
+	•	all captured fields
+	3.	If bookingUrl is set:
+	•	Respond with a message that:
+	•	Confirms details
+	•	Provides the booking link
+	•	Makes it clear booking & payment are completed on that external page.
+	4.	If bookingUrl is not set:
+	•	Respond with a safe fallback, like:
+	•	“I’ve captured your details and the shop will contact you to confirm your appointment.”
+
+You can implement booking intent either via:
+	•	keyword/regex rules, or
+	•	a small classification step in the AI prompt.
+
+⸻
+
+4. Assistant Response Behavior (Very Important)
+
+When a valid bookingUrl exists and booking intent is detected, the assistant should respond along these lines (you can bake this into the system prompt):
+
+“Great, I can help with that.
+I’ve noted your details. To complete your appointment, please use this booking link: [booking URL].
+Once you book there, your appointment will be confirmed directly in the business’s system.”
+
+Key rules:
+	•	Always redirect to the client’s own booking URL.
+	•	Never imply that the assistant processed the payment or confirmed the appointment itself.
+	•	The assistant should not talk about charging cards, taking deposits, or storing payment info.
+
+⸻
+
+5. Lead Capture & Analytics
+
+For every booking flow:
+	•	Ensure a lead record is created/updated with:
+	•	name
+	•	email/phone
+	•	service requested
+	•	bookingIntent = true
+	•	bookingUrl used
+	•	conversation/session ID
+	•	In analytics:
+	•	Count “Booking Intent” events.
+	•	Count “Booking Link Clicks” (if you’re tracking link clicks separately).
+	•	These should appear:
+	•	In the client dashboard as:
+	•	Booking-interested leads
+	•	Booking events
+	•	In the admin dashboard as:
+	•	Part of funnels: Chats → Leads → Booking Intent.
+
+⸻
+
+6. Widget & Frontend — Booking Link Presentation
+
+In the chat UI, the booking link should:
+	•	Be rendered as a clickable link/button.
+	•	Use the same dark/neon styling.
+	•	Example text: “Complete Your Booking” or “Book Appointment”.
+
+If your widget supports structured messages, you can send a small card, otherwise a simple clickable URL is fine.
+
+⸻
+
+7. Client Dashboard — View Only
+
+Update the client dashboard to surface booking-related info but keep it read-only:
+	•	Show:
+	•	Count of booking leads (e.g., “12 booking requests this week”).
+	•	Table of booking-intent leads (name, contact, service, time).
+	•	Do not allow clients to:
+	•	Change bookingUrl.
+	•	Change prompts or booking logic.
+	•	Change any automations.
+
+Everything remains informational for them, configurable only by admin.
+
+⸻
+
+8. AI Prompt / System Instructions Update
+
+Update the system prompt / instructions for the AI assistant (server side) so that it always behaves correctly with bookings:
+
+Add something like:
+
+	•	If the business has a booking URL configured, and the user wants to book, you MUST:
+	•	Politely collect their name, contact info, and basic details of what they want.
+	•	Save those details via the platform’s lead/booking system (the server handles this).
+	•	Then send the user the booking URL so they can complete the booking on the business’s existing system.
+	•	Do NOT say that you processed payment or confirmed the appointment yourself.
+	•	If no booking URL is available, capture the lead and tell the user the business will follow up to confirm.
+
+Make sure this prompt is injected for every bot so behavior is consistent, but uses the correct businessName and bookingUrl.
+
+⸻
+
+9. Testing Requirements
+
+Add tests (or manual QA steps) to verify:
+	1.	Admin can set bookingUrl for a client/bot.
+	2.	Client dashboard cannot change or see any config fields for booking.
+	3.	When a user says “I want to book an appointment”:
+	•	Bot collects lead info.
+	•	Lead appears in admin & client dashboards.
+	•	If bookingUrl exists, bot sends the correct link.
+	4.	Assistant never mentions taking payment or storing card info.
+	5.	If bookingUrl is missing, bot still captures the lead and tells user the business will contact them.
+
+Keep everything consistent with the existing architecture, security, and dark neon UI.

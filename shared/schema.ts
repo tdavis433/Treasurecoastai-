@@ -420,6 +420,13 @@ export const leads = pgTable("leads", {
   status: text("status").notNull().default("new"), // new, contacted, qualified, converted, lost
   priority: text("priority").notNull().default("medium"), // low, medium, high
   
+  // Booking intent fields
+  bookingIntent: boolean("booking_intent").notNull().default(false),
+  bookingStatus: text("booking_status"), // pending_redirect, redirected, completed, no_url
+  serviceRequested: text("service_requested"),
+  preferredDateTime: text("preferred_date_time"),
+  bookingUrlUsed: text("booking_url_used"),
+  
   // Additional context
   notes: text("notes"),
   tags: json("tags").$type<string[]>().default([]),
@@ -438,6 +445,7 @@ export const leads = pgTable("leads", {
   statusIdx: index("leads_status_idx").on(table.status),
   priorityIdx: index("leads_priority_idx").on(table.priority),
   createdAtIdx: index("leads_created_at_idx").on(table.createdAt),
+  bookingIntentIdx: index("leads_booking_intent_idx").on(table.bookingIntent),
 }));
 
 export const insertLeadSchema = createInsertSchema(leads).omit({
