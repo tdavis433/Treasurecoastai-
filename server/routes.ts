@@ -4692,8 +4692,8 @@ These suggestions should be relevant to what was just discussed and help guide t
               customer.id,
               priceId,
               clientId,
-              `${baseUrl}/super-admin/control-center?checkout=success&clientId=${clientId}`,
-              `${baseUrl}/super-admin/control-center?checkout=canceled&clientId=${clientId}`
+              `${baseUrl}/super-admin?checkout=success&clientId=${clientId}`,
+              `${baseUrl}/super-admin?checkout=canceled&clientId=${clientId}`
             );
             
             checkoutUrl = session.url;
