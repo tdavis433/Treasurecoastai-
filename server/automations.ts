@@ -220,15 +220,25 @@ export function extractContactInfo(message: string): {
   }
   
   const namePatterns = [
-    /(?:my name(?:[''\u2019]s| is)|I[''\u2019]m|I am|this is|call me)\s+([A-Za-z''\u2019\-]+(?:\s+[A-Za-z''\u2019\-]+)*)/i,
+    /(?:my name(?:[''\u2019]s| is)|I[''\u2019]m|I am|this is|call me)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
     /(?:^|\s)([A-Z][a-z]+\s+[A-Z][a-z]+)(?:\s|$|,)/
   ];
   
   for (const pattern of namePatterns) {
     const match = message.match(pattern);
     if (match && match[1]) {
-      result.name = match[1].trim();
-      break;
+      let name = match[1].trim();
+      const stopWords = [' and ', ' my ', ' phone', ' email', ' at ', ' number', ' is '];
+      for (const stop of stopWords) {
+        const idx = name.toLowerCase().indexOf(stop);
+        if (idx > 0) {
+          name = name.slice(0, idx).trim();
+        }
+      }
+      if (name.length >= 2) {
+        result.name = name;
+        break;
+      }
     }
   }
   
