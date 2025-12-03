@@ -2727,6 +2727,7 @@ export default function SuperAdmin() {
                   <div className="flex items-center gap-1 flex-wrap mb-2">
                     <span className="text-xs text-white/40 mr-2 uppercase tracking-wider">Deploy</span>
                     {[
+                      { value: 'booking', icon: Calendar, label: 'Booking & Links' },
                       { value: 'channels', icon: Palette, label: 'Channels & Widget' },
                       { value: 'test-chat', icon: Play, label: 'Test Sandbox', highlight: true },
                     ].map(tab => (
@@ -2787,6 +2788,10 @@ export default function SuperAdmin() {
 
                   {activeTab === 'test-chat' && (
                     <TestChatPanel clientId={selectedClient.id} botId={selectedBot.botId} botName={selectedBot.name} />
+                  )}
+
+                  {activeTab === 'booking' && (
+                    <BookingLinksPanel clientId={selectedClient.id} clientName={selectedClient.name} />
                   )}
 
                   {activeTab === 'channels' && (
@@ -3944,6 +3949,277 @@ function KnowledgePanel({ bot, clientType }: { bot: BotConfig; clientType?: stri
                 ) : '-'}
               </p>
             )}
+          </div>
+        </GlassCardContent>
+      </GlassCard>
+    </div>
+  );
+}
+
+// Booking & Links Panel - Client-level booking URL configuration (saves to clientSettings)
+function BookingLinksPanel({ clientId, clientName }: { clientId: string; clientName: string }) {
+  const { toast } = useToast();
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    externalBookingUrl: '',
+    externalPaymentUrl: '',
+  });
+
+  // Fetch current booking settings
+  const { data: bookingSettings, isLoading } = useQuery<{
+    externalBookingUrl: string | null;
+    externalPaymentUrl: string | null;
+  }>({
+    queryKey: ['/api/super-admin/clients', clientId, 'booking'],
+  });
+
+  // Fetch booking analytics
+  const { data: bookingAnalytics } = useQuery<{
+    totalBookingIntents: number;
+    totalLinkClicks: number;
+    pendingBookings: number;
+    completedBookings: number;
+  }>({
+    queryKey: ['/api/super-admin/clients', clientId, 'bookings', 'analytics'],
+  });
+
+  // Sync form data when settings load
+  useEffect(() => {
+    if (bookingSettings && !isEditing) {
+      setFormData({
+        externalBookingUrl: bookingSettings.externalBookingUrl || '',
+        externalPaymentUrl: bookingSettings.externalPaymentUrl || '',
+      });
+    }
+  }, [bookingSettings, isEditing]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/super-admin/clients/${clientId}/booking`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          externalBookingUrl: formData.externalBookingUrl || null,
+          externalPaymentUrl: formData.externalPaymentUrl || null,
+        }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to save booking settings');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: 'Success', description: 'Booking settings saved' });
+      setIsEditing(false);
+      queryClient.invalidateQueries({ queryKey: ['/api/super-admin/clients', clientId, 'booking'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-cyan-400" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Booking Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <GlassCard>
+          <GlassCardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-cyan-400">{bookingAnalytics?.totalBookingIntents || 0}</div>
+            <p className="text-xs text-white/55">Booking Requests</p>
+          </GlassCardContent>
+        </GlassCard>
+        <GlassCard>
+          <GlassCardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-purple-400">{bookingAnalytics?.totalLinkClicks || 0}</div>
+            <p className="text-xs text-white/55">Link Clicks</p>
+          </GlassCardContent>
+        </GlassCard>
+        <GlassCard>
+          <GlassCardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-yellow-400">{bookingAnalytics?.pendingBookings || 0}</div>
+            <p className="text-xs text-white/55">Pending</p>
+          </GlassCardContent>
+        </GlassCard>
+        <GlassCard>
+          <GlassCardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-green-400">{bookingAnalytics?.completedBookings || 0}</div>
+            <p className="text-xs text-white/55">Redirected</p>
+          </GlassCardContent>
+        </GlassCard>
+      </div>
+
+      {/* External Booking URL Configuration */}
+      <GlassCard>
+        <GlassCardHeader className="flex flex-row items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-cyan-400" />
+            <GlassCardTitle>Booking & External Links</GlassCardTitle>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => isEditing ? saveMutation.mutate() : setIsEditing(true)}
+            disabled={saveMutation.isPending}
+            data-testid="button-edit-booking-settings"
+            className="text-cyan-400 hover:bg-cyan-500/10"
+          >
+            {saveMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : isEditing ? (
+              <>
+                <Save className="h-4 w-4 mr-1" />
+                Save
+              </>
+            ) : (
+              <>
+                <Pencil className="h-4 w-4 mr-1" />
+                Edit
+              </>
+            )}
+          </Button>
+        </GlassCardHeader>
+        <GlassCardContent className="space-y-4">
+          <p className="text-sm text-white/55">
+            Set external URLs for {clientName}'s booking system. When users want to book an appointment, 
+            the AI assistant will collect their details and redirect them to these URLs.
+          </p>
+          
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label className="text-white/70 flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Booking URL (Calendly, Acuity, Square, etc.)
+              </Label>
+              {isEditing ? (
+                <Input 
+                  value={formData.externalBookingUrl} 
+                  onChange={(e) => setFormData({ ...formData, externalBookingUrl: e.target.value })} 
+                  className="bg-white/5 border-white/10 text-white mt-1" 
+                  placeholder="https://calendly.com/your-business/appointment"
+                  data-testid="input-external-booking-url"
+                />
+              ) : (
+                <div className="mt-1">
+                  {formData.externalBookingUrl ? (
+                    <a 
+                      href={formData.externalBookingUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="text-cyan-400 hover:underline flex items-center gap-1"
+                    >
+                      {formData.externalBookingUrl}
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  ) : (
+                    <span className="text-white/40 text-sm">Not configured - AI will capture leads only</span>
+                  )}
+                </div>
+              )}
+              <p className="text-xs text-white/40 mt-1">
+                Users will be redirected here to complete their booking after providing contact info.
+              </p>
+            </div>
+
+            <div>
+              <Label className="text-white/70 flex items-center gap-2">
+                <CreditCard className="h-4 w-4" />
+                Payment URL (optional)
+              </Label>
+              {isEditing ? (
+                <Input 
+                  value={formData.externalPaymentUrl} 
+                  onChange={(e) => setFormData({ ...formData, externalPaymentUrl: e.target.value })} 
+                  className="bg-white/5 border-white/10 text-white mt-1" 
+                  placeholder="https://square.site/your-business/checkout"
+                  data-testid="input-external-payment-url"
+                />
+              ) : (
+                <div className="mt-1">
+                  {formData.externalPaymentUrl ? (
+                    <a 
+                      href={formData.externalPaymentUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="text-cyan-400 hover:underline flex items-center gap-1"
+                    >
+                      {formData.externalPaymentUrl}
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  ) : (
+                    <span className="text-white/40 text-sm">Not configured</span>
+                  )}
+                </div>
+              )}
+              <p className="text-xs text-white/40 mt-1">
+                For services requiring pre-payment, users can be directed here.
+              </p>
+            </div>
+          </div>
+
+          {isEditing && (
+            <div className="flex gap-2 pt-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setIsEditing(false);
+                  setFormData({
+                    externalBookingUrl: bookingSettings?.externalBookingUrl || '',
+                    externalPaymentUrl: bookingSettings?.externalPaymentUrl || '',
+                  });
+                }}
+                className="text-white/55 hover:text-white"
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
+        </GlassCardContent>
+      </GlassCard>
+
+      {/* How It Works */}
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="flex items-center gap-2">
+            <Info className="h-4 w-4 text-cyan-400" />
+            How Booking Flow Works
+          </GlassCardTitle>
+        </GlassCardHeader>
+        <GlassCardContent className="space-y-3 text-sm text-white/70">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xs font-bold">1</div>
+            <p>User tells the AI assistant they want to book an appointment</p>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xs font-bold">2</div>
+            <p>AI collects their name, contact info, service needed, and preferred time</p>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xs font-bold">3</div>
+            <p>Lead is saved to your dashboard with booking intent marked</p>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xs font-bold">4</div>
+            <p>
+              {formData.externalBookingUrl 
+                ? "AI provides the booking link so they can complete their reservation"
+                : "AI tells user the business will contact them to confirm (no booking URL set)"}
+            </p>
+          </div>
+          <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+            <p className="text-yellow-400 text-xs">
+              <strong>Important:</strong> The AI assistant never processes payments or confirms appointments itself. 
+              All booking and payment handling happens on your external booking platform.
+            </p>
           </div>
         </GlassCardContent>
       </GlassCard>
