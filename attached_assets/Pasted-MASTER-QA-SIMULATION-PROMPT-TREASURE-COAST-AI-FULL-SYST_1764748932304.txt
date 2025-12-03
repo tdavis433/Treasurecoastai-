@@ -1,0 +1,262 @@
+MASTER QA / SIMULATION PROMPT — TREASURE COAST AI FULL SYSTEM TEST
+
+You are working on the Treasure Coast AI platform — an agency-first, multi-tenant AI assistant system.
+
+Non-negotiable business rules:
+	•	The agency (me) builds & manages all AI assistants.
+	•	Clients ONLY log in to view conversations, leads, analytics, etc.
+	•	Clients do not configure, build, or edit bots.
+	•	Each business is isolated by clientId / workspaceId.
+	•	The system now includes:
+	•	Super admin area
+	•	Client dashboard
+	•	AI chat backend
+	•	Embeddable widget with token + domain security
+	•	“Needs Review” system
+	•	“Rebuild Knowledge” button
+	•	Enhanced client analytics
+	•	Client login creation with client_admin role
+	•	mustChangePassword + disabled flags for logins
+
+Your task:
+
+Run a full end-to-end simulation of onboarding a brand-new client, configuring their AI assistant, embedding it, chatting with it, and verifying that everything works correctly — then give me a brutally honest QA report + opinion of the finished assistant and system.
+
+Do NOT change the business model.
+Do NOT remove or downgrade security.
+If you need to adjust minor implementation details, do so in a minimal, backwards-compatible way.
+
+⸻
+
+🧩 TEST SCENARIO: “Sunrise Auto Repair”
+
+Simulate a real small business client:
+	•	Business Name: Sunrise Auto Repair
+	•	Type: Auto repair shop
+	•	Website URL (for test): https://example.com/sunrise-auto (can be a dummy HTML page / test fixture)
+	•	Services:
+	•	Oil changes
+	•	Brake repair
+	•	Engine diagnostics
+	•	AC repair
+	•	Tire rotation & replacement
+	•	Location: 1234 Palm Ave, Treasure Coast, FL
+	•	Hours:
+	•	Mon–Fri: 8am–6pm
+	•	Sat: 9am–2pm
+	•	Sun: closed
+	•	Phone: (555) 987-6543
+	•	Booking: use a fake booking URL like https://example.com/sunrise-auto/book
+	•	Tone: friendly, clear, professional
+	•	No crisis handling required for this test.
+
+Use this fictional client through the entire process.
+
+⸻
+
+✅ PHASE 1 — Set Up Test Environment
+	1.	Create an isolated test client/workspace
+	•	Create a new client/workspace in the DB for “Sunrise Auto Repair”.
+	•	Use a clearly test-only slug, e.g. sunrise-auto-test.
+	•	Make sure it does not interfere with any existing real data.
+	2.	Create a test client_admin user
+	•	Email: owner@sunrise-auto.test
+	•	Role: client_admin
+	•	clientId / workspaceId: the Sunrise workspace you just created
+	•	Set:
+	•	mustChangePassword = true (as per the new flow)
+	•	disabled = false
+	•	Use a temporary password (you can define any strong password).
+	3.	Verify forced password change works
+	•	Programmatically simulate:
+	•	Login with the temporary password.
+	•	Confirm that the system forces redirect/flow to /change-password.
+	•	Change password to a new valid password.
+	•	Confirm mustChangePassword is now false.
+	•	Confirm client_admin lands in the client dashboard (not admin/super admin).
+
+If any of this fails, fix it first before continuing.
+
+⸻
+
+✅ PHASE 2 — Simulate Onboarding & AI Setup
+
+Pretend you are me onboarding this client:
+	1.	Collect information (simulated)
+Use the info from the scenario above (hours, services, links, etc.).
+	2.	Apply that info into the system
+	•	Ensure Sunrise Auto Repair has:
+	•	Correct business name
+	•	Website URL saved
+	•	Phone number
+	•	Booking link
+	•	Hours of operation
+	•	Service list / FAQ entries (if you have an FAQ/KB area, populate it accordingly).
+	3.	Run “Rebuild Knowledge”
+	•	Use the existing knowledge rebuild system:
+	•	If you have a scraper: simulate scraping the dummy Sunrise site / test fixture.
+	•	Regenerate the bot’s knowledge base for this client.
+	•	Confirm:
+	•	Bot config is stored with the correct clientId.
+	•	Any embeddings / FAQs / summaries are associated with Sunrise, not any other client.
+	4.	Configure automations, if available
+	•	Lead capture: ensure the bot saves:
+	•	name, phone, service requested, etc.
+	•	Booking click tracking: ensure it records when users click “book” / follow the booking link.
+	•	“Needs Review” triggers:
+	•	low confidence
+	•	unknown questions
+	•	dissatisfaction signals
+	•	hot lead patterns (if implemented).
+
+⸻
+
+✅ PHASE 3 — Widget Embed & Frontend Test
+	1.	Generate widget embed snippet
+	•	Use the real system that generates a widget snippet for Sunrise Auto Repair.
+	•	It should include:
+	•	Correct clientId / workspace ID
+	•	Bot ID
+	•	Valid widget token
+	•	Domain restriction, if applicable (for test, you can allow localhost or a test domain).
+	2.	Create a test HTML page
+	•	A simple static HTML page that simulates the Sunrise Auto Repair website.
+	•	Embed the widget snippet you generated.
+	•	Run this page in the dev environment (e.g., via Vite dev server or static file in the same environment).
+	3.	Verify widget behavior
+	•	Ensure:
+	•	Widget loads on the page.
+	•	It shows the correct greeting (e.g. referencing Sunrise Auto Repair).
+	•	It can send and receive messages via the chat endpoint.
+	•	Verify the widget token + allowedDomains logic is enforced:
+	•	Correct origin works.
+	•	A disallowed origin (if you simulate one) is blocked.
+
+⸻
+
+✅ PHASE 4 — Simulated User Conversations
+
+Now fully simulate a real user interacting with the Sunrise bot.
+
+Programmatically send a sequence of messages through the chat endpoint (or via automated browser tests) as if from a website visitor:
+
+Conversation 1 — General Info
+	1.	“Hi, what do you guys do?”
+	2.	“What are your hours today?”
+	3.	“Where are you located?”
+	4.	“Do you work on Honda Civics?”
+
+Verify:
+	•	Responses are accurate.
+	•	Hours match the test data.
+	•	Location is correct.
+	•	Tone is friendly and professional.
+
+Conversation 2 — Lead + Booking Interest
+	1.	“I need an oil change and maybe brakes checked.”
+	2.	“How much does that usually cost?”
+	3.	“Can I book an appointment for Friday?”
+	4.	When prompted, user provides:
+	•	Name
+	•	Phone
+	•	Preferred time
+
+Verify:
+	•	Lead is captured correctly:
+	•	Type: service inquiry / booking
+	•	Service: oil change + brakes
+	•	Contact info present
+	•	Booking link is shared (if that’s part of the flow).
+	•	Any booking clicks are tracked.
+
+Conversation 3 — Edge Cases / Unknowns
+	1.	“Do you also wrap cars in custom vinyl graphics?” (service not offered)
+	2.	“Are you open on Sunday at 7PM?” (outside hours)
+	3.	“Can you fix boats?”
+
+Verify:
+	•	Bot gracefully handles unknown services (no hallucinations).
+	•	Bot correctly states closed times.
+	•	“Needs Review” flags are applied to:
+	•	questions the bot couldn’t answer
+	•	potential upsell opportunities or confusing topics.
+
+⸻
+
+✅ PHASE 5 — Verify Admin & Client Dashboards
+
+After the conversations:
+	1.	Client dashboard (Sunrise client_admin):
+	•	Login as the Sunrise client_admin.
+	•	Verify:
+	•	Leads list shows the captured lead(s) with correct details.
+	•	Conversation history for Sunrise only (no cross-tenant leakage).
+	•	Analytics update correctly:
+	•	conversation counts
+	•	peaks / trends
+	•	top questions / topics
+	•	funnel (visitor → lead)
+	•	booking click metrics (if present).
+	2.	Super Admin / Admin dashboard:
+	•	Login as super_admin.
+	•	Open Sunrise client in Control Center.
+	•	Verify:
+	•	Sunrise bot status is correct (ACTIVE).
+	•	Lead funnel and message trends reflect the test conversations.
+	•	Popular topics include oil change, brakes, hours, location.
+	•	“Needs Review” section shows the unknown/edge case questions.
+	•	“Rebuild Knowledge” remains functional and scoped only to Sunrise.
+	3.	Security checks:
+	•	Ensure that:
+	•	The Sunrise client_admin cannot access any other client’s data.
+	•	The Sunrise client_admin cannot edit bots, automations, knowledge, or security settings.
+	•	Super_admin still has full control.
+
+⸻
+
+✅ PHASE 6 — QA Report & Opinion
+
+After you run all the above:
+	1.	Generate a structured QA report, including:
+	•	A. Setup & Onboarding
+	•	Did creating the workspace, bot, and client_admin account feel smooth?
+	•	Any friction points or confusing steps?
+	•	B. AI Assistant Quality
+	•	Were answers accurate, specific, and helpful?
+	•	Any hallucinations or bad guesses?
+	•	Did it sound like a real assistant for an auto repair shop?
+	•	C. Lead Capture & Conversion
+	•	Did the assistant reliably ask for name/contact when appropriate?
+	•	Were leads stored cleanly and visible in dashboards?
+	•	Did the calls-to-action (booking, calling) make sense?
+	•	D. Dashboards (Client & Admin)
+	•	Is the client dashboard understandable for a non-technical business owner?
+	•	Are analytics easy to interpret?
+	•	Are “Needs Review” items helpful for ongoing maintenance?
+	•	E. Security & Isolation
+	•	Did any client-admin have access to things they shouldn’t?
+	•	Are widget token + allowedDomains working as expected?
+	•	F. Bugs & Suggestions
+	•	List any bugs encountered.
+	•	List any confusing UX or missing confirmations.
+	•	Suggest concrete improvements that fit the business model:
+	•	you build/manage
+	•	client views only
+	•	no self-service bot builder.
+	2.	Give an overall rating and opinion from 1–10 for:
+	•	Production readiness
+	•	Onboarding smoothness
+	•	Assistant quality for Sunrise Auto Repair
+	•	Client dashboard clarity
+	•	“Would you confidently sell this to a real local business owner right now?”
+
+Be brutally honest.
+Do not sugar-coat issues — I want this to be as harsh as a real external QA/PM review.
+
+⸻
+
+Constraints / Notes
+	•	Do not redesign the core platform or change the business model.
+	•	You may create small helper utilities or test-only routes/files if they help automate the simulation.
+	•	Keep test data clearly isolated so it can be cleaned up (e.g., Sunrise auto fixtures).
+	•	Where possible, write automated tests (integration or end-to-end) so this scenario can be re-run in the future with one command.
