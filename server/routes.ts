@@ -3347,6 +3347,265 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // =============================================
+  // CLIENT USER MANAGEMENT (Super Admin Only)
+  // =============================================
+
+  const createClientUserSchema = z.object({
+    email: z.string().email("Invalid email address"),
+    password: z.string().min(8, "Password must be at least 8 characters")
+      .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+      .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+      .regex(/[0-9]/, "Password must contain at least one number"),
+    name: z.string().optional(),
+  });
+
+  const resetPasswordSchema = z.object({
+    newPassword: z.string().min(8, "Password must be at least 8 characters")
+      .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+      .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+      .regex(/[0-9]/, "Password must contain at least one number"),
+  });
+
+  // Get client users for a workspace
+  app.get("/api/super-admin/workspaces/:workspaceId/users", requireSuperAdmin, async (req, res) => {
+    try {
+      const { workspaceId } = req.params;
+      
+      // Get workspace to find its slug (clientId)
+      const [workspace] = await db
+        .select()
+        .from(workspaces)
+        .where(eq(workspaces.id, workspaceId))
+        .limit(1);
+      
+      if (!workspace) {
+        return res.status(404).json({ error: "Workspace not found" });
+      }
+      
+      // Find users associated with this workspace's slug as clientId
+      const users = await db
+        .select({
+          id: adminUsers.id,
+          email: adminUsers.username,
+          role: adminUsers.role,
+          createdAt: adminUsers.createdAt,
+          disabled: adminUsers.disabled,
+          mustChangePassword: adminUsers.mustChangePassword,
+          lastLoginAt: adminUsers.lastLoginAt,
+        })
+        .from(adminUsers)
+        .where(and(
+          eq(adminUsers.clientId, workspace.slug),
+          eq(adminUsers.role, "client_admin")
+        ))
+        .orderBy(desc(adminUsers.createdAt));
+      
+      res.json({ users });
+    } catch (error) {
+      console.error("Get workspace users error:", error);
+      res.status(500).json({ error: "Failed to fetch workspace users" });
+    }
+  });
+
+  // Create a client user for a workspace
+  app.post("/api/super-admin/workspaces/:workspaceId/users", requireSuperAdmin, async (req, res) => {
+    try {
+      const { workspaceId } = req.params;
+      const validatedData = createClientUserSchema.parse(req.body);
+      
+      // Get workspace to find its slug
+      const [workspace] = await db
+        .select()
+        .from(workspaces)
+        .where(eq(workspaces.id, workspaceId))
+        .limit(1);
+      
+      if (!workspace) {
+        return res.status(404).json({ error: "Workspace not found" });
+      }
+      
+      // Check if email already exists
+      const existingUser = await storage.findAdminByUsername(validatedData.email);
+      if (existingUser) {
+        return res.status(400).json({ error: "This email is already in use" });
+      }
+      
+      // Hash password
+      const passwordHash = await bcrypt.hash(validatedData.password, 10);
+      
+      // Create client user
+      const [newUser] = await db.insert(adminUsers).values({
+        username: validatedData.email,
+        passwordHash,
+        role: "client_admin",
+        clientId: workspace.slug,
+        mustChangePassword: true,
+        disabled: false,
+      }).returning();
+      
+      res.status(201).json({
+        success: true,
+        user: {
+          id: newUser.id,
+          email: newUser.username,
+          role: newUser.role,
+          createdAt: newUser.createdAt,
+          disabled: newUser.disabled,
+          mustChangePassword: newUser.mustChangePassword,
+        }
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors[0].message });
+      }
+      console.error("Create client user error:", error);
+      res.status(500).json({ error: "Failed to create client user" });
+    }
+  });
+
+  // Reset a client user's password
+  app.post("/api/super-admin/workspaces/:workspaceId/users/:userId/reset-password", requireSuperAdmin, async (req, res) => {
+    try {
+      const { workspaceId, userId } = req.params;
+      const validatedData = resetPasswordSchema.parse(req.body);
+      
+      // Get workspace to verify it exists
+      const [workspace] = await db
+        .select()
+        .from(workspaces)
+        .where(eq(workspaces.id, workspaceId))
+        .limit(1);
+      
+      if (!workspace) {
+        return res.status(404).json({ error: "Workspace not found" });
+      }
+      
+      // Get user and verify they belong to this workspace
+      const [user] = await db
+        .select()
+        .from(adminUsers)
+        .where(and(
+          eq(adminUsers.id, userId),
+          eq(adminUsers.clientId, workspace.slug),
+          eq(adminUsers.role, "client_admin")
+        ))
+        .limit(1);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found in this workspace" });
+      }
+      
+      // Hash new password
+      const passwordHash = await bcrypt.hash(validatedData.newPassword, 10);
+      
+      // Update password and set mustChangePassword to true
+      await db
+        .update(adminUsers)
+        .set({
+          passwordHash,
+          mustChangePassword: true,
+        })
+        .where(eq(adminUsers.id, userId));
+      
+      res.json({ success: true, message: "Password reset successfully" });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors[0].message });
+      }
+      console.error("Reset password error:", error);
+      res.status(500).json({ error: "Failed to reset password" });
+    }
+  });
+
+  // Disable a client user
+  app.post("/api/super-admin/workspaces/:workspaceId/users/:userId/disable", requireSuperAdmin, async (req, res) => {
+    try {
+      const { workspaceId, userId } = req.params;
+      
+      // Get workspace to verify it exists
+      const [workspace] = await db
+        .select()
+        .from(workspaces)
+        .where(eq(workspaces.id, workspaceId))
+        .limit(1);
+      
+      if (!workspace) {
+        return res.status(404).json({ error: "Workspace not found" });
+      }
+      
+      // Get user and verify they belong to this workspace
+      const [user] = await db
+        .select()
+        .from(adminUsers)
+        .where(and(
+          eq(adminUsers.id, userId),
+          eq(adminUsers.clientId, workspace.slug),
+          eq(adminUsers.role, "client_admin")
+        ))
+        .limit(1);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found in this workspace" });
+      }
+      
+      // Disable the user
+      await db
+        .update(adminUsers)
+        .set({ disabled: true })
+        .where(eq(adminUsers.id, userId));
+      
+      res.json({ success: true, message: "User disabled successfully" });
+    } catch (error) {
+      console.error("Disable user error:", error);
+      res.status(500).json({ error: "Failed to disable user" });
+    }
+  });
+
+  // Enable a client user (reverse disable)
+  app.post("/api/super-admin/workspaces/:workspaceId/users/:userId/enable", requireSuperAdmin, async (req, res) => {
+    try {
+      const { workspaceId, userId } = req.params;
+      
+      // Get workspace to verify it exists
+      const [workspace] = await db
+        .select()
+        .from(workspaces)
+        .where(eq(workspaces.id, workspaceId))
+        .limit(1);
+      
+      if (!workspace) {
+        return res.status(404).json({ error: "Workspace not found" });
+      }
+      
+      // Get user and verify they belong to this workspace
+      const [user] = await db
+        .select()
+        .from(adminUsers)
+        .where(and(
+          eq(adminUsers.id, userId),
+          eq(adminUsers.clientId, workspace.slug),
+          eq(adminUsers.role, "client_admin")
+        ))
+        .limit(1);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found in this workspace" });
+      }
+      
+      // Enable the user
+      await db
+        .update(adminUsers)
+        .set({ disabled: false })
+        .where(eq(adminUsers.id, userId));
+      
+      res.json({ success: true, message: "User enabled successfully" });
+    } catch (error) {
+      console.error("Enable user error:", error);
+      res.status(500).json({ error: "Failed to enable user" });
+    }
+  });
+
+  // =============================================
   // SUPER ADMIN API ENDPOINTS
   // =============================================
 
