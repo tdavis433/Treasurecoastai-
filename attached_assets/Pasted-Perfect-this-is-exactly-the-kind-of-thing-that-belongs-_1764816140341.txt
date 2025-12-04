@@ -1,0 +1,306 @@
+Perfect, this is exactly the kind of thing that belongs on the **admin side only**.
+
+Here’s a **single, detailed Replit prompt** you can paste in to add a **full visual widget editor** for the AI assistant — only visible to you (super-admin/admin) — so you can style each client’s assistant to match their website.
+
+---
+
+## 🔧 REPLIT PROMPT — ADMIN-ONLY VISUAL WIDGET & ASSISTANT EDITOR
+
+You are modifying the **Treasure Coast AI** platform.
+
+**Core rules (do NOT break these):**
+
+* The agency (me) builds & manages all AI assistants.
+* Clients (`client_admin` users) can **only view** conversations, leads, analytics, etc.
+* Clients must **NOT** be able to edit widget appearance, prompts, or any configuration.
+* All configuration changes must be **admin/super-admin only**.
+
+Your task:
+Add a **full visual editor** on the **admin side** to customize *every aspect* of the chat widget & assistant appearance for each client/bot, with a **live preview**.
+
+This is for styling / appearance / UX only.
+Do **not** change the underlying business model, AI behavior, or security.
+
+---
+
+### 1. Data Model: Widget / Assistant Appearance Config
+
+Add a structured appearance config for each bot/client.
+
+Use the existing bot/client settings structure (e.g. `clientSettings`, bot config, or similar). If needed, add a new JSON column:
+
+* Table: whichever is most appropriate (`clientSettings` or `bots`), but it must be scoped **per bot/client**.
+* Column: `widgetAppearance` (JSON)
+
+Shape (TypeScript example, adapt to your schema):
+
+```ts
+type WidgetAppearance = {
+  // Colors
+  primaryColor: string;       // main accent (buttons, main bubble)
+  secondaryColor: string;     // secondary accents
+  backgroundColor: string;    // widget background
+  headerBackgroundColor: string;
+  textColor: string;
+  userMessageColor: string;
+  userMessageTextColor: string;
+  botMessageColor: string;
+  botMessageTextColor: string;
+  inputBackgroundColor: string;
+  inputTextColor: string;
+
+  // Position & layout
+  position: "bottom-right" | "bottom-left";
+  cornerRadius: number;       // e.g. 0–24
+  shadowIntensity: "none" | "soft" | "medium" | "strong";
+
+  // Assistant identity
+  assistantName: string;      // e.g. "Sunset Coffee Assistant"
+  headerTitle: string;        // header text
+  headerSubtitle?: string;
+  showAvatar: boolean;
+  avatarUrl?: string | null;  // optional custom avatar
+
+  // Behavior / UX
+  welcomeMessage: string;     // first visible message
+  initialOpenBehavior: "closed" | "open" | "open-with-delay";
+  initialOpenDelayMs?: number; // used if open-with-delay
+  showLauncherLabel: boolean;  // text next to launcher button
+  launcherLabel?: string;
+  launcherIconStyle: "chat-bubble" | "robot" | "message" | "custom";
+
+  // Typography
+  fontFamily: string;         // e.g. "system", "Inter", etc. (use limited set)
+  fontSize: "sm" | "md" | "lg";
+
+  // Mobile tweak
+  fullScreenOnMobile: boolean;
+
+  // Optional future flags (keep flexible)
+  customCssClass?: string;
+};
+```
+
+Default values:
+
+* If `widgetAppearance` is null or missing a field, use safe defaults (current dark neon style).
+
+---
+
+### 2. Admin UI — “Widget & Assistant Appearance” Editor
+
+Add an **admin-only** page/section for each bot/client.
+
+#### Placement
+
+In the **admin/super-admin interface**, under the **bot/client details** page, add a new tab or card:
+
+* Title: `Widget & Assistant Appearance`
+
+Only visible for:
+
+* `role = "super_admin"`
+* `role = "admin"` (if you use that)
+
+NOT visible for `client_admin`.
+
+#### Layout
+
+Split into two main sections:
+
+* **Left side:** Controls (form)
+* **Right side:** Live preview of the assistant widget
+
+Use your existing design system:
+
+* Cards, inputs, sliders, color pickers, tabs, etc.
+* Match the Treasure Coast AI dark/neon aesthetic.
+
+---
+
+### 3. Editor Controls (Left Side)
+
+Group fields logically:
+
+#### 3.1 Colors
+
+* Primary Color (color picker)
+* Secondary Color (color picker)
+* Background Color
+* Header Background Color
+* Text Color
+* Bot Message Color
+* Bot Message Text Color
+* User Message Color
+* User Message Text Color
+* Input Background Color
+* Input Text Color
+
+Validation:
+
+* Must be valid CSS color values (hex string like `#00C2B3` is preferred).
+
+#### 3.2 Layout & Position
+
+* Position: dropdown
+
+  * `bottom-right`
+  * `bottom-left`
+* Corner Radius: slider (0–24)
+* Shadow Intensity: dropdown
+
+  * `none`, `soft`, `medium`, `strong`
+
+#### 3.3 Assistant Identity
+
+* Assistant Name (text input)
+* Header Title (text input)
+* Header Subtitle (text input, optional)
+* Show Avatar (toggle)
+* Avatar Image URL (text input) or upload, if your stack supports it
+
+#### 3.4 Behavior
+
+* Welcome Message (textarea)
+* Initial Open Behavior (dropdown):
+
+  * `closed`
+  * `open`
+  * `open-with-delay`
+* Initial Open Delay (ms) if `open-with-delay` selected
+* Show Launcher Label (toggle)
+* Launcher Label (text input)
+* Launcher Icon Style (dropdown):
+
+  * `chat-bubble`
+  * `robot`
+  * `message`
+  * `custom` (if you support it later)
+
+#### 3.5 Typography
+
+* Font family: dropdown with a limited list:
+
+  * `system`
+  * `Inter`
+  * `Roboto`
+  * `Nunito`
+* Font size:
+
+  * `sm`, `md`, `lg`
+
+#### 3.6 Mobile
+
+* Fullscreen on Mobile (toggle)
+
+#### Save / Reset
+
+* `Save` button — persists the `widgetAppearance` to DB.
+* `Reset to Defaults` button — resets config to platform defaults for that bot.
+
+Use Zod or your existing validation layer on the server for the payload.
+
+---
+
+### 4. Live Preview (Right Side)
+
+Implement a **live preview** component that:
+
+* Renders the actual chat widget UI **using the selected appearance settings**.
+* Does **not** call real AI endpoints for the editor — you can simulate messages or use a preview mode.
+
+Requirements:
+
+* Every time the admin changes a field on the left, the preview updates in real-time (or on a short debounce).
+* Preview should mimic:
+
+  * Position (bottom-left / bottom-right inside the preview container)
+  * Colors
+  * Fonts
+  * Corner radius
+  * Assistant name, header text, avatar
+  * Welcome message
+  * Initial state (you can show it as “open” in preview for convenience)
+* The preview should be implemented via the same component tree (or shared styles) as the real widget, to avoid duplication.
+
+Do NOT require page reload for preview updates.
+
+---
+
+### 5. Wire Appearance into the Real Widget
+
+Update the **chat widget implementation** (the script/React component used for real clients):
+
+* When rendering the widget, fetch the bot/client’s `widgetAppearance` config.
+* Merge it with defaults to avoid undefined fields.
+* Apply:
+
+  * Colors to appropriate elements (header, messages, launcher button, etc.)
+  * Position for the launcher button
+  * Corner radius for widget container and bubbles
+  * Fonts via inline styles or className toggles
+  * Assistant name, header title/subtitle
+  * Welcome message text
+  * Behavior (initial open state, delay)
+  * Mobile fullscreen behavior
+
+Ensure the real widget remains:
+
+* Mobile-safe
+* Secure
+* Fully functional with the existing chat logic
+
+No breaking of:
+
+* token-based security
+* domain restrictions
+* rate limits
+* tracking analytics
+
+---
+
+### 6. Role & Permissions
+
+* Only `super_admin` / `admin` can:
+
+  * View and edit the Widget & Assistant Appearance editor.
+* `client_admin`:
+
+  * Must NOT see this tab at all.
+  * Cannot change any `widgetAppearance` settings.
+
+Confirm this at both:
+
+* UI level (conditional rendering)
+* Backend API level (access control in routes)
+
+---
+
+### 7. Testing / QA Checklist
+
+Implement or manually verify the following:
+
+1. Create a test client + bot.
+2. Open the new `Widget & Assistant Appearance` tab as super_admin.
+3. Change:
+
+   * primary color
+   * header title
+   * welcome message
+   * position
+   * corner radius
+4. Confirm the **preview** updates immediately.
+5. Save the settings.
+6. Open the real widget (test page or client site embed):
+
+   * Confirm it uses the saved styling + texts.
+7. Log in as `client_admin`:
+
+   * Confirm the editor tab is fully hidden.
+8. Ensure no console errors, and widget continues to function as before (AI responses, booking redirect, lead capture, etc.).
+
+---
+
+Keep everything aligned with existing architecture, use existing component patterns, and maintain the dark/neon Treasure Coast AI styling as the default.
+
+This feature is for **admin visual control only** — it must not turn into a client self-service builder.

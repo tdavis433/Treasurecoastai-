@@ -18,36 +18,211 @@ interface WidgetSettings {
   botId: string;
   themeMode: 'light' | 'dark' | 'auto';
   primaryColor: string;
+  secondaryColor: string;
+  backgroundColor: string;
+  headerBackgroundColor: string;
+  textColor: string;
+  textMutedColor: string;
+  userMessageColor: string;
+  userMessageTextColor: string;
+  botMessageColor: string;
+  botMessageTextColor: string;
+  inputBackgroundColor: string;
+  inputTextColor: string;
   position: 'bottom-right' | 'bottom-left';
   avatarUrl: string | null;
+  showAvatar: boolean;
   greeting: string | null;
   placeholder: string | null;
+  headerTitle: string | null;
+  headerSubtitle: string | null;
   showPoweredBy: boolean;
   autoOpenEnabled: boolean;
   autoOpenDelay: number;
   notificationSoundEnabled: boolean;
   notificationSoundType: string | null;
   mobileEnabled: boolean;
+  mobileFullscreen: boolean;
   keyboardNavEnabled: boolean;
   ariaLabelsEnabled: boolean;
+  borderRadius: number;
+  shadowIntensity: 'none' | 'soft' | 'medium' | 'strong';
+  fontFamily: 'system' | 'Inter' | 'Roboto' | 'Nunito';
+  fontSize: 'sm' | 'md' | 'lg';
+  launcherIconStyle: 'chat-bubble' | 'robot' | 'message';
+  showLauncherLabel: boolean;
+  launcherLabel: string | null;
 }
 
 const defaultSettings: Omit<WidgetSettings, 'id' | 'botId'> = {
   themeMode: 'dark',
-  primaryColor: '#2563eb',
+  primaryColor: '#00E5CC',
+  secondaryColor: '#A855F7',
+  backgroundColor: '#0A0A0F',
+  headerBackgroundColor: '#0F1520',
+  textColor: '#F8FAFC',
+  textMutedColor: '#94A3B8',
+  userMessageColor: '#00E5CC',
+  userMessageTextColor: '#FFFFFF',
+  botMessageColor: '#151B28',
+  botMessageTextColor: '#F8FAFC',
+  inputBackgroundColor: '#0F1520',
+  inputTextColor: '#F8FAFC',
   position: 'bottom-right',
   avatarUrl: null,
+  showAvatar: true,
   greeting: 'Hi! How can I help you today?',
   placeholder: 'Type your message...',
+  headerTitle: null,
+  headerSubtitle: 'Online',
   showPoweredBy: true,
   autoOpenEnabled: false,
   autoOpenDelay: 5,
   notificationSoundEnabled: false,
   notificationSoundType: 'default',
   mobileEnabled: true,
+  mobileFullscreen: true,
   keyboardNavEnabled: true,
   ariaLabelsEnabled: true,
+  borderRadius: 16,
+  shadowIntensity: 'medium',
+  fontFamily: 'system',
+  fontSize: 'md',
+  launcherIconStyle: 'chat-bubble',
+  showLauncherLabel: false,
+  launcherLabel: 'Chat with us',
 };
+
+const colorPresets = [
+  {
+    name: 'Midnight Cyan',
+    colors: {
+      primaryColor: '#00E5CC',
+      secondaryColor: '#A855F7',
+      backgroundColor: '#0A0A0F',
+      headerBackgroundColor: '#0F1520',
+      textColor: '#F8FAFC',
+      textMutedColor: '#94A3B8',
+      userMessageColor: '#00E5CC',
+      userMessageTextColor: '#FFFFFF',
+      botMessageColor: '#151B28',
+      botMessageTextColor: '#F8FAFC',
+      inputBackgroundColor: '#0F1520',
+      inputTextColor: '#F8FAFC',
+    }
+  },
+  {
+    name: 'Royal Purple',
+    colors: {
+      primaryColor: '#8B5CF6',
+      secondaryColor: '#EC4899',
+      backgroundColor: '#0F0A1E',
+      headerBackgroundColor: '#1A1333',
+      textColor: '#F8FAFC',
+      textMutedColor: '#A1A1AA',
+      userMessageColor: '#8B5CF6',
+      userMessageTextColor: '#FFFFFF',
+      botMessageColor: '#1E1433',
+      botMessageTextColor: '#F8FAFC',
+      inputBackgroundColor: '#1A1333',
+      inputTextColor: '#F8FAFC',
+    }
+  },
+  {
+    name: 'Ocean Blue',
+    colors: {
+      primaryColor: '#3B82F6',
+      secondaryColor: '#06B6D4',
+      backgroundColor: '#0A1628',
+      headerBackgroundColor: '#0F2140',
+      textColor: '#F8FAFC',
+      textMutedColor: '#94A3B8',
+      userMessageColor: '#3B82F6',
+      userMessageTextColor: '#FFFFFF',
+      botMessageColor: '#122444',
+      botMessageTextColor: '#F8FAFC',
+      inputBackgroundColor: '#0F2140',
+      inputTextColor: '#F8FAFC',
+    }
+  },
+  {
+    name: 'Clean Light',
+    colors: {
+      primaryColor: '#3B82F6',
+      secondaryColor: '#10B981',
+      backgroundColor: '#FFFFFF',
+      headerBackgroundColor: '#F8FAFC',
+      textColor: '#1E293B',
+      textMutedColor: '#64748B',
+      userMessageColor: '#3B82F6',
+      userMessageTextColor: '#FFFFFF',
+      botMessageColor: '#F1F5F9',
+      botMessageTextColor: '#1E293B',
+      inputBackgroundColor: '#FFFFFF',
+      inputTextColor: '#1E293B',
+    }
+  },
+  {
+    name: 'Forest Green',
+    colors: {
+      primaryColor: '#10B981',
+      secondaryColor: '#84CC16',
+      backgroundColor: '#0A1410',
+      headerBackgroundColor: '#0F1D18',
+      textColor: '#F8FAFC',
+      textMutedColor: '#94A3B8',
+      userMessageColor: '#10B981',
+      userMessageTextColor: '#FFFFFF',
+      botMessageColor: '#132820',
+      botMessageTextColor: '#F8FAFC',
+      inputBackgroundColor: '#0F1D18',
+      inputTextColor: '#F8FAFC',
+    }
+  },
+  {
+    name: 'Rose Gold',
+    colors: {
+      primaryColor: '#F43F5E',
+      secondaryColor: '#F59E0B',
+      backgroundColor: '#1A0A0F',
+      headerBackgroundColor: '#2A0F18',
+      textColor: '#F8FAFC',
+      textMutedColor: '#A1A1AA',
+      userMessageColor: '#F43F5E',
+      userMessageTextColor: '#FFFFFF',
+      botMessageColor: '#2A1420',
+      botMessageTextColor: '#F8FAFC',
+      inputBackgroundColor: '#2A0F18',
+      inputTextColor: '#F8FAFC',
+    }
+  },
+];
+
+const fontFamilies = [
+  { value: 'system', label: 'System Default' },
+  { value: 'Inter', label: 'Inter' },
+  { value: 'Roboto', label: 'Roboto' },
+  { value: 'Nunito', label: 'Nunito' },
+];
+
+const fontSizes = [
+  { value: 'sm', label: 'Small' },
+  { value: 'md', label: 'Medium' },
+  { value: 'lg', label: 'Large' },
+];
+
+const launcherIcons = [
+  { value: 'chat-bubble', label: 'Chat Bubble' },
+  { value: 'robot', label: 'Robot' },
+  { value: 'message', label: 'Message' },
+];
+
+const shadowIntensities = [
+  { value: 'none', label: 'None' },
+  { value: 'soft', label: 'Soft' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'strong', label: 'Strong' },
+];
 
 export default function WidgetSettingsPage() {
   const { botId } = useParams<{ botId: string }>();
@@ -55,6 +230,7 @@ export default function WidgetSettingsPage() {
   const { toast } = useToast();
   const [settings, setSettings] = useState<Omit<WidgetSettings, 'id' | 'botId'>>(defaultSettings);
   const [activeTab, setActiveTab] = useState('appearance');
+  const [colorSection, setColorSection] = useState<'presets' | 'custom'>('presets');
   const [previewKey, setPreviewKey] = useState(0);
 
   const { data, isLoading } = useQuery<{ settings: WidgetSettings }>({
@@ -103,6 +279,11 @@ export default function WidgetSettingsPage() {
 
   const updateSetting = <K extends keyof typeof settings>(key: K, value: typeof settings[K]) => {
     setSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  const applyPreset = (preset: typeof colorPresets[0]) => {
+    setSettings(prev => ({ ...prev, ...preset.colors }));
+    toast({ title: "Preset applied", description: `Applied "${preset.name}" color scheme.` });
   };
 
   const getEmbedCode = () => {
@@ -181,68 +362,422 @@ export default function WidgetSettingsPage() {
               </TabsList>
 
               <TabsContent value="appearance" className="mt-6 space-y-6">
+                {/* Color Scheme Section */}
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Theme</CardTitle>
-                    <CardDescription>Customize the widget's visual appearance</CardDescription>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2">
+                      <Paintbrush className="h-4 w-4" />
+                      Color Scheme
+                    </CardTitle>
+                    <CardDescription>Choose a preset or customize colors</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="themeMode">Theme Mode</Label>
-                      <Select
-                        value={settings.themeMode}
-                        onValueChange={(value: 'light' | 'dark' | 'auto') => updateSetting('themeMode', value)}
+                    {/* Preset/Custom Toggle */}
+                    <div className="flex gap-2 mb-4">
+                      <Button
+                        variant={colorSection === 'presets' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setColorSection('presets')}
+                        data-testid="button-presets"
                       >
-                        <SelectTrigger id="themeMode" data-testid="select-theme-mode">
-                          <SelectValue placeholder="Select theme" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="dark">Dark</SelectItem>
-                          <SelectItem value="light">Light</SelectItem>
-                          <SelectItem value="auto">Auto (System)</SelectItem>
-                        </SelectContent>
-                      </Select>
+                        Color Presets
+                      </Button>
+                      <Button
+                        variant={colorSection === 'custom' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setColorSection('custom')}
+                        data-testid="button-custom-colors"
+                      >
+                        Custom Colors
+                      </Button>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="primaryColor">Primary Color</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          id="primaryColor"
-                          type="color"
-                          value={settings.primaryColor}
-                          onChange={(e) => updateSetting('primaryColor', e.target.value)}
-                          className="w-16 h-10 p-1 cursor-pointer"
-                          data-testid="input-primary-color"
-                        />
-                        <Input
-                          value={settings.primaryColor}
-                          onChange={(e) => updateSetting('primaryColor', e.target.value)}
-                          placeholder="#2563eb"
-                          className="flex-1"
-                          data-testid="input-primary-color-hex"
-                        />
+                    {colorSection === 'presets' && (
+                      <div className="grid grid-cols-2 gap-3">
+                        {colorPresets.map((preset) => (
+                          <button
+                            key={preset.name}
+                            onClick={() => applyPreset(preset)}
+                            className="p-3 rounded-lg border hover:border-primary transition-colors text-left"
+                            style={{ backgroundColor: preset.colors.backgroundColor }}
+                            data-testid={`preset-${preset.name.toLowerCase().replace(' ', '-')}`}
+                          >
+                            <div className="flex items-center gap-2 mb-2">
+                              <div
+                                className="w-4 h-4 rounded-full"
+                                style={{ backgroundColor: preset.colors.primaryColor }}
+                              />
+                              <div
+                                className="w-4 h-4 rounded-full"
+                                style={{ backgroundColor: preset.colors.secondaryColor }}
+                              />
+                            </div>
+                            <span
+                              className="text-sm font-medium"
+                              style={{ color: preset.colors.textColor }}
+                            >
+                              {preset.name}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {colorSection === 'custom' && (
+                      <div className="space-y-4">
+                        {/* Primary & Secondary Colors */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Primary Color</Label>
+                            <div className="flex gap-2">
+                              <Input
+                                type="color"
+                                value={settings.primaryColor}
+                                onChange={(e) => updateSetting('primaryColor', e.target.value)}
+                                className="w-12 h-9 p-1 cursor-pointer"
+                                data-testid="input-primary-color"
+                              />
+                              <Input
+                                value={settings.primaryColor}
+                                onChange={(e) => updateSetting('primaryColor', e.target.value)}
+                                className="flex-1 font-mono text-xs"
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Secondary Color</Label>
+                            <div className="flex gap-2">
+                              <Input
+                                type="color"
+                                value={settings.secondaryColor}
+                                onChange={(e) => updateSetting('secondaryColor', e.target.value)}
+                                className="w-12 h-9 p-1 cursor-pointer"
+                                data-testid="input-secondary-color"
+                              />
+                              <Input
+                                value={settings.secondaryColor}
+                                onChange={(e) => updateSetting('secondaryColor', e.target.value)}
+                                className="flex-1 font-mono text-xs"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Background Colors */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Background</Label>
+                            <div className="flex gap-2">
+                              <Input
+                                type="color"
+                                value={settings.backgroundColor}
+                                onChange={(e) => updateSetting('backgroundColor', e.target.value)}
+                                className="w-12 h-9 p-1 cursor-pointer"
+                                data-testid="input-background-color"
+                              />
+                              <Input
+                                value={settings.backgroundColor}
+                                onChange={(e) => updateSetting('backgroundColor', e.target.value)}
+                                className="flex-1 font-mono text-xs"
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Header Background</Label>
+                            <div className="flex gap-2">
+                              <Input
+                                type="color"
+                                value={settings.headerBackgroundColor}
+                                onChange={(e) => updateSetting('headerBackgroundColor', e.target.value)}
+                                className="w-12 h-9 p-1 cursor-pointer"
+                                data-testid="input-header-bg-color"
+                              />
+                              <Input
+                                value={settings.headerBackgroundColor}
+                                onChange={(e) => updateSetting('headerBackgroundColor', e.target.value)}
+                                className="flex-1 font-mono text-xs"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Text Colors */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Text Color</Label>
+                            <div className="flex gap-2">
+                              <Input
+                                type="color"
+                                value={settings.textColor}
+                                onChange={(e) => updateSetting('textColor', e.target.value)}
+                                className="w-12 h-9 p-1 cursor-pointer"
+                                data-testid="input-text-color"
+                              />
+                              <Input
+                                value={settings.textColor}
+                                onChange={(e) => updateSetting('textColor', e.target.value)}
+                                className="flex-1 font-mono text-xs"
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Muted Text</Label>
+                            <div className="flex gap-2">
+                              <Input
+                                type="color"
+                                value={settings.textMutedColor}
+                                onChange={(e) => updateSetting('textMutedColor', e.target.value)}
+                                className="w-12 h-9 p-1 cursor-pointer"
+                                data-testid="input-muted-color"
+                              />
+                              <Input
+                                value={settings.textMutedColor}
+                                onChange={(e) => updateSetting('textMutedColor', e.target.value)}
+                                className="flex-1 font-mono text-xs"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Message Bubble Colors */}
+                        <div className="pt-2 border-t">
+                          <Label className="text-xs text-muted-foreground mb-3 block">Message Bubbles</Label>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label className="text-xs">User Message</Label>
+                              <div className="flex gap-2">
+                                <Input
+                                  type="color"
+                                  value={settings.userMessageColor}
+                                  onChange={(e) => updateSetting('userMessageColor', e.target.value)}
+                                  className="w-10 h-8 p-0.5 cursor-pointer"
+                                  data-testid="input-user-msg-color"
+                                />
+                                <Input
+                                  type="color"
+                                  value={settings.userMessageTextColor}
+                                  onChange={(e) => updateSetting('userMessageTextColor', e.target.value)}
+                                  className="w-10 h-8 p-0.5 cursor-pointer"
+                                  data-testid="input-user-msg-text-color"
+                                  title="Text color"
+                                />
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-xs">Bot Message</Label>
+                              <div className="flex gap-2">
+                                <Input
+                                  type="color"
+                                  value={settings.botMessageColor}
+                                  onChange={(e) => updateSetting('botMessageColor', e.target.value)}
+                                  className="w-10 h-8 p-0.5 cursor-pointer"
+                                  data-testid="input-bot-msg-color"
+                                />
+                                <Input
+                                  type="color"
+                                  value={settings.botMessageTextColor}
+                                  onChange={(e) => updateSetting('botMessageTextColor', e.target.value)}
+                                  className="w-10 h-8 p-0.5 cursor-pointer"
+                                  data-testid="input-bot-msg-text-color"
+                                  title="Text color"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Input Colors */}
+                        <div className="pt-2 border-t">
+                          <Label className="text-xs text-muted-foreground mb-3 block">Input Area</Label>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label className="text-xs">Input Background</Label>
+                              <div className="flex gap-2">
+                                <Input
+                                  type="color"
+                                  value={settings.inputBackgroundColor}
+                                  onChange={(e) => updateSetting('inputBackgroundColor', e.target.value)}
+                                  className="w-12 h-9 p-1 cursor-pointer"
+                                  data-testid="input-input-bg-color"
+                                />
+                                <Input
+                                  value={settings.inputBackgroundColor}
+                                  onChange={(e) => updateSetting('inputBackgroundColor', e.target.value)}
+                                  className="flex-1 font-mono text-xs"
+                                />
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-xs">Input Text</Label>
+                              <div className="flex gap-2">
+                                <Input
+                                  type="color"
+                                  value={settings.inputTextColor}
+                                  onChange={(e) => updateSetting('inputTextColor', e.target.value)}
+                                  className="w-12 h-9 p-1 cursor-pointer"
+                                  data-testid="input-input-text-color"
+                                />
+                                <Input
+                                  value={settings.inputTextColor}
+                                  onChange={(e) => updateSetting('inputTextColor', e.target.value)}
+                                  className="flex-1 font-mono text-xs"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Layout & Style Section */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2">
+                      <Layout className="h-4 w-4" />
+                      Layout & Style
+                    </CardTitle>
+                    <CardDescription>Configure widget dimensions and styling</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="position">Position</Label>
+                        <Select
+                          value={settings.position}
+                          onValueChange={(value: 'bottom-right' | 'bottom-left') => updateSetting('position', value)}
+                        >
+                          <SelectTrigger id="position" data-testid="select-position">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="bottom-right">Bottom Right</SelectItem>
+                            <SelectItem value="bottom-left">Bottom Left</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="shadowIntensity">Shadow</Label>
+                        <Select
+                          value={settings.shadowIntensity}
+                          onValueChange={(value: 'none' | 'soft' | 'medium' | 'strong') => updateSetting('shadowIntensity', value)}
+                        >
+                          <SelectTrigger id="shadowIntensity" data-testid="select-shadow">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {shadowIntensities.map(s => (
+                              <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="position">Widget Position</Label>
+                      <div className="flex justify-between">
+                        <Label>Border Radius: {settings.borderRadius}px</Label>
+                      </div>
+                      <Slider
+                        value={[settings.borderRadius]}
+                        onValueChange={([value]) => updateSetting('borderRadius', value)}
+                        min={0}
+                        max={24}
+                        step={2}
+                        data-testid="slider-border-radius"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="fontFamily">Font Family</Label>
+                        <Select
+                          value={settings.fontFamily}
+                          onValueChange={(value: 'system' | 'Inter' | 'Roboto' | 'Nunito') => updateSetting('fontFamily', value)}
+                        >
+                          <SelectTrigger id="fontFamily" data-testid="select-font-family">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {fontFamilies.map(f => (
+                              <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="fontSize">Font Size</Label>
+                        <Select
+                          value={settings.fontSize}
+                          onValueChange={(value: 'sm' | 'md' | 'lg') => updateSetting('fontSize', value)}
+                        >
+                          <SelectTrigger id="fontSize" data-testid="select-font-size">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {fontSizes.map(f => (
+                              <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Launcher Bubble Section */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle>Launcher Bubble</CardTitle>
+                    <CardDescription>Customize the chat launcher button</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="launcherIconStyle">Icon Style</Label>
                       <Select
-                        value={settings.position}
-                        onValueChange={(value: 'bottom-right' | 'bottom-left') => updateSetting('position', value)}
+                        value={settings.launcherIconStyle}
+                        onValueChange={(value: 'chat-bubble' | 'robot' | 'message') => updateSetting('launcherIconStyle', value)}
                       >
-                        <SelectTrigger id="position" data-testid="select-position">
-                          <SelectValue placeholder="Select position" />
+                        <SelectTrigger id="launcherIconStyle" data-testid="select-launcher-icon">
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="bottom-right">Bottom Right</SelectItem>
-                          <SelectItem value="bottom-left">Bottom Left</SelectItem>
+                          {launcherIcons.map(icon => (
+                            <SelectItem key={icon.value} value={icon.value}>{icon.label}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
 
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label htmlFor="showLauncherLabel">Show Label</Label>
+                        <p className="text-xs text-muted-foreground">Display text next to the launcher</p>
+                      </div>
+                      <Switch
+                        id="showLauncherLabel"
+                        checked={settings.showLauncherLabel}
+                        onCheckedChange={(checked) => updateSetting('showLauncherLabel', checked)}
+                        data-testid="switch-launcher-label"
+                      />
+                    </div>
+
+                    {settings.showLauncherLabel && (
+                      <div className="space-y-2">
+                        <Label htmlFor="launcherLabel">Label Text</Label>
+                        <Input
+                          id="launcherLabel"
+                          value={settings.launcherLabel || ''}
+                          onChange={(e) => updateSetting('launcherLabel', e.target.value || null)}
+                          placeholder="Chat with us"
+                          data-testid="input-launcher-label"
+                        />
+                      </div>
+                    )}
+
                     <div className="space-y-2">
-                      <Label htmlFor="avatarUrl">Avatar URL</Label>
+                      <Label htmlFor="avatarUrl">Avatar Image URL</Label>
                       <Input
                         id="avatarUrl"
                         type="url"
@@ -251,19 +786,56 @@ export default function WidgetSettingsPage() {
                         placeholder="https://example.com/avatar.png"
                         data-testid="input-avatar-url"
                       />
-                      <p className="text-xs text-muted-foreground">Leave empty to use the default chat icon</p>
+                      <p className="text-xs text-muted-foreground">Leave empty to use the default icon</p>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label htmlFor="showAvatar">Show Avatar</Label>
+                        <p className="text-xs text-muted-foreground">Display avatar in chat header</p>
+                      </div>
+                      <Switch
+                        id="showAvatar"
+                        checked={settings.showAvatar}
+                        onCheckedChange={(checked) => updateSetting('showAvatar', checked)}
+                        data-testid="switch-show-avatar"
+                      />
                     </div>
                   </CardContent>
                 </Card>
 
+                {/* Identity & Messages Section */}
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Text & Messages</CardTitle>
-                    <CardDescription>Customize the widget text content</CardDescription>
+                  <CardHeader className="pb-3">
+                    <CardTitle>Identity & Messages</CardTitle>
+                    <CardDescription>Customize header info and messages</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="headerTitle">Header Title</Label>
+                        <Input
+                          id="headerTitle"
+                          value={settings.headerTitle || ''}
+                          onChange={(e) => updateSetting('headerTitle', e.target.value || null)}
+                          placeholder={businessName}
+                          data-testid="input-header-title"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="headerSubtitle">Header Subtitle</Label>
+                        <Input
+                          id="headerSubtitle"
+                          value={settings.headerSubtitle || ''}
+                          onChange={(e) => updateSetting('headerSubtitle', e.target.value || null)}
+                          placeholder="Online"
+                          data-testid="input-header-subtitle"
+                        />
+                      </div>
+                    </div>
+
                     <div className="space-y-2">
-                      <Label htmlFor="greeting">Greeting Message</Label>
+                      <Label htmlFor="greeting">Welcome Message</Label>
                       <Input
                         id="greeting"
                         value={settings.greeting || ''}
@@ -370,6 +942,19 @@ export default function WidgetSettingsPage() {
                         checked={settings.ariaLabelsEnabled}
                         onCheckedChange={(checked) => updateSetting('ariaLabelsEnabled', checked)}
                         data-testid="switch-aria-labels"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label htmlFor="mobileFullscreen">Mobile Fullscreen</Label>
+                        <p className="text-xs text-muted-foreground">Open widget fullscreen on mobile</p>
+                      </div>
+                      <Switch
+                        id="mobileFullscreen"
+                        checked={settings.mobileFullscreen}
+                        onCheckedChange={(checked) => updateSetting('mobileFullscreen', checked)}
+                        data-testid="switch-mobile-fullscreen"
                       />
                     </div>
 
@@ -507,36 +1092,84 @@ interface WidgetPreviewProps {
 function WidgetPreview({ settings, businessName }: WidgetPreviewProps) {
   const [isOpen, setIsOpen] = useState(true);
   
-  const resolveTheme = () => {
-    if (settings.themeMode === 'auto') {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  const getShadow = () => {
+    switch (settings.shadowIntensity) {
+      case 'none': return 'none';
+      case 'soft': return '0 4px 12px rgba(0,0,0,0.1)';
+      case 'medium': return '0 8px 24px rgba(0,0,0,0.2)';
+      case 'strong': return '0 12px 40px rgba(0,0,0,0.35)';
+      default: return '0 8px 24px rgba(0,0,0,0.2)';
     }
-    return settings.themeMode;
   };
-  
-  const theme = resolveTheme();
-  const isDark = theme === 'dark';
-  
-  const bgColor = isDark ? '#1a1a2e' : '#ffffff';
-  const bgSecondary = isDark ? '#16213e' : '#f8fafc';
-  const textColor = isDark ? '#e8e8e8' : '#1e293b';
-  const textMuted = isDark ? '#9ca3af' : '#64748b';
-  const borderColor = isDark ? '#2a2a4a' : '#e2e8f0';
-  const botBg = isDark ? '#252545' : '#f1f5f9';
+
+  const getFontSize = () => {
+    switch (settings.fontSize) {
+      case 'sm': return { base: 12, header: 13, message: 12 };
+      case 'lg': return { base: 15, header: 16, message: 14 };
+      default: return { base: 13, header: 14, message: 13 };
+    }
+  };
+
+  const getFontFamily = () => {
+    switch (settings.fontFamily) {
+      case 'Inter': return "'Inter', sans-serif";
+      case 'Roboto': return "'Roboto', sans-serif";
+      case 'Nunito': return "'Nunito', sans-serif";
+      default: return "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+    }
+  };
+
+  const getLauncherIcon = () => {
+    switch (settings.launcherIconStyle) {
+      case 'robot':
+        return (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+            <rect x="3" y="11" width="18" height="10" rx="2" ry="2"/>
+            <circle cx="12" cy="5" r="2"/>
+            <path d="M12 7v4"/>
+            <circle cx="8" cy="16" r="1"/>
+            <circle cx="16" cy="16" r="1"/>
+          </svg>
+        );
+      case 'message':
+        return (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        );
+      default:
+        return (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+          </svg>
+        );
+    }
+  };
+
+  const fontSizes = getFontSize();
+  const displayTitle = settings.headerTitle || businessName;
+  const displaySubtitle = settings.headerSubtitle || 'Online';
 
   if (!isOpen) {
     return (
       <div
-        className="absolute cursor-pointer"
+        className="absolute cursor-pointer flex items-center gap-2"
         style={{
-          width: 50,
-          height: 50,
-          borderRadius: '50%',
+          ...(settings.showLauncherLabel ? {
+            paddingLeft: 16,
+            paddingRight: 6,
+            height: 50,
+            borderRadius: 25,
+          } : {
+            width: 50,
+            height: 50,
+            borderRadius: '50%',
+          }),
           background: settings.primaryColor,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+          boxShadow: getShadow(),
           ...(settings.position === 'bottom-right'
             ? { bottom: 16, right: 16 }
             : { bottom: 16, left: 16 }),
@@ -544,76 +1177,99 @@ function WidgetPreview({ settings, businessName }: WidgetPreviewProps) {
         onClick={() => setIsOpen(true)}
         data-testid="preview-bubble"
       >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
-        </svg>
+        {settings.showLauncherLabel && (
+          <span style={{ color: 'white', fontSize: 14, fontWeight: 500 }}>
+            {settings.launcherLabel || 'Chat with us'}
+          </span>
+        )}
+        <div style={{ 
+          width: settings.showLauncherLabel ? 38 : 'auto',
+          height: settings.showLauncherLabel ? 38 : 'auto',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          {getLauncherIcon()}
+        </div>
       </div>
     );
   }
 
   return (
     <div
-      className="absolute rounded-2xl overflow-hidden flex flex-col"
+      className="absolute overflow-hidden flex flex-col"
       style={{
-        width: 320,
-        height: 440,
-        background: bgColor,
-        boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+        width: 340,
+        height: 460,
+        background: settings.backgroundColor,
+        boxShadow: getShadow(),
+        borderRadius: settings.borderRadius,
+        fontFamily: getFontFamily(),
         ...(settings.position === 'bottom-right'
           ? { bottom: 16, right: 16 }
           : { bottom: 16, left: 16 }),
       }}
       data-testid="preview-widget"
     >
+      {/* Header */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: 12,
-          background: bgSecondary,
-          borderBottom: `1px solid ${borderColor}`,
+          padding: '14px 16px',
+          background: settings.headerBackgroundColor,
+          borderBottom: `1px solid ${settings.backgroundColor}20`,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: '50%',
-              background: settings.avatarUrl ? 'transparent' : settings.primaryColor,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-            }}
-          >
-            {settings.avatarUrl ? (
-              <img
-                src={settings.avatarUrl}
-                alt={businessName}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-            ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
-              </svg>
-            )}
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {settings.showAvatar && (
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: '50%',
+                background: settings.avatarUrl ? 'transparent' : settings.primaryColor,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                flexShrink: 0,
+              }}
+            >
+              {settings.avatarUrl ? (
+                <img
+                  src={settings.avatarUrl}
+                  alt={displayTitle}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                </svg>
+              )}
+            </div>
+          )}
           <div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: textColor }}>{businessName}</div>
-            <div style={{ fontSize: 11, color: textMuted }}>Online</div>
+            <div style={{ fontSize: fontSizes.header, fontWeight: 600, color: settings.textColor }}>
+              {displayTitle}
+            </div>
+            <div style={{ fontSize: fontSizes.base - 2, color: settings.textMutedColor, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22C55E' }} />
+              {displaySubtitle}
+            </div>
           </div>
         </div>
         <button
           onClick={() => setIsOpen(false)}
           style={{
-            width: 28,
-            height: 28,
-            borderRadius: 6,
+            width: 32,
+            height: 32,
+            borderRadius: 8,
             border: 'none',
             background: 'transparent',
-            color: textMuted,
+            color: settings.textMutedColor,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -621,34 +1277,58 @@ function WidgetPreview({ settings, businessName }: WidgetPreviewProps) {
           }}
           data-testid="preview-close"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
         </button>
       </div>
 
-      <div style={{ flex: 1, padding: 12, overflowY: 'auto' }}>
-        <div
-          style={{
-            maxWidth: '85%',
-            padding: '10px 14px',
-            background: botBg,
-            color: textColor,
-            borderRadius: '14px',
-            borderBottomLeftRadius: 4,
-            fontSize: 13,
-          }}
-        >
-          {settings.greeting || 'Hi! How can I help you today?'}
+      {/* Messages Area */}
+      <div style={{ flex: 1, padding: 16, overflowY: 'auto', background: settings.backgroundColor }}>
+        {/* Bot Message */}
+        <div style={{ marginBottom: 16 }}>
+          <div
+            style={{
+              maxWidth: '85%',
+              padding: '12px 16px',
+              background: settings.botMessageColor,
+              color: settings.botMessageTextColor,
+              borderRadius: settings.borderRadius > 12 ? 16 : settings.borderRadius,
+              borderBottomLeftRadius: 4,
+              fontSize: fontSizes.message,
+              lineHeight: 1.5,
+            }}
+          >
+            {settings.greeting || 'Hi! How can I help you today?'}
+          </div>
+        </div>
+        
+        {/* User Message Example */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+          <div
+            style={{
+              maxWidth: '85%',
+              padding: '12px 16px',
+              background: settings.userMessageColor,
+              color: settings.userMessageTextColor,
+              borderRadius: settings.borderRadius > 12 ? 16 : settings.borderRadius,
+              borderBottomRightRadius: 4,
+              fontSize: fontSizes.message,
+              lineHeight: 1.5,
+            }}
+          >
+            What are your hours?
+          </div>
         </div>
       </div>
 
+      {/* Input Area */}
       <div
         style={{
           padding: 12,
-          background: bgSecondary,
-          borderTop: `1px solid ${borderColor}`,
+          background: settings.headerBackgroundColor,
+          borderTop: `1px solid ${settings.backgroundColor}20`,
         }}
       >
         <div
@@ -656,10 +1336,10 @@ function WidgetPreview({ settings, businessName }: WidgetPreviewProps) {
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            background: bgColor,
-            border: `1px solid ${borderColor}`,
-            borderRadius: 20,
-            padding: '6px 6px 6px 14px',
+            background: settings.inputBackgroundColor,
+            border: `1px solid ${settings.textMutedColor}30`,
+            borderRadius: settings.borderRadius > 12 ? 24 : settings.borderRadius,
+            padding: '8px 8px 8px 16px',
           }}
         >
           <input
@@ -670,15 +1350,15 @@ function WidgetPreview({ settings, businessName }: WidgetPreviewProps) {
               flex: 1,
               border: 'none',
               background: 'transparent',
-              color: textColor,
-              fontSize: 13,
+              color: settings.inputTextColor,
+              fontSize: fontSizes.base,
               outline: 'none',
             }}
           />
           <button
             style={{
-              width: 30,
-              height: 30,
+              width: 36,
+              height: 36,
               borderRadius: '50%',
               border: 'none',
               background: settings.primaryColor,
@@ -687,28 +1367,30 @@ function WidgetPreview({ settings, businessName }: WidgetPreviewProps) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              flexShrink: 0,
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="22" y1="2" x2="11" y2="13"></line>
-              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
             </svg>
           </button>
         </div>
       </div>
 
+      {/* Powered By Footer */}
       {settings.showPoweredBy && (
         <div
           style={{
-            padding: '6px 12px',
+            padding: '8px 12px',
             textAlign: 'center',
             fontSize: 10,
-            color: textMuted,
-            background: bgSecondary,
-            borderTop: `1px solid ${borderColor}`,
+            color: settings.textMutedColor,
+            background: settings.headerBackgroundColor,
+            borderTop: `1px solid ${settings.backgroundColor}15`,
           }}
         >
-          Powered by <span style={{ color: textColor, fontWeight: 500 }}>Treasure Coast AI</span>
+          Powered by <span style={{ color: settings.primaryColor, fontWeight: 500 }}>Treasure Coast AI</span>
         </div>
       )}
     </div>

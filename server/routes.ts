@@ -8494,23 +8494,68 @@ These suggestions should be relevant to what was just discussed and help guide t
   // PHASE 5: WIDGET SETTINGS ENDPOINTS
   // =============================================
 
-  // Widget settings validation schema
+  // Widget settings validation schema - includes all appearance customization fields
+  const hexColorRegex = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
   const widgetSettingsSchema = z.object({
+    // Core appearance
     position: z.enum(['bottom-left', 'bottom-right']).optional(),
     theme: z.enum(['light', 'dark', 'auto']).optional(),
-    primaryColor: z.string().regex(/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/, 'Invalid hex color').optional(),
-    accentColor: z.string().regex(/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/, 'Invalid hex color').optional().nullable(),
+    
+    // Colors - Primary & Accent
+    primaryColor: z.string().regex(hexColorRegex, 'Invalid hex color').optional(),
+    secondaryColor: z.string().regex(hexColorRegex, 'Invalid hex color').optional().nullable(),
+    accentColor: z.string().regex(hexColorRegex, 'Invalid hex color').optional().nullable(),
+    
+    // Colors - Background
+    backgroundColor: z.string().regex(hexColorRegex, 'Invalid hex color').optional().nullable(),
+    headerBackgroundColor: z.string().regex(hexColorRegex, 'Invalid hex color').optional().nullable(),
+    
+    // Colors - Text
+    textColor: z.string().regex(hexColorRegex, 'Invalid hex color').optional().nullable(),
+    textMutedColor: z.string().regex(hexColorRegex, 'Invalid hex color').optional().nullable(),
+    
+    // Colors - Messages
+    userMessageColor: z.string().regex(hexColorRegex, 'Invalid hex color').optional().nullable(),
+    userMessageTextColor: z.string().regex(hexColorRegex, 'Invalid hex color').optional().nullable(),
+    botMessageColor: z.string().regex(hexColorRegex, 'Invalid hex color').optional().nullable(),
+    botMessageTextColor: z.string().regex(hexColorRegex, 'Invalid hex color').optional().nullable(),
+    
+    // Colors - Input
+    inputBackgroundColor: z.string().regex(hexColorRegex, 'Invalid hex color').optional().nullable(),
+    inputTextColor: z.string().regex(hexColorRegex, 'Invalid hex color').optional().nullable(),
+    inputBorderColor: z.string().regex(hexColorRegex, 'Invalid hex color').optional().nullable(),
+    
+    // Avatar
     avatarUrl: z.string().url().optional().nullable(),
+    showAvatar: z.boolean().optional(),
+    
+    // Layout
     bubbleSize: z.enum(['small', 'medium', 'large']).optional(),
     windowWidth: z.number().min(280).max(600).optional(),
     windowHeight: z.number().min(400).max(800).optional(),
     borderRadius: z.number().min(0).max(32).optional(),
+    shadowIntensity: z.enum(['none', 'soft', 'medium', 'strong']).optional(),
+    
+    // Launcher
+    launcherIconStyle: z.enum(['chat-bubble', 'robot', 'message']).optional(),
+    showLauncherLabel: z.boolean().optional(),
+    launcherLabel: z.string().max(50).optional().nullable(),
+    
+    // Typography
+    fontFamily: z.enum(['system', 'Inter', 'Roboto', 'Nunito']).optional(),
+    fontSize: z.enum(['sm', 'md', 'lg']).optional(),
+    
+    // Branding
     showPoweredBy: z.boolean().optional(),
     headerTitle: z.string().max(50).optional().nullable(),
     headerSubtitle: z.string().max(30).optional().nullable(),
+    
+    // Messages
     welcomeMessage: z.string().max(500).optional().nullable(),
     placeholderText: z.string().max(100).optional().nullable(),
     offlineMessage: z.string().max(500).optional().nullable(),
+    
+    // Behavior
     autoOpen: z.boolean().optional(),
     autoOpenDelay: z.number().min(0).max(60).optional(),
     autoOpenOnce: z.boolean().optional(),
@@ -8518,6 +8563,8 @@ These suggestions should be relevant to what was just discussed and help guide t
     soundUrl: z.string().url().optional().nullable(),
     mobileFullscreen: z.boolean().optional(),
     mobileBreakpoint: z.number().min(320).max(768).optional(),
+    
+    // Advanced
     customCss: z.string().max(10000).optional().nullable(),
     advanced: z.object({
       hideOnPages: z.array(z.string()).optional(),

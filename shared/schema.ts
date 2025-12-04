@@ -918,16 +918,47 @@ export const widgetSettings = pgTable("widget_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   botId: varchar("bot_id").notNull().unique(), // One widget config per bot
   
-  // Appearance
+  // Appearance - Core Colors
   position: text("position").notNull().default("bottom-right"), // bottom-left, bottom-right
   theme: text("theme").notNull().default("dark"), // light, dark, auto
-  primaryColor: text("primary_color").notNull().default("#2563eb"),
+  primaryColor: text("primary_color").notNull().default("#00E5CC"),
+  secondaryColor: text("secondary_color").default("#A855F7"),
   accentColor: text("accent_color"),
+  backgroundColor: text("background_color").default("#0A0A0F"),
+  headerBackgroundColor: text("header_background_color"),
+  textColor: text("text_color").default("#F8FAFC"),
+  textMutedColor: text("text_muted_color").default("#94A3B8"),
+  
+  // Message Colors
+  userMessageColor: text("user_message_color").default("#00E5CC"),
+  userMessageTextColor: text("user_message_text_color").default("#FFFFFF"),
+  botMessageColor: text("bot_message_color").default("#151B28"),
+  botMessageTextColor: text("bot_message_text_color").default("#F8FAFC"),
+  
+  // Input Colors
+  inputBackgroundColor: text("input_background_color").default("#0F1520"),
+  inputTextColor: text("input_text_color").default("#F8FAFC"),
+  inputBorderColor: text("input_border_color"),
+  
+  // Avatar & Icon
   avatarUrl: text("avatar_url"), // Custom avatar image URL
+  showAvatar: boolean("show_avatar").notNull().default(true),
+  
+  // Layout
   bubbleSize: text("bubble_size").notNull().default("medium"), // small, medium, large
-  windowWidth: integer("window_width").default(360), // Widget window width in pixels
-  windowHeight: integer("window_height").default(520), // Widget window height in pixels
+  windowWidth: integer("window_width").default(380), // Widget window width in pixels
+  windowHeight: integer("window_height").default(560), // Widget window height in pixels
   borderRadius: integer("border_radius").default(16), // Corner radius
+  shadowIntensity: text("shadow_intensity").notNull().default("medium"), // none, soft, medium, strong
+  
+  // Launcher Bubble
+  launcherIconStyle: text("launcher_icon_style").notNull().default("chat-bubble"), // chat-bubble, robot, message
+  showLauncherLabel: boolean("show_launcher_label").notNull().default(false),
+  launcherLabel: text("launcher_label").default("Chat with us"),
+  
+  // Typography
+  fontFamily: text("font_family").notNull().default("system"), // system, Inter, Roboto, Nunito
+  fontSize: text("font_size").notNull().default("md"), // sm, md, lg
   
   // Branding
   showPoweredBy: boolean("show_powered_by").notNull().default(true),

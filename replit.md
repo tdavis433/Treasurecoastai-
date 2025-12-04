@@ -21,6 +21,12 @@ The platform adopts a "Dark Luxury SaaS with Neon-Glass Accents" aesthetic, draw
 *   **AI Conversation Analysis (Background Processing):** Asynchronously generates conversation summaries, detects user intent, sentiment, lead quality, and booking intent using GPT-4o-mini. This data enriches lead information.
 *   **Needs Review / Flagged Conversations System:** AI automatically flags conversations requiring admin attention (e.g., crisis, bot confusion, dissatisfaction, hot leads) for review in a dedicated dashboard.
 *   **Chat Widget:** Customizable, glassmorphism-designed widget with neon accents, smooth animations, and mobile responsiveness for client websites.
+*   **Visual Widget Appearance Editor (`/admin/bot/:botId/widget-settings`):** Comprehensive visual editor for customizing chat widget appearance with:
+    - **Color Scheme Section:** 6 pre-designed color presets (Midnight Cyan, Royal Purple, Ocean Blue, Clean Light, Forest Green, Rose Gold) and custom color controls for primary/secondary colors, backgrounds, text, message bubbles, and input area
+    - **Layout & Style:** Position, shadow intensity, border radius, font family (System/Inter/Roboto/Nunito), font size (sm/md/lg)
+    - **Launcher Bubble:** Icon style (chat-bubble/robot/message), optional label text, avatar customization
+    - **Identity & Messages:** Header title/subtitle, welcome message, input placeholder, powered-by footer toggle
+    - **Live Preview:** Real-time preview showing all customizations including both bot and user message bubbles
 *   **Client Analytics (View Only):** Provides conversation history, lead management, booking overviews, and simple settings (display-only).
 *   **Super Admin Dashboard (`/super-admin`):** Single consolidated admin hub for complete platform management including client and assistant management, template galleries, global knowledge management, API key hub, billing, system logs, and user role management.
 *   **Assistant Editor (Bot Builder):** Tools for defining AI persona and system prompts, managing knowledge/content, setting up automations/flows, customizing channels & embeds, and a testing sandbox.
