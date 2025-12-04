@@ -1,0 +1,249 @@
+Here you go – this will fix the “Book Appointment” spam problem and make it show only when someone actually wants to book.
+
+Copy–paste this whole thing into Replit Agent:
+
+⸻
+
+🔧 REPLIT PROMPT — FIX BOOKING BUTTON SPAM (SHOW ONLY ON REAL BOOKING INTENT)
+
+You are working on the Treasure Coast AI platform.
+
+Right now, the public chatbot widget shows a “Book Appointment” button after every response.
+This is wrong.
+
+We need to change the behavior so that:
+	•	The button is only shown when the user clearly wants to book.
+	•	Normal Q&A / info conversations do NOT show a booking button.
+	•	The platform still follows the rule:
+“AI assistant captures info and redirects to the client’s external booking service. It never books internally or handles payments.”
+
+Do NOT change the business model.
+Do NOT allow direct booking or payment in the assistant.
+
+⸻
+
+🎯 GOAL BEHAVIOR
+
+The “Book Appointment” button MUST:
+
+✅ Only appear when there is booking intent, such as:
+	•	“I want to book an appointment.”
+	•	“Can I schedule Botox?”
+	•	“How do I book?”
+	•	“Do you have availability tomorrow?”
+	•	“I want to come in Friday.”
+	•	“Can I make an appointment?”
+
+✅ Preferably appear:
+	•	After the assistant has:
+	•	Confirmed what they want (service/date/time)
+	•	Collected basic info (name, contact if needed)
+
+✅ Always redirect to the configured external booking URL for that bot.
+
+⸻
+
+The “Book Appointment” button MUST NOT:
+
+❌ Show up after every single answer.
+❌ Show when the user is just asking questions (hours, prices, safety, etc.).
+❌ Show randomly on general informational responses.
+❌ Claim that the appointment is fully booked/confirmed inside the chat.
+❌ Handle payments or ask for card details.
+
+⸻
+
+🔍 STEP 1 — FIND CURRENT BOOKING BUTTON LOGIC
+	1.	Locate the code that renders the “Book Appointment” button in the widget UI.
+	•	This is probably in the shared chat hook or message rendering components, something like:
+	•	useChatAssistant
+	•	message list / chat UI
+	•	where the button text is defined and rendered.
+	2.	Identify how it currently decides when to show the button.
+	•	Right now, it looks like it’s using a simple flag or generic condition that’s being set for most/all replies.
+	•	Document the current logic in comments as you find it.
+
+⸻
+
+🧠 STEP 2 — IMPLEMENT BOOKING INTENT DETECTION
+
+We need a clean, centralized way to determine “is the user trying to book?” based on the conversation.
+
+You can implement this in one of these layers (choose what fits the codebase best):
+	•	In the chat backend where messages are processed; or
+	•	In the frontend hook useChatAssistant by inspecting user messages; or
+	•	In a shared helper that both sides can use.
+
+Minimum booking intent heuristic
+
+Create a helper like:
+
+function isBookingIntent(message: string): boolean {
+  const text = message.toLowerCase();
+  const bookingKeywords = [
+    "book",
+    "appointment",
+    "schedule",
+    "reservation",
+    "consultation",
+    "come in",
+    "make an appointment",
+    "can i come",
+    "can i visit",
+    "availability",
+    "available times",
+  ];
+
+  return bookingKeywords.some((kw) => text.includes(kw));
+}
+
+Enhance if needed with context:
+	•	Check last user message and possibly the last 2–3 messages.
+
+Where to use this:
+	•	When a user message comes in, determine if it has booking intent.
+	•	Set a flag in the conversation/session state, something like:
+	•	conversation.bookingIntent = true for this turn/session
+	•	Use that flag on the response side to decide whether to show the button.
+
+Do NOT use AI system prompt to always show the button – the UI logic must decide.
+
+⸻
+
+🧱 STEP 3 — UPDATE BOOKING BUTTON RENDERING LOGIC
+
+Replace the current “always show” or overly broad logic with a strict condition.
+
+Pseudo-logic:
+
+// in the widget UI or chat component
+
+const shouldShowBookingButton =
+  hasBookingUrl &&   // there is a configured external booking URL
+  lastUserMessageWasBookingIntent && // our detection result
+  !widgetState.hasJustShownBookingButtonForThisIntent; // avoid spamming it
+
+Key rules:
+	1.	Require a valid booking URL for this bot:
+	•	If no bookingUrl is set in config, do NOT show the button even if user wants to book.
+	•	In that case, assistant should say:
+	•	“I’ve passed your details to the staff, they’ll contact you to confirm.”
+	2.	Tie display to MOST RECENT USER MESSAGE:
+	•	Only show the button when the latest user message expresses booking intent.
+	3.	Avoid multiple redundant buttons:
+	•	If the same intent has already resulted in a booking button within this conversation, avoid spamming the button multiple turns in a row.
+	•	Keep a simple state flag in the session: bookingButtonShownForCurrentIntent.
+
+⸻
+
+💬 STEP 4 — ALIGN ASSISTANT RESPONSES WITH UI LOGIC
+
+Update the assistant behavior (system prompt / config) so it assumes:
+	•	The UI will show a “Book Appointment” button when booking intent is detected.
+	•	The assistant should:
+	•	Recognize intent
+	•	Ask for relevant details (name, email, phone, preferred time, service)
+	•	Then refer to “the booking button” in its wording.
+
+Example pattern:
+
+“I can help with that. I’ve captured your details.
+To finish booking, please click the ‘Book Appointment’ button so you can choose a time and complete it on the clinic’s booking page.”
+
+Make sure the assistant:
+	•	Does not say “your appointment is confirmed.”
+	•	Does not act like it controls the calendar.
+	•	Keeps messaging consistent with “we redirect you to the business’s booking system.”
+
+⸻
+
+🧪 STEP 5 — TEST CASES TO IMPLEMENT & RUN
+
+Add or run tests (automated or manual) to verify behavior.
+
+Case A — Pure Info Questions (NO button)
+
+User:
+	•	“What are your hours?”
+	•	“Do you offer Botox?”
+	•	“How much is Botox?”
+	•	“Is Botox safe?”
+
+Expected:
+	•	Assistant answers normally.
+	•	No “Book Appointment” button after these answers.
+
+Case B — Booking Intent Question (SHOW button)
+
+User:
+	•	“I want to book Botox tomorrow.”
+	•	“Can I schedule an appointment?”
+	•	“How do I book a consultation?”
+
+Expected:
+	•	Assistant:
+	•	Recognizes booking intent
+	•	Captures relevant info
+	•	Button appears once
+	•	Text clearly tells them to click button to complete booking externally.
+
+Case C — Mixed Flow
+	1.	User asks info: “What is microneedling?”
+→ Response: info only, no button.
+	2.	User then says: “Okay, I want to book microneedling.”
+→ Response: now show “Book Appointment” button.
+
+Case D — No Booking URL Configured
+	•	Remove/leave blank the booking URL in config for a test bot.
+	•	User: “I want to book an appointment.”
+
+Expected:
+	•	Assistant politely says it will pass info to staff / they’ll call to schedule.
+	•	No button.
+
+Case E — Spam / Multiple Intents
+
+User sends:
+	•	“I want to book.”
+	•	Then again: “Are you sure I can book?”
+
+Expected:
+	•	First time: Show button.
+	•	Second: either reuse mention of the button, but don’t stack multiple new identical buttons.
+
+⸻
+
+🔐 STEP 6 — REGRESSION CHECKS
+
+After changing logic:
+	•	Verify no crashes in widget.
+	•	Verify booking still:
+	•	tracks clicks
+	•	logs leads
+	•	updates dashboards (client + admin)
+	•	Make sure nothing in the booking logic:
+	•	modifies direct booking behavior
+	•	handles payments
+	•	over-promises confirmations
+
+⸻
+
+✅ ACCEPTANCE CRITERIA
+
+This change is complete and correct when:
+	1.	“Book Appointment” button is not shown in normal info Q&A.
+	2.	It is only shown when booking intent is detected in the user’s message.
+	3.	It respects whether a booking URL is configured.
+	4.	It does not spam multiple buttons for the same intent.
+	5.	The assistant’s language:
+	•	Never claims internal booking/confirmation.
+	•	Always frames booking as happening on the external page.
+	6.	Lead and analytics behavior remain unchanged/working:
+	•	booking-intent leads still created
+	•	booking link clicks logged
+	•	dashboards still accurate.
+
+Keep everything aligned with Treasure Coast AI’s agency-first model.
+No client self-service, no in-chat payments, no internal booking engine.
+
+⸻
