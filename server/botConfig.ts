@@ -389,6 +389,12 @@ export function getAllBotConfigs(): BotConfig[] {
       const filePath = path.join(BOTS_DIR, file);
       const content = fs.readFileSync(filePath, 'utf-8');
       const config: BotConfig = JSON.parse(content);
+      
+      // Normalize booking URL from businessProfile if not set at top level
+      if (!config.externalBookingUrl && config.businessProfile?.booking?.onlineBookingUrl) {
+        config.externalBookingUrl = config.businessProfile.booking.onlineBookingUrl;
+      }
+      
       configs.push(config);
       
       const cacheKey = `${config.clientId}:${config.botId}`;
