@@ -628,8 +628,8 @@ export default function InboxPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" style={{ height: "calc(100vh - 160px)" }}>
-          <GlassCard className="lg:col-span-1 flex flex-col overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-160px)]">
+          <GlassCard className="lg:col-span-1 flex flex-col h-full overflow-hidden">
             <div className="p-4 border-b border-white/10 space-y-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
@@ -663,7 +663,7 @@ export default function InboxPage() {
             </div>
           </GlassCard>
 
-          <GlassCard className="lg:col-span-2 flex flex-col overflow-hidden">
+          <GlassCard className="lg:col-span-2 flex flex-col h-full overflow-hidden">
             {renderMessageThread()}
           </GlassCard>
         </div>
