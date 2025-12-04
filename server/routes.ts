@@ -3665,9 +3665,10 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Get all bots as a flat list for individual editing (includes full config with FAQs)
-  app.get("/api/super-admin/bots", requireSuperAdmin, (req, res) => {
+  app.get("/api/super-admin/bots", requireSuperAdmin, async (req, res) => {
     try {
-      const allBots = getAllBotConfigs();
+      // Use async version to ensure database bots are loaded (not just JSON files)
+      const allBots = await getAllBotConfigsAsync();
       
       // Return full bot configs including FAQs, rules, etc.
       const botList = allBots.map(bot => ({
@@ -3696,10 +3697,11 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Get individual bot config for editing
-  app.get("/api/super-admin/bots/:botId", requireSuperAdmin, (req, res) => {
+  app.get("/api/super-admin/bots/:botId", requireSuperAdmin, async (req, res) => {
     try {
       const { botId } = req.params;
-      const botConfig = getBotConfigByBotId(botId);
+      // Use async version to ensure database bots are loaded
+      const botConfig = await getBotConfigByBotIdAsync(botId);
       
       if (!botConfig) {
         return res.status(404).json({ error: `Bot not found: ${botId}` });

@@ -3353,12 +3353,14 @@ const RESPONSE_LENGTH_OPTIONS = [
   { value: 'detailed', label: 'Detailed', description: 'Comprehensive explanations' },
 ];
 
-// Persona Panel - System prompt, tone, personality settings
+// Persona Panel - System prompt, tone, personality settings, and bot identity
 function PersonaPanel({ bot, clientType }: { bot: BotConfig; clientType?: string }) {
   const { toast } = useToast();
   const { acquireLock, releaseLock, isLocked } = useSaveLock();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
+    name: bot.name || '',
+    description: bot.description || '',
     systemPrompt: bot.systemPrompt || '',
     tone: (bot as any).tone || 'professional',
     responseLength: (bot as any).responseLength || 'medium',
@@ -3373,6 +3375,8 @@ function PersonaPanel({ bot, clientType }: { bot: BotConfig; clientType?: string
   useEffect(() => {
     if (!isEditing) {
       setFormData({
+        name: bot.name || '',
+        description: bot.description || '',
         systemPrompt: bot.systemPrompt || '',
         tone: (bot as any).tone || 'professional',
         responseLength: (bot as any).responseLength || 'medium',
@@ -3398,6 +3402,8 @@ function PersonaPanel({ bot, clientType }: { bot: BotConfig; clientType?: string
         // Merge our fields with the latest data
         const updatedBot = {
           ...latestBot,
+          name: formData.name,
+          description: formData.description,
           systemPrompt: formData.systemPrompt,
           tone: formData.tone,
           responseLength: formData.responseLength,
@@ -3441,6 +3447,48 @@ function PersonaPanel({ bot, clientType }: { bot: BotConfig; clientType?: string
           </Button>
         )}
       </div>
+
+      {/* Assistant Identity */}
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="text-lg flex items-center gap-2">
+            <Bot className="h-5 w-5 text-cyan-400" />
+            Assistant Identity
+          </GlassCardTitle>
+          <GlassCardDescription>Name and description shown in the widget header</GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent className="space-y-4">
+          <div>
+            <Label className="text-white/70">Assistant Name</Label>
+            {isEditing ? (
+              <Input
+                data-testid="input-assistant-name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g., Sarah's Med Spa Assistant"
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
+              />
+            ) : (
+              <p className="text-sm mt-1 text-white">{formData.name || 'No name set'}</p>
+            )}
+          </div>
+          <div>
+            <Label className="text-white/70">Description</Label>
+            {isEditing ? (
+              <Textarea
+                data-testid="input-assistant-description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={2}
+                placeholder="A brief description of what this assistant does..."
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
+              />
+            ) : (
+              <p className="text-sm mt-1 text-white/80">{formData.description || 'No description set'}</p>
+            )}
+          </div>
+        </GlassCardContent>
+      </GlassCard>
 
       {/* System Prompt */}
       <GlassCard>

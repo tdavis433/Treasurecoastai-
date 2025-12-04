@@ -112,6 +112,10 @@ Analytics tracking includes:
 
 3. **Login Security - Password Clearing**: Added `setPassword("")` in the login form's error handler to clear password field after failed login attempts (security best practice).
 
+4. **Bot Name UI Sync Bug**: Fixed issue where bot name changes saved to database but UI didn't refresh. Root cause: GET routes used sync functions (`getAllBotConfigs`, `getBotConfigByBotId`) that only read JSON files. Changed to async versions (`getAllBotConfigsAsync`, `getBotConfigByBotIdAsync`) that check the database first.
+
+5. **PersonaPanel Enhancement**: Added "Assistant Identity" section to PersonaPanel with editable Assistant Name and Description fields (data-testid: `input-assistant-name`, `input-assistant-description`). Previously these fields were not editable through the UI.
+
 ### E2E Test Results (All Passed)
 | Feature | Status | Notes |
 |---------|--------|-------|
