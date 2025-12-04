@@ -236,7 +236,11 @@ class ConversationOrchestrator {
       // 12. Get client settings for external URLs
       const clientSettings = await configCache.getClientSettings(clientId);
 
-      // 13. Return standardized response
+      // 13. Return standardized response - only include booking URL when intent is detected
+      const bookingUrl = postProcessResult.showBooking 
+        ? (clientSettings?.externalBookingUrl || botConfig.externalBookingUrl || null)
+        : null;
+      
       return {
         success: true,
         reply,
@@ -246,8 +250,8 @@ class ConversationOrchestrator {
           sessionId,
           responseTimeMs: responseTime,
           showBooking: postProcessResult.showBooking,
-          externalBookingUrl: clientSettings?.externalBookingUrl || botConfig.externalBookingUrl || null,
-          externalPaymentUrl: clientSettings?.externalPaymentUrl || botConfig.externalPaymentUrl || null,
+          externalBookingUrl: bookingUrl,
+          externalPaymentUrl: postProcessResult.showBooking ? (clientSettings?.externalPaymentUrl || botConfig.externalPaymentUrl || null) : null,
           suggestedReplies: [],
           leadCaptured: postProcessResult.leadCaptured,
           contactInfo: postProcessResult.contactInfo,
@@ -292,10 +296,9 @@ class ConversationOrchestrator {
       const sessionData = await this.getOrCreateSession(clientId, botId, sessionId, language);
       const lastUserMessage = messages[messages.length - 1];
 
-      // 5. Crisis detection (non-streamed)
+      // 5. Crisis detection (non-streamed) - no booking button for crisis
       if (lastUserMessage?.role === 'user' && detectCrisisInMessage(lastUserMessage.content, botConfig)) {
         const crisisReply = getBotCrisisResponse(botConfig);
-        const clientSettings = await configCache.getClientSettings(clientId);
         
         yield {
           type: 'done',
@@ -306,8 +309,8 @@ class ConversationOrchestrator {
             sessionId,
             responseTimeMs: Date.now() - startTime,
             showBooking: false,
-            externalBookingUrl: clientSettings?.externalBookingUrl || botConfig.externalBookingUrl || null,
-            externalPaymentUrl: clientSettings?.externalPaymentUrl || null,
+            externalBookingUrl: null,
+            externalPaymentUrl: null,
             suggestedReplies: [],
             crisis: true,
           },
@@ -315,11 +318,10 @@ class ConversationOrchestrator {
         return;
       }
 
-      // 6. Check automations (non-streamed if triggered)
+      // 6. Check automations (non-streamed if triggered) - no booking button for automations
       const automationResult = this.processAutomationRules(botConfig, sessionData, lastUserMessage?.content || '');
       
       if (automationResult.triggered && automationResult.response && !automationResult.shouldContinue) {
-        const clientSettings = await configCache.getClientSettings(clientId);
         await incrementAutomationCount(clientId);
         
         yield {
@@ -331,8 +333,8 @@ class ConversationOrchestrator {
             sessionId,
             responseTimeMs: Date.now() - startTime,
             showBooking: false,
-            externalBookingUrl: clientSettings?.externalBookingUrl || botConfig.externalBookingUrl || null,
-            externalPaymentUrl: clientSettings?.externalPaymentUrl || null,
+            externalBookingUrl: null,
+            externalPaymentUrl: null,
             suggestedReplies: [],
             automation: true,
             ruleId: automationResult.ruleId,
@@ -401,7 +403,14 @@ class ConversationOrchestrator {
       );
       await incrementMessageCount(clientId);
 
-      // 10. Send final meta
+      // 10. Send final meta - only include booking URL when intent is detected
+      const bookingUrl = postProcessResult.showBooking 
+        ? (clientSettings?.externalBookingUrl || botConfig.externalBookingUrl || null)
+        : null;
+      const paymentUrl = postProcessResult.showBooking 
+        ? (clientSettings?.externalPaymentUrl || botConfig.externalPaymentUrl || null)
+        : null;
+      
       yield {
         type: 'done',
         reply: fullReply,
@@ -411,8 +420,8 @@ class ConversationOrchestrator {
           sessionId,
           responseTimeMs: responseTime,
           showBooking: postProcessResult.showBooking,
-          externalBookingUrl: clientSettings?.externalBookingUrl || botConfig.externalBookingUrl || null,
-          externalPaymentUrl: clientSettings?.externalPaymentUrl || null,
+          externalBookingUrl: bookingUrl,
+          externalPaymentUrl: paymentUrl,
           suggestedReplies: [],
           leadCaptured: postProcessResult.leadCaptured,
           contactInfo: postProcessResult.contactInfo,
@@ -767,8 +776,6 @@ class ConversationOrchestrator {
       botReply: crisisReply,
     });
 
-    const clientSettings = await configCache.getClientSettings(request.clientId);
-
     return {
       success: true,
       reply: crisisReply,
@@ -778,8 +785,8 @@ class ConversationOrchestrator {
         sessionId: request.sessionId,
         responseTimeMs: responseTime,
         showBooking: false,
-        externalBookingUrl: clientSettings?.externalBookingUrl || botConfig.externalBookingUrl || null,
-        externalPaymentUrl: clientSettings?.externalPaymentUrl || null,
+        externalBookingUrl: null,
+        externalPaymentUrl: null,
         suggestedReplies: [],
         crisis: true,
       },
@@ -829,9 +836,6 @@ class ConversationOrchestrator {
       botReply: automationResult.response!,
     });
 
-    const clientSettings = await configCache.getClientSettings(request.clientId);
-    const botConfig = await configCache.getBotConfig(request.clientId, request.botId);
-
     return {
       success: true,
       reply: automationResult.response!,
@@ -841,8 +845,8 @@ class ConversationOrchestrator {
         sessionId: request.sessionId,
         responseTimeMs: responseTime,
         showBooking: false,
-        externalBookingUrl: clientSettings?.externalBookingUrl || botConfig?.externalBookingUrl || null,
-        externalPaymentUrl: clientSettings?.externalPaymentUrl || null,
+        externalBookingUrl: null,
+        externalPaymentUrl: null,
         suggestedReplies: [],
         automation: true,
         ruleId: automationResult.ruleId,
