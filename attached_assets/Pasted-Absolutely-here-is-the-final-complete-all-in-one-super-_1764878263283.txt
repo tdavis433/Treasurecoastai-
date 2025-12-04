@@ -1,0 +1,273 @@
+Absolutely — here is the final, complete, all-in-one, super-detailed, zero-ambiguity, done-right-the-first-time, minimal-QA, Replit-ready master prompt.
+
+I merged everything we discussed AND wrapped in your official platform/system rules from the PDFs you uploaded (Master Prompt, Starter Pack, Full Assets Pack) exactly as Replit needs to understand them.
+Cited references included:  ￼  ￼  ￼
+
+Just copy/paste this entire prompt into Replit.
+This is the one that gets it DONE.
+
+⸻
+
+🚀 FINAL MASTER PROMPT FOR REPLIT
+
+“AI-Driven Workflow Customization Layer + Seamless Admin Assistant Integration — DO NOT BREAK EXISTING PLATFORM”
+
+Context:
+This platform powers Treasure Coast AI, a multi-tenant chatbot automation agency built around delivering customized bots for local businesses. The current system is already fully functional and stable — it MUST NOT be broken, rewritten, or refactored. The system structure, mission, and workflow behavior are defined in the project’s Master Prompt and Starter Pack. Use them as context.
+(Refs:  ￼  ￼)
+
+Your job is to add a new intelligent customization layer ON TOP of the existing platform:
+
+⸻
+
+🎯 PRIMARY OBJECTIVE
+
+Integrate a fully embedded conversational AI Customization Assistant directly into the Super Admin Dashboard, enabling the agency owner (Tyler) to verbally or textually instruct the dashboard to modify ANY client’s chatbot workflow without editing code manually.
+
+This must:
+
+✅ Keep everything that currently works exactly how it works now
+
+✅ Add a new customization engine that is powerful, safe, and extremely simple for the admin
+
+✅ Allow per-client deep customization (industry-specific, tone, structure, steps, questions, flows)
+
+✅ Require minimal QA to deploy
+
+✅ Produce “holy shit” quality bots that impress clients and make them brag about it
+
+✅ Follow Treasure Coast AI’s mission, style, simplicity, and business model  ￼
+
+⸻
+
+🧠 WHAT YOU ARE ADDING (THE NEW LAYER)
+
+1️⃣ AI Customization Assistant — Built Into Dashboard
+
+A new panel in the super-admin area called:
+
+“AI Workflow Customizer”
+
+This is a chat interface where the admin can say things like:
+	•	“For the sober living client, change ‘Book Appointment’ to ‘Book a Tour’.”
+	•	“Add insurance verification questions.”
+	•	“For this gym client, add a Free Consultation workflow.”
+	•	“Rewrite the intro message in a warm, supportive tone.”
+	•	“Add pricing FAQs for the barbershop bot.”
+
+The assistant must:
+
+✔ Interpret the request
+
+✔ Modify the correct workflow template
+
+✔ Update the bot config in the database
+
+✔ Validate output
+
+✔ Apply changes without breaking existing flows
+
+✔ Produce a confirmation summary
+
+✔ Support undo/version rollback
+
+This assistant must respect brand tone and operational behavior defined in your core identity docs.
+(Refs:  ￼)
+
+⸻
+
+2️⃣ Industry Template System
+
+Add a new backend + UI structure for industry templates that can be assigned to each client.
+
+Required Templates:
+	•	Sober Living
+	•	Barber/Salon
+	•	Gym/Fitness
+	•	Restaurant
+	•	Home Services
+	•	Real Estate
+	•	Retail
+	•	Generic Business
+
+Each template includes:
+
+✔ Default questions
+
+✔ Default FAQs
+✔ Default booking types
+✔ Default lead-capture flow
+✔ Tone presets
+✔ Optional feature toggles
+
+This aligns with the starter pack’s niche templates.
+(Refs:  ￼)
+
+⸻
+
+3️⃣ Toggle-Based “Quick Controls”
+
+Inside each bot’s settings panel, add simple controls:
+
+Booking Type
+	•	Appointment
+	•	Tour
+	•	Consultation
+	•	Phone Call
+	•	Custom Label
+
+Optional Questions
+
+Toggles like:
+	•	Ask insurance?
+	•	Ask timeframe?
+	•	Ask budget?
+	•	Ask location?
+	•	Ask service type?
+
+Tone Switcher
+	•	Warm
+	•	Direct
+	•	Professional
+	•	Friendly
+	•	Supportive
+	•	High-energy
+
+FAQ Manager
+
+Admin can enable/disable FAQ packs by industry.
+
+Lead Flow Options
+	•	Collect name only
+	•	Name + phone
+	•	Name + phone + email
+	•	“Fast lead mode” (minimal fields)
+
+⸻
+
+4️⃣ Version Control for Workflows
+
+Every time the AI modifies a chatbot config, the system stores a:
+
+✔ Prior version
+
+✔ Timestamp
+✔ Change reason
+✔ Undo button
+
+This protects stability and minimizes QA.
+
+⸻
+
+5️⃣ Tech Requirements
+
+You MUST:
+
+✔ Keep existing codebase intact — NO refactor
+
+✔ Add new endpoints only (e.g., /api/super-admin/ai-customizer)
+
+✔ Store workflows in structured DB schema (JSON or table)
+
+✔ Use the existing bot architecture without modifying its logic
+
+✔ Ensure cache invalidation is handled
+
+✔ Follow current design language & brand identity
+
+(Refs:  ￼)
+
+⸻
+
+🔥 WHAT THE AI ENGINE MUST BE CAPABLE OF
+
+✔ Read + interpret existing workflow JSON
+
+✔ Modify specific nodes without breaking structure
+
+✔ Add new steps
+
+✔ Remove steps safely
+
+✔ Change tone + phrasing
+
+✔ Insert industry-specific logic
+
+✔ Auto-correct malformed structures
+
+✔ Validate before saving
+
+✔ Prevent breaking changes
+
+This MUST be reliable with minimal testing needed.
+
+⸻
+
+🧨 WHAT MUST NOT BE CHANGED
+
+Do NOT:
+
+❌ Rewrite or replace the chat engine
+❌ Change conversation routing
+❌ Modify database schemas unless adding new fields
+❌ Alter client dashboard behavior
+❌ Touch successful existing workflows
+❌ Break any admin dashboard pages
+❌ Remove existing setup logic
+
+The platform already works perfectly—this is an ADDITIVE enhancement, not a rewrite.
+
+⸻
+
+🌊 SUCCESS CRITERIA
+
+Replit’s implementation is complete when:
+
+⭐ The admin can fully customize any bot via natural language
+
+⭐ Templates are industry-specific, powerful, and flexible
+
+⭐ Customization is extremely simple and fast
+
+⭐ Clients receive insanely polished, personalized bots
+
+⭐ Nothing existing is broken
+
+⭐ QA is minimal
+
+⭐ The system mirrors Treasure Coast AI’s brand identity, simplicity, and workflow philosophy
+
+⸻
+
+📦 FINAL DELIVERABLES FROM REPLIT
+
+Replit must deliver:
+
+✔ AI Workflow Customizer UI + backend
+
+✔ Template architecture with DB storage
+✔ Toggle-based configuration panel
+✔ Safe JSON editor powered by AI
+✔ Version history + undo
+✔ API endpoint for applying changes
+✔ Documentation for admin usage
+
+⸻
+
+🏁 Final Note for Replit
+
+This enhancement is meant to position Treasure Coast AI as a premium, top-shelf automation platform where every client feels like their bot was hand-crafted — even though AI does 95% of the work behind the scenes.
+
+It must be polished, stable, and impressive on day one.
+
+⸻
+
+If you want, I can also generate:
+
+🔥 A matching UI mockup
+🔥 A version of the prompt specifically for backend engineers
+🔥 A technical architecture doc
+🔥 A testing script
+🔥 A PDF version to upload into your project folder
+
+Just say the word.
