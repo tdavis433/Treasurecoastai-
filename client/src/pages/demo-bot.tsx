@@ -112,6 +112,21 @@ const businessTypeFeatures: Record<string, string[]> = {
   tattoo: ["Custom Designs", "Sterile Environment", "Experienced Artists", "Aftercare Support"],
 };
 
+// Industry-specific booking button labels
+const businessTypeBookingLabels: Record<string, string> = {
+  sober_living: "Book a Tour",
+  restaurant: "Make a Reservation",
+  barber_salon: "Book Appointment",
+  barber: "Book Appointment",
+  home_services: "Schedule Service",
+  auto_shop: "Schedule Service",
+  gym: "Book a Tour",
+  gym_fitness: "Book a Tour",
+  med_spa: "Book Consultation",
+  real_estate: "Schedule Viewing",
+  tattoo: "Book Consultation",
+};
+
 /**
  * FloatingChatWidget - Uses the shared useChatAssistant hook
  * 
@@ -248,7 +263,7 @@ function FloatingChatWidget({ botConfig }: { botConfig: BotConfig }) {
                       data-testid={`button-book-appointment-${index}`}
                     >
                       <Calendar className="h-4 w-4" />
-                      Book Appointment
+                      {businessTypeBookingLabels[botConfig.businessProfile.type] || "Book Appointment"}
                       <ExternalLink className="h-3 w-3" />
                     </button>
                   )}

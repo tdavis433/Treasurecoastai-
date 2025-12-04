@@ -572,10 +572,10 @@ class ConversationOrchestrator {
       }
     }
 
-    // Booking intent detection
-    const bookingKeywords = /\b(book|booking|schedule|scheduling|appointment|reserve|reservation)\b|\bset up (a |an )?(appointment|meeting|visit|consultation)\b|\bwant to (come in|visit|see you)\b/i;
-    const affirmativeKeywords = /\b(yes|yeah|sure|please|ok|okay|sounds good|that works|let'?s do|perfect|great)\b/i;
-    const aiAskedAboutBooking = /\b(schedule|book|appointment|come in|visit|when|preferred|date|time)\b/i;
+    // Booking intent detection - includes sober living specific terms (tour, phone call, etc.)
+    const bookingKeywords = /\b(book|booking|schedule|scheduling|appointment|reserve|reservation|tour|visit|phone call|call you|speak with|talk to|come see|check out the house|see the house|see the place)\b|\bset up (a |an )?(appointment|meeting|visit|consultation|tour|call|phone call)\b|\bwant to (come in|visit|see you|tour|check it out|take a look|see the house|see the place)\b/i;
+    const affirmativeKeywords = /\b(yes|yeah|sure|please|ok|okay|sounds good|that works|let'?s do|perfect|great|definitely|absolutely)\b/i;
+    const aiAskedAboutBooking = /\b(schedule|book|appointment|come in|visit|tour|call|phone|when|preferred|date|time|availability)\b/i;
 
     const previousAssistantMessage = messages.filter(m => m.role === 'assistant').slice(-1)[0]?.content || '';
     
@@ -587,7 +587,7 @@ class ConversationOrchestrator {
       m.role === 'user' && bookingKeywords.test(m.content)
     );
     
-    const aiMentionsBookingButton = /\b(book\s*appointment|click.*button|scheduling\s*page|finalize.*booking|complete.*booking)\b/i.test(reply);
+    const aiMentionsBookingButton = /\b(book\s*appointment|book\s*a?\s*tour|schedule\s*a?\s*call|click.*button|scheduling\s*page|finalize.*booking|complete.*booking)\b/i.test(reply);
     
     const showBooking = directBookingIntent || isAffirmativeToBookingPrompt || alreadyRequestedBooking || conversationHasBookingIntent || aiMentionsBookingButton;
 
