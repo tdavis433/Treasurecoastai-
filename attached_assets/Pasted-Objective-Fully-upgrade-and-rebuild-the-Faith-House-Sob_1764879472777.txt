@@ -1,0 +1,187 @@
+Objective:
+
+Fully upgrade and rebuild the Faith House Sober Living demo AI Assistant into a complete, polished, extremely powerful industry-specific assistant designed to impress the first prospect (the landlord) and demonstrate the true potential of Treasure Coast AI.
+
+This update MUST follow these requirements:
+
+⸻
+
+🔥 1. Replace “Book Appointment” with the Correct Sober Living Options
+
+Sober living homes DO NOT “book appointments.”
+Replace this with the correct industry-standard actions:
+
+New Required Core Actions:
+	1.	Book a Tour
+	2.	Schedule a Phone Call
+	3.	Request More Information
+	4.	Check Room Availability
+	5.	Submit Pre-Screening Questions
+
+These must be prominent in the assistant’s workflow.
+
+⸻
+
+🔥 2. Add Full Sober Living–Specific Intake Workflow
+
+Anyone contacting a sober living home usually needs structured guidance.
+The assistant must gather:
+
+Essential Pre-Screening Questions:
+	•	What substance(s) are you seeking help maintaining sobriety from?
+	•	Are you currently sober? (If yes, how long? If no, when was your last use?)
+	•	Do you need detox first?
+	•	Do you have insurance or a funding source?
+	•	What is your age?
+	•	Are you needing male or female housing?
+	•	Do you have any co-occurring mental health diagnoses we should be aware of?
+	•	Are you currently on any medications?
+	•	Do you require medication management?
+	•	Do you have any legal restrictions (probation/parole)?
+	•	When are you hoping to move in?
+	•	Do you prefer a shared or private room (if available)?
+
+All responses must be logged into the lead system for review.
+
+⸻
+
+🔥 3. Add “Instant Information Center” for Fast Answers
+
+Add a full FAQ-style instant help menu:
+
+Information Categories the bot must answer clearly:
+	•	Program rules
+	•	What to bring
+	•	Curfew times
+	•	Cost & fees
+	•	Insurance options
+	•	What services are included
+	•	House expectations
+	•	Work / employment expectations
+	•	Required meetings (AA/NA etc.)
+	•	Move-in process steps
+	•	Touring hours
+	•	Who is eligible / not eligible
+
+⸻
+
+🔥 4. Add a High-End Introduction Flow
+
+The assistant must introduce itself in a warm, professional tone:
+
+Example Intro Standard:
+“Hi there! Welcome to Faith House Sober Living. I’m here to help you check availability, schedule a tour, set up a phone call, or answer any questions about our program. Everything is confidential — just let me know how I can support you.”
+
+It MUST feel:
+	•	Supportive
+	•	Safe
+	•	Professional
+	•	Clear
+	•	Not robotic
+
+⸻
+
+🔥 5. Add Strong Lead Capture Logic
+
+After answering questions or starting a conversation, the bot should smoothly capture:
+
+Lead Info:
+	•	Full name
+	•	Phone number
+	•	Email (optional but suggested)
+	•	Preferred contact method
+	•	Urgency (Today, 1–3 days, 1 week, unsure)
+
+If someone is clearly high intent, the assistant should prioritize:
+
+“Would you like me to schedule a tour for you?”
+or
+“Would you like me to set up a call with our intake coordinator?”
+
+⸻
+
+🔥 6. Add Realistic Follow-Up Logic
+
+If someone leaves mid-conversation, the bot should guide them:
+
+“Would you like me to save your place and send you the next steps by text or email?”
+
+⸻
+
+🔥 7. Add “Cost Information” Handling
+
+Sober living homes often don’t list exact prices publicly, so the bot should:
+	•	Explain pricing ranges
+	•	Explain what is included
+	•	Offer to schedule a call for full breakdown
+
+⸻
+
+🔥 8. Add “Insurance + Funding” Support Logic
+
+Many prospects ask:
+	•	Does insurance cover this?
+	•	What types of insurance?
+	•	Is self-pay available?
+	•	Do you offer scholarships?
+
+The bot must handle these gracefully.
+
+⸻
+
+🔥 9. Add Engagement-Boosting Features
+
+These help with conversion:
+
+Ask:
+	•	“Would you like photos of the home?”
+	•	“Would you like to see room options?”
+	•	“Would you like me to text you the tour address?”
+	•	“Do you want me to check upcoming move-in openings?”
+
+Offer:
+	•	Instant availability check
+	•	Tour confirmation messages
+	•	Phone call reminders
+
+⸻
+
+🔥 10. Add Admin-Side Controls
+
+Everything added must be compatible with your new AI-Driven Customization Layer (industry templates, toggles, natural-language editable).
+
+⸻
+
+🔥 11. DO NOT BREAK EXISTING PLATFORM
+
+The upgrade is additive only.
+Preserve:
+	•	existing architecture
+	•	existing client dashboard
+	•	existing chat engine
+	•	existing super-admin panel
+
+Only extending the Faith House demo workflow.
+
+⸻
+
+🧨 Final requirement
+
+The Faith House assistant should feel so polished, so supportive, and so professional that the landlord immediately says:
+
+“Damn… I want this on all my properties.”
+
+This demo must be your flagship.
+
+⸻
+
+🏁 Final Output Replit Must Deliver
+	1.	Fully replaced booking logic (Tour + Phone Call)
+	2.	Complete sober-living intake system
+	3.	Full FAQ information center
+	4.	Polished intro + tone overhaul
+	5.	Lead capture enhancements
+	6.	Availability checking workflow
+	7.	Admin-editable fields for all questions
+	8.	Seamless integration with AI customization system
+	9.	Zero breakage to existing systems
