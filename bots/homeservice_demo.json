@@ -173,5 +173,6 @@
     "templateCategory": "Home Services",
     "createdAt": "2025-11-27",
     "version": "2.0"
-  }
+  },
+  "externalBookingUrl": "https://tcprohandyman.com/schedule"
 }

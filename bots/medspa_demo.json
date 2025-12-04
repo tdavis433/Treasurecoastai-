@@ -178,5 +178,6 @@
     "templateCategory": "Med Spa",
     "createdAt": "2025-11-27",
     "version": "2.0"
-  }
+  },
+  "externalBookingUrl": "https://radiancemedspa.com/book"
 }

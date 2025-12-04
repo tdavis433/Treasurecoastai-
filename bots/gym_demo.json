@@ -245,5 +245,6 @@
   },
   "businessType": "gym_fitness",
   "businessName": "Iron Coast Fitness",
-  "isDemo": true
+  "isDemo": true,
+  "externalBookingUrl": "https://ironcoastfitness.com/schedule"
 }

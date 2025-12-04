@@ -254,5 +254,6 @@
   "businessName": "Coastline Auto Care",
   "isDemo": true,
   "tone": "professional",
-  "responseLength": "medium"
+  "responseLength": "medium",
+  "externalBookingUrl": "https://coastlineautocare.com/book"
 }

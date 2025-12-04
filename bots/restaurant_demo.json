@@ -200,5 +200,6 @@
     "templateCategory": "Restaurant",
     "createdAt": "2025-11-27",
     "version": "2.0"
-  }
+  },
+  "externalBookingUrl": "https://coastalbreezegrill.com/reservations"
 }
