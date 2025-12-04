@@ -18,7 +18,7 @@ import {
   Calendar, Utensils, Scissors, Car, Dumbbell, Home, ClipboardList,
   Users, DollarSign, Shield, Search, Loader2, ExternalLink, Check,
   X, RefreshCw, Trash2, Plus, Download, BarChart3, Send, Bot,
-  Play, Eye, Code2, Zap, Bell, Copy
+  Play, Eye, Code2, Zap, Bell, Copy, Palette
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -738,6 +738,15 @@ export default function BotDashboard() {
             <TabsTrigger value="test-chat" className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500/20 data-[state=active]:to-emerald-500/20 data-[state=active]:text-green-400 data-[state=active]:border data-[state=active]:border-green-400/30 data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white transition-all" data-testid="tab-test-chat">
               <Play className="h-4 w-4" />
               Test Chat
+            </TabsTrigger>
+            <TabsTrigger 
+              value="widget" 
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500/20 data-[state=active]:to-fuchsia-500/20 data-[state=active]:text-violet-400 data-[state=active]:border data-[state=active]:border-violet-400/30 data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white transition-all" 
+              data-testid="tab-widget"
+              onClick={() => setLocation(`/admin/bot/${botId}/widget-settings`)}
+            >
+              <Palette className="h-4 w-4" />
+              Widget Design
             </TabsTrigger>
             <TabsTrigger value="automations" className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500/20 data-[state=active]:to-orange-500/20 data-[state=active]:text-amber-400 data-[state=active]:border data-[state=active]:border-amber-400/30 data-[state=inactive]:text-white/55 data-[state=inactive]:hover:text-white transition-all" data-testid="tab-automations">
               <Zap className="h-4 w-4" />
