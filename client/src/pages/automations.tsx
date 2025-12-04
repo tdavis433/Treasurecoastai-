@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -14,6 +14,12 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Plus, Play, Pause, Trash2, Edit, Zap, Clock, MessageSquare, Users, Calendar, History, TestTube } from "lucide-react";
+
+interface CurrentUser {
+  id: string;
+  username: string;
+  role: 'super_admin' | 'client_admin';
+}
 
 interface AutomationWorkflow {
   id: string;
@@ -97,14 +103,38 @@ export default function AutomationsPage() {
   const [testMessage, setTestMessage] = useState('');
   const [activeTab, setActiveTab] = useState('workflows');
 
+  const [hasShownAccessDenied, setHasShownAccessDenied] = useState(false);
+
+  const { data: currentUser, isLoading: authLoading } = useQuery<CurrentUser>({
+    queryKey: ['/api/auth/me'],
+  });
+
+  const isAuthorized = currentUser?.role === 'super_admin';
+
+  useEffect(() => {
+    if (authLoading) return;
+    
+    if (!currentUser) {
+      setLocation('/login');
+    } else if (!isAuthorized && !hasShownAccessDenied) {
+      setHasShownAccessDenied(true);
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to access this page.",
+        variant: "destructive",
+      });
+      setLocation('/client/dashboard');
+    }
+  }, [currentUser, authLoading, isAuthorized, hasShownAccessDenied, setLocation, toast]);
+
   const { data: workflowsData, isLoading: workflowsLoading } = useQuery<{ workflows: AutomationWorkflow[] }>({
     queryKey: ['/api/bots', botId, 'automations'],
-    enabled: !!botId,
+    enabled: !!botId && isAuthorized,
   });
 
   const { data: runsData, isLoading: runsLoading } = useQuery<{ runs: AutomationRun[] }>({
     queryKey: ['/api/bots', botId, 'automation-runs'],
-    enabled: !!botId && activeTab === 'history',
+    enabled: !!botId && activeTab === 'history' && isAuthorized,
   });
 
   const createMutation = useMutation({
@@ -183,6 +213,21 @@ export default function AutomationsPage() {
       default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthorized) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background p-6">

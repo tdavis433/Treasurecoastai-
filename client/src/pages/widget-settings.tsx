@@ -224,6 +224,12 @@ const shadowIntensities = [
   { value: 'strong', label: 'Strong' },
 ];
 
+interface CurrentUser {
+  id: string;
+  username: string;
+  role: 'super_admin' | 'client_admin';
+}
+
 export default function WidgetSettingsPage() {
   const { botId } = useParams<{ botId: string }>();
   const [, setLocation] = useLocation();
@@ -232,15 +238,38 @@ export default function WidgetSettingsPage() {
   const [activeTab, setActiveTab] = useState('appearance');
   const [colorSection, setColorSection] = useState<'presets' | 'custom'>('presets');
   const [previewKey, setPreviewKey] = useState(0);
+  const [hasShownAccessDenied, setHasShownAccessDenied] = useState(false);
+
+  const { data: currentUser, isLoading: authLoading } = useQuery<CurrentUser>({
+    queryKey: ['/api/auth/me'],
+  });
+
+  const isAuthorized = currentUser?.role === 'super_admin';
+
+  useEffect(() => {
+    if (authLoading) return;
+    
+    if (!currentUser) {
+      setLocation('/login');
+    } else if (!isAuthorized && !hasShownAccessDenied) {
+      setHasShownAccessDenied(true);
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to access this page.",
+        variant: "destructive",
+      });
+      setLocation('/client/dashboard');
+    }
+  }, [currentUser, authLoading, isAuthorized, hasShownAccessDenied, setLocation, toast]);
 
   const { data, isLoading } = useQuery<{ settings: WidgetSettings }>({
     queryKey: ['/api/bots', botId, 'widget-settings'],
-    enabled: !!botId,
+    enabled: !!botId && isAuthorized,
   });
 
   const { data: botData } = useQuery<{ bot: { name: string; businessProfile?: { businessName?: string } } }>({
     queryKey: ['/api/bots', botId],
-    enabled: !!botId,
+    enabled: !!botId && isAuthorized,
   });
 
   useEffect(() => {
@@ -301,6 +330,21 @@ export default function WidgetSettingsPage() {
     navigator.clipboard.writeText(getEmbedCode());
     toast({ title: "Copied!", description: "Embed code copied to clipboard." });
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthorized) {
+    return null;
+  }
 
   if (isLoading) {
     return (
