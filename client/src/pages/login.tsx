@@ -50,6 +50,7 @@ export default function Login() {
       }, 500);
     },
     onError: (error: Error) => {
+      setPassword("");
       toast({
         title: "Login failed",
         description: error.message || "Invalid username or password",
