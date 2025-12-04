@@ -102,3 +102,32 @@ Analytics tracking includes:
 *   **Knowledge Hub:** Unified knowledge management across bots
 *   **Background Job Processing:** Queue for heavy async tasks
 *   **Unified Metrics & Quotas Service:** Batched writes for analytics
+
+## Recent QA Session Summary (December 2024)
+
+### Bugs Fixed
+1. **Bot Persona Persistence Bug**: Fixed issue where bot persona/status updates weren't persisting for database-backed bots. Changed `PUT /api/super-admin/bots/:botId` and `PATCH status` routes from `saveBotConfig` (sync, JSON-only) to `saveBotConfigAsync` (handles both JSON and database storage).
+
+2. **services.join TypeError**: Fixed runtime error in `buildSystemPromptFromConfig` where `bp.services.join()` failed when services was a string instead of array. Now safely handles both string and array types.
+
+3. **Login Security - Password Clearing**: Added `setPassword("")` in the login form's error handler to clear password field after failed login attempts (security best practice).
+
+### E2E Test Results (All Passed)
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Landing Page | PASS | Hero, features, pricing, contact form |
+| Contact Form Submission | PASS | Leads captured successfully |
+| Demo Widget | PASS | Opens, displays welcome message |
+| Chat API | PASS | GPT-4 responses working |
+| Multi-turn Conversations | PASS | Context maintained across messages |
+| Booking Redirect Behavior | PASS | AI never confirms bookings, redirects to button |
+| Lead Capture | PASS | Detects and stores contact info |
+| FAQ Responses | PASS | Pricing and service info accurate |
+| Business Hours | PASS | Returns correct schedule |
+| Login Page | PASS | Form works, password clears on error |
+| Protected Routes | PASS | /super-admin and /client/dashboard require auth |
+
+### Critical Behavior Verified
+- **REDIRECT-ONLY Booking**: AI correctly refuses to confirm appointments and directs users to external booking platform
+- **Lead Collection**: AI acknowledges contact info and marks lead as captured
+- **Conversation Context**: Multi-turn conversations maintain proper context
