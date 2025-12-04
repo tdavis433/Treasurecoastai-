@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -66,6 +66,16 @@ export default function InboxPage() {
     return params.get('clientId');
   }, [searchParams]);
 
+  const urlSessionId = useMemo(() => {
+    const params = new URLSearchParams(searchParams);
+    return params.get('session');
+  }, [searchParams]);
+
+  const urlBotId = useMemo(() => {
+    const params = new URLSearchParams(searchParams);
+    return params.get('botId');
+  }, [searchParams]);
+
   const { data: profile } = useQuery<UserProfile>({
     queryKey: ["/api/client/me"],
     enabled: !urlClientId,
@@ -94,6 +104,16 @@ export default function InboxPage() {
   }>({
     queryKey: [buildQueryUrl("/api/client/analytics/sessions", { limit: "100" })],
   });
+
+  // Auto-select session from URL parameter
+  useEffect(() => {
+    if (urlSessionId && sessionsData?.sessions && !selectedSession) {
+      const session = sessionsData.sessions.find(s => s.sessionId === urlSessionId);
+      if (session) {
+        setSelectedSession(session);
+      }
+    }
+  }, [urlSessionId, sessionsData, selectedSession]);
 
   const { data: messagesData, isLoading: messagesLoading } = useQuery<{
     clientId: string;

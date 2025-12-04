@@ -1156,7 +1156,7 @@ export default function SuperAdmin() {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => setLocation(`/admin/inbox?session=${conv.sessionId}`)}
+                                    onClick={() => setLocation(`/client/inbox?clientId=${conv.clientId}&botId=${conv.botId}&session=${conv.sessionId}`)}
                                     className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
                                     data-testid={`button-view-${conv.sessionId}`}
                                   >
