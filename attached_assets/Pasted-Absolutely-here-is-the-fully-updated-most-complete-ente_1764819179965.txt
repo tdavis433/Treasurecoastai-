@@ -1,0 +1,446 @@
+Absolutely — here is the fully updated, most complete, enterprise-grade simulation prompt with integrations added, and with explicit instructions to test every integration + ensure the public chatbot widget reacts exactly as it’s supposed to.
+
+This is now the final, maximum-depth, full-stack readiness simulation for Treasure Coast AI.
+
+Copy/paste this into Replit:
+
+⸻
+
+🔧 TREASURE COAST AI — FULL E2E SIMULATION + INTEGRATION TESTING (NO CODE/DB MANIPULATION)
+
+Ultimate Pre-Launch Readiness Prompt — From Landing Page → Lead → Workspace → Bot → Widget → Integrations → Dashboards
+
+You are testing the Treasure Coast AI AI assistant platform.
+
+Your mission:
+Simulate a real business owner discovering Treasure Coast AI → submitting interest → being onboarded → receiving their new AI assistant → embedding it on their site → seeing everything work.
+
+You must test:
+	•	AI assistant
+	•	Booking flow
+	•	Widget appearance editor
+	•	Automations
+	•	Dashboard analytics
+	•	Conversation logging
+	•	Lead capture
+	•	“Needs Review” system
+	•	Multi-tenant isolation
+	•	All integrations (webhooks, email notifications, SMS triggers, booking tracking, etc.)
+	•	Widget reactions to automations, appearance settings, booking events
+	•	Zero backend manipulation
+
+⚠️ NO: modifying code, editing the DB, running scripts, calling APIs manually
+⚠️ ONLY: Landing page → admin UI → client UI → widget → browser interactions
+
+If the UI cannot perform something required, mark it as a product gap.
+
+⸻
+
+📌 BUSINESS TEST SCENARIO: “Blue Harbor Med Spa”
+
+Use the following business from start → finish:
+
+Business Info
+	•	Name: Blue Harbor Med Spa
+	•	Industry: Medical Aesthetics
+	•	Services:
+	•	Botox injections
+	•	Dermal fillers
+	•	Microneedling
+	•	Laser hair removal
+	•	Chemical peels
+	•	Address: 452 Oceanview Blvd, Treasure Coast, FL
+	•	Phone: (555) 321-7789
+	•	Email: info@blueharbormedspa.com
+	•	Website: https://example.com/blue-harbor-medspa
+
+Booking & Payment
+
+Use this external booking link:
+https://example.com/blue-harbor-medspa/book
+
+All booking + payment must be handled externally.
+Your platform only captures leads + redirects customers.
+
+⸻
+
+🧪 PHASE 1 — PUBLIC LANDING PAGE → NEW CLIENT LEAD
+	1.	Visit the public Treasure Coast AI landing page.
+	2.	Submit the “Get Started / Request Demo” form as a real business owner:
+	•	Name: Dr. Emily Harper
+	•	Business: Blue Harbor Med Spa
+	•	Email: emily@blueharbormedspa.com
+	•	Website: https://example.com/blue-harbor-medspa
+	•	Message:
+“We’re interested in a website assistant that answers patient questions and redirects to our booking system.”
+	3.	Validate UI behavior:
+	•	Successful form submission
+	•	Lead appears in admin view (if not → note as product gap)
+
+⸻
+
+🧪 PHASE 2 — ADMIN CREATES WORKSPACE & BOT (UI ONLY)
+
+As super admin:
+	1.	Log in normally (no DB access).
+	2.	Go to Control Center.
+	3.	Create Workspace:
+	•	Name: Blue Harbor Med Spa
+	•	Slug: blue-harbor-medspa
+	4.	Create new Assistant:
+	•	Name: Blue Harbor Med Spa Assistant
+	5.	Fill business configuration:
+	•	Hours
+	•	Services
+	•	Phone
+	•	Address
+	•	Tone
+	•	Website
+	•	Booking URL
+	6.	Save.
+
+⸻
+
+🧪 PHASE 3 — KNOWLEDGE REBUILD & FAQ ENTRY
+
+Still in admin UI:
+	1.	Use Rebuild Knowledge with the public website URL.
+	2.	Add FAQs:
+	•	Botox safety
+	•	Downtime
+	•	Consultation pricing
+	•	Location
+	•	Hours
+	•	Microneedling
+	•	Laser hair removal
+	3.	Confirm FAQ appears in UI.
+
+⸻
+
+🧪 PHASE 4 — CLIENT LOGIN CREATION (PASSWORD CHANGE VALIDATION)
+	1.	Create client_admin user via UI:
+	•	Email: owner@blueharbormedspa.test
+	•	Temporary password: set via UI
+	2.	Log in as client:
+	•	Force password change
+	•	Redirect to client dashboard
+	•	Confirm view-only restrictions:
+	•	No editing bots
+	•	No access to admin pages
+	•	No widget editor
+	•	No configuration privileges
+
+⸻
+
+🧪 PHASE 5 — WIDGET APPEARANCE EDITOR (UI ONLY)
+
+Must match Blue Harbor Med Spa branding
+
+Open Widget & Assistant Appearance Editor (admin UI).
+
+Configure:
+
+Colors
+	•	Primary: #1E90FF
+	•	Secondary: #FFC8DD
+	•	Background: #F0F8FF
+	•	Bot bubble: Navy
+	•	User bubble: Coral #FF6F61
+
+Typography
+	•	Font: Inter
+	•	Size: md
+
+Layout
+	•	Position: bottom-right
+	•	Corner radius: 20
+	•	Shadow: soft
+
+Identity
+	•	Assistant Name: Blue Harbor Assistant
+	•	Header: “Blue Harbor Med Spa”
+	•	Subtitle: “Here to help you look your best.”
+	•	Avatar: brand-appropriate image
+
+Behavior
+	•	Welcome message: “Hi! How can I help you feel your best today?”
+	•	Initial open: open-with-delay (1200ms)
+
+SAVE
+
+Verify:
+	•	Live preview updates
+	•	Saving persists
+	•	Public widget later uses these exact settings
+
+⸻
+
+🧪 PHASE 6 — ADD AUTOMATIONS (UI ONLY)
+
+Create automations with UI:
+
+1. Lead Capture Automation
+
+Trigger: “appointment, book, schedule, consultation”
+Action:
+	•	Ask name, email, phone
+	•	Create lead entry
+	•	Tag lead as “booking-intent”
+
+2. Booking Link Click Automation
+
+Trigger:
+	•	When booking link clicked
+Action:
+	•	Set lead.bookingIntent = true
+
+3. Needs Review Automation
+
+Trigger:
+	•	Unknown treatments
+	•	Ambiguous medical terms (“fat freeze”, “laser liposuction?”)
+Action:
+	•	Flag conversation in Needs Review
+
+4. Custom Integration Automations
+
+(Test ALL integration points your platform supports)
+
+If integrations exist, test the following:
+
+Email Integration
+	•	When new lead created → send email to client
+	•	Confirm email sends (or mock/log works via UI)
+
+SMS Integration
+	•	When user provides a phone number → log/test SMS trigger
+	•	Confirm UI shows success (if real SMS blocked)
+
+Webhook Integration
+	•	Send webhook to a test URL on:
+	•	new lead
+	•	booking-intent lead
+	•	conversation summary
+	•	Confirm:
+	•	webhook logs show in UI
+	•	no errors
+	•	correct JSON payload structure
+
+CRM Integration (if exists)
+	•	Push lead → CRM
+	•	Confirm UI feedback says success
+
+You must test every integration your platform currently exposes.
+
+Then: Save automations and confirm no errors.
+
+⸻
+
+🧪 PHASE 7 — GENERATE EMBED CODE (UI ONLY)
+
+Using the embed tab:
+	1.	Generate snippet.
+	2.	Confirm snippet includes:
+	•	botId
+	•	workspace/clientId
+	•	widget token
+	•	domain restriction logic
+	•	script loader
+
+Copy snippet.
+
+⸻
+
+🧪 PHASE 8 — EMBED INTO TEST PAGE (UI ONLY)
+
+Paste into widget-test page or any UI-provided embed testing environment.
+
+Open the page.
+
+Validate:
+	•	Widget loads
+	•	Appearance matches widget editor settings
+	•	Welcome message shows
+	•	Auto-open after delay
+	•	All colors, fonts, layouts correct
+
+⸻
+
+🧪 PHASE 9 — FULL STRESS TEST (WIDGET ONLY)
+
+Real conversations — no shortcuts
+
+🔹 FAQ Questions
+	1.	“Do you offer Botox?”
+	2.	“Is Botox safe?”
+	3.	“What’s the downtime for a chemical peel?”
+	4.	“Do you offer microneedling?”
+
+🔹 Booking Flow
+	1.	“I want to book Botox tomorrow at 3 pm.”
+	2.	Provide:
+	•	Name
+	•	Email
+	•	Phone
+	•	Service
+	•	Preferred time
+	3.	Assistant must:
+	•	Capture info
+	•	Create lead
+	•	Show booking link
+	•	Clarify that booking/payment handled externally
+	4.	Click booking link → confirm correct external URL opens.
+
+🔹 Stress Test
+Send:
+	•	long messages
+	•	rapid-fire questions
+	•	conflicting statements
+	•	confusing medical terms
+
+Assistant must:
+	•	Remain stable
+	•	Avoid hallucinations
+	•	Flag unknowns to Needs Review
+	•	Respect rate limits
+	•	Maintain personality tone
+
+⸻
+
+🧪 PHASE 10 — INTEGRATION BEHAVIOR TESTING VIA WIDGET
+
+For every integration:
+
+Email
+	•	Trigger new lead
+	•	Confirm email/web log
+	•	Confirm formatted payload
+
+SMS
+	•	Add number
+	•	Trigger SMS lead
+	•	Confirm system attempts or logs SMS trigger
+
+Webhooks
+	•	Create lead → endpoint receives webhook
+	•	Booking intent → webhook
+	•	Conversation summary → webhook
+
+Verify:
+	•	correct JSON
+	•	correct timestamps
+	•	correct workspaceId
+	•	correct botId
+
+CRM / API integrations
+	•	Validate push events
+	•	Validate mapping
+	•	Validate no data leakage
+
+Widget Reaction (Important)
+
+After triggers fire:
+	•	Widget cannot break
+	•	No infinite loops
+	•	Automations must NOT cause repeated replies
+	•	Widget must remain interactive and stable
+
+⸻
+
+🧪 PHASE 11 — CLIENT DASHBOARD VERIFICATION
+
+Log in as client_admin.
+
+Validate:
+
+Leads Panel
+	•	Jessica Parker appears
+	•	Contact info correct
+	•	bookingIntent=true
+	•	Timestamp matches session
+
+Conversations
+	•	Full transcript
+	•	Correct timestamps
+
+Bookings Metrics
+	•	Booking link clicks
+	•	Booking requests count
+
+Needs Review
+	•	Unknown phrases appear here
+
+Integrations Panel (if exposed to client)
+	•	Email notifications status
+	•	Webhook logs (if visible)
+	•	CRM push events
+
+⸻
+
+🧪 PHASE 12 — ADMIN DASHBOARD VERIFICATION
+
+As super-admin:
+
+Validate:
+	•	Same lead appears
+	•	Same conversation appears
+	•	Booking funnel updated
+	•	Automations executed (success logs)
+	•	Integrations fired (with log/feedback)
+	•	Widget settings saved
+	•	No cross-client leakage
+	•	Security holds
+
+⸻
+
+🧪 PHASE 13 — PERMISSION & SECURITY
+
+As client_admin, attempt:
+	•	Access /super-admin/* → blocked
+	•	Access another workspace → blocked
+	•	Edit widget appearance → blocked
+	•	Edit bot config → blocked
+	•	Edit booking URL → blocked
+	•	View other client leads → blocked
+
+⸻
+
+🧪 PHASE 14 — FINAL QA REPORT (MANDATORY)
+
+Produce:
+
+A. Detailed step-by-step narrative
+
+B. Pass/Fail matrix for:
+	•	Landing page
+	•	Lead ingestion
+	•	Workspace creation
+	•	Bot creation
+	•	Knowledge rebuild
+	•	Widget editor
+	•	Automations
+	•	Integrations
+	•	Embed code
+	•	Widget stability
+	•	Booking flow
+	•	Full assistant behavior
+	•	Dashboards
+	•	Security
+	•	Multi-tenant integrity
+
+C. Integration payload validation
+
+D. Bugs + gaps + recommended improvements
+
+E. Production readiness score (1–10)
+
+F. Final declaration:
+
+“Is Treasure Coast AI ready for real client onboarding TODAY based solely on the UI?”
+
+Answer YES or NO, with justification.
+
+⸻
+
+This is the FINAL, most complete version of the readiness prompt.
+If this passes… your platform is truly ready for paying customers.

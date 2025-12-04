@@ -20,16 +20,53 @@
       "sunday": "Closed"
     },
     "services": {
-      "injectables": ["Botox", "Dysport", "Juvederm Fillers", "Restylane", "Kybella", "Sculptra"],
-      "skinTreatments": ["Chemical Peels", "Microneedling", "Dermaplaning", "HydraFacial", "IPL Photofacial", "Laser Skin Resurfacing"],
-      "bodyContouring": ["CoolSculpting", "EmSculpt", "Laser Lipolysis"],
-      "wellness": ["IV Vitamin Therapy", "B12 Injections", "Vitamin Drips"],
-      "skincare": ["Medical-grade skincare consultations", "Custom skincare regimens"]
+      "injectables": [
+        "Botox",
+        "Dysport",
+        "Juvederm Fillers",
+        "Restylane",
+        "Kybella",
+        "Sculptra"
+      ],
+      "skinTreatments": [
+        "Chemical Peels",
+        "Microneedling",
+        "Dermaplaning",
+        "HydraFacial",
+        "IPL Photofacial",
+        "Laser Skin Resurfacing"
+      ],
+      "bodyContouring": [
+        "CoolSculpting",
+        "EmSculpt",
+        "Laser Lipolysis"
+      ],
+      "wellness": [
+        "IV Vitamin Therapy",
+        "B12 Injections",
+        "Vitamin Drips"
+      ],
+      "skincare": [
+        "Medical-grade skincare consultations",
+        "Custom skincare regimens"
+      ]
     },
     "providers": [
-      { "name": "Dr. Jennifer Walsh", "title": "Medical Director", "credentials": "MD, Board Certified" },
-      { "name": "Amanda Chen", "title": "Lead Injector", "credentials": "ARNP, 8+ years aesthetic experience" },
-      { "name": "Nicole Rivera", "title": "Aesthetician", "credentials": "Licensed Aesthetician, Laser Certified" }
+      {
+        "name": "Dr. Jennifer Walsh",
+        "title": "Medical Director",
+        "credentials": "MD, Board Certified"
+      },
+      {
+        "name": "Amanda Chen",
+        "title": "Lead Injector",
+        "credentials": "ARNP, 8+ years aesthetic experience"
+      },
+      {
+        "name": "Nicole Rivera",
+        "title": "Aesthetician",
+        "credentials": "Licensed Aesthetician, Laser Certified"
+      }
     ],
     "amenities": [
       "Private treatment rooms",
@@ -60,7 +97,13 @@
       "Never guarantee specific outcomes"
     ],
     "crisisHandling": {
-      "onCrisisKeywords": ["kill myself", "suicide", "overdose", "self harm", "I want to die"],
+      "onCrisisKeywords": [
+        "kill myself",
+        "suicide",
+        "overdose",
+        "self harm",
+        "I want to die"
+      ],
       "responseTemplate": "I'm not able to handle emergencies. If you are in crisis, please call 988 (Suicide & Crisis Lifeline) or 911 immediately."
     }
   },
@@ -140,12 +183,30 @@
   "automations": {
     "officeHours": {
       "schedule": {
-        "monday": { "open": "09:00", "close": "18:00" },
-        "tuesday": { "open": "09:00", "close": "19:00" },
-        "wednesday": { "open": "09:00", "close": "18:00" },
-        "thursday": { "open": "09:00", "close": "19:00" },
-        "friday": { "open": "09:00", "close": "17:00" },
-        "saturday": { "open": "09:00", "close": "15:00" },
+        "monday": {
+          "open": "09:00",
+          "close": "18:00"
+        },
+        "tuesday": {
+          "open": "09:00",
+          "close": "19:00"
+        },
+        "wednesday": {
+          "open": "09:00",
+          "close": "18:00"
+        },
+        "thursday": {
+          "open": "09:00",
+          "close": "19:00"
+        },
+        "friday": {
+          "open": "09:00",
+          "close": "17:00"
+        },
+        "saturday": {
+          "open": "09:00",
+          "close": "15:00"
+        },
         "sunday": null
       },
       "timezone": "America/New_York",
@@ -154,23 +215,49 @@
     },
     "leadCapture": {
       "enabled": true,
-      "triggerKeywords": ["book", "appointment", "consultation", "schedule", "pricing", "interested"],
-      "captureFields": ["name", "email", "phone", "treatment_interest"],
+      "triggerKeywords": [
+        "book",
+        "appointment",
+        "consultation",
+        "schedule",
+        "pricing",
+        "interested"
+      ],
+      "captureFields": [
+        "name",
+        "email",
+        "phone",
+        "treatment_interest"
+      ],
       "successMessage": "Thank you for your interest in Radiance Med Spa! A member of our team will reach out within 24 hours to schedule your complimentary consultation. You can also call us at (772) 555-GLOW!"
     }
   },
   "personality": {
-    "tone": "elegant",
-    "responseLength": "medium",
     "formality": 55,
-    "enthusiasm": 70,
-    "warmth": 85
+    "warmth": 85,
+    "enthusiasm": 70
   },
   "quickActions": [
-    { "id": "qa-1", "label": "Book Consultation", "prompt": "I'd like to book a free consultation" },
-    { "id": "qa-2", "label": "Treatment Menu", "prompt": "What treatments do you offer?" },
-    { "id": "qa-3", "label": "Pricing", "prompt": "What are your prices?" },
-    { "id": "qa-4", "label": "About Injectables", "prompt": "Tell me about Botox and fillers" }
+    {
+      "id": "qa-1",
+      "label": "Book Consultation",
+      "prompt": "I'd like to book a free consultation"
+    },
+    {
+      "id": "qa-2",
+      "label": "Treatment Menu",
+      "prompt": "What treatments do you offer?"
+    },
+    {
+      "id": "qa-3",
+      "label": "Pricing",
+      "prompt": "What are your prices?"
+    },
+    {
+      "id": "qa-4",
+      "label": "About Injectables",
+      "prompt": "Tell me about Botox and fillers"
+    }
   ],
   "metadata": {
     "isDemo": true,
@@ -179,5 +266,10 @@
     "createdAt": "2025-11-27",
     "version": "2.0"
   },
-  "externalBookingUrl": "https://radiancemedspa.com/book"
+  "externalBookingUrl": "https://radiancemedspa.com/book",
+  "businessType": "med_spa",
+  "businessName": "Radiance Med Spa",
+  "isDemo": true,
+  "tone": "professional",
+  "responseLength": "medium"
 }

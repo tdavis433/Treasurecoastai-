@@ -699,6 +699,17 @@ export function buildSystemPromptFromConfig(config: BotConfig): string {
   let prompt = config.systemPrompt;
   
   const bp = config.businessProfile;
+  
+  // Safely get services as a comma-separated string
+  const servicesStr = Array.isArray(bp.services) 
+    ? bp.services.join(', ')
+    : (typeof bp.services === 'string' ? bp.services : '');
+  
+  // Safely get amenities as a comma-separated string  
+  const amenitiesStr = Array.isArray(bp.amenities)
+    ? bp.amenities.join(', ')
+    : (typeof bp.amenities === 'string' ? bp.amenities : '');
+  
   const businessInfo = `
 BUSINESS INFORMATION:
 - Name: ${bp.businessName}
@@ -707,8 +718,8 @@ BUSINESS INFORMATION:
 - Phone: ${bp.phone}
 - Email: ${bp.email}
 - Website: ${bp.website}
-${bp.services ? `- Services: ${bp.services.join(', ')}` : ''}
-${bp.amenities ? `- Amenities: ${bp.amenities.join(', ')}` : ''}
+${servicesStr ? `- Services: ${servicesStr}` : ''}
+${amenitiesStr ? `- Amenities: ${amenitiesStr}` : ''}
 `;
   
   let faqInfo = '';

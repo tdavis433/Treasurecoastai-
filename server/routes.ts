@@ -3713,7 +3713,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Update individual bot config
-  app.put("/api/super-admin/bots/:botId", requireSuperAdmin, (req, res) => {
+  app.put("/api/super-admin/bots/:botId", requireSuperAdmin, async (req, res) => {
     try {
       const { botId } = req.params;
       const updates = req.body;
@@ -3730,7 +3730,8 @@ These suggestions should be relevant to what was just discussed and help guide t
         clientId: existingConfig.clientId,
       };
       
-      const success = saveBotConfig(botId, updatedConfig);
+      // Use async version which handles both database and JSON file storage
+      const success = await saveBotConfigAsync(botId, updatedConfig);
       
       if (success) {
         res.json({ success: true, config: updatedConfig });
@@ -3936,7 +3937,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Update bot status (pause/activate)
-  app.patch("/api/super-admin/bots/:botId/status", requireSuperAdmin, (req, res) => {
+  app.patch("/api/super-admin/bots/:botId/status", requireSuperAdmin, async (req, res) => {
     try {
       const { botId } = req.params;
       const { status } = req.body;
@@ -3955,7 +3956,8 @@ These suggestions should be relevant to what was just discussed and help guide t
         status: status,
       };
       
-      const success = saveBotConfig(botId, updatedConfig);
+      // Use async version which handles both database and JSON file storage
+      const success = await saveBotConfigAsync(botId, updatedConfig);
       
       if (success) {
         res.json({ success: true, botId, status });
