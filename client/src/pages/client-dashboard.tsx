@@ -1788,34 +1788,12 @@ export default function ClientDashboard() {
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
-                            <Select
-                              value={lead.status || 'new'}
-                              onValueChange={(value) => handleUpdateLeadStatus(lead.id, value)}
-                              disabled={isUpdating}
+                            <Badge 
+                              className={`text-xs px-3 py-1 ${statusOption?.color || 'bg-white/10 text-white/60 border-white/20'}`}
+                              data-testid={`badge-lead-status-${lead.id}`}
                             >
-                              <SelectTrigger 
-                                className={`w-32 h-8 text-xs border ${statusOption?.color || 'bg-white/10 text-white/60 border-white/20'}`}
-                                data-testid={`select-lead-status-${lead.id}`}
-                              >
-                                {isUpdating ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : (
-                                  <SelectValue />
-                                )}
-                              </SelectTrigger>
-                              <SelectContent className="bg-[#1a1d23] border-white/20 z-[60]">
-                                {LEAD_STATUS_OPTIONS.map((option) => (
-                                  <SelectItem 
-                                    key={option.value} 
-                                    value={option.value}
-                                    className="text-white hover:bg-white/10"
-                                    data-testid={`option-lead-status-${option.value}-${lead.id}`}
-                                  >
-                                    {option.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                              {statusOption?.label || 'New'}
+                            </Badge>
                             <span className="text-xs text-white/40">
                               {lead.createdAt ? format(new Date(lead.createdAt), "MMM d, yyyy") : '—'}
                             </span>
