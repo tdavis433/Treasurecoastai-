@@ -5056,20 +5056,36 @@ These suggestions should be relevant to what was just discussed and help guide t
       // Get conversation stats from file-based logs
       const logStats = getLogStats(clientId);
       
-      // Get database stats for any valid client
+      // Get database stats using the CORRECT tables (chatSessions, not conversation_analytics)
       const appointments = await storage.getAllAppointments(clientId);
-      const analytics = await storage.getAnalytics(clientId);
       const leadsData = await storage.getLeads(clientId);
       const leads = leadsData?.leads || [];
-      
-      // Get client settings for notification email
-      const settings = await storage.getSettings(clientId);
       
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const weekAgo = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
       const cutoffDate = days ? new Date(todayStart.getTime() - days * 24 * 60 * 60 * 1000) : null;
       const previousPeriodStart = days ? new Date(cutoffDate!.getTime() - days * 24 * 60 * 60 * 1000) : null;
+      
+      // Use proper AGGREGATED analytics from chatSessions table (no limit truncation)
+      // All-time summary
+      const analyticsSummary = await storage.getClientAnalyticsSummary(clientId, botConfig.botId);
+      // Weekly summary for weekly stats
+      const weeklySummary = await storage.getClientAnalyticsSummary(clientId, botConfig.botId, weekAgo);
+      // Period-specific summaries for range stats
+      const currentPeriodSummary = cutoffDate 
+        ? await storage.getClientAnalyticsSummary(clientId, botConfig.botId, cutoffDate) 
+        : null;
+      const previousPeriodSummary = previousPeriodStart && cutoffDate
+        ? await storage.getClientAnalyticsSummary(clientId, botConfig.botId, previousPeriodStart, cutoffDate)
+        : null;
+      
+      // Get recent sessions for last activity and peak hours (sample, not totals)
+      const recentSessions = await storage.getClientRecentSessions(clientId, botConfig.botId, 100);
+      const dailyTrends = await storage.getClientDailyTrends(clientId, botConfig.botId, 30);
+      
+      // Get client settings for notification email
+      const settings = await storage.getSettings(clientId);
       
       // Calculate filtered stats based on date range
       const filterByDate = (items: any[], dateField: string = 'createdAt') => {
@@ -5091,17 +5107,15 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       const filteredAppointments = filterByDate(appointments);
       const filteredLeads = filterByDate(leads);
-      const filteredAnalytics = filterByDate(analytics);
       
-      // Previous period data for trends
+      // Previous period data for trends (leads and appointments only - sessions use aggregates)
       const prevAppointments = filterByPreviousPeriod(appointments);
       const prevLeads = filterByPreviousPeriod(leads);
-      const prevAnalytics = filterByPreviousPeriod(analytics);
       
-      // Calculate peak hours from analytics
+      // Calculate peak hours from recent sessions (sample-based, acceptable for peak hours)
       const hourCounts: Record<number, number> = {};
-      analytics.forEach((a: any) => {
-        const hour = new Date(a.createdAt).getHours();
+      recentSessions.forEach((session: any) => {
+        const hour = new Date(session.startedAt).getHours();
         hourCounts[hour] = (hourCounts[hour] || 0) + 1;
       });
       const peakHoursData = Object.entries(hourCounts)
@@ -5117,12 +5131,8 @@ These suggestions should be relevant to what was just discussed and help guide t
         lost: leads.filter((l: any) => l.status === 'lost').length,
       };
       
-      // Find last activity timestamp
-      const lastAnalytic = analytics.length > 0 
-        ? analytics.reduce((latest: any, curr: any) => 
-            new Date(curr.createdAt) > new Date(latest.createdAt) ? curr : latest
-          )
-        : null;
+      // Find last activity timestamp from sessions
+      const lastSession = recentSessions.length > 0 ? recentSessions[0] : null;
       const lastAppointment = appointments.length > 0
         ? appointments.reduce((latest: any, curr: any) =>
             new Date(curr.createdAt) > new Date(latest.createdAt) ? curr : latest
@@ -5135,7 +5145,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         : null;
       
       const lastActivityDates = [
-        lastAnalytic?.createdAt,
+        lastSession?.startedAt,
         lastAppointment?.createdAt,
         lastLead?.createdAt,
       ].filter(Boolean).map(d => new Date(d));
@@ -5144,25 +5154,27 @@ These suggestions should be relevant to what was just discussed and help guide t
         ? new Date(Math.max(...lastActivityDates.map(d => d.getTime()))).toISOString()
         : null;
       
-      // All-time stats (always returned)
+      // All-time stats using AGGREGATED data (no truncation)
       const dbStats = {
         totalAppointments: appointments.length,
         pendingAppointments: appointments.filter((a: any) => a.status === "new" || a.status === "pending").length,
         completedAppointments: appointments.filter((a: any) => a.status === "confirmed" || a.status === "completed").length,
-        totalConversations: new Set(analytics.map((a: any) => a.sessionId)).size,
-        totalMessages: analytics.length,
-        weeklyConversations: new Set(analytics.filter((a: any) => new Date(a.createdAt) > weekAgo).map((a: any) => a.sessionId)).size,
+        totalConversations: analyticsSummary.totalConversations,
+        totalMessages: analyticsSummary.totalMessages,
+        weeklyConversations: weeklySummary.totalConversations,
         totalLeads: leads.length,
         newLeads: leads.filter((l: any) => l.status === 'new').length,
+        crisisEvents: analyticsSummary.crisisEvents,
+        appointmentRequests: analyticsSummary.appointmentRequests,
       };
       
-      // Current period stats
-      const currentConversations = new Set(filteredAnalytics.map((a: any) => a.sessionId)).size;
+      // Current period stats using aggregated summaries (not truncated arrays)
+      const currentConversations = currentPeriodSummary?.totalConversations || 0;
       const currentLeads = filteredLeads.length;
       const currentBookings = filteredAppointments.length;
       
       // Previous period stats for trend calculation
-      const prevConversations = new Set(prevAnalytics.map((a: any) => a.sessionId)).size;
+      const prevConversations = previousPeriodSummary?.totalConversations || 0;
       const prevLeadsCount = prevLeads.length;
       const prevBookingsCount = prevAppointments.length;
       
@@ -5186,6 +5198,12 @@ These suggestions should be relevant to what was just discussed and help guide t
         leadsTrend: calcTrend(currentLeads, prevLeadsCount),
         bookingsTrend: calcTrend(currentBookings, prevBookingsCount),
       } : null;
+      
+      // Topic breakdown from analytics summary
+      const topTopics = Object.entries(analyticsSummary.topicBreakdown)
+        .map(([topic, count]) => ({ topic, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
 
       res.json({
         clientId,
@@ -5200,6 +5218,13 @@ These suggestions should be relevant to what was just discussed and help guide t
         leadStatusBreakdown,
         lastActivity,
         notificationEmail: settings?.notificationEmail || null,
+        topTopics,
+        dailyTrends: dailyTrends.map(d => ({
+          date: d.date,
+          conversations: d.totalConversations,
+          messages: d.totalMessages,
+          appointmentRequests: d.appointmentRequests,
+        })),
       });
     } catch (error) {
       console.error("Get client stats error:", error);
