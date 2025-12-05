@@ -80,6 +80,7 @@ export interface OrchestratorMeta {
   sessionId: string;
   responseTimeMs: number;
   showBooking: boolean;
+  bookingType?: 'tour' | 'call' | 'appointment';  // Type of booking intent detected
   externalBookingUrl: string | null;
   externalPaymentUrl: string | null;
   suggestedReplies: string[];
@@ -250,6 +251,7 @@ class ConversationOrchestrator {
           sessionId,
           responseTimeMs: responseTime,
           showBooking: postProcessResult.showBooking,
+          bookingType: postProcessResult.bookingType,
           externalBookingUrl: bookingUrl,
           externalPaymentUrl: postProcessResult.showBooking ? (clientSettings?.externalPaymentUrl || botConfig.externalPaymentUrl || null) : null,
           suggestedReplies: [],
@@ -420,6 +422,7 @@ class ConversationOrchestrator {
           sessionId,
           responseTimeMs: responseTime,
           showBooking: postProcessResult.showBooking,
+          bookingType: postProcessResult.bookingType,
           externalBookingUrl: bookingUrl,
           externalPaymentUrl: paymentUrl,
           suggestedReplies: [],
@@ -558,6 +561,7 @@ class ConversationOrchestrator {
     botId: string
   ): Promise<{
     showBooking: boolean;
+    bookingType?: 'tour' | 'call' | 'appointment';
     leadCaptured: boolean;
     contactInfo?: { name?: string; email?: string; phone?: string };
   }> {
@@ -577,6 +581,10 @@ class ConversationOrchestrator {
     const affirmativeKeywords = /\b(yes|yeah|sure|please|ok|okay|sounds good|that works|let'?s do|perfect|great|definitely|absolutely)\b/i;
     const aiAskedAboutBooking = /\b(schedule|book|appointment|come in|visit|tour|call|phone|when|preferred|date|time|availability)\b/i;
 
+    // Booking type detection patterns
+    const tourKeywords = /\b(tour|visit|come see|check out|see the house|see the place|come by|stop by|look around|walk through|open house)\b/i;
+    const callKeywords = /\b(call|phone|speak with|talk to|phone call|give .* a call|chat with|speak to someone|call back|callback|ring)\b/i;
+
     const previousAssistantMessage = messages.filter(m => m.role === 'assistant').slice(-1)[0]?.content || '';
     
     const directBookingIntent = bookingKeywords.test(userMessage);
@@ -590,6 +598,21 @@ class ConversationOrchestrator {
     const aiMentionsBookingButton = /\b(book\s*appointment|book\s*a?\s*tour|schedule\s*a?\s*call|click.*button|scheduling\s*page|finalize.*booking|complete.*booking)\b/i.test(reply);
     
     const showBooking = directBookingIntent || isAffirmativeToBookingPrompt || alreadyRequestedBooking || conversationHasBookingIntent || aiMentionsBookingButton;
+
+    // Determine booking type based on user's message and conversation context
+    let bookingType: 'tour' | 'call' | 'appointment' | undefined;
+    if (showBooking) {
+      // Check recent user messages for booking type
+      const allUserMessages = messages.filter(m => m.role === 'user').map(m => m.content).join(' ') + ' ' + userMessage;
+      
+      if (callKeywords.test(allUserMessages)) {
+        bookingType = 'call';
+      } else if (tourKeywords.test(allUserMessages)) {
+        bookingType = 'tour';
+      } else {
+        bookingType = 'appointment';
+      }
+    }
 
     if (directBookingIntent || isAffirmativeToBookingPrompt || conversationHasBookingIntent) {
       sessionData.appointmentRequested = true;
@@ -639,7 +662,7 @@ class ConversationOrchestrator {
       }
     }
 
-    return { showBooking, leadCaptured, contactInfo: leadCaptured ? contactInfo : undefined };
+    return { showBooking, bookingType, leadCaptured, contactInfo: leadCaptured ? contactInfo : undefined };
   }
 
   /**

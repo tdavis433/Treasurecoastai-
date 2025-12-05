@@ -21,6 +21,7 @@ export interface Message {
   role: "user" | "assistant";
   content: string;
   bookingUrl?: string;
+  bookingType?: 'tour' | 'call' | 'appointment';
   paymentUrl?: string;
   suggestedReplies?: string[];
   isStreaming?: boolean;
@@ -118,6 +119,7 @@ export function useChatAssistant(config: UseChatAssistantConfig): UseChatAssista
         role: "assistant",
         content: response.reply,
         bookingUrl: response.meta?.externalBookingUrl || undefined,
+        bookingType: response.meta?.bookingType || undefined,
         paymentUrl: response.meta?.externalPaymentUrl || undefined,
         suggestedReplies: response.meta?.suggestedReplies,
       };

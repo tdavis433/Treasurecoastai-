@@ -263,7 +263,11 @@ function FloatingChatWidget({ botConfig }: { botConfig: BotConfig }) {
                       data-testid={`button-book-appointment-${index}`}
                     >
                       <Calendar className="h-4 w-4" />
-                      {businessTypeBookingLabels[botConfig.businessProfile.type] || "Book Appointment"}
+                      {message.bookingType === 'call' 
+                        ? "Schedule a Phone Call"
+                        : message.bookingType === 'tour'
+                          ? "Book a Tour"
+                          : (businessTypeBookingLabels[botConfig.businessProfile.type] || "Book Appointment")}
                       <ExternalLink className="h-3 w-3" />
                     </button>
                   )}

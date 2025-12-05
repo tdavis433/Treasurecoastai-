@@ -36,6 +36,7 @@ export interface ChatMeta {
   sessionId: string;
   responseTimeMs?: number;
   showBooking?: boolean;
+  bookingType?: 'tour' | 'call' | 'appointment';
   externalBookingUrl?: string | null;
   externalPaymentUrl?: string | null;
   suggestedReplies?: string[];
