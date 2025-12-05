@@ -493,13 +493,20 @@ export default function SuperAdmin() {
     .slice(0, 5);
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ clientId, status }: { clientId: string; status: string }) => {
+    mutationFn: async ({ clientId, status, isWorkspace }: { clientId: string; status: string; isWorkspace?: boolean }) => {
+      // Use workspace endpoint for database bots without matching client entries
+      if (isWorkspace) {
+        const response = await apiRequest("PATCH", `/api/super-admin/workspaces/${clientId}/status`, { status });
+        return response.json();
+      }
       const response = await apiRequest("PUT", `/api/super-admin/clients/${clientId}/status`, { status });
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/super-admin/clients"] });
-      toast({ title: "Status Updated", description: "Client status has been updated." });
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/workspaces"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/bots"] });
+      toast({ title: "Status Updated", description: "Status has been updated." });
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to update status.", variant: "destructive" });
@@ -2652,7 +2659,8 @@ export default function SuperAdmin() {
                     value={selectedClient?.status || 'active'}
                     onValueChange={(value) => updateStatusMutation.mutate({ 
                       clientId: selectedClient?.id || selectedBot.clientId, 
-                      status: value 
+                      status: value,
+                      isWorkspace: !selectedClient
                     })}
                   >
                     <SelectTrigger data-testid="select-status" className="w-28 bg-white/5 border-white/10 text-white">
