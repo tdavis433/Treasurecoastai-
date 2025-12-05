@@ -275,6 +275,7 @@ export function PlatformHelpBot({ variant = 'landing', className = '' }: Platfor
                       <div className="grid gap-2">
                         {QUICK_QUESTIONS.map((question, i) => (
                           <button
+                            type="button"
                             key={i}
                             onClick={() => sendMessage(question)}
                             className="w-full text-left px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-cyan-500/30 text-white/80 text-sm transition-all duration-200 group"
