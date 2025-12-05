@@ -1759,7 +1759,7 @@ export default function ClientDashboard() {
                                   <SelectValue />
                                 )}
                               </SelectTrigger>
-                              <SelectContent className="bg-[#1a1d23] border-white/20">
+                              <SelectContent className="bg-[#1a1d23] border-white/20 z-[60]">
                                 {LEAD_STATUS_OPTIONS.map((option) => (
                                   <SelectItem 
                                     key={option.value} 
