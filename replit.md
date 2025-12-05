@@ -163,13 +163,18 @@ Analytics tracking includes:
    - When `selectedClient` exists (JSON-backed bots), uses PUT `/api/super-admin/clients/:clientId/status`
    - Cache invalidation now covers clients, workspaces, and bots queries
 
+2. **Platform Help Bot Quick Question Button Fix**: Quick question buttons were causing navigation to /login when clicked on landing page. Fixed by:
+   - Added `type="button"` to quick question buttons in platform-help-bot.tsx
+   - Without explicit type, buttons default to `type="submit"` which submitted the contact form
+   - Now buttons properly trigger sendMessage() without form submission
+
 ### Comprehensive QA Test Results (All Passed)
 | Phase | Feature Area | Status | Notes |
 |-------|-------------|--------|-------|
 | 1 | Authentication & Navigation | PASS | Login/logout, protected routes, redirects |
 | 2 | Super Admin Bot Management | PASS | Status updates for both client and workspace bots |
 | 3 | Client Dashboard | PASS | View-only access verified, no edit controls |
-| 4 | Platform Help Bot | PASS | Landing page widget opens and responds |
+| 4 | Platform Help Bot | PASS | Landing page widget opens and responds correctly |
 | 4 | Demo Widget | PASS | Chat, booking redirect, lead capture |
 | 5 | Visual Polish | PASS | Consistent styling across all surfaces |
 | 6 | Final Verification | PASS | End-to-end flow working correctly |
@@ -179,3 +184,4 @@ Analytics tracking includes:
 - **REDIRECT-ONLY Booking**: AI never confirms appointments, shows booking button/redirect
 - **Lead Capture**: Requires actual contact info (email/phone), not just booking intent
 - **View-Only Client Access**: No edit controls visible in client dashboard
+- **Platform Help Bot**: Quick questions work correctly without form submission issues
