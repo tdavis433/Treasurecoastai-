@@ -237,6 +237,14 @@ const LEAD_STATUS_OPTIONS = [
   { value: 'lost', label: 'Lost', color: 'bg-red-500/20 text-red-400 border-red-400/40' },
 ];
 
+const BOOKING_STATUS_OPTIONS = [
+  { value: 'new', label: 'New', color: 'bg-amber-500/20 text-amber-400 border-amber-400/40' },
+  { value: 'contacted', label: 'Contacted', color: 'bg-blue-500/20 text-blue-400 border-blue-400/40' },
+  { value: 'scheduled', label: 'Scheduled', color: 'bg-purple-500/20 text-purple-400 border-purple-400/40' },
+  { value: 'completed', label: 'Completed', color: 'bg-green-500/20 text-green-400 border-green-400/40' },
+  { value: 'cancelled', label: 'Cancelled', color: 'bg-red-500/20 text-red-400 border-red-400/40' },
+];
+
 interface AuthUser {
   id: string;
   username: string;
@@ -266,6 +274,7 @@ export default function ClientDashboard() {
   const [sessionStates, setSessionStates] = useState<Record<string, SessionState>>({});
   const [loadingSession, setLoadingSession] = useState<string | null>(null);
   const [updatingLeadId, setUpdatingLeadId] = useState<string | null>(null);
+  const [updatingBookingId, setUpdatingBookingId] = useState<string | null>(null);
 
   const { data: currentUser, isLoading: authLoading } = useQuery<AuthUser>({
     queryKey: ["/api/auth/me"],
@@ -587,6 +596,31 @@ export default function ClientDashboard() {
       toast({ title: "Error", description: "Failed to update lead status.", variant: "destructive" });
     } finally {
       setUpdatingLeadId(null);
+    }
+  };
+
+  // Update booking status
+  const handleUpdateBookingStatus = async (bookingId: string, newStatus: string) => {
+    setUpdatingBookingId(bookingId);
+    try {
+      const response = await fetch(appendClientId(`/api/appointments/${bookingId}/status`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status: newStatus })
+      });
+      
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ["/api/client/appointments", urlClientId] });
+        queryClient.invalidateQueries({ queryKey: ["/api/client/stats", statsRange, urlClientId] });
+        toast({ title: "Status updated", description: `Booking status changed to ${newStatus}.` });
+      } else {
+        throw new Error("Failed to update");
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to update booking status.", variant: "destructive" });
+    } finally {
+      setUpdatingBookingId(null);
     }
   };
 
@@ -2049,19 +2083,43 @@ export default function ClientDashboard() {
                           </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <Badge className={`${
-                          apt.status === 'confirmed' || apt.status === 'completed'
-                            ? 'bg-green-500/20 text-green-400 border-green-400/40'
-                            : apt.status === 'cancelled'
-                            ? 'bg-red-500/20 text-red-400 border-red-400/40'
-                            : 'bg-amber-500/20 text-amber-400 border-amber-400/40'
-                        }`}>
-                          {apt.status}
-                        </Badge>
-                        <p className="text-xs text-white/40 mt-2">
+                      <div className="flex flex-col items-end gap-2">
+                        {(() => {
+                          const statusOption = BOOKING_STATUS_OPTIONS.find(s => s.value === (apt.status || 'new'));
+                          const isUpdating = updatingBookingId === apt.id;
+                          return (
+                            <Select
+                              value={apt.status || 'new'}
+                              onValueChange={(value) => handleUpdateBookingStatus(apt.id, value)}
+                              disabled={isUpdating}
+                            >
+                              <SelectTrigger 
+                                className={`w-32 h-8 text-xs border ${statusOption?.color || 'bg-amber-500/20 text-amber-400 border-amber-400/40'}`}
+                                data-testid={`select-booking-status-${apt.id}`}
+                              >
+                                {isUpdating ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <SelectValue />
+                                )}
+                              </SelectTrigger>
+                              <SelectContent className="bg-[#1a1d23] border-white/20 z-[60]">
+                                {BOOKING_STATUS_OPTIONS.map((option) => (
+                                  <SelectItem 
+                                    key={option.value} 
+                                    value={option.value}
+                                    className="text-white hover:bg-white/10"
+                                  >
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          );
+                        })()}
+                        <span className="text-xs text-white/40">
                           {format(new Date(apt.createdAt), "MMM d, yyyy")}
-                        </p>
+                        </span>
                       </div>
                     </div>
                     {apt.notes && (

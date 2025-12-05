@@ -5668,7 +5668,16 @@ These suggestions should be relevant to what was just discussed and help guide t
       const clientId = (req as any).effectiveClientId;
       const { sessionId } = req.params;
       
-      const messages = await storage.getSessionMessages(sessionId, clientId);
+      const rawMessages = await storage.getSessionMessages(sessionId, clientId);
+      
+      // Transform messages to match frontend ChatMessage interface
+      const messages = rawMessages.map((msg) => ({
+        id: msg.id,
+        sessionId: msg.sessionId,
+        role: msg.actor === 'bot' ? 'assistant' : 'user',
+        content: msg.messageContent || '',
+        timestamp: msg.createdAt?.toISOString() || new Date().toISOString(),
+      }));
       
       res.json({
         clientId,
