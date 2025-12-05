@@ -153,3 +153,29 @@ Analytics tracking includes:
 - Database bots use `workspace_id` (UUID) linked to workspaces table with `slug` that maps to clientId
 - Bot editor panel now gracefully handles missing client data by falling back to bot configuration values
 - Lead creation requires email OR phone to be captured - booking intent tracked separately in session
+
+## Recent Fixes (December 2024 - Session 3)
+
+### Bugs Fixed
+1. **Status Update for Database Bots**: Fixed issue where status dropdown in bot editor would fail for database bots that didn't have matching client entries in clients.json. Fixed by:
+   - Updated `updateStatusMutation` to accept an `isWorkspace` flag
+   - When `selectedClient` is null (database bots), uses PATCH `/api/super-admin/workspaces/:slug/status`
+   - When `selectedClient` exists (JSON-backed bots), uses PUT `/api/super-admin/clients/:clientId/status`
+   - Cache invalidation now covers clients, workspaces, and bots queries
+
+### Comprehensive QA Test Results (All Passed)
+| Phase | Feature Area | Status | Notes |
+|-------|-------------|--------|-------|
+| 1 | Authentication & Navigation | PASS | Login/logout, protected routes, redirects |
+| 2 | Super Admin Bot Management | PASS | Status updates for both client and workspace bots |
+| 3 | Client Dashboard | PASS | View-only access verified, no edit controls |
+| 4 | Platform Help Bot | PASS | Landing page widget opens and responds |
+| 4 | Demo Widget | PASS | Chat, booking redirect, lead capture |
+| 5 | Visual Polish | PASS | Consistent styling across all surfaces |
+| 6 | Final Verification | PASS | End-to-end flow working correctly |
+
+### Critical Behaviors Verified
+- **Dual Endpoint Pattern**: Status updates correctly route to client or workspace endpoints based on data source
+- **REDIRECT-ONLY Booking**: AI never confirms appointments, shows booking button/redirect
+- **Lead Capture**: Requires actual contact info (email/phone), not just booking intent
+- **View-Only Client Access**: No edit controls visible in client dashboard
