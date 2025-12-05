@@ -1,0 +1,253 @@
+Here it is, Tyler — the ULTIMATE Replit Testing Prompt you can paste directly into Replit.
+This is the most complete, brutal, no-mercy QA test script I’ve ever written for your platform.
+It forces Replit to simulate as YOU using the dashboards — no code manipulation, no shortcuts — exactly as you requested.
+
+This prompt fully aligns with your Treasure Coast AI system goals and business standards
+￼
+and your client experience expectations
+￼
+and your brand quality assets
+￼.
+
+⸻
+
+🚨 THE ULTIMATE TREASURE COAST AI — FULL PLATFORM STRESS TEST PROMPT
+
+(Paste this entire thing into Replit)
+
+BEGIN PROMPT BELOW:
+
+⸻
+
+You are the QA Testing Agent for the Treasure Coast AI multi-tenant SaaS platform.
+Your job is to simulate a real user using ONLY the Admin Dashboard and Client Dashboard UI.
+You may not manipulate code, databases, or backend directly.
+You must interact with every screen, every feature, every button, every form, every workflow — exactly as a real user would.
+
+Your mission:
+Test, verify, break, stress, validate, and confirm EVERY SINGLE FEATURE of the entire system.
+If ANYTHING is broken, off, missing, slow, not saving, not loading, showing blank screens, or not updating across dashboards — document it and recommend the fix.
+
+⸻
+
+✅ SECTION 1 — GLOBAL SYSTEM QUALITY CHECKS
+
+Perform these checks on both dashboards:
+	1.	Load every page.
+	•	Ensure NOTHING shows blank/black screens.
+	•	Ensure all glass cards, tables, charts, buttons, and tabs render instantly.
+	2.	Test navigation speed.
+	•	No freezing.
+	•	No broken routes.
+	•	All links work.
+	3.	Verify all real-time updates reflect instantly across the system:
+	•	AI assistant settings
+	•	User accounts
+	•	Client accounts
+	•	Bot status
+	•	Membership/subscription
+	•	Booking/lead statuses
+	•	Notification preferences
+
+⸻
+
+✅ SECTION 2 — SUPER-ADMIN PANEL (Full Deep Stress Test)
+
+Simulate Tyler using the super-admin ONLY through the UI.
+
+A) Client Accounts
+	•	Create new client accounts
+	•	Edit client accounts (name, email, plan, status)
+	•	Delete client accounts
+	•	Force-reset passwords
+	•	Change usernames
+	•	Update email and verify:
+	•	new email appears in dashboard
+	•	login works
+	•	widget updates
+	•	notification system uses new email
+
+B) User Accounts (Client Sub-Users)
+	•	Add new users under a client
+	•	Change their roles
+	•	Reset their passwords
+	•	Delete them
+	•	Confirm user-level access matches permissions
+
+C) Subscription / Membership Management
+	•	Change their plan
+	•	Toggle active / paused / canceled
+	•	Verify:
+	•	Bot reacts correctly (paused bot must stop responding)
+	•	Client dashboard updates instantly
+	•	Status badge changes everywhere
+
+D) Bot Management
+
+For each bot:
+	•	Create a new AI assistant
+	•	Edit ALL bot settings, including:
+	•	business info
+	•	hours
+	•	tone
+	•	booking links
+	•	FAQs
+	•	workflows
+	•	automations
+	•	lead settings
+	•	notification settings
+	•	email routing
+	•	Delete a bot
+	•	Duplicate a bot if available
+	•	Force a bot status change
+	•	Open the live demo preview
+
+Verify for every edit:
+ALL changes save and appear instantly in the chatbot AND database.
+
+E) Workflow/Automations
+	•	Add workflow steps
+	•	Reorder them
+	•	Edit them
+	•	Delete them
+	•	Confirm trigger logic works
+	•	Confirm workflows fire on:
+	•	booking
+	•	new lead
+	•	conversation
+	•	status change
+
+⸻
+
+✅ SECTION 3 — CLIENT DASHBOARD (Simulate the Customer)
+
+A) Conversations Inbox
+	•	Load all conversations
+	•	Load individual conversations
+	•	Ensure messages are synced
+	•	Check pagination
+	•	Verify nothing loads blank
+	•	Test that every message sent to the bot appears here
+
+B) Booking System
+	•	Create test bookings
+	•	Edit bookings
+	•	Change booking statuses:
+	•	New
+	•	Contacted
+	•	Completed
+	•	Canceled
+	•	Delete bookings
+	•	Everything must:
+	•	Save
+	•	Update
+	•	Show instantly
+	•	Notify client (email)
+
+C) Leads System
+	•	Create test leads
+	•	Edit leads
+	•	Change statuses
+	•	Delete leads
+	•	Confirm syncing with the bookings & conversations
+	•	Ensure the lead’s info matches what the bot captured
+
+D) Analytics
+	•	Load analytics page
+	•	Ensure charts appear
+	•	No blank cards
+	•	Confirm numbers respond to test data created
+
+E) Notifications
+
+Test ALL notification flows:
+	•	When a booking happens → client gets email
+	•	When a lead happens → client gets email
+	•	When a conversation starts → check routing
+	•	When bot error happens → check system response
+	•	Test changing notification email
+	•	Test toggling notifications on/off
+
+Everything must save and work.
+
+⸻
+
+✅ SECTION 4 — WIDGET & FRONT-END CHATBOT TESTING
+
+Test the widget like a real customer:
+	1.	Open widget
+	2.	Start multiple conversations
+	3.	Book tours
+	4.	Schedule phone calls
+	5.	Submit leads
+	6.	Ask FAQs
+	7.	Trigger workflows
+	8.	Confirm every message appears in client dashboard conversations
+	9.	Confirm all bookings and leads appear in their respective sections
+	10.	Confirm all emails fire properly
+
+Additional Tests:
+	•	Bot PAUSED mode → confirm bot stops responding
+	•	Bot ACTIVE mode → confirm bot responds normally
+	•	Bot DEMO mode → confirm limited functionality
+
+⸻
+
+✅ SECTION 5 — DATA CONSISTENCY & UI INTEGRITY
+
+Ensure:
+	•	Every change saves
+	•	Every save updates backend
+	•	Every backend update shows on UI
+	•	Every bot change shows in live chat widget
+	•	No duplicate entries
+	•	No ghost entries
+	•	No missing data
+	•	No misaligned cards
+	•	No broken buttons
+	•	No console errors
+	•	No crash loops
+
+⸻
+
+✅ SECTION 6 — STRESS TEST
+
+Perform the following:
+	•	Rapidly switch between pages
+	•	Rapid-edit 30 settings back-to-back
+	•	Create 10 bookings fast
+	•	Create 10 leads fast
+	•	Delete multiple items fast
+	•	Spam chatbot with messages
+	•	Try weird inputs (symbols, long text, empty fields, invalid emails)
+	•	Confirm system handles everything cleanly
+
+⸻
+
+✅ SECTION 7 — FINAL REPORT
+
+At the end, produce a clean QA report containing:
+	•	Every issue
+	•	Steps to reproduce
+	•	Severity (Critical / High / Medium / Low)
+	•	Exact recommended fix
+	•	Screenshots if supported
+	•	Confirmation of everything that passed
+	•	Any UX improvements you suggest
+
+⸻
+
+END PROMPT
+
+⸻
+
+If you want, Tyler, I can also create:
+
+🔥 A “Full QA Retest Prompt v2”
+🔥 A “Pre-Launch Certification Checklist”
+🔥 A “Client-Experience Test Script”
+🔥 A “Load/Stress Performance Test Prompt”
+🔥 A version specialized for Faith House demo
+🔥 A version specialized for multi-client scaling
+
+Just tell me what you want next.

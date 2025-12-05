@@ -1,21 +1,22 @@
 {
   "botId": "bot_qa_test_restaurant_mim9o3e9",
   "clientId": "client_mim9o3e9",
-  "name": "QA Test Restaurant Assistant",
-  "description": "AI assistant for QA Test Restaurant",
+  "name": "QA Test Bot",
+  "description": "Assistant for QA testing — responds to local business queries.",
   "businessProfile": {
     "type": "restaurant",
     "services": [
       "Pizza Delivery"
     ],
     "hours": {
-      "officeHours": "Mon-Sun 11am-9pm"
+      "officehours": "Mon-Sun 11am-9pm"
     },
     "businessName": "QA Test Restaurant",
     "location": "123 Test Ave, Testville",
     "phone": "(555) 123-4567",
     "email": "qa@example.com",
-    "website": ""
+    "website": "",
+    "booking": {}
   },
   "systemPrompt": "You are a helpful assistant for a restaurant business.",
   "faqs": [
@@ -29,12 +30,18 @@
   "businessName": "QA Test Restaurant",
   "isDemo": false,
   "automations": {},
-  "personality": {},
+  "personality": {
+    "formality": 50,
+    "warmth": 70,
+    "enthusiasm": 60
+  },
   "quickActions": [],
   "widgetSettings": {
     "primaryColor": "#7ee600",
     "position": "bottom-right",
     "greeting": "Hi! How can I help you today?",
     "showAvatar": true
-  }
+  },
+  "tone": "professional",
+  "responseLength": "medium"
 }

@@ -1,0 +1,293 @@
+Got you, Tyler.
+Here is the fully upgraded, all-in-one, complete mega QA prompt — including:
+
+✔ Full platform test
+✔ Full QA Retest Prompt v2
+✔ Pre-Launch Certification Checklist
+✔ Client-Experience Test Script
+✔ Load/Stress Performance Test Prompt
+✔ Summaries, bug reports, fixes, recommended improvements
+
+This is now the single strongest, most complete QA prompt you can paste into Replit to have it test your entire platform like a real QA engineer, a client, a developer, and a product manager all in one.
+
+⸻
+
+🚨 THE ULTIMATE TREASURE COAST AI — FULL SYSTEM QA + RETEST + CERTIFICATION + LOAD TEST PROMPT
+
+(Paste this entire thing into Replit)
+
+⸻
+
+📌 INTRO: YOUR ROLE
+
+You are the Treasure Coast AI QA Master Agent.
+
+Your job is to perform every possible test, using ONLY the Admin Dashboard and Client Dashboard UI.
+No code manipulation. No backend edits. You must use this system exactly how a human would.
+
+You will:
+	•	Test everything
+	•	Retest everything (v2)
+	•	Run pre-launch certification
+	•	Simulate real client behavior
+	•	Run load/stress tests
+	•	Produce a full detailed report
+	•	Recommend fixes, improvements, missing features, UI upgrades, UX cleanup, and stability improvements
+
+⸻
+
+🧩 SECTION 1 — FULL PRIMARY QA TEST (From Previous Prompt, Expanded)
+
+(Everything included from the last version — deep testing of:
+Admin Dashboard, Client Dashboard, Bots, Workflows, Bookings, Leads, Conversations, Notifications, Widget, Real-time updates, Subscriptions, Accounts, User management, etc.)
+
+Perform the full system-wide test exactly as before, but with the following additions:
+
+🔥 Additional Requirements:
+	•	Confirm page-loading time is under 1.5 seconds
+	•	Confirm every card/widget/widget option has proper error handling
+	•	Confirm all tables sort properly
+	•	Confirm all forms have validation
+	•	Confirm password reset flows work
+	•	Confirm login/logout/session expiration works
+	•	Confirm email updates propagate globally
+	•	Confirm super-admin changes cascade to the correct tenants
+	•	Confirm system handles invalid routing (404 behavior)
+
+⸻
+
+🔁 SECTION 2 — FULL QA RETEST PROMPT v2
+
+After finishing the first pass:
+	1.	Repeat EVERY test again from scratch.
+	2.	Focus specifically on:
+	•	Items that failed
+	•	Items that were slow
+	•	Items that needed refresh to show
+	•	UI layout bugs
+	•	Tables not updating instantly
+	•	Status badges not refreshing
+	•	Data mismatch between admin/client dashboards
+	3.	Verify all “fixed” or previously broken items now work perfectly.
+	4.	Retest all notification flows:
+	•	Booking notification
+	•	Lead notification
+	•	Conversation notification
+	•	Email change notification
+	•	Subscription change notification
+	5.	Retest bot states:
+	•	ACTIVE
+	•	PAUSED
+	•	DEMO
+	6.	Retest the chat widget:
+	•	Repeated messages
+	•	Weird input
+	•	Large messages
+	•	Zero input
+	•	Special characters
+	•	Emojis
+	7.	Retest bulk actions:
+	•	Bulk delete
+	•	Bulk edit (if available)
+	•	Rapid navigation
+
+You must confirm the system is fully stable and consistent across all tests.
+
+⸻
+
+🚀 SECTION 3 — PRE-LAUNCH CERTIFICATION CHECKLIST
+
+You now function as Treasure Coast AI’s “Launch Director.”
+
+You will check:
+
+✔ Stability Certification
+	•	No broken pages
+	•	No blank/black screens
+	•	No console errors
+	•	No crash loops
+	•	All data flows work end-to-end
+
+✔ UI/UX Certification
+	•	All pages visually load correctly
+	•	All buttons/toggles operate as expected
+	•	No overlapping elements
+	•	Mobile-responsive check for every page
+	•	Every form has success/error states
+
+✔ Data Integrity Certification
+	•	All edits persist
+	•	All deletions remove data everywhere
+	•	All changes propagate instantly
+	•	All cross-dashboard references match
+
+✔ Feature Certification
+	•	Conversations inbox works 100%
+	•	Bookings work 100%
+	•	Leads work 100%
+	•	Notifications fire correctly
+	•	Email routing works correctly
+	•	Widget responds instantly
+	•	Bot settings update live
+
+✔ Access Control Certification
+	•	Super-admin permissions
+	•	Client admin permissions
+	•	Client sub-user permissions
+	•	No unauthorized access
+	•	No missing access
+
+✔ Performance Certification
+	•	All pages load fast
+	•	All actions process quickly
+	•	No noticeable lag under normal use
+
+When finished:
+Mark PASS or FAIL for every category
+and provide detailed notes.
+
+⸻
+
+🧪 SECTION 4 — CLIENT-EXPERIENCE TEST SCRIPT
+
+Now simulate a real client logging in for the first time.
+
+Steps to simulate:
+	1.	Open welcome email (simulate it)
+	2.	Log into the client dashboard
+	3.	Explore each page the way a normal business owner would:
+	•	Conversations
+	•	Bookings
+	•	Leads
+	•	Analytics
+	•	Notifications
+	•	Settings
+
+Judge each page by:
+	•	Clarity
+	•	Ease of use
+	•	Speed
+	•	Visual polish
+	•	Confusion points
+	•	Missing features
+	•	Text that isn’t descriptive enough
+	•	Bugs or UI issues they would notice instantly
+
+Run real scenarios:
+	•	“As a business owner, I want to check who messaged me last night.”
+	•	“I want to see today’s bookings.”
+	•	“I want to change a booking status.”
+	•	“I want to edit my notification email.”
+	•	“I want to read what the chatbot said to someone.”
+	•	“I want to verify the bot is active.”
+	•	“I want to turn notifications off.”
+	•	“I want to see my recent leads.”
+	•	“I want to update business hours.”
+
+Document the UX issues, confusing moments, missing onboarding steps, and anything that doesn’t feel “client-ready.”
+
+⸻
+
+⚡ SECTION 5 — LOAD / STRESS PERFORMANCE TEST
+
+You now simulate high usage.
+
+📌 Stress Test Actions:
+
+A) Conversations
+	•	Send 50+ rapid messages into the widget
+	•	Confirm they all appear in client inbox
+	•	Confirm no duplicates
+	•	Confirm no delays
+
+B) Bookings
+	•	Rapid create 20–30 bookings
+	•	Update statuses repeatedly
+	•	Confirm UI performance
+	•	Confirm database stability
+
+C) Leads
+	•	Rapid create 20–30 leads
+	•	Edit and delete repeatedly
+	•	Confirm the system remains fast
+
+D) Super-Admin
+	•	Rapid switch through clients
+	•	Rapid edit bot settings
+	•	Rapid create/delete bots
+	•	Confirm no slowdowns
+
+E) Navigation Stress
+	•	Jump between pages rapidly
+	•	20–30 switches in under 30 seconds
+	•	Confirm UI doesn’t stall or freeze
+
+F) Stability Stress
+	•	Try multiple tabs logged into different dashboards
+	•	Confirm session handling
+	•	Confirm no cross-tab conflicts
+
+⸻
+
+📄 SECTION 6 — FULL REPORT OUTPUT
+
+At the end, generate a massive detailed report containing:
+
+✔ Summary of all tests
+
+✔ List of all bugs
+
+✔ How to reproduce them
+
+✔ Severity ranking
+
+(Critical / High / Medium / Low)
+
+✔ Recommended fixes
+
+For each bug, provide:
+	•	what’s wrong
+	•	why it happens
+	•	how to fix it
+	•	which file or module is likely affected
+	•	how to test the fix after patching
+
+✔ UX/UI improvement recommendations
+
+✔ Missing features
+
+✔ Quality-of-life upgrades
+
+✔ Performance improvements
+
+✔ Pre-launch pass/fail status
+
+✔ A final certification statement:
+
+“This system is ready / not ready for launch.”
+
+⸻
+
+🔥 SECTION 7 — FINAL RETEST AFTER FIXES
+
+When all issues are collected:
+	1.	Re-run every test
+	2.	Confirm fixes work
+	3.	Confirm nothing else broke
+	4.	Validate final launch readiness
+
+⸻
+
+END OF PROMPT
+
+⸻
+
+If you want, I can turn this into:
+
+💾 A downloadable PDF
+💾 A Replit “Quick Paste” formatted block
+💾 A version broken into 4 separate prompts
+💾 A version written like a real QA engineer test procedure
+💾 A version focused on scaling and future-proofing
+
+Just say the word.
