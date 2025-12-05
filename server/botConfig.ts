@@ -809,6 +809,7 @@ export async function saveBotConfigAsync(botId: string, updates: Partial<BotConf
       if (updates.description) botUpdates.description = updates.description;
       if (updates.businessProfile) botUpdates.businessProfile = updates.businessProfile;
       if (updates.systemPrompt) botUpdates.systemPrompt = updates.systemPrompt;
+      if (updates.status) botUpdates.status = updates.status;
       botUpdates.updatedAt = new Date();
       
       await db.update(bots).set(botUpdates).where(eq(bots.botId, botId));

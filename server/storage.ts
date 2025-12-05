@@ -1210,6 +1210,14 @@ export class DbStorage implements IStorage {
     };
   }
 
+  // Get all bots for a workspace by workspace ID (UUID)
+  async getBotsByWorkspaceId(workspaceId: string): Promise<Bot[]> {
+    return db
+      .select()
+      .from(bots)
+      .where(eq(bots.workspaceId, workspaceId));
+  }
+
   // =============================================
   // PHASE 4: AUTOMATION WORKFLOW METHODS
   // =============================================

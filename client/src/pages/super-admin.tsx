@@ -2656,7 +2656,7 @@ export default function SuperAdmin() {
                     )}
                   </Button>
                   <Select
-                    value={selectedClient?.status || 'active'}
+                    value={selectedClient?.status || selectedBot?.status || 'active'}
                     onValueChange={(value) => updateStatusMutation.mutate({ 
                       clientId: selectedClient?.id || selectedBot.clientId, 
                       status: value,

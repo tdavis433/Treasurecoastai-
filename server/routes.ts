@@ -7366,8 +7366,8 @@ These suggestions should be relevant to what was just discussed and help guide t
       const { slug } = req.params;
       const { status } = req.body;
       
-      if (!['active', 'paused', 'suspended', 'cancelled'].includes(status)) {
-        return res.status(400).json({ error: "Invalid status. Must be one of: active, paused, suspended, cancelled" });
+      if (!['active', 'paused', 'suspended', 'cancelled', 'demo'].includes(status)) {
+        return res.status(400).json({ error: "Invalid status. Must be one of: active, paused, suspended, cancelled, demo" });
       }
       
       const workspace = await getWorkspaceBySlug(slug);
@@ -7384,8 +7384,14 @@ These suggestions should be relevant to what was just discussed and help guide t
         details: { previousStatus: (workspace as any).status || 'active', newStatus: status },
       });
       
-      // Update client status through existing mechanism
+      // Update client status through existing mechanism (for JSON-backed clients)
       updateClientStatus(slug, status);
+      
+      // Also update all bots for this workspace in the database
+      const workspaceBots = await storage.getBotsByWorkspaceId((workspace as any).id);
+      for (const bot of workspaceBots) {
+        await saveBotConfigAsync(bot.botId, { status: status as 'active' | 'paused' });
+      }
       
       res.json({ success: true, slug, status });
     } catch (error) {
