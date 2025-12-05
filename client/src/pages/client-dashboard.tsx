@@ -1799,6 +1799,7 @@ export default function ClientDashboard() {
                                     key={option.value} 
                                     value={option.value}
                                     className="text-white hover:bg-white/10"
+                                    data-testid={`option-lead-status-${option.value}-${lead.id}`}
                                   >
                                     {option.label}
                                   </SelectItem>
@@ -2109,6 +2110,7 @@ export default function ClientDashboard() {
                                     key={option.value} 
                                     value={option.value}
                                     className="text-white hover:bg-white/10"
+                                    data-testid={`option-booking-status-${option.value}-${apt.id}`}
                                   >
                                     {option.label}
                                   </SelectItem>
