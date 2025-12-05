@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { GlassCard, GlassCardHeader, GlassCardTitle, GlassCardDescription, GlassCardContent } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
@@ -252,7 +252,7 @@ const SIDEBAR_ITEMS = [
 ];
 
 export default function ClientDashboard() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { toast } = useToast();
   const [activeSection, setActiveSection] = useState<SectionType>('overview');
   const [copied, setCopied] = useState(false);
@@ -283,18 +283,50 @@ export default function ClientDashboard() {
     }
   }, [currentUser, authLoading, setLocation]);
 
+  // Get clientId from URL query params (for super_admin viewing specific client)
+  // Re-compute when location changes (both pushState and popState)
+  const urlClientId = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('clientId');
+  }, [location]);
+
+  // Redirect super_admin to super-admin panel if no clientId specified
+  useEffect(() => {
+    if (!authLoading && currentUser?.role === 'super_admin' && !urlClientId) {
+      toast({
+        title: "Client Selection Required",
+        description: "Please select a client from the admin panel to view their dashboard.",
+      });
+      setLocation("/super-admin");
+    }
+  }, [authLoading, currentUser, urlClientId, setLocation, toast]);
+
+  // Helper to append clientId to API URLs for super_admin users
+  const appendClientId = (url: string) => {
+    if (currentUser?.role === 'super_admin' && urlClientId) {
+      const separator = url.includes('?') ? '&' : '?';
+      return `${url}${separator}clientId=${urlClientId}`;
+    }
+    return url;
+  };
+
   const { data: profile, isLoading: profileLoading } = useQuery<ClientProfile>({
-    queryKey: ["/api/client/me"],
+    queryKey: ["/api/client/me", urlClientId],
+    queryFn: async () => {
+      const response = await fetch(appendClientId("/api/client/me"), { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch profile");
+      return response.json();
+    },
     enabled: !!currentUser,
   });
 
   const { data: stats, isLoading: statsLoading, isFetching: statsFetching, refetch: refetchStats } = useQuery<ClientStats>({
-    queryKey: ["/api/client/stats", statsRange],
+    queryKey: ["/api/client/stats", statsRange, urlClientId],
     queryFn: async () => {
-      const url = statsRange !== 'all' 
+      const baseUrl = statsRange !== 'all' 
         ? `/api/client/stats?days=${statsRange}` 
         : '/api/client/stats';
-      const response = await fetch(url, { credentials: "include" });
+      const response = await fetch(appendClientId(baseUrl), { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch stats");
       return response.json();
     },
@@ -307,7 +339,12 @@ export default function ClientDashboard() {
     appointments: Appointment[];
     total: number;
   }>({
-    queryKey: ["/api/client/appointments"],
+    queryKey: ["/api/client/appointments", urlClientId],
+    queryFn: async () => {
+      const response = await fetch(appendClientId("/api/client/appointments"), { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch appointments");
+      return response.json();
+    },
     enabled: !!currentUser,
   });
 
@@ -317,7 +354,12 @@ export default function ClientDashboard() {
     sessions: ChatSession[];
     total: number;
   }>({
-    queryKey: ["/api/client/analytics/sessions"],
+    queryKey: ["/api/client/analytics/sessions", urlClientId],
+    queryFn: async () => {
+      const response = await fetch(appendClientId("/api/client/analytics/sessions"), { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch sessions");
+      return response.json();
+    },
     enabled: !!currentUser,
   });
 
@@ -326,7 +368,12 @@ export default function ClientDashboard() {
     leads: any[];
     total: number;
   }>({
-    queryKey: ["/api/client/leads"],
+    queryKey: ["/api/client/leads", urlClientId],
+    queryFn: async () => {
+      const response = await fetch(appendClientId("/api/client/leads"), { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch leads");
+      return response.json();
+    },
     enabled: !!currentUser,
   });
 
@@ -336,10 +383,10 @@ export default function ClientDashboard() {
     days: number;
     trends: MessageTrend[];
   }>({
-    queryKey: ["/api/client/analytics/trends", statsRange],
+    queryKey: ["/api/client/analytics/trends", statsRange, urlClientId],
     queryFn: async () => {
       const days = statsRange === '7' ? 7 : statsRange === '30' ? 30 : 30;
-      const response = await fetch(`/api/client/analytics/trends?days=${days}`, { credentials: "include" });
+      const response = await fetch(appendClientId(`/api/client/analytics/trends?days=${days}`), { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch trends");
       return response.json();
     },
@@ -353,9 +400,9 @@ export default function ClientDashboard() {
     totalSessions: number;
     topQuestions: TopQuestion[];
   }>({
-    queryKey: ["/api/client/analytics/top-questions"],
+    queryKey: ["/api/client/analytics/top-questions", urlClientId],
     queryFn: async () => {
-      const response = await fetch(`/api/client/analytics/top-questions?days=30&limit=8`, { credentials: "include" });
+      const response = await fetch(appendClientId(`/api/client/analytics/top-questions?days=30&limit=8`), { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch top questions");
       return response.json();
     },
@@ -364,15 +411,15 @@ export default function ClientDashboard() {
 
   // Booking analytics data (booking intents, link clicks, redirects)
   const { data: bookingAnalytics, isLoading: bookingAnalyticsLoading } = useQuery<BookingAnalytics>({
-    queryKey: ["/api/client/bookings/analytics", bookingsDateRange],
+    queryKey: ["/api/client/bookings/analytics", bookingsDateRange, urlClientId],
     queryFn: async () => {
       const days = bookingsDateRange === '7' ? 7 : bookingsDateRange === '30' ? 30 : 90;
       const endDate = new Date().toISOString();
       const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-      const url = bookingsDateRange === 'all' 
+      const baseUrl = bookingsDateRange === 'all' 
         ? `/api/client/bookings/analytics`
         : `/api/client/bookings/analytics?startDate=${startDate}&endDate=${endDate}`;
-      const response = await fetch(url, { credentials: "include" });
+      const response = await fetch(appendClientId(baseUrl), { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch booking analytics");
       return response.json();
     },
@@ -428,7 +475,7 @@ export default function ClientDashboard() {
     
     setLoadingSession(sessionId);
     try {
-      const response = await fetch(`/api/client/inbox/sessions/${sessionId}?botId=${effectiveBotId}`, { credentials: "include" });
+      const response = await fetch(appendClientId(`/api/client/inbox/sessions/${sessionId}?botId=${effectiveBotId}`), { credentials: "include" });
       if (response.ok) {
         const data = await response.json();
         setSessionMessages(prev => ({ ...prev, [sessionId]: data.messages || [] }));
@@ -455,7 +502,7 @@ export default function ClientDashboard() {
     }
     
     try {
-      const response = await fetch(`/api/client/inbox/sessions/${sessionId}/state?botId=${effectiveBotId}`, { credentials: "include" });
+      const response = await fetch(appendClientId(`/api/client/inbox/sessions/${sessionId}/state?botId=${effectiveBotId}`), { credentials: "include" });
       if (response.ok) {
         const state = await response.json();
         setSessionStates(prev => ({ ...prev, [sessionId]: state }));
@@ -499,7 +546,7 @@ export default function ClientDashboard() {
     }
     
     try {
-      const response = await fetch(`/api/client/inbox/sessions/${sessionId}/state?botId=${effectiveBotId}`, {
+      const response = await fetch(appendClientId(`/api/client/inbox/sessions/${sessionId}/state?botId=${effectiveBotId}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -522,7 +569,7 @@ export default function ClientDashboard() {
   const handleUpdateLeadStatus = async (leadId: string, newStatus: string) => {
     setUpdatingLeadId(leadId);
     try {
-      const response = await fetch(`/api/client/leads/${leadId}`, {
+      const response = await fetch(appendClientId(`/api/client/leads/${leadId}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -530,8 +577,8 @@ export default function ClientDashboard() {
       });
       
       if (response.ok) {
-        queryClient.invalidateQueries({ queryKey: ["/api/client/leads"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/client/stats"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/client/leads", urlClientId] });
+        queryClient.invalidateQueries({ queryKey: ["/api/client/stats", statsRange, urlClientId] });
         toast({ title: "Status updated", description: `Lead status changed to ${newStatus}.` });
       } else {
         throw new Error("Failed to update");
