@@ -64,7 +64,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
-  Bot, Users, FileText, Settings, BarChart3, MessageSquare, 
+  Bot, Users, FileText, Settings, Settings2, BarChart3, MessageSquare, 
   Plus, Play, Pause, Eye, Edit2, Save, X, LogOut, Zap, 
   AlertTriangle, Phone, Mail, Globe, MapPin, Clock, Trash2,
   ChevronRight, Search, CreditCard, ExternalLink, Building2, Code, Copy, Check,
@@ -4280,6 +4280,7 @@ function BookingLinksPanel({ clientId, clientName }: { clientId: string; clientN
 function ChannelsPanel({ bot, client }: { bot: BotConfig; client: Client }) {
   const { toast } = useToast();
   const { acquireLock, releaseLock, isLocked } = useSaveLock();
+  const [, setLocation] = useLocation();
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [widgetSettings, setWidgetSettings] = useState({
@@ -4355,10 +4356,21 @@ function ChannelsPanel({ bot, client }: { bot: BotConfig; client: Client }) {
             </Button>
           </>
         ) : (
-          <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} data-testid="button-edit-widget">
-            <Edit2 className="h-4 w-4 mr-2" />
-            Edit Widget
-          </Button>
+          <>
+            <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} data-testid="button-edit-widget">
+              <Edit2 className="h-4 w-4 mr-2" />
+              Quick Edit
+            </Button>
+            <Button 
+              size="sm" 
+              onClick={() => setLocation(`/admin/bot/${bot.botId}/widget-settings`)} 
+              data-testid="button-advanced-widget-settings"
+              className="bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600"
+            >
+              <Settings2 className="h-4 w-4 mr-2" />
+              Advanced Editor
+            </Button>
+          </>
         )}
       </div>
 
