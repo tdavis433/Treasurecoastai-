@@ -135,3 +135,21 @@ Analytics tracking includes:
 - **REDIRECT-ONLY Booking**: AI correctly refuses to confirm appointments and directs users to external booking platform
 - **Lead Collection**: AI acknowledges contact info and marks lead as captured
 - **Conversation Context**: Multi-turn conversations maintain proper context
+
+## Recent Fixes (December 2024 - Session 2)
+
+### Bugs Fixed
+1. **Bot Editor Panel Blocking Fix**: The admin bot editor panel was blocking/crashing for database bots that didn't have matching entries in clients.json. Fixed by:
+   - Changed panel render condition from `selectedBot && selectedClient` to just `selectedBot`
+   - Added null-safe access with fallbacks (e.g., `client?.id || bot.clientId`) throughout
+   - Updated OverviewPanel and ChannelsPanel to accept `Client | null | undefined` types
+   
+2. **Lead Creation Without Contact Info Bug**: Leads were being created when booking intent was detected even without actual contact info (email/phone), resulting in empty leads. Fixed by:
+   - Changed lead creation condition from `if (!email && !phone && !hasBookingIntent)` to `if (!email && !phone)`
+   - Booking intent alone no longer triggers lead creation - requires actual contact info
+   - Booking intent still tracked in session data for analytics
+
+### Architecture Notes
+- Database bots use `workspace_id` (UUID) linked to workspaces table with `slug` that maps to clientId
+- Bot editor panel now gracefully handles missing client data by falling back to bot configuration values
+- Lead creation requires email OR phone to be captured - booking intent tracked separately in session

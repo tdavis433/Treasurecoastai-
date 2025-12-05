@@ -1752,9 +1752,9 @@ export default function ClientDashboard() {
                               </span>
                             </div>
                             <div>
-                              <p className="text-white font-medium">{lead.name || 'Visitor'}</p>
+                              <p className="text-white font-medium">{lead.name || 'Anonymous Visitor'}</p>
                               <div className="flex items-center gap-3 mt-1 text-sm text-white/50 flex-wrap">
-                                {lead.email && (
+                                {lead.email ? (
                                   <a 
                                     href={`mailto:${lead.email}`}
                                     className="flex items-center gap-1 hover:text-cyan-400 transition-colors"
@@ -1763,8 +1763,13 @@ export default function ClientDashboard() {
                                     <Mail className="h-3 w-3" />
                                     {lead.email}
                                   </a>
+                                ) : (
+                                  <span className="flex items-center gap-1 text-white/30 italic">
+                                    <Mail className="h-3 w-3" />
+                                    No email
+                                  </span>
                                 )}
-                                {lead.phone && (
+                                {lead.phone ? (
                                   <button
                                     onClick={() => handleClickToCall(lead.phone)}
                                     className="flex items-center gap-1 hover:text-green-400 transition-colors group"
@@ -1773,6 +1778,11 @@ export default function ClientDashboard() {
                                     <PhoneCall className="h-3 w-3 group-hover:animate-pulse" />
                                     {lead.phone}
                                   </button>
+                                ) : (
+                                  <span className="flex items-center gap-1 text-white/30 italic">
+                                    <PhoneCall className="h-3 w-3" />
+                                    No phone
+                                  </span>
                                 )}
                               </div>
                             </div>

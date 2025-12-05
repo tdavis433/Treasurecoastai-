@@ -2225,9 +2225,10 @@ These suggestions should be relevant to what was just discussed and help guide t
       // Use AI-derived booking intent if available, fallback to regex detection
       const hasBookingIntent = aiAnalysis?.bookingIntent || appointmentRequested;
       
-      // Check if we have any qualifying info
-      if (!contactInfo.email && !contactInfo.phone && !hasBookingIntent) {
-        return; // No qualifying info to create lead
+      // CRITICAL: Only create leads when we have actual contact info (email or phone)
+      // Booking intent alone is not sufficient - we need a way to contact the lead
+      if (!contactInfo.email && !contactInfo.phone) {
+        return; // No contact info to create lead - booking intent tracked in session
       }
       
       // Check if lead already exists for this session or email/phone

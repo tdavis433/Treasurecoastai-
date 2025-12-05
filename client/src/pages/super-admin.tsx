@@ -2587,7 +2587,7 @@ export default function SuperAdmin() {
           </main>
 
           {/* Bot Details Panel - Inline split pane with independent scroll */}
-          {selectedBot && selectedClient && (
+          {selectedBot && (
             <aside className="lg:min-w-[40%] lg:max-w-[50%] border-l border-white/10 bg-white/5 overflow-y-auto h-full">
               <div className="p-6">
                 {/* Panel Header with Close */}
@@ -2616,7 +2616,7 @@ export default function SuperAdmin() {
 
                 {/* Status and Actions */}
                 <div className="flex items-center gap-2 mb-6 flex-wrap">
-                  {getStatusBadge(selectedClient.status)}
+                  {getStatusBadge(selectedClient?.status || 'active')}
                   <Button
                     data-testid="button-preview-bot"
                     variant="outline"
@@ -2649,9 +2649,9 @@ export default function SuperAdmin() {
                     )}
                   </Button>
                   <Select
-                    value={selectedClient.status}
+                    value={selectedClient?.status || 'active'}
                     onValueChange={(value) => updateStatusMutation.mutate({ 
-                      clientId: selectedClient.id, 
+                      clientId: selectedClient?.id || selectedBot.clientId, 
                       status: value 
                     })}
                   >
@@ -2780,19 +2780,19 @@ export default function SuperAdmin() {
                   )}
 
                   {activeTab === 'persona' && (
-                    <PersonaPanel bot={selectedBot} clientType={selectedClient.type} />
+                    <PersonaPanel bot={selectedBot} clientType={selectedClient?.type || selectedBot.businessProfile?.type} />
                   )}
 
                   {activeTab === 'knowledge' && (
-                    <KnowledgePanel bot={selectedBot} clientType={selectedClient.type} />
+                    <KnowledgePanel bot={selectedBot} clientType={selectedClient?.type || selectedBot.businessProfile?.type} />
                   )}
 
                   {activeTab === 'test-chat' && (
-                    <TestChatPanel clientId={selectedClient.id} botId={selectedBot.botId} botName={selectedBot.name} />
+                    <TestChatPanel clientId={selectedClient?.id || selectedBot.clientId} botId={selectedBot.botId} botName={selectedBot.name} />
                   )}
 
                   {activeTab === 'booking' && (
-                    <BookingLinksPanel clientId={selectedClient.id} clientName={selectedClient.name} />
+                    <BookingLinksPanel clientId={selectedClient?.id || selectedBot.clientId} clientName={selectedClient?.name || selectedBot.name} />
                   )}
 
                   {activeTab === 'channels' && (
@@ -2800,19 +2800,19 @@ export default function SuperAdmin() {
                   )}
 
                   {activeTab === 'billing' && (
-                    <BillingPanel clientId={selectedClient.id} clientName={selectedClient.name} status={selectedClient.status} />
+                    <BillingPanel clientId={selectedClient?.id || selectedBot.clientId} clientName={selectedClient?.name || selectedBot.name} status={selectedClient?.status || 'active'} />
                   )}
 
                   {activeTab === 'analytics' && (
-                    <AnalyticsPanel clientId={selectedClient.id} />
+                    <AnalyticsPanel clientId={selectedClient?.id || selectedBot.clientId} />
                   )}
 
                   {activeTab === 'logs' && (
-                    <LogsPanel clientId={selectedClient.id} botId={selectedBot.botId} />
+                    <LogsPanel clientId={selectedClient?.id || selectedBot.clientId} botId={selectedBot.botId} />
                   )}
 
                   {activeTab === 'automations' && (
-                    <AutomationsPanel botId={selectedBot.botId} clientId={selectedClient.id} />
+                    <AutomationsPanel botId={selectedBot.botId} clientId={selectedClient?.id || selectedBot.clientId} />
                   )}
                 </div>
               </div>
@@ -3041,14 +3041,17 @@ export default function SuperAdmin() {
 }
 
 // Overview Panel - Quick summary of bot and client
-function OverviewPanel({ bot, client }: { bot: BotConfig; client: Client }) {
+function OverviewPanel({ bot, client }: { bot: BotConfig; client: Client | null | undefined }) {
+  const effectiveClientId = client?.id || bot.clientId;
+  
   const { data: analytics, isLoading } = useQuery({
-    queryKey: ["/api/client/analytics/summary", client.id],
+    queryKey: ["/api/client/analytics/summary", effectiveClientId],
     queryFn: async () => {
-      const response = await fetch(`/api/client/analytics/summary?clientId=${client.id}`, { credentials: "include" });
+      const response = await fetch(`/api/client/analytics/summary?clientId=${effectiveClientId}`, { credentials: "include" });
       if (!response.ok) return null;
       return response.json();
     },
+    enabled: !!effectiveClientId,
   });
 
   if (isLoading) {
@@ -4277,7 +4280,7 @@ function BookingLinksPanel({ clientId, clientName }: { clientId: string; clientN
 }
 
 // Channels Panel - Widget styling + embed code (combined)
-function ChannelsPanel({ bot, client }: { bot: BotConfig; client: Client }) {
+function ChannelsPanel({ bot, client }: { bot: BotConfig; client: Client | null | undefined }) {
   const { toast } = useToast();
   const { acquireLock, releaseLock, isLocked } = useSaveLock();
   const [, setLocation] = useLocation();
@@ -6605,7 +6608,7 @@ function InstallPanel({ bot, client }: { bot: BotConfig; client: Client }) {
             <Button
               data-testid="button-preview-widget"
               variant="outline"
-              onClick={() => window.open(`/widget/preview.html?clientId=${client.id}&botId=${bot.botId}`, '_blank')}
+              onClick={() => window.open(`/widget/preview.html?clientId=${client?.id || bot.clientId}&botId=${bot.botId}`, '_blank')}
             >
               <Eye className="h-4 w-4 mr-2" />
               Preview Widget
@@ -6634,7 +6637,7 @@ function InstallPanel({ bot, client }: { bot: BotConfig; client: Client }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
               <span className="text-sm text-white/60">Client ID</span>
-              <code className="text-sm font-mono bg-slate-800/80 px-3 py-1 rounded border border-white/10 text-emerald-400">{client.id}</code>
+              <code className="text-sm font-mono bg-slate-800/80 px-3 py-1 rounded border border-white/10 text-emerald-400">{client?.id || bot.clientId}</code>
             </div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
               <span className="text-sm text-white/60">Bot ID</span>
@@ -6642,12 +6645,12 @@ function InstallPanel({ bot, client }: { bot: BotConfig; client: Client }) {
             </div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
               <span className="text-sm text-white/60">Business</span>
-              <span className="text-sm text-white font-medium">{bot.businessProfile?.businessName || client.name}</span>
+              <span className="text-sm text-white font-medium">{bot.businessProfile?.businessName || client?.name || bot.name}</span>
             </div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
               <span className="text-sm text-white/60">Status</span>
-              <Badge className={`${client.status === 'active' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/10 text-white/55 border border-white/20'}`}>
-                {client.status}
+              <Badge className={`${(client?.status || 'active') === 'active' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/10 text-white/55 border border-white/20'}`}>
+                {client?.status || 'active'}
               </Badge>
             </div>
           </div>
