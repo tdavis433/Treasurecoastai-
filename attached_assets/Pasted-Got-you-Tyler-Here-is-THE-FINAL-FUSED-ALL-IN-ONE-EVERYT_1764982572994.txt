@@ -1,0 +1,473 @@
+Got you, Tyler.
+Here is THE FINAL FUSED, ALL-IN-ONE, EVERYTHING-INCLUDED, FULL SYSTEM TESTING MEGA PROMPT — combining:
+
+✔ Mega Prompt #1 (Full Platform Functional QA)
+✔ Mega Prompt #2 (Retest v2 / Pre-Launch Cert / Client Simulation / Load Test / Visual QA)
+✔ Deep Customization, Persona, KB, AI-Behavior, Security, Multi-Language, Accessibility Tests
+✔ Leads & Bookings Client-Behavior Test Block (the last prompt you asked to merge)
+
+Everything is now one single, clean, violent, no-mercy QA prompt you paste DIRECTLY into Replit.
+
+This is officially the most comprehensive QA test script I’ve ever written for any SaaS platform.
+Replit will test every feature, every workflow, every piece of UI, every customization option, every client action, AND validate the real business use cases.
+
+⸻
+
+🚨 TREASURE COAST AI — ULTIMATE FULL SYSTEM TESTING MEGA-PROMPT (FINAL FUSED VERSION)
+
+(PASTE THIS ENTIRE BLOCK INTO REPLIT)
+
+⸻
+
+📌 INTRO — YOUR ROLE
+
+You are the Treasure Coast AI QA Master Agent.
+
+You will simulate EVERYTHING a super-admin, client, and end-user does using ONLY the Admin Dashboard, Client Dashboard, and Chat Widget — NO editing code, NO touching backend/database.
+
+Your job is to perform:
+	•	Full system QA
+	•	Retest v2
+	•	Pre-launch certification
+	•	Visual/design testing
+	•	Client-experience simulation
+	•	Stress/load testing
+	•	Customization testing
+	•	AI behavior testing
+	•	Website scraper testing
+	•	Persona & tone testing
+	•	Knowledge base testing
+	•	Lead & booking lifecycle behavior testing
+	•	Multi-language testing
+	•	Security/isolation testing
+	•	Mobile/responsive testing
+	•	UX testing
+	•	Accessibility testing
+	•	Regression guardrail creation
+
+You must break everything you can, capture every bug, and confirm everything is polished, stable, beautiful, and production-ready.
+
+⸻
+
+🧩 SECTION 1 — FULL PLATFORM FUNCTIONAL QA TEST
+
+GLOBAL TESTS (on ALL pages)
+	•	No blank screens
+	•	No UI misalignment
+	•	No unstyled elements
+	•	No text overflow
+	•	No cards clipping text
+	•	All text readable on dark/light backgrounds
+	•	Proper spacing & padding
+	•	Buttons clickable & centered
+	•	Smooth navigation
+	•	Fast load (<1.5 seconds)
+	•	No console errors
+	•	All routes exist & load correctly
+	•	All pagination & scrolling works
+	•	Mobile layout renders correctly
+	•	All animations (if any) stable
+
+⸻
+
+🧩 SECTION 2 — SUPER-ADMIN PANEL — DEEP FEATURE TESTING
+
+CLIENT MANAGEMENT
+	•	Create client
+	•	Edit client info
+	•	Update email (verify everywhere)
+	•	Update plan tier
+	•	Pause/reactivate account
+	•	Cancel subscription
+	•	Delete client
+	•	Reset password
+	•	Change username
+	•	Verify UI stability after each action
+
+USER / SUB-USER MANAGEMENT
+	•	Add user
+	•	Update user role
+	•	Update user email
+	•	Reset sub-user password
+	•	Delete user
+	•	Ensure permissions behave correctly
+
+BOT MANAGEMENT
+
+For each bot:
+	•	Create bot
+	•	Edit everything
+	•	Change persona
+	•	Update tone
+	•	Update intro message
+	•	Update fallback
+	•	Change hours
+	•	Change booking link
+	•	Upload/edit avatar
+	•	Delete bot
+	•	Preview bot
+	•	Toggle ACTIVE / PAUSED / DEMO
+	•	Confirm changes update instantly in viewer & widget
+
+WORKFLOWS
+	•	Add workflow
+	•	Edit workflow
+	•	Delete workflow
+	•	Reorder workflow steps
+	•	Test triggers
+	•	Confirm bot executes workflows correctly
+
+WEBSITE SCRAPER
+	•	Input business URL
+	•	Ensure scraper pulls:
+	•	services
+	•	hours
+	•	phone
+	•	email
+	•	about text
+	•	Confirm formatting is clean
+	•	No broken characters
+
+⸻
+
+🧩 SECTION 3 — CLIENT DASHBOARD — FULL FEATURE TEST
+
+CONVERSATIONS
+	•	Open list
+	•	Open individual chat
+	•	Scroll
+	•	Confirm timestamp formatting
+	•	Confirm all bot messages appear
+	•	No double messages
+	•	Confirm UI spacing
+
+LEADS
+	•	Create lead via widget
+	•	Edit lead
+	•	Add notes
+	•	Change status (New, Contacted, Follow-Up, Converted, Spam)
+	•	Delete lead
+	•	Filter leads
+	•	Export leads (if present)
+	•	Confirm all fields populate correctly
+	•	Confirm no overflow in table cells
+
+BOOKINGS
+	•	Create booking
+	•	Edit booking
+	•	Change status (New, Contacted, Confirmed, Completed, No-Show, Canceled)
+	•	Delete booking
+	•	Filter by date
+	•	Add notes
+	•	Confirm booking details link to conversation thread
+	•	Confirm no UI overflow
+
+ANALYTICS
+	•	Confirm charts load
+	•	Confirm labels readable
+	•	Confirm data updates based on test actions
+	•	No distorted charts
+
+NOTIFICATIONS
+	•	Change notification email
+	•	Toggle notifications on/off
+	•	Confirm emails are sent
+	•	Confirm UI text fits & aligns
+
+⸻
+
+🧩 SECTION 4 — FRONT-END CHAT WIDGET TEST
+
+VISUAL
+	•	Widget color themes
+	•	Welcome bubble
+	•	Avatar positioning
+	•	Card spacing
+	•	Message bubble alignment
+	•	Readability on all background colors
+	•	Mobile view
+	•	No clipping
+
+FUNCTIONAL
+	•	Bot responds correctly
+	•	FAQ answers
+	•	Lead capture
+	•	Booking redirect
+	•	Knowledge base responses
+	•	Persona tone reflected
+	•	Office hours behavior
+	•	Automations triggering
+	•	Multi-language response
+
+⸻
+
+🔁 SECTION 5 — FULL QA RETEST v2
+
+Re-run EVERYTHING above, focusing on:
+	•	Previously broken items
+	•	Items that updated slowly
+	•	Items with alignment issues
+	•	Notification flows
+	•	Bot mode changes
+	•	Widget behavior under stress
+
+⸻
+
+🚀 SECTION 6 — PRE-LAUNCH CERTIFICATION CHECKLIST
+
+Mark PASS/FAIL for:
+
+STABILITY
+	•	No errors
+	•	No crashes
+	•	No blank screens
+
+FUNCTIONALITY
+	•	All leads/booking/inbox workflows
+	•	All admin controls
+	•	All bot features
+	•	All scraper functions
+
+VISUAL QUALITY
+	•	All text readable
+	•	All cards perfect
+	•	No overflow anywhere
+	•	Perfect spacing/padding
+
+PERFORMANCE
+	•	Load time <1.5s
+	•	No lag in high usage
+	•	Navigation smooth
+
+CLIENT READINESS
+	•	Clear UI
+	•	Mobile friendly
+	•	Nothing confusing
+
+⸻
+
+🧪 SECTION 7 — CLIENT EXPERIENCE SIMULATION
+
+Simulate being a paid client:
+
+EXPECTED ACTIONS
+	•	Read new conversations
+	•	Check today’s bookings
+	•	Mark leads contacted
+	•	Update notification email
+	•	View analytics
+	•	Export data
+	•	Add notes
+	•	Track follow-ups
+
+LOOK FOR:
+	•	Missing info
+	•	Confusing navigation
+	•	Clutter
+	•	Text too small
+	•	Unreadable badges
+	•	Hard-to-click items on mobile
+
+⸻
+
+⚡ SECTION 8 — LOAD & STRESS TEST
+
+CONVERSATIONS
+	•	Send 50–100 messages
+	•	Rapid-fire
+	•	Confirm no lag
+	•	Confirm no message duplication
+
+BOOKINGS
+	•	Create 20 entries
+	•	Change statuses fast
+	•	Delete repeatedly
+
+LEADS
+	•	Generate 20 leads
+	•	Edit/delete quickly
+
+ADMIN PANEL
+	•	Switch clients repeatedly
+	•	Rapid bot edits
+	•	Rapid navigation
+
+STABILITY
+	•	Multiple tab sessions
+	•	Refresh during actions
+	•	Confirm no breakage
+
+⸻
+
+🧬 SECTION 9 — DEEP CUSTOMIZATION TESTING
+
+BOT BUILDER & PERSONA
+	•	Multiple personas
+	•	Different tones
+	•	Long names
+	•	Long descriptions
+	•	Avatar uploads
+	•	Confirm formatting stability
+
+WIDGET DESIGNER
+	•	All color combos
+	•	All positions
+	•	Branding settings
+	•	Confirm text always readable
+
+OFFICE HOURS
+	•	All schedule variations
+	•	Confirm correct after-hours responses
+
+AUTOMATIONS
+	•	Keyword triggers
+	•	Lead triggers
+	•	Booking triggers
+	•	Time-delay automations
+
+⸻
+
+📚 SECTION 10 — KNOWLEDGE BASE TESTING
+
+TEST INPUT VARIATIONS
+	•	Long FAQs
+	•	Short FAQs
+	•	Emojis
+	•	Lists
+	•	Links
+	•	Multi-language FAQs
+
+VALIDATION
+	•	Required fields
+	•	Error handling
+	•	Clean formatting
+
+⸻
+
+🧠 SECTION 11 — AI ENGINE BEHAVIOR TEST
+
+CONTEXT
+	•	Multi-message continuity
+	•	Memory of user name/topic
+
+LEAD DETECTION
+	•	All formats of emails & phone numbers
+
+BOOKING REDIRECT
+	•	Bot never confirms appointments
+
+CRISIS HANDLING
+	•	Safety responses
+
+MULTI-LANGUAGE
+	•	Spanish, Portuguese, French test
+
+⸻
+
+🔒 SECTION 12 — SECURITY & TENANT ISOLATION UI TEST
+
+CLIENT ACCESS LIMITS
+	•	No edit access for clients
+	•	No data leakage across tenants
+	•	URL manipulation should fail cleanly
+
+SESSION MANAGEMENT
+	•	Wrong passwords
+	•	Expired sessions
+	•	Logged out behavior
+
+SECURITY INDICATORS
+	•	Verify displayed statuses (Active, Secure, etc.)
+
+⸻
+
+♿ SECTION 13 — ACCESSIBILITY & MOBILE TESTING
+
+KEYBOARD
+	•	Tab navigation
+	•	Focus states
+
+RESPONSIVENESS
+	•	Mobile layouts
+	•	Tablet layout
+	•	Desktop layout
+
+CONTRAST
+	•	All cards readable
+	•	No low-contrast text
+
+⸻
+
+🧾 SECTION 14 — REAL CLIENT BEHAVIOR TEST (LEADS & BOOKINGS)
+
+LEADS
+	•	View lead info
+	•	Mark contacted
+	•	Change statuses
+	•	Add notes
+	•	Delete spam
+	•	Filter leads
+
+BOOKINGS
+	•	View appointment requests
+	•	Edit statuses
+	•	Add notes
+	•	Delete spam bookings
+	•	Filter by date
+	•	Link to conversation
+
+⸻
+
+🧱 SECTION 15 — REGRESSION GUARDRAILS
+
+Create a matrix listing:
+	•	Each major feature
+	•	What must always work
+	•	What breaks most often
+	•	The quickest way to retest after updates
+
+⸻
+
+📄 OUTPUT REQUIREMENTS
+
+At the end produce:
+
+✔ Full list of bugs
+
+✔ Severity (Critical/High/Medium/Low)
+
+✔ Steps to reproduce
+
+✔ Root-cause guess
+
+✔ Recommended fix
+
+✔ UI/UX improvements
+
+✔ Readability/spacing fixes
+
+✔ Visual polish issues
+
+✔ Missing features
+
+✔ Final PASS/FAIL launch certification
+
+⸻
+
+END OF MEGA PROMPT
+
+⸻
+
+Tyler, this is it.
+
+The fully merged, fully upgraded, single prompt that tests all functionality, all visuals, all behavior, all UX, all client actions, all admin actions, all security, all rendering, AND all real business use cases.
+
+If you want next:
+
+🔥 I can generate a PDF version
+🔥 A Notion checklist version
+🔥 A developer version for your contractors
+🔥 A client onboarding version for Faith House or barbershops
+🔥 A bug tracker template to go with this
+
+Just say what you want.
