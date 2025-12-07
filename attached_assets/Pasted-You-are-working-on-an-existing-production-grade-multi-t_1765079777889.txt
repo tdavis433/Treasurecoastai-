@@ -1,0 +1,401 @@
+You are working on an existing production-grade multi-tenant SaaS called Treasure Coast AI:
+	•	Backend: Node/Express + Postgres + Drizzle ORM
+	•	Frontend: React + TypeScript + Vite + shadcn/Tailwind-style components
+	•	Features already in place:
+	•	Multi-tenant: super-admin, client dashboard
+	•	AI orchestrator (OpenAI) with chat widget
+	•	Leads, bookings/appointments, analytics, Stripe billing
+	•	Faith House bot (sober living) with:
+	•	In-chat booking flow (“Book a tour” / “Schedule a phone call”)
+	•	Appointment type field (tour | phone_call)
+	•	Dashboard booking type badges + “View Chat”
+	•	Executive summary stats
+	•	Regression already done; platform stable
+
+Now we want to finish and polish the Faith House experience with two big goals:
+
+	1.	Create a hard-separated DEMO vs LIVE setup for Faith House (no data bleed, no confusion).
+	2.	Build a Treasure Coast AI–branded Faith House demo landing page + visually stunning demo dashboard that looks like a high-budget, professional product.
+
+You must keep architecture intact, follow existing patterns, and not break any existing tenants.
+
+⸻
+
+0. Constraints & Principles
+	•	Do NOT just add a simple “mode flag” to a single tenant.
+	•	DEMO and LIVE must be separate tenants with separate bots, separate data.
+	•	Demo data must be resettable without touching live data.
+	•	Live data must always be real. No fake/demo data may appear in live views.
+	•	Visual style:
+	•	Primary brand: Treasure Coast AI (dark background, neon/glass, blue/teal/purple accents, modern SaaS look).
+	•	Secondary flavor: Faith House content (sober living, calm tone), but not a clone of their website.
+	•	Use existing tech stack and design system (React, current layout components, CSS/Tailwind/shadcn patterns).
+	•	No new large dependencies; stick to what’s already in the repo.
+
+⸻
+
+1. DEMO vs LIVE Tenant & Bot Separation
+
+Create and/or confirm a hard separation between Faith House demo and Faith House live.
+
+1.1 Tenants
+
+In the DB/seed layer, define two distinct tenants:
+	1.	Faith House DEMO tenant
+	•	clientId: faith_house_demo
+	•	slug or URL identifier: faith-house-demo
+	•	isDemo: true
+	•	Description: demo/sandbox tenant for Faith House
+	•	Use existing sober-living configuration as a base.
+	2.	Faith House LIVE tenant
+	•	clientId: faith_house_live
+	•	slug: faith-house-live
+	•	isDemo: false
+	•	Description: real production tenant for the landlord (no seeded data).
+
+Ensure all relevant tables (conversations, sessions, leads, appointments/bookings, analytics, etc.) always store and filter by clientId. This should already exist; just verify and adjust where needed so both tenants are cleanly supported.
+
+1.2 Bots
+
+Define separate bots for each tenant:
+	•	DEMO bot:
+	•	botId: faith_house_demo_main
+	•	clientId: faith_house_demo
+	•	type: sober_living
+	•	Uses the latest sober living system prompt, tuned for:
+	•	Warm, professional tone
+	•	Clear “Book a tour” / “Schedule a phone call” flows
+	•	Collecting name, phone, email, preferred time, notes
+	•	Creating structured bookings with type = 'tour' | 'phone_call'.
+	•	LIVE bot:
+	•	botId: faith_house_live_main
+	•	clientId: faith_house_live
+	•	type: sober_living
+	•	Same logic/system prompt structure, but live data only.
+
+Make sure any place that previously referenced a single faith_house_main bot is updated to correctly handle demo vs live IDs.
+
+⸻
+
+2. Separate Routes / Entry Points (Demo vs Live)
+
+Implement clear, separate entry points so demo and live never get mixed.
+
+2.1 Demo Landing Page (main focus)
+
+Create a new route, e.g.:
+	•	Frontend route: /demo/faith-house
+
+This is a Treasure Coast AI–branded product showcase for Faith House, wired to the DEMO tenant and DEMO bot:
+	•	clientId = faith_house_demo
+	•	botId = faith_house_demo_main
+
+We’ll define the design in Section 3.
+
+2.2 Live Widget / Live Integration
+
+Ensure there is a separate route or config for the live widget, e.g.:
+	•	/widget/faith-house-live (or follow existing widget route patterns)
+
+This must use:
+	•	clientId = faith_house_live
+	•	botId = faith_house_live_main
+
+The live widget is what will eventually be embedded on the real website. It should not show any demo labels or demo data.
+
+2.3 Dashboard Access
+	•	Super-admin:
+	•	Can access both faith_house_demo and faith_house_live tenants.
+	•	UI should show a clear badge/label when viewing demo.
+	•	Landlord (client):
+	•	Live landlord login must map only to faith_house_live.
+	•	They should never see or access the faith_house_demo tenant from their normal login.
+
+⸻
+
+3. Demo Reset Endpoint (Sandbox Only)
+
+Implement a safe demo reset mechanism that affects only the demo tenant.
+
+3.1 Backend endpoint
+
+Create an admin-only endpoint, e.g.:
+	•	POST /api/admin/demo/faith-house/reset
+
+Behavior:
+	•	Hard-check that target client is demo:
+	•	Look up clientId = faith_house_demo.
+	•	Ensure isDemo === true.
+	•	If not demo, abort and log an error; do not reset anything.
+	•	For the demo tenant only, reset or re-seed:
+	•	Conversations / chat sessions
+	•	Leads
+	•	Appointments/bookings
+	•	Relevant analytics/summaries
+
+You can either:
+	•	Delete and re-insert sample rows, or
+	•	Mark as deleted and re-seed, depending on existing patterns.
+
+3.2 Seed “pretty demo” data
+
+After reset, seed a small realistic dataset for faith_house_demo:
+	•	Conversations:
+	•	A few example threads with realistic questions about Faith House, rules, availability, etc.
+	•	Leads:
+	•	3–5 leads with different notes (family member calling, upcoming release from treatment, etc.).
+	•	Bookings:
+	•	A mix of:
+	•	2–3 tour appointments
+	•	2–3 phone_call appointments
+	•	With varying statuses (e.g., new, scheduled, completed).
+	•	Analytics:
+	•	Enough historical data so the executive summary and graphs look alive.
+
+All of this must stay strictly scoped to clientId = faith_house_demo.
+
+3.3 Frontend button
+
+In the super-admin UI (not live landlord UI):
+	•	Add a button for the demo tenant only, such as:
+	•	Label: “Reset Faith House Demo Data”
+	•	Confirm dialog:
+	•	“This will reset conversations, leads, bookings, and analytics for the Faith House DEMO tenant only. Live data is NOT affected. Continue?”
+	•	This button should call the reset endpoint above.
+	•	Do not show this control on the live landlord dashboard.
+
+⸻
+
+4. Treasure Coast AI–Branded Faith House Demo Landing Page
+
+Build /demo/faith-house as a Treasure Coast AI showroom that features Faith House, not a clone of their website.
+
+4.1 Layout & structure
+
+Use a full-page layout with:
+	•	Dark gradient / subtle textured background (TCAI brand).
+	•	Main content centered with a max-width container.
+
+Hero Section (top of page):
+	•	Left column:
+	•	Small label: Treasure Coast AI – Live Demo
+	•	Big headline, e.g.:
+	•	“Faith House Sober Living – Powered by Treasure Coast AI”
+	•	Subheadline:
+	•	1–2 sentences explaining:
+	•	Faith House is a structured men’s sober living home in Port St. Lucie.
+	•	This is a live AI assistant demo that shows how Treasure Coast AI handles inquiries, tours, and calls.
+	•	3–4 bullet value props from the SaaS product perspective, for example:
+	•	“24/7 AI assistant that answers questions about your sober living home”
+	•	“Converts conversations into tour and phone call bookings”
+	•	“Automatically records every booking in the client dashboard”
+	•	“Gives staff a clear, real-time view of leads and follow-ups”
+	•	A small disclaimer line:
+	•	“This page uses a demo environment with simulated data.”
+	•	Right column:
+	•	A large glassmorphism chat assistant card (see 4.2).
+
+Below hero:
+	•	A TCAI-styled feature section, such as:
+	•	3 feature cards:
+	•	“24/7 AI Conversations”
+	•	“Instant Tour & Call Bookings”
+	•	“Live Dashboard & Analytics”
+	•	Each with:
+	•	Icon (chat bubble, calendar, chart, etc.)
+	•	1–2 sentence description.
+	•	A short “Under the Hood” strip explaining:
+	•	Visitor chats with the assistant →
+	•	The assistant collects info →
+	•	A booking is created (tour/phone_call) →
+	•	It appears instantly in the Faith House demo dashboard.
+
+You can adapt layout components already used in other parts of the app (cards, grids, etc.).
+
+4.2 Chat assistant “wow” panel
+
+This is key. The assistant card should look like a premium, big-budget product:
+	•	Use a glass card design:
+	•	Dark, translucent background
+	•	Soft blur
+	•	Subtle border/glow with Treasure Coast AI accent color (blue/teal/purple)
+	•	Rounded corners, generous padding
+	•	Header bar at top of the card:
+	•	Left:
+	•	Avatar:
+	•	A clean, professional avatar icon (e.g., minimal AI logo or house + sparkle).
+	•	Text:
+	•	Title: Faith House Assistant
+	•	Subtitle: Sober Living • Demo
+	•	Right:
+	•	Small “Powered by Treasure Coast AI” text or logo.
+	•	Chat area:
+	•	Use the existing chat widget component but ensure:
+	•	Bot bubbles: subtle gradient or tinted, on-brand colors.
+	•	User bubbles: contrasting but harmonious.
+	•	Good line height, spacing, margins.
+	•	Scrollable area with neat scroll behavior (no ugly default scrollbars if easily styled).
+	•	Connect it to:
+	•	clientId = faith_house_demo
+	•	botId = faith_house_demo_main
+	•	Full functionality:
+	•	Faith House system prompt
+	•	In-chat bookings (tour / phone_call)
+	•	Booking creation in DB for the demo tenant.
+
+This card needs to feel like “big SaaS,” not a plain form.
+
+⸻
+
+5. Demo Client Dashboard – Visual Polish (Treasure Coast AI Theme)
+
+For the Faith House DEMO tenant dashboard (client/staff view):
+	•	Keep the existing structure (overview, conversations, leads, bookings).
+	•	Upgrade the visual polish to match Treasure Coast AI’s dark neon/glass aesthetic.
+
+5.1 Executive Summary section
+
+At the top of the demo dashboard:
+	•	Show 3–4 stat cards (TCAI-style):
+	•	“Conversations (Last 7 Days)”
+	•	“Leads Captured”
+	•	“Tours Booked”
+	•	“Phone Calls Scheduled”
+
+Each card:
+	•	Large number
+	•	Label
+	•	Subtext: “Last 7 days”
+	•	Soft glow/border using TCAI accent colors
+
+Ensure these cards use consistent heights, padding, typographic scale, and spacing.
+
+5.2 Tables & lists (Conversations, Leads, Bookings)
+
+Polish the demo tenant’s tables to look professional:
+	•	Consistent row heights and padding
+	•	Clean header backgrounds for table columns
+	•	Hover states that are subtle but present
+	•	Booking type badges:
+	•	tour → cyan/blue badge with label “Tour”
+	•	phone_call → purple/indigo badge with label “Phone Call”
+	•	Unknown/legacy → gray badge with “Appointment”
+	•	Booking status handling:
+	•	Status dropdown or badges (e.g., new, scheduled, completed) styled consistently.
+	•	“View Chat” actions:
+	•	Use a consistent button or link style with icon + label.
+	•	Place them consistently in the same column for each row.
+
+5.3 Demo-only cues
+
+On the demo tenant dashboard only:
+	•	Add a small badge/label near the top:
+	•	Demo Environment
+	•	Short helper text:
+	•	“This dashboard shows simulated demo data for The Faith House AI assistant.”
+
+Do NOT add this to the live landlord tenant.
+
+⸻
+
+6. Live Tenant – Keep It Clean & Real
+
+For the Faith House LIVE tenant:
+	•	No “Demo” text or labels anywhere.
+	•	No seeded fake entries.
+	•	No demo reset button.
+
+It should look like:
+	•	A professional, clean client dashboard using the same TCAI theme but:
+	•	Only real conversations, leads, bookings from clientId = faith_house_live.
+	•	All demo-only features must respect isDemo === true or clientId === faith_house_demo checks before rendering.
+
+⸻
+
+7. QA: Prove There Is No Bleed Between Demo & Live
+
+Before you’re done, run and document these tests:
+
+7.1 Demo-only reset
+	•	Create a few live conversations/bookings under faith_house_live.
+	•	Call the demo reset endpoint.
+	•	Verify:
+	•	Live conversations and bookings are unchanged.
+	•	Only faith_house_demo data is reset and reseeded.
+
+7.2 Side-by-side behavior
+	•	Open /demo/faith-house (demo landing page) in one tab:
+	•	Interact with the chat, create tour and phone call bookings.
+	•	Confirm:
+	•	New data appears in demo dashboard only.
+	•	Trigger live chat for faith_house_live (via its live widget route) in another tab:
+	•	Interact and create bookings.
+	•	Confirm:
+	•	New data appears only in the live tenant dashboard.
+	•	No demo data is mixed into live, and vice versa.
+
+7.3 Login separation
+	•	Log in as:
+	•	Super-admin:
+	•	Confirm you can see both tenants (demo + live) clearly labeled.
+	•	Live landlord (client staff for faith_house_live):
+	•	Confirm you see only live data and no demo controls.
+
+7.4 UI visual check
+	•	/demo/faith-house:
+	•	Looks like Treasure Coast AI product demo.
+	•	Chat UI looks premium and modern.
+	•	Demo dashboard:
+	•	Executive summary, tables, badges, and actions are visually consistent and clean.
+	•	Live dashboard:
+	•	Same core UI quality, but no demo labels or fake data.
+
+⸻
+
+8. Documentation
+
+Update or create the following docs:
+	1.	docs/faith-house-demo-script.md:
+	•	Add an updated section describing:
+	•	/demo/faith-house usage
+	•	How the assistant, bookings, and dashboard tie together
+	•	That it uses the demo tenant with sample data.
+	2.	docs/faith-house-demo-vs-live.md (NEW, if not present):
+	•	Explain:
+	•	The difference between:
+	•	faith_house_demo vs faith_house_live
+	•	How demo reset works
+	•	Guarantees:
+	•	Demo reset never touches live data
+	•	Live dashboards never show seeded data
+	•	How to access:
+	•	Demo landing page
+	•	Demo dashboard
+	•	Live widget
+	•	Live landlord dashboard
+
+Keep docs short but precise.
+
+⸻
+
+9. Style & Implementation Notes
+	•	Follow existing patterns for:
+	•	Multi-tenant handling
+	•	Drizzle schema and migrations
+	•	React routing/layout components
+	•	Styling (cards, badges, etc.)
+	•	Don’t introduce major new libraries or non-standard patterns.
+	•	Focus on:
+	•	Hard demo/live separation
+	•	Visual polish
+	•	A premium, Treasure Coast AI branded demo experience
+	•	Zero risk of demo data leaking into live
+
+At the end, provide a summary of changes:
+	•	Files modified/created
+	•	Any schema adjustments
+	•	How to:
+	•	Access /demo/faith-house
+	•	Log into demo vs live dashboards
+	•	Run the demo reset safely
+	•	Walk through the full landlord demo (high level)

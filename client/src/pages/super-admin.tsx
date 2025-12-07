@@ -72,7 +72,7 @@ import {
   Shield, FileWarning, CheckCircle2, XCircle, Filter, Calendar, UserPlus,
   MoreVertical, MoreHorizontal, Workflow, Palette, ChevronDown, SendHorizontal, MessageCircle,
   CheckCircle, PauseCircle, LayoutGrid, List, Crown, User, HelpCircle, Flag, Database,
-  Loader2, Pencil, Info
+  Loader2, Pencil, Info, TestTube2
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -698,6 +698,27 @@ export default function SuperAdmin() {
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message || "Failed to delete workspace.", variant: "destructive" });
+    },
+  });
+
+  const resetDemoMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/admin/demo/faith-house/reset");
+      return response.json();
+    },
+    onSuccess: async (data) => {
+      await queryClient.refetchQueries({ queryKey: ["/api/super-admin/workspaces"] });
+      toast({ 
+        title: "Demo Reset Complete", 
+        description: `Faith House demo data has been reset. ${data.stats?.leads || 0} leads, ${data.stats?.appointments || 0} appointments, ${data.stats?.sessions || 0} sessions seeded.`
+      });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Reset Failed", 
+        description: error.message || "Failed to reset demo data.", 
+        variant: "destructive" 
+      });
     },
   });
 
@@ -1976,6 +1997,13 @@ export default function SuperAdmin() {
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2 mb-1">
                                   <GlassCardTitle className="text-sm truncate">{workspace.name}</GlassCardTitle>
+                                  {/* Demo Badge */}
+                                  {workspace.isDemo && (
+                                    <Badge className="text-[10px] px-1.5 bg-amber-500/20 text-amber-400 border-amber-500/30" data-testid={`badge-demo-${workspace.slug}`}>
+                                      <TestTube2 className="h-2.5 w-2.5 mr-1" />
+                                      DEMO
+                                    </Badge>
+                                  )}
                                   {/* Status Badge */}
                                   <Badge className={`text-[10px] px-1.5 ${
                                     workspace.status === 'active' ? "bg-green-500/20 text-green-400 border-green-500/30" :
@@ -2014,6 +2042,30 @@ export default function SuperAdmin() {
                                     <Settings className="h-4 w-4" />
                                     Edit Client
                                   </DropdownMenuItem>
+                                  {/* Demo Reset Option - Only for demo workspaces */}
+                                  {workspace.isDemo && workspace.slug === 'faith_house_demo' && (
+                                    <>
+                                      <DropdownMenuSeparator className="bg-white/10" />
+                                      <DropdownMenuItem 
+                                        className="text-amber-400 hover:bg-amber-500/10 gap-2"
+                                        disabled={resetDemoMutation.isPending}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (confirm("This will reset conversations, leads, bookings, and analytics for the Faith House DEMO tenant only. Live data is NOT affected. Continue?")) {
+                                            resetDemoMutation.mutate();
+                                          }
+                                        }}
+                                        data-testid="button-reset-demo-data"
+                                      >
+                                        {resetDemoMutation.isPending ? (
+                                          <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                          <RefreshCw className="h-4 w-4" />
+                                        )}
+                                        {resetDemoMutation.isPending ? 'Resetting...' : 'Reset Demo Data'}
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
                                   <DropdownMenuSeparator className="bg-white/10" />
                                   {/* Quick Status Changes */}
                                   <DropdownMenuLabel className="text-white/40 text-xs">Change Status</DropdownMenuLabel>
@@ -8619,6 +8671,7 @@ interface Workspace {
   botsCount?: number;
   totalConversations?: number;
   lastActive?: string | null;
+  isDemo?: boolean;
 }
 
 interface PlanDefinition {

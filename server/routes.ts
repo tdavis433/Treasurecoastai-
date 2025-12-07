@@ -7304,6 +7304,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           createdAt: ws.createdAt,
           settings: ws.settings || {},
           adminNotes: ws.adminNotes || '',
+          isDemo: ws.isDemo ?? false,
         };
       }));
       
