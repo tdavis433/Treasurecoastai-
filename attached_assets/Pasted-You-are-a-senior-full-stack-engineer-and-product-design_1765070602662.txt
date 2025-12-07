@@ -1,0 +1,206 @@
+You are a senior full-stack engineer and product designer.
+
+Goal:
+Redesign the existing Treasure Coast AI platform into a **modern neon sci-fi SaaS** with a clear, powerful layout – without breaking any existing backend logic, routes, or database calls.
+
+The codebase already exists. Before touching anything, do this:
+
+1. Scan the entire repo.
+2. Identify:
+   - What framework is used for the frontend (likely Next.js + React + Tailwind or similar).
+   - Where the current Super Admin pages and Client Dashboard pages live.
+   - Where shared layout components live (sidebar, nav bar, layout wrapper).
+3. Summarize to me (in the console) the current structure BEFORE you start changing files.
+
+────────────────────────
+HIGH-LEVEL DESIGN TARGET
+────────────────────────
+
+You are redesigning TWO main experiences:
+
+1. **Super Admin Interface** (multi-tenant control center)
+2. **Client Dashboard** (per-business view, e.g., Faith House, barbers, restaurants)
+
+Both must share the same **neon sci-fi visual system**, but with different content focus.
+
+Theme & Aesthetic (neon sci-fi):
+
+- Dark background, not pure black – rich dark blue/charcoal base.
+- Neon accents: blues, cyans, violets, magentas.
+- Subtle glows around key elements (primary buttons, active cards, important metrics).
+- Soft, rounded corners; smooth shadows; subtle glassy overlays.
+- Clean, modern sans-serif typography; good hierarchy between headings, labels, body text.
+- Plenty of spacing. Nothing cramped. It should feel premium and calm, not chaotic.
+
+Do NOT copy UI code from external sources. Build with the existing stack and your own components.
+
+────────────────────────
+STRUCTURE – SUPER ADMIN
+────────────────────────
+
+Implement a **shared Super Admin layout** something like this:
+
+- **Left Sidebar** (persistent)
+  - Logo + “Treasure Coast AI”
+  - Sections (in this order):
+    - Dashboard
+    - Clients
+    - Assistants
+    - Conversations
+    - Leads & Bookings
+    - Live Activity
+    - Analytics
+    - Automation Tools
+    - Billing & Plans
+    - System Settings
+  - Active item highlighted with neon accent + subtle glow.
+  - Icons for each item using the current icon system (Heroicons or similar).
+
+- **Top Bar**
+  - Left: Page title (e.g., “Dashboard”, “Clients”, etc.)
+  - Center: Client switcher dropdown:
+      - “All Clients” by default
+      - When a client is selected, the dashboard filters to that tenant.
+  - Right:
+      - Global search input (“Search clients, assistants, conversations, leads…”)
+      - Quick actions, e.g.:
+        - “+ New Client”
+        - “+ New Assistant”
+      - Admin avatar + dropdown (Account, Logout).
+
+- **Dashboard (Super Admin) Main Content**
+
+Create a new, composed layout (using existing data where possible):
+
+1. **Top Metrics Row** – 4 cards in a grid:
+   - Active Clients
+   - Active Assistants
+   - Leads (Last 7 Days) + conversion %
+   - Conversations (Today) + avg response time
+
+2. **Middle Row**
+   - Left: “Client Performance Snapshot” – line chart with:
+     - Conversations, Leads, Bookings over time.
+     - Time range toggle (7 / 14 / 30 days).
+   - Right: “Live Activity Feed” – a scrolling list of events:
+     - New lead created (client name, lead name, time).
+     - New booking requested.
+     - Assistant error/warning.
+     - High activity spikes.
+
+3. **Bottom Row – Three Panels**
+   - “Clients Overview” – table:
+     - Client name, industry, active assistants, leads (7d), status (Active / Demo / Paused).
+   - “Assistant Health” – list or grid:
+     - Assistant name, client, status (Active / Paused / Error), today’s conversations.
+   - “Your Daily Ops” – task panel:
+     - e.g. “3 leads require follow-up”, “2 bookings need confirmation”, “1 assistant has errors”.
+     - Each item links to the relevant page.
+
+Keep all data wiring as close as possible to existing APIs or mock data that already exists. If something isn’t implemented yet, create clean placeholder components with example data and mark clearly in comments where real data will plug in.
+
+────────────────────────
+STRUCTURE – CLIENT DASHBOARD
+────────────────────────
+
+Each client (business) should have its own dashboard layout based on the same neon theme but with simpler navigation.
+
+Create a **ClientLayout** used for Faith House and other businesses:
+
+- Left Sidebar:
+  - Dashboard
+  - Conversations
+  - Leads
+  - Bookings
+  - My Assistant
+  - Analytics
+  - Profile & Business Info
+  - Billing
+  - Support
+
+- Top Bar:
+  - Business name (e.g., “Faith House AI”).
+  - Search bar for leads/chats.
+  - Quick buttons:
+    - “+ Add Lead”
+    - “+ Book Appointment / Tour”
+  - Client user avatar.
+
+- Client Dashboard Content:
+
+Top metrics row:
+- Conversations (Today)
+- New Leads (7 days)
+- Bookings / Tours
+- Assistant Performance (accuracy / health)
+
+Middle:
+- Left: Conversation Trends (chart).
+- Right: Recent Conversations (list with tags and quick actions).
+
+Bottom:
+- Leads Overview table (name, intent, status, source).
+- Bookings panel (upcoming tours/appointments with quick Confirm/Cancel).
+- Assistant Health panel:
+  - Accuracy %
+  - Knowledge usage %
+  - “X unclear questions – review?”
+  - Buttons:
+    - Edit Assistant Behavior
+    - Update FAQs
+    - Open Preview Chat
+
+Again, wire into existing data where available; otherwise, use clearly marked placeholder/mock data.
+
+────────────────────────
+RESPONSIVE + COMPONENTIZATION
+────────────────────────
+
+- Make sure the new layouts are fully responsive:
+  - Large desktop, laptop, and tablet views should look great.
+  - On small screens, sidebars can collapse into icons or a top nav.
+- Break UI into reusable components:
+  - `Sidebar`
+  - `TopBar`
+  - `MetricCard`
+  - `ChartCard`
+  - `ActivityFeed`
+  - `ClientTable`
+  - `AssistantHealthPanel`
+  - `TaskPanel`
+  - etc.
+- Put shared components into a sensible `/components` (or similar) structure and import into pages.
+
+────────────────────────
+TECHNICAL REQUIREMENTS
+────────────────────────
+
+1. Do **not** change backend APIs, database schema, or route structure unless absolutely necessary.
+2. If you must rename or move a file, update all imports and links so nothing breaks.
+3. Keep styling consistent:
+   - If Tailwind is used, stick with Tailwind classes and add new utility classes where needed.
+   - If a CSS-in-JS or component library is used, follow its conventions.
+
+4. Add comments where you introduce new patterns or placeholder data so a human developer can easily hook up real data.
+
+────────────────────────
+DELIVERY FLOW
+────────────────────────
+
+Work in clear steps:
+
+1. Inspect and summarize the current layout and file structure.
+2. Create or update the global layout for Super Admin (sidebar + topbar + main grid).
+3. Implement the new Super Admin dashboard content sections.
+4. Implement the ClientLayout and the new client dashboard view for at least one client (e.g., Faith House).
+5. Ensure navigation between pages still works and no existing functionality is broken.
+6. At the end, list:
+   - All files you created.
+   - All files you modified.
+   - Any TODOs for wiring real data to placeholders.
+
+Throughout, prioritize:
+- Clear hierarchy
+- Fast scanning
+- A “wow” factor visually
+- But **zero loss of functionality**.
