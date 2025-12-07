@@ -5168,6 +5168,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         newLeads: leads.filter((l: any) => l.status === 'new').length,
         crisisEvents: analyticsSummary.crisisEvents,
         appointmentRequests: analyticsSummary.appointmentRequests,
+        avgResponseTimeMs: analyticsSummary.avgResponseTimeMs,
       };
       
       // Current period stats using aggregated summaries (not truncated arrays)

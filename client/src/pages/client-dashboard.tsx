@@ -112,6 +112,7 @@ interface ClientStats {
     weeklyConversations: number;
     totalLeads: number;
     newLeads: number;
+    avgResponseTimeMs: number;
   } | null;
   rangeStats: {
     days: number;
@@ -890,25 +891,31 @@ export default function ClientDashboard() {
           </GlassCardContent>
         </GlassCard>
 
-        <GlassCard data-testid="card-stat-activity">
+        <GlassCard data-testid="card-stat-response-time">
           <GlassCardContent className="pt-6">
             <div className="flex items-center justify-between mb-4">
               <div className="h-12 w-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                <Activity className="h-6 w-6 text-blue-400" />
+                <Clock className="h-6 w-6 text-blue-400" />
               </div>
               {stats?.lastActivity && (
                 <span className="text-xs text-white/40">
-                  {format(new Date(stats.lastActivity), "MMM d, h:mm a")}
+                  Last: {format(new Date(stats.lastActivity), "MMM d")}
                 </span>
               )}
             </div>
             {statsFetching ? (
               <div className="h-8 w-16 bg-white/10 rounded animate-pulse mb-1" />
             ) : (
-              <div className="text-3xl font-bold text-white mb-1">{weeklyConversations}</div>
+              <div className="text-3xl font-bold text-white mb-1">
+                {stats?.dbStats?.avgResponseTimeMs 
+                  ? stats.dbStats.avgResponseTimeMs < 1000 
+                    ? `${Math.round(stats.dbStats.avgResponseTimeMs)}ms`
+                    : `${(stats.dbStats.avgResponseTimeMs / 1000).toFixed(1)}s`
+                  : '—'}
+              </div>
             )}
-            <p className="text-sm text-white/60">This Week</p>
-            <p className="text-xs text-blue-400 mt-2">Last activity shown above</p>
+            <p className="text-sm text-white/60">Avg Response Time</p>
+            <p className="text-xs text-blue-400 mt-2">AI assistant speed</p>
           </GlassCardContent>
         </GlassCard>
       </div>
