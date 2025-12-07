@@ -1,0 +1,54 @@
+Thanks for the breakdown — your read is spot on.
+
+To clarify the key point:
+
+I do want AI-driven booking inside the chat that creates internal booking records in our own database, not just redirects to an external link.
+
+Here’s how I want you to treat it:
+	1.	Primary flow (for Faith House demo and future clients):
+	•	The assistant collects booking info inside the chat and:
+	•	Creates a booking/appointment record in our own DB.
+	•	Sets a type field to either:
+	•	'tour' for “Book a tour”
+	•	'phone_call' for “Schedule a phone call”
+	•	This record is then visible in the Faith House client dashboard with:
+	•	Booking type
+	•	Contact info
+	•	Preferred date/time
+	•	Notes
+	•	Link back to the originating conversation (if possible with existing schema).
+	2.	Secondary / fallback flow (optional):
+	•	Keep support for the existing external booking button/link approach (e.g., redirect to Calendly or external scheduler), but:
+	•	Do not rely on this for the Faith House demo.
+	•	The main demo story is: chat → AI books → booking appears in dashboard.
+
+So please proceed assuming:
+	•	The Faith House bot uses an updated, very explicit system prompt for a sober living facility that:
+	•	Answers common questions.
+	•	Gently pushes toward: “Would you like to book a tour or schedule a phone call?”
+	•	Collects: full name, phone, email (optional but preferred), preferred date/time, and notes.
+	•	The orchestrator knows how to turn this into structured booking data with a bookingType field that maps to the DB type column ('tour' | 'phone_call').
+	•	The client dashboard clearly shows:
+	•	Booking Type (Tour / Phone call)
+	•	Contact info
+	•	Preferred date/time
+	•	Notes
+	•	And, if possible, a “View conversation” action that jumps to the original chat.
+
+You already identified the main work:
+	•	Create/update the Faith House bot with the sober living system prompt.
+	•	Add/update the type field for bookings (with 'tour' vs 'phone_call').
+	•	Make sure the client dashboard reflects this clearly.
+	•	Add the Faith House “executive summary” card at the top of the dashboard overview with stats for:
+	•	Conversations
+	•	Leads
+	•	Tours
+	•	Phone calls (over last 7 days).
+
+Please implement these changes now, keeping the architecture as-is and reusing existing patterns for storage, orchestrator logic, and React components.
+
+At the end, summarize:
+	•	Files changed
+	•	Schema updates
+	•	How to run the Faith House landlord demo end-to-end:
+	•	Chat → Book tour / phone call → See it in dashboard.

@@ -6,6 +6,8 @@ import { z } from "zod";
 export const appointments = pgTable("appointments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   clientId: varchar("client_id").notNull(),
+  botId: varchar("bot_id"),
+  sessionId: varchar("session_id"),
   name: text("name").notNull(),
   contact: text("contact").notNull(),
   email: text("email"),
@@ -24,6 +26,7 @@ export const appointments = pgTable("appointments", {
   clientIdIdx: index("appointments_client_id_idx").on(table.clientId),
   statusIdx: index("appointments_status_idx").on(table.status),
   createdAtIdx: index("appointments_created_at_idx").on(table.createdAt),
+  sessionIdIdx: index("appointments_session_id_idx").on(table.sessionId),
 }));
 
 export const insertAppointmentSchema = createInsertSchema(appointments).omit({

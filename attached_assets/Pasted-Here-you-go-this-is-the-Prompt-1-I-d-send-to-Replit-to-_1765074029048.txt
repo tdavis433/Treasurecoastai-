@@ -1,0 +1,336 @@
+Here you go – this is the “Prompt #1” I’d send to Replit to focus it entirely on the Faith House landlord demo, “book a tour / schedule a phone call” flows, and tightening everything around that.
+
+Just copy everything between the lines into Replit Agent:
+
+⸻
+
+🔥 REPLIT AGENT PROMPT – FAITH HOUSE LANDLORD DEMO UPGRADE
+
+You are an expert full-stack SaaS engineer working on an existing production-grade multi-tenant AI chatbot platform called Treasure Coast AI.
+
+The repo you are in already contains:
+	•	A Node/Express + Postgres/Drizzle backend in server/
+	•	A React + TypeScript + Vite frontend in client/
+	•	Multi-tenant structure with:
+	•	Super-admin / agency area
+	•	Client dashboard
+	•	AI bot orchestrator
+	•	Lead capture, bookings, analytics, Stripe billing, etc.
+
+Your task in this session is very focused:
+
+Upgrade and polish the Faith House tenant (sober living demo) so that it is absolutely perfect for a landlord demo, with clear “Book a tour” and “Schedule a phone call” flows wired all the way from chat → database → client dashboard UI.
+
+Do not attempt a full rewrite or huge redesign. Keep the current architecture and patterns. We are doing targeted, high-impact improvements around Faith House and its demo flow.
+
+⸻
+
+0. Understand the current structure
+	1.	Find and briefly map:
+	•	server/app.ts (or main Express entry)
+	•	server/routes.ts (or route registration)
+	•	server/orchestrator.ts (AI chat orchestration)
+	•	server/storage.ts and DB schema (Drizzle models)
+	•	Any Faith House specific config:
+	•	Look for “Faith House”, “sober living”, or demo client seeds in:
+	•	server/seed, server/scripts, server/config, or similar.
+	•	Client app structure:
+	•	client/src/main.tsx (or equivalent)
+	•	client/src/pages or client/src/routes:
+	•	Client dashboard pages: overview, conversations, leads, bookings, settings
+	•	Super-admin pages: clients, bots, templates, analytics, etc.
+	•	Chat widget/demo entry: usually under client/src/components/chat or client/src/widget.
+	2.	Build a mental model (document it in comments or a small docs/faith-house-notes.md file) of:
+	•	How a chat request flows:
+	•	Widget → API → orchestrator → OpenAI → storage (leads/bookings/analytics).
+	•	How leads and appointments/bookings are currently represented in the DB and dashboard.
+	•	Where the bot system prompts / configs are stored (DB vs config files).
+
+Do not change anything yet. Just locate and understand, then proceed.
+
+⸻
+
+1. Clarify the product objective for this task
+
+We are focusing on one tenant: Faith House (sober living demo).
+
+From the product perspective, the Faith House assistant must:
+	1.	Speak and behave like a sober living facility assistant:
+	•	Warm, supportive, but firm and professional.
+	•	Clear about:
+	•	House structure
+	•	Rules
+	•	Expectations
+	•	Types of residents accepted (e.g., sobriety expectations).
+	•	No clinical / medical advice (it can encourage contacting professionals or the facility directly).
+	2.	Have two primary conversion goals:
+	•	Book a tour of the sober living house.
+	•	Schedule a phone call with staff.
+	3.	In chats where a user:
+	•	Asks about availability, pricing, rules, or seems interested:
+	•	The assistant should naturally steer them toward:
+	•	“Would you like to book a tour or schedule a phone call?”
+	•	Then collect:
+	•	Full name
+	•	Phone number
+	•	Email (if appropriate)
+	•	Preference: Tour or Phone call
+	•	Preferred date/time window
+	•	Any key notes (e.g., looking for bed next week, family calling for son, etc.)
+	4.	Every successful “tour” or “phone call” request must:
+	•	Create a proper booking / lead record in the DB.
+	•	Be clearly visible in the Faith House client dashboard with:
+	•	Type: Tour or Phone call
+	•	Contact info
+	•	Requested date/time
+	•	Notes from the conversation
+	•	Link back to the conversation transcript.
+
+The landlord demo flow we want:
+	1.	Open Faith House chat demo.
+	2.	Ask real questions:
+	•	“Do you have any beds open right now?”
+	•	“What are your house rules?”
+	3.	Then say:
+	•	“Can I book a tour?”
+	•	“Can I schedule a phone call?”
+	4.	The bot walks through the booking process, capturing all required info.
+	5.	Switch to the Faith House client dashboard and show:
+	•	New conversation entries.
+	•	New lead / booking entries tagged as Tour or Phone call.
+	6.	Show that tomorrow morning the landlord/staff can log in, see all tour/call requests, and follow up.
+
+Everything you do must serve this flow.
+
+⸻
+
+2. Update / create the Faith House bot configuration & system prompt
+
+2.1. Locate Faith House bot config
+	1.	Find where bots are stored:
+	•	Either in a bots table via Drizzle or a JSON config/seed.
+	•	Identify the record/config for Faith House.
+	•	It might have fields like: clientId, name, industry, systemPrompt, knowledgeBase, etc.
+	2.	Confirm how bot settings are loaded into the orchestrator:
+	•	In server/orchestrator.ts (or equivalent), trace:
+	•	Incoming request (with botId or clientId)
+	•	Bot config fetch
+	•	System prompt assembly
+	•	Any industry / template specific layers.
+
+2.2. Implement a new, explicit Faith House system prompt
+	1.	Create or update the Faith House bot’s system prompt to be explicitly tailored to:
+	•	Sober living facility
+	•	Faith House branding/tone (use neutral placeholder if branding text isn’t in the repo)
+	•	Clear disclaimers: no medical advice
+	•	Strong focus on:
+	•	Answering common questions (rules, rooms, pricing ballpark, visiting hours, etc.)
+	•	Gently steering toward:
+	•	“Book a tour”
+	•	“Schedule a phone call”
+	2.	The system prompt for Faith House should explicitly instruct the model:
+	•	Always be respectful and non-judgmental.
+	•	When users express interest or concern (beds, availability, rules, cost, if they’re a good fit):
+	•	Proactively offer:
+“If you’d like, I can help you book a tour of the house or schedule a phone call with staff. Which would you prefer?”
+	•	When user chooses tour or phone call:
+	•	Collect:
+	•	Full name
+	•	Best phone number
+	•	Email (optional but preferred)
+	•	Preferred dates/times (with time zone assumption)
+	•	Any notes or context
+	•	Confirm and summarize:
+	•	“I’ll pass this to the team as a [Tour/Phone Call] request with your contact information and preferred time.”
+	3.	Save this system prompt in the bot config, not hard-coded inside orchestrator logic:
+	•	The orchestrator may add generic instructions (safety, JSON mode, etc.), but Faith House behavior should live in the Faith House bot record/template.
+	4.	Ensure that whatever prompt format you use is consistent with the existing orchestrator:
+	•	If the orchestrator uses roles like system, assistant, user, build the Faith House system message accordingly.
+	•	Maintain any JSON / tool response protocols if used.
+
+⸻
+
+3. Wire booking intent → DB → dashboard for “Tour” and “Phone Call”
+
+We want the system to reliably distinguish and store two booking types.
+
+3.1. Booking / appointment model update
+	1.	Inspect the current booking/appointment schema in server/storage.ts and DB schema files:
+	•	Look for tables like:
+	•	appointments, bookings, or similar.
+	•	Identify fields:
+	•	id, clientId, botId, customerName, phone, email, time, status, notes, etc.
+	2.	Add a type field to represent tour vs phone call, if it doesn’t already exist:
+	•	Name it something like type or bookingType.
+	•	Use a string type with constrained values in the app layer:
+	•	'tour' | 'phone_call'
+	•	Update:
+	•	Drizzle schema
+	•	Types
+	•	Any relevant TypeScript interfaces.
+	3.	Ensure any code that creates or reads bookings:
+	•	Is updated to know about the type field.
+	•	Defaults sensibly if older bookings exist (e.g., default to 'phone_call' or 'unknown' where type is missing).
+
+3.2. Orchestrator: turning intent into structured booking data
+	1.	In server/orchestrator.ts (or equivalent), identify:
+	•	Where the AI response is parsed for booking/lead intent.
+	•	Where booking creation calls happen (e.g., createAppointment, createLead, etc).
+	2.	Update the logic so that when the AI has guided the user through a tour or phone call flow:
+	•	It can pass structured data including:
+	•	bookingType: 'tour' or 'phone_call'.
+	•	name, phone, email, preferredTime, notes, etc.
+	3.	If the orchestrator uses a JSON tool or special format for structured actions:
+	•	Extend that schema so the assistant can emit something like:
+
+{
+  "action": "create_booking",
+  "bookingType": "tour",
+  "name": "John Doe",
+  "phone": "555-123-4567",
+  "email": "john@example.com",
+  "preferredTime": "2025-12-15T16:00:00-05:00",
+  "notes": "Looking for a bed in January, calling for his brother."
+}
+
+
+	•	Update the parser to extract bookingType and map it to the DB type field.
+
+	4.	Make sure the logic is generic enough that other clients could also use booking types later, but for now the main use case is Faith House.
+
+⸻
+
+4. Client dashboard: make “Tour / Phone Call” crystal clear
+
+We need the landlord / staff to instantly see what each booking is.
+
+4.1. Locate Faith House’s client dashboard views
+	1.	Find the React pages for client dashboard:
+	•	Likely under client/src/pages/client or similar.
+	•	Identify:
+	•	Overview page
+	•	Conversations page
+	•	Leads page
+	•	Appointments / Bookings page
+	•	Settings page.
+	2.	Confirm how bookings/appointments are fetched:
+	•	Via a hook or React Query (TanStack Query) calling an API route like /api/client/appointments or /api/client/bookings.
+
+4.2. Update the bookings table
+	1.	On the bookings/appointments page:
+	•	Add a “Type” column that shows:
+	•	“Tour” if type === 'tour'
+	•	“Phone call” if type === 'phone_call'
+	•	Possibly a fallback like “Other” for legacy data.
+	2.	Ensure the row details or expanded view also show:
+	•	Type
+	•	Contact info (name, phone, email)
+	•	Requested date/time
+	•	Notes.
+	3.	Make sure the copy in the UI matches the Faith House context:
+	•	Headings and labels can stay generic (“Bookings” or “Appointments”), but type should be explicit:
+	•	“Booking Type: Tour”
+	•	“Booking Type: Phone call”.
+
+4.3. Link back to conversation
+	1.	If not already present, add a way to jump from a booking/lead to its conversation:
+	•	E.g., a “View conversation” button that opens the relevant chat thread in the Conversations page.
+	•	Use whatever existing message/session IDs you have in the DB.
+	2.	This is important for demo:
+	•	You can show: “Here’s the booking, and here’s the exact conversation that created it.”
+
+⸻
+
+5. Faith House “Executive Summary” on the dashboard
+
+Implement a small summary section for Faith House that clearly communicates value.
+
+5.1. Backend stats endpoint (if not already present)
+	1.	Check if there’s already an endpoint returning summary stats for clients:
+	•	Something like /api/client/overview or /api/client/stats.
+	2.	If needed, add or extend an endpoint to return, at least for the last 7 days:
+	•	totalConversations
+	•	totalLeads
+	•	totalBookings
+	•	totalTours
+	•	totalPhoneCalls
+	3.	Use existing analytics tables where possible (e.g., conversationAnalytics, leads, appointments).
+
+5.2. Frontend summary card
+	1.	On the Faith House client dashboard overview page, add a top section showing something like:
+	•	“In the last 7 days your assistant:”
+	•	Talked to X people
+	•	Captured Y leads
+	•	Booked A tours and B phone calls
+	2.	Use existing styling systems (cards, glass panels, etc.) to keep consistent UI.
+	3.	Make sure this is visible above the fold so it hits immediately during the landlord demo.
+
+⸻
+
+6. Demo scripts & documentation
+
+Create a small doc file to lock in the demo flow.
+	1.	Add docs/faith-house-demo-script.md (or update an existing doc) with:
+	•	Step-by-step landlord demo script:
+	•	Open Faith House widget.
+	•	Example questions to ask.
+	•	Example tour + phone call flow.
+	•	How to switch into dashboard and show new bookings/leads.
+	•	Key phrases that show off:
+	•	24/7 answering
+	•	Lead capture
+	•	Clear overview on dashboard.
+	2.	Make sure the code and UX changes you make actually support this script without hacks or manual DB edits.
+
+⸻
+
+7. Quality checks before you finish
+
+Before you consider this task done, run through these checks:
+	1.	End-to-end manual test for Faith House:
+	•	Start a chat in the Faith House demo.
+	•	Ask a few questions.
+	•	Say: “I’d like to book a tour” → go through full flow.
+	•	Say: “I’d like to schedule a phone call” in another chat → go through full flow.
+	•	Verify:
+	•	Both bookings are stored in DB with proper type values.
+	•	Both appear in the Faith House client dashboard with clear type labels.
+	•	Contact info and notes are correct.
+	•	Stats/summary reflect the new data.
+	2.	Regression check for other tenants:
+	•	Confirm other clients that previously used appointments/bookings still work.
+	•	If they don’t use type yet, they should continue functioning with a sensible default.
+	3.	Code sanity:
+	•	No TypeScript errors.
+	•	No runtime crashes on relevant pages.
+	•	Existing tests pass; add or update tests for the new type and booking behavior if the test suite exists.
+
+⸻
+
+8. Style & constraints
+	•	Do not introduce big dependencies or rewrite architecture.
+	•	Follow the existing patterns for:
+	•	Drizzle schema
+	•	React components
+	•	API routing
+	•	Orchestrator design.
+	•	Keep your changes focused on:
+	•	Faith House system prompt / bot config
+	•	Booking type field
+	•	Orchestrator → DB mapping
+	•	Client dashboard UI for bookings
+	•	Simple stats summary.
+
+At the end, summarize in a short markdown note:
+	•	Files touched
+	•	Schema changes
+	•	New fields and allowed values
+	•	How to run the landlord demo step-by-step.
+
+⸻
+
+END OF PROMPT
+
+⸻
+
+If you want, next we can do Prompt #2 focused only on: “rewrite the Faith House system prompt exactly, word-for-word” or a separate one for “client dashboard UX polish”, but this one will get Replit moving in the right direction around the landlord demo and the tour/phone call flows.
