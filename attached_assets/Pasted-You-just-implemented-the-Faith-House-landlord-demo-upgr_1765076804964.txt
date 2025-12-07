@@ -1,0 +1,84 @@
+You just implemented the Faith House landlord demo upgrades:
+	•	AI-driven in-chat booking collection
+	•	Appointment type field (tour | phone_call)
+	•	Orchestrator booking creation using sessionId/botId
+	•	Client dashboard booking type badges + “View Chat”
+	•	Executive summary enhancements
+	•	Faith House demo documentation
+
+Now I want a focused QA + regression + polish pass on the entire platform to make sure nothing else broke and everything is consistent.
+
+1. Regression tests across tenants
+	1.	Identify all tenants/clients in the database or seed data other than Faith House.
+	2.	For each tenant:
+	•	Confirm:
+	•	Chat widget still works
+	•	Leads are still created correctly
+	•	Any existing appointment/booking features still work
+	•	Make sure:
+	•	They do NOT crash if type is null or missing (for legacy data).
+	•	The UI shows something reasonable for bookings without a type (e.g. “Appointment” or “Other”) instead of blowing up.
+
+Add small, defensive code where needed so that older or non-Faith-House tenants keep working 100% even if they don’t use tour/phone_call types.
+
+2. Booking model + type safety
+	1.	Double-check the booking/appointment model and TypeScript types:
+	•	Ensure type is well-typed as 'tour' | 'phone_call' | null (or similar) where necessary.
+	•	Any generic booking logic that doesn’t care about type should tolerate missing type without errors.
+	2.	Confirm that:
+	•	Database migrations / schema changes are consistent.
+	•	No part of the app assumes type is always non-null unless it’s explicitly scoped to Faith House.
+
+3. Executive summary card consistency
+	1.	Verify the new executive summary card:
+	•	Confirm it appears correctly on:
+	•	Faith House dashboard
+	•	Other tenants’ dashboards (or is hidden gracefully if data isn’t available).
+	2.	Make sure the summary:
+	•	Does not crash on tenants with no data.
+	•	Shows sane zeros / friendly empty states (“No conversations yet”, etc.).
+	3.	If necessary, create a small helper that safely aggregates:
+	•	totalConversations
+	•	totalLeads
+	•	totalBookings
+	•	totalTours
+	•	totalPhoneCalls
+over a default period (e.g., last 7 days) without throwing errors.
+
+4. Error handling + logs
+	1.	Scan the orchestrator and booking creation logic for:
+	•	Places that can fail silently.
+	•	Places that could throw uncaught exceptions.
+	2.	Add:
+	•	Clear error logs with context:
+	•	clientId, botId, sessionId, bookingType, errorCode.
+	•	Safe fallback responses for the user:
+	•	If booking creation fails, the assistant should say something like:
+“I’m having trouble saving your booking right now. The team can still follow up if you leave your name and number, but you may want to call the office directly as well.”
+	3.	If not already present, add a super-admin endpoint + minimal page for recent error logs so I can quickly see if booking creation is failing in production.
+
+5. Empty states and UX polish
+
+Do a quick UI pass for the following:
+	•	Conversations page with no conversations.
+	•	Leads page with no leads.
+	•	Bookings/appointments page with no bookings.
+	•	Executive summary when there’s no data.
+
+For each, ensure:
+	•	No blank tables with weird borders.
+	•	Friendly empty state text, e.g.:
+	•	“No bookings yet. Once your assistant starts capturing tours and phone calls, they’ll appear here.”
+
+Reuse existing design patterns (cards, icons, text) instead of inventing a new style.
+
+6. Short QA report
+
+At the end, produce a short but concrete QA report that tells me:
+	•	Which tenants you tested.
+	•	What you tested on each (chat, leads, bookings, dashboard).
+	•	Any bugs you found and fixed.
+	•	Any known limitations that still exist but are safe to ship with (and should go into docs).
+
+Do not refactor the architecture or add large new features in this pass.
+This task is about stability, safety, and polish after the Faith House upgrade.

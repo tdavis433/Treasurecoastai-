@@ -787,7 +787,15 @@ class ConversationOrchestrator {
         );
         
         if (!existingAppointment) {
-          console.log(`[Orchestrator] Creating AI-driven booking for session ${sessionData.sessionId}`);
+          console.log(`[Orchestrator] Creating AI-driven booking for session ${sessionData.sessionId}`, {
+            clientId,
+            botId,
+            sessionId: sessionData.sessionId,
+            bookingType: bookingInfo.bookingType,
+            name: bookingInfo.name,
+            hasPhone: !!bookingInfo.phone,
+            hasEmail: !!bookingInfo.email,
+          });
           
           await storage.createAppointment(clientId, {
             name: bookingInfo.name!,
@@ -801,10 +809,34 @@ class ConversationOrchestrator {
             sessionId: sessionData.sessionId,
           });
           
-          console.log(`[Orchestrator] Booking created: ${bookingInfo.bookingType} for ${bookingInfo.name}`);
+          console.log(`[Orchestrator] Booking created successfully: ${bookingInfo.bookingType} for ${bookingInfo.name}`, {
+            clientId,
+            botId,
+            sessionId: sessionData.sessionId,
+          });
+        } else {
+          console.log(`[Orchestrator] Skipping duplicate booking for session ${sessionData.sessionId}`, {
+            existingAppointmentId: existingAppointment.id,
+          });
         }
-      } catch (error) {
-        console.error('[Orchestrator] Error creating AI-driven booking:', error);
+      } catch (error: any) {
+        // Log detailed error with context for debugging
+        console.error('[Orchestrator] Error creating AI-driven booking:', {
+          error: error?.message || error,
+          stack: error?.stack,
+          context: {
+            clientId,
+            botId,
+            sessionId: sessionData.sessionId,
+            bookingType: bookingInfo.bookingType,
+            name: bookingInfo.name,
+            hasPhone: !!bookingInfo.phone,
+            hasEmail: !!bookingInfo.email,
+          }
+        });
+        // Note: The AI has already acknowledged the booking in its response.
+        // We don't modify the response here - the team can still follow up manually
+        // using the contact info from the conversation logs.
       }
     }
 

@@ -631,19 +631,45 @@ export default function ClientDashboard() {
     window.location.href = `tel:${phone}`;
   };
 
+  // Helper to normalize appointment types for consistent display and counting
+  // Handles legacy data, NULL values, and various spellings
+  const normalizeAppointmentType = (type: string | null | undefined): 'tour' | 'phone_call' | 'other' => {
+    if (!type) return 'other';
+    const lower = type.toLowerCase().trim();
+    if (lower === 'tour') return 'tour';
+    if (lower === 'phone_call' || lower === 'phone call' || lower === 'call' || lower === 'phone') return 'phone_call';
+    return 'other';
+  };
+
+  // Get display label for appointment type
+  const getAppointmentTypeLabel = (type: string | null | undefined): string => {
+    const normalized = normalizeAppointmentType(type);
+    if (normalized === 'tour') return 'Tour';
+    if (normalized === 'phone_call') return 'Phone Call';
+    return 'Appointment';
+  };
+
+  // Get badge styling for appointment type
+  const getAppointmentTypeBadgeClass = (type: string | null | undefined): string => {
+    const normalized = normalizeAppointmentType(type);
+    if (normalized === 'tour') return 'bg-cyan-500/20 text-cyan-400 border-cyan-400/40';
+    if (normalized === 'phone_call') return 'bg-purple-500/20 text-purple-400 border-purple-400/40';
+    return 'bg-white/10 text-white/70 border-white/20';
+  };
+
   // Booking type breakdown (tours vs phone calls) from appointments
   // These useMemo hooks must be called before any early returns to satisfy React's rules of hooks
   const tourBookings = useMemo(() => {
     if (!appointmentsData?.appointments) return 0;
     return appointmentsData.appointments.filter((apt: Appointment) => 
-      apt.appointmentType === 'tour' || apt.appointmentType === 'Tour'
+      normalizeAppointmentType(apt.appointmentType) === 'tour'
     ).length;
   }, [appointmentsData]);
   
   const phoneCallBookings = useMemo(() => {
     if (!appointmentsData?.appointments) return 0;
     return appointmentsData.appointments.filter((apt: Appointment) => 
-      apt.appointmentType === 'phone_call' || apt.appointmentType === 'Phone Call'
+      normalizeAppointmentType(apt.appointmentType) === 'phone_call'
     ).length;
   }, [appointmentsData]);
 
@@ -2135,17 +2161,10 @@ export default function ClientDashboard() {
                           </div>
                           <div className="flex items-center gap-2 mt-2">
                             <Badge 
-                              className={`text-xs ${
-                                apt.appointmentType === 'tour' || apt.appointmentType === 'Tour' 
-                                  ? 'bg-cyan-500/20 text-cyan-400 border-cyan-400/40' 
-                                  : apt.appointmentType === 'phone_call' || apt.appointmentType === 'Phone Call'
-                                    ? 'bg-purple-500/20 text-purple-400 border-purple-400/40'
-                                    : 'bg-white/10 text-white/70 border-white/20'
-                              }`}
+                              className={`text-xs ${getAppointmentTypeBadgeClass(apt.appointmentType)}`}
                               data-testid={`badge-type-${apt.id}`}
                             >
-                              {apt.appointmentType === 'phone_call' ? 'Phone Call' : 
-                               apt.appointmentType === 'tour' ? 'Tour' : apt.appointmentType}
+                              {getAppointmentTypeLabel(apt.appointmentType)}
                             </Badge>
                             <span className="text-xs text-white/50">
                               Preferred: {apt.preferredTime}
@@ -2219,10 +2238,12 @@ export default function ClientDashboard() {
             <div className="text-center py-12 text-white/40">
               <Calendar className="h-16 w-16 mx-auto mb-4 opacity-50" />
               <p className="text-lg font-medium">
-                {bookingsSearch || bookingsDateRange !== 'all' ? 'No matching bookings' : 'No booking requests yet'}
+                {bookingsSearch || bookingsDateRange !== 'all' ? 'No matching bookings' : 'No bookings yet'}
               </p>
-              <p className="text-sm mt-2">
-                {bookingsSearch || bookingsDateRange !== 'all' ? 'Try adjusting your filters' : 'When visitors request appointments, they will appear here'}
+              <p className="text-sm mt-2 max-w-md mx-auto">
+                {bookingsSearch || bookingsDateRange !== 'all' 
+                  ? 'Try adjusting your filters' 
+                  : 'Once your assistant starts capturing tours and phone calls, they will appear here'}
               </p>
             </div>
           )}
