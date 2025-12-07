@@ -2369,11 +2369,12 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Get specific bot config for demo UI
-  app.get("/api/demo/:botId", (req, res) => {
+  app.get("/api/demo/:botId", async (req, res) => {
     try {
       const { botId } = req.params;
       
-      const botConfig = getBotConfigByBotId(botId);
+      // Use async version to check database for bots created dynamically
+      const botConfig = await getBotConfigByBotIdAsync(botId);
       
       if (!botConfig) {
         return res.status(404).json({ error: `Bot not found: ${botId}` });
@@ -8373,9 +8374,9 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       // Create sample appointments
       const sampleAppointments = [
-        { name: "Michael Thompson", phone: "(555) 123-4567", email: "michael.t@email.com", appointmentType: "tour", preferredTime: "Tomorrow at 2pm", notes: "Coming with family" },
-        { name: "Robert Johnson", phone: "(555) 456-7890", email: "robert.j@email.com", appointmentType: "phone_call", preferredTime: "Monday morning", notes: "Wants to discuss payment options" },
-        { name: "William Davis", phone: "(555) 567-8901", email: null, appointmentType: "tour", preferredTime: "This Saturday", notes: "Referred by AA sponsor" },
+        { name: "Michael Thompson", contact: "(555) 123-4567", email: "michael.t@email.com", appointmentType: "tour", preferredTime: "Tomorrow at 2pm", notes: "Coming with family", contactPreference: "phone" },
+        { name: "Robert Johnson", contact: "(555) 456-7890", email: "robert.j@email.com", appointmentType: "phone_call", preferredTime: "Monday morning", notes: "Wants to discuss payment options", contactPreference: "phone" },
+        { name: "William Davis", contact: "(555) 567-8901", email: null, appointmentType: "tour", preferredTime: "This Saturday", notes: "Referred by AA sponsor", contactPreference: "phone" },
       ];
       
       for (const apt of sampleAppointments) {
@@ -8383,7 +8384,8 @@ These suggestions should be relevant to what was just discussed and help guide t
           clientId: DEMO_CLIENT_ID,
           botId: DEMO_BOT_ID,
           name: apt.name,
-          phone: apt.phone,
+          contact: apt.contact,
+          contactPreference: apt.contactPreference,
           email: apt.email,
           appointmentType: apt.appointmentType as 'tour' | 'phone_call',
           preferredTime: apt.preferredTime,
@@ -8396,9 +8398,9 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       // Create sample chat sessions
       const sampleSessions = [
-        { visitorName: "Michael T.", messageCount: 8, leadCaptured: true, appointmentRequested: true },
-        { visitorName: "Anonymous Visitor", messageCount: 4, leadCaptured: false, appointmentRequested: false },
-        { visitorName: "David R.", messageCount: 12, leadCaptured: true, appointmentRequested: false },
+        { userMessages: 4, botMessages: 4, appointmentRequested: true, topics: ["tour scheduling", "program details"] },
+        { userMessages: 2, botMessages: 2, appointmentRequested: false, topics: ["general inquiry"] },
+        { userMessages: 6, botMessages: 6, appointmentRequested: false, topics: ["pricing", "insurance"] },
       ];
       
       for (const session of sampleSessions) {
@@ -8407,10 +8409,13 @@ These suggestions should be relevant to what was just discussed and help guide t
           sessionId,
           clientId: DEMO_CLIENT_ID,
           botId: DEMO_BOT_ID,
-          visitorName: session.visitorName,
-          messageCount: session.messageCount,
-          leadCaptured: session.leadCaptured,
+          userMessageCount: session.userMessages,
+          botMessageCount: session.botMessages,
+          totalResponseTimeMs: Math.floor(Math.random() * 2000) + 500,
+          crisisDetected: false,
           appointmentRequested: session.appointmentRequested,
+          needsReview: false,
+          topics: session.topics,
           startedAt: new Date(now.getTime() - Math.random() * 3 * 24 * 60 * 60 * 1000),
           endedAt: null,
         });
