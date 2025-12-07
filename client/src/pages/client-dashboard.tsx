@@ -292,6 +292,7 @@ export default function ClientDashboard() {
   const [updatingLeadId, setUpdatingLeadId] = useState<string | null>(null);
   const [updatingBookingId, setUpdatingBookingId] = useState<string | null>(null);
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
   const { data: currentUser, isLoading: authLoading } = useQuery<AuthUser>({
     queryKey: ["/api/auth/me"],
@@ -2154,7 +2155,8 @@ export default function ClientDashboard() {
                 {filteredBookings.map((apt) => (
                   <div
                     key={apt.id}
-                    className="p-4 rounded-lg bg-white/5 border border-white/10"
+                    className="p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-purple-500/30 transition-colors cursor-pointer"
+                    onClick={() => setSelectedAppointment(apt)}
                     data-testid={`booking-${apt.id}`}
                   >
                     <div className="flex items-start justify-between gap-4">
@@ -2191,7 +2193,8 @@ export default function ClientDashboard() {
                                 size="sm"
                                 variant="ghost"
                                 className="h-6 px-2 text-xs text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   setActiveSection('conversations');
                                   setTimeout(() => setExpandedSession(apt.sessionId!), 100);
                                 }}
@@ -2204,7 +2207,7 @@ export default function ClientDashboard() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-2">
+                      <div className="flex flex-col items-end gap-2" onClick={(e) => e.stopPropagation()}>
                         {(() => {
                           const statusOption = BOOKING_STATUS_OPTIONS.find(s => s.value === (apt.status || 'new'));
                           const isUpdating = updatingBookingId === apt.id;
@@ -2701,13 +2704,6 @@ export default function ClientDashboard() {
               </div>
               <div>
                 <span>{selectedLead?.name || 'Anonymous Visitor'}</span>
-                <div className="flex items-center gap-2 mt-1">
-                  {selectedLead && (
-                    <Badge className={LEAD_STATUS_OPTIONS.find(s => s.value === (selectedLead.status || 'new'))?.color || 'bg-white/10 text-white/60 border-white/20'}>
-                      {LEAD_STATUS_OPTIONS.find(s => s.value === (selectedLead.status || 'new'))?.label || 'New'}
-                    </Badge>
-                  )}
-                </div>
               </div>
             </DialogTitle>
             <DialogDescription className="text-white/50">
@@ -2716,6 +2712,44 @@ export default function ClientDashboard() {
           </DialogHeader>
           
           <div className="space-y-4 mt-4">
+            {/* Status Section */}
+            <div className="bg-white/5 rounded-lg p-4 space-y-3">
+              <h4 className="text-sm font-medium text-white/70 uppercase tracking-wide">Status</h4>
+              <Select
+                value={selectedLead?.status || 'new'}
+                onValueChange={(value) => {
+                  if (selectedLead?.id) {
+                    handleUpdateLeadStatus(selectedLead.id, value);
+                    setSelectedLead((prev: any) => prev ? { ...prev, status: value } : null);
+                  }
+                }}
+                disabled={updatingLeadId === selectedLead?.id}
+              >
+                <SelectTrigger 
+                  className={`w-full h-10 ${LEAD_STATUS_OPTIONS.find(s => s.value === (selectedLead?.status || 'new'))?.color || 'bg-amber-500/20 text-amber-400 border-amber-400/40'}`}
+                  data-testid="select-lead-status-popup"
+                >
+                  {updatingLeadId === selectedLead?.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <SelectValue />
+                  )}
+                </SelectTrigger>
+                <SelectContent className="bg-[#1a1d23] border-white/20 z-[60]">
+                  {LEAD_STATUS_OPTIONS.map((option) => (
+                    <SelectItem 
+                      key={option.value} 
+                      value={option.value}
+                      className="text-white hover:bg-white/10"
+                      data-testid={`option-lead-status-${option.value}`}
+                    >
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Contact Information */}
             <div className="bg-white/5 rounded-lg p-4 space-y-3">
               <h4 className="text-sm font-medium text-white/70 uppercase tracking-wide">Contact Information</h4>
@@ -2784,6 +2818,159 @@ export default function ClientDashboard() {
                 >
                   <PhoneCall className="h-4 w-4 mr-2" />
                   Call Now
+                </Button>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Appointment Details Dialog */}
+      <Dialog open={!!selectedAppointment} onOpenChange={(open) => !open && setSelectedAppointment(null)}>
+        <DialogContent className="bg-[#1a1f2e] border-white/10 text-white max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3 text-white">
+              <div className="h-12 w-12 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/30 flex items-center justify-center">
+                <Calendar className="h-5 w-5 text-purple-400" />
+              </div>
+              <div>
+                <span>{selectedAppointment?.name || 'Appointment'}</span>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge className={getAppointmentTypeBadgeClass(selectedAppointment?.appointmentType)}>
+                    {getAppointmentTypeLabel(selectedAppointment?.appointmentType)}
+                  </Badge>
+                </div>
+              </div>
+            </DialogTitle>
+            <DialogDescription className="text-white/50">
+              Requested on {selectedAppointment?.createdAt ? format(new Date(selectedAppointment.createdAt), "MMMM d, yyyy 'at' h:mm a") : 'Unknown date'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 mt-4">
+            {/* Status Section */}
+            <div className="bg-white/5 rounded-lg p-4 space-y-3">
+              <h4 className="text-sm font-medium text-white/70 uppercase tracking-wide">Status</h4>
+              <Select
+                value={selectedAppointment?.status || 'new'}
+                onValueChange={(value) => {
+                  if (selectedAppointment?.id) {
+                    handleUpdateBookingStatus(selectedAppointment.id, value);
+                    setSelectedAppointment((prev) => prev ? { ...prev, status: value } : null);
+                  }
+                }}
+                disabled={updatingBookingId === selectedAppointment?.id}
+              >
+                <SelectTrigger 
+                  className={`w-full h-10 ${BOOKING_STATUS_OPTIONS.find(s => s.value === (selectedAppointment?.status || 'new'))?.color || 'bg-amber-500/20 text-amber-400 border-amber-400/40'}`}
+                  data-testid="select-booking-status-popup"
+                >
+                  {updatingBookingId === selectedAppointment?.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <SelectValue />
+                  )}
+                </SelectTrigger>
+                <SelectContent className="bg-[#1a1d23] border-white/20 z-[60]">
+                  {BOOKING_STATUS_OPTIONS.map((option) => (
+                    <SelectItem 
+                      key={option.value} 
+                      value={option.value}
+                      className="text-white hover:bg-white/10"
+                      data-testid={`option-booking-status-${option.value}`}
+                    >
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Contact Information */}
+            <div className="bg-white/5 rounded-lg p-4 space-y-3">
+              <h4 className="text-sm font-medium text-white/70 uppercase tracking-wide">Contact Information</h4>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <User className="h-4 w-4 text-white/60" />
+                  <span className="text-white">{selectedAppointment?.name || 'Unknown'}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <PhoneCall className="h-4 w-4 text-green-400" />
+                  {selectedAppointment?.contact ? (
+                    <a href={`tel:${selectedAppointment.contact}`} className="text-green-400 hover:underline">
+                      {selectedAppointment.contact}
+                    </a>
+                  ) : (
+                    <span className="text-white/40 italic">No phone provided</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <Mail className="h-4 w-4 text-cyan-400" />
+                  {selectedAppointment?.email ? (
+                    <a href={`mailto:${selectedAppointment.email}`} className="text-cyan-400 hover:underline">
+                      {selectedAppointment.email}
+                    </a>
+                  ) : (
+                    <span className="text-white/40 italic">No email provided</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Preferred Time */}
+            <div className="bg-white/5 rounded-lg p-4 space-y-2">
+              <h4 className="text-sm font-medium text-white/70 uppercase tracking-wide flex items-center gap-2">
+                <Clock className="h-4 w-4 text-purple-400" />
+                Preferred Time
+              </h4>
+              <p className="text-white/80">{selectedAppointment?.preferredTime || 'Not specified'}</p>
+            </div>
+
+            {/* Notes */}
+            {selectedAppointment?.notes && (
+              <div className="bg-white/5 rounded-lg p-4 space-y-2">
+                <h4 className="text-sm font-medium text-white/70 uppercase tracking-wide">Notes</h4>
+                <p className="text-white/70">{selectedAppointment.notes}</p>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-2">
+              {selectedAppointment?.contact && (
+                <Button
+                  variant="outline"
+                  className="flex-1 border-green-500/30 text-green-400 hover:bg-green-500/10"
+                  onClick={() => window.location.href = `tel:${selectedAppointment.contact}`}
+                  data-testid="button-call-appointment"
+                >
+                  <PhoneCall className="h-4 w-4 mr-2" />
+                  Call Now
+                </Button>
+              )}
+              {selectedAppointment?.email && (
+                <Button
+                  variant="outline"
+                  className="flex-1 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
+                  onClick={() => window.location.href = `mailto:${selectedAppointment.email}`}
+                  data-testid="button-email-appointment"
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  Send Email
+                </Button>
+              )}
+              {selectedAppointment?.sessionId && (
+                <Button
+                  variant="outline"
+                  className="flex-1 border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+                  onClick={() => {
+                    setSelectedAppointment(null);
+                    setActiveSection('conversations');
+                    setTimeout(() => setExpandedSession(selectedAppointment.sessionId!), 100);
+                  }}
+                  data-testid="button-view-chat-appointment"
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  View Chat
                 </Button>
               )}
             </div>
