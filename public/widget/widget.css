@@ -110,6 +110,32 @@ body {
   50% { opacity: 1; }
 }
 
+.tcai-container.message-sent {
+  animation: tcai-borderRipple 0.6s ease-out;
+}
+
+@keyframes tcai-borderRipple {
+  0% {
+    box-shadow: 
+      0 0 80px rgba(0, 229, 204, 0.12),
+      0 25px 60px -12px rgba(0, 0, 0, 0.7),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+  30% {
+    box-shadow: 
+      0 0 100px rgba(0, 229, 204, 0.25),
+      0 0 50px rgba(0, 229, 204, 0.15),
+      0 25px 60px -12px rgba(0, 0, 0, 0.7),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+  100% {
+    box-shadow: 
+      0 0 80px rgba(0, 229, 204, 0.12),
+      0 25px 60px -12px rgba(0, 0, 0, 0.7),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+}
+
 .tcai-header {
   display: flex;
   align-items: center;
@@ -303,6 +329,45 @@ body {
   50% { opacity: 1; }
 }
 
+.tcai-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  opacity: 0;
+  animation: tcai-status-appear 0.5s ease-out 1.6s forwards;
+}
+
+@keyframes tcai-status-appear {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.tcai-status-bar-text {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.35);
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tcai-status-bar-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #22C55E;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+}
+
+.tcai-status-bar-divider {
+  color: rgba(255, 255, 255, 0.2);
+}
+
 .tcai-messages {
   flex: 1;
   overflow-y: auto;
@@ -331,17 +396,21 @@ body {
   border-radius: 16px;
   font-size: 14px;
   word-wrap: break-word;
-  animation: tcai-fadeIn 0.3s ease;
+  animation: tcai-messageIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-@keyframes tcai-fadeIn {
-  from {
+@keyframes tcai-messageIn {
+  0% {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(12px) scale(0.92);
   }
-  to {
+  60% {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(-2px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -352,6 +421,25 @@ body {
   font-weight: 500;
   border-bottom-right-radius: 6px;
   box-shadow: 0 4px 20px rgba(0, 229, 204, 0.25);
+  animation: tcai-userMessageIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes tcai-userMessageIn {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.92);
+    box-shadow: 0 4px 20px rgba(0, 229, 204, 0.25);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-3px) scale(1.03);
+    box-shadow: 0 6px 30px rgba(0, 229, 204, 0.4);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    box-shadow: 0 4px 20px rgba(0, 229, 204, 0.25);
+  }
 }
 
 .tcai-message.bot {
@@ -680,12 +768,22 @@ body.theme-light .tcai-error {
   .tcai-input-wrapper,
   .tcai-container,
   .tcai-status-dot,
-  .tcai-ai-sync {
+  .tcai-ai-sync,
+  .tcai-status-bar {
     animation: none;
     transition: none;
   }
   
-  @keyframes tcai-fadeIn {
+  .tcai-status-bar {
+    opacity: 1;
+  }
+  
+  @keyframes tcai-messageIn {
+    from { opacity: 1; transform: none; }
+    to { opacity: 1; transform: none; }
+  }
+  
+  @keyframes tcai-userMessageIn {
     from { opacity: 1; transform: none; }
     to { opacity: 1; transform: none; }
   }
@@ -697,5 +795,10 @@ body.theme-light .tcai-error {
   @keyframes tcai-calibration {
     from { opacity: 1; transform: none; }
     to { opacity: 1; transform: none; }
+  }
+  
+  @keyframes tcai-borderRipple {
+    from { box-shadow: 0 0 80px rgba(0, 229, 204, 0.12), 0 25px 60px -12px rgba(0, 0, 0, 0.7); }
+    to { box-shadow: 0 0 80px rgba(0, 229, 204, 0.12), 0 25px 60px -12px rgba(0, 0, 0, 0.7); }
   }
 }

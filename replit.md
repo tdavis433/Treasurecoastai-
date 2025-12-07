@@ -101,13 +101,24 @@ The platform features a "Dark Luxury SaaS with Neon-Glass Accents" aesthetic, in
     *   Enhanced gradient backgrounds for bot/user messages
     *   Neon bar typing indicator (vertical bars with shimmer)
     *   Glow effects on message bubbles
+    *   Bounce/scale-in animation on new messages (cubic-bezier spring effect)
+    *   Border ripple glow effect when sending messages
+*   **Status Indicators:**
+    *   AI Sync indicator: "AI Sync: Updating knowledge base..." (1.5s fade)
+    *   Status bar: "Online • Secured by TCAI" (appears after AI sync fades)
+    *   Green status dot with 6s pulse animation next to title
 *   **CSS Keyframe Animations:**
-    *   `ambientShift`: Background gradient motion
+    *   `ambientShift`: Background gradient motion (35s)
+    *   `cinematicRotate`: Slow rotating conic gradient (100s full rotation)
     *   `glowStreak`: Animated divider glow
     *   `gradientSlide`: Shimmer border effect
-    *   `pulseGlow`: Idle bubble attention pulse
-    *   `statusPulse`: Header status dot animation
-    *   `neonShimmer`: Typing indicator bar animation
+    *   `pulseGlow`: Idle bubble attention pulse (11s)
+    *   `statusPulse`: Header status dot animation (6s)
+    *   `tcai-messageIn`: Message bounce/scale animation
+    *   `tcai-userMessageIn`: User message with glow pulse
+    *   `tcai-borderRipple`: Container border glow on message send
+    *   `tcai-bar-rise`: Neon typing indicator bars (850ms)
+    *   `tcai-status-appear`: Status bar fade-in after AI sync
 *   **Widget Configuration:**
     *   `clientId`: `faith_house_demo`
     *   `botId`: `faith_house_demo_main`

@@ -231,9 +231,22 @@
     return '<div class="tcai-footer">Powered by <a href="https://treasurecoastai.com" target="_blank" rel="noopener">Treasure Coast AI</a></div>';
   }
   
+  function triggerBorderRipple() {
+    var container = document.querySelector('.tcai-container');
+    if (container) {
+      container.classList.remove('message-sent');
+      void container.offsetWidth;
+      container.classList.add('message-sent');
+      setTimeout(function() {
+        container.classList.remove('message-sent');
+      }, 600);
+    }
+  }
+  
   async function sendMessage(content) {
     if (!content.trim() || state.isLoading || state.isPaused) return;
     
+    triggerBorderRipple();
     addMessage('user', content);
     
     state.isLoading = true;
@@ -352,6 +365,11 @@
       '<div class="tcai-ai-sync" id="tcai-ai-sync" data-testid="ai-sync-indicator">',
       '  <div class="tcai-ai-sync-dot"></div>',
       '  <span class="tcai-ai-sync-text">AI Sync: Updating knowledge base...</span>',
+      '</div>',
+      '<div class="tcai-status-bar" data-testid="status-bar">',
+      '  <span class="tcai-status-bar-text"><span class="tcai-status-bar-dot"></span>Online</span>',
+      '  <span class="tcai-status-bar-divider">•</span>',
+      '  <span class="tcai-status-bar-text">Secured by TCAI</span>',
       '</div>',
       '<div class="tcai-messages" id="tcai-messages" data-testid="messages-container" role="log" aria-live="polite" aria-label="Chat messages"></div>',
       '<div class="tcai-input-area">',

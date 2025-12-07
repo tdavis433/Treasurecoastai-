@@ -101,6 +101,22 @@ function AmbientBackground() {
         }}
       />
       <div 
+        className="fixed inset-0 pointer-events-none z-0"
+        style={{
+          background: `
+            conic-gradient(from 0deg at 50% 50%, 
+              rgba(0, 229, 204, 0.03) 0deg,
+              rgba(10, 15, 25, 0.02) 90deg,
+              rgba(0, 0, 0, 0.01) 180deg,
+              rgba(10, 15, 25, 0.02) 270deg,
+              rgba(0, 229, 204, 0.03) 360deg
+            )
+          `,
+          animation: 'cinematicRotate 100s linear infinite',
+          opacity: 0.4
+        }}
+      />
+      <div 
         className="fixed inset-0 pointer-events-none z-0 opacity-[0.04]"
         style={{
           background: `
@@ -120,6 +136,10 @@ function AmbientBackground() {
             opacity: 0.85;
             transform: scale(1.02);
           }
+        }
+        @keyframes cinematicRotate {
+          0% { transform: rotate(0deg) scale(1.5); }
+          100% { transform: rotate(360deg) scale(1.5); }
         }
         @keyframes glowStreak {
           0% { transform: translateX(-100%); }
