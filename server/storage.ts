@@ -91,6 +91,7 @@ export interface IStorage {
     offset?: number;
   }): Promise<{ appointments: Appointment[]; total: number }>;
   getAppointmentById(clientId: string, id: string): Promise<Appointment | undefined>;
+  getAppointmentBySessionId(sessionId: string, clientId: string): Promise<Appointment | undefined>;
   updateAppointment(clientId: string, id: string, updates: Partial<Appointment>): Promise<Appointment>;
   updateAppointmentStatus(clientId: string, id: string, status: string): Promise<void>;
   deleteAppointment(clientId: string, id: string): Promise<void>;
@@ -335,6 +336,15 @@ export class DbStorage implements IStorage {
       .select()
       .from(appointments)
       .where(and(eq(appointments.id, id), eq(appointments.clientId, clientId)))
+      .limit(1);
+    return appointment;
+  }
+
+  async getAppointmentBySessionId(sessionId: string, clientId: string): Promise<Appointment | undefined> {
+    const [appointment] = await db
+      .select()
+      .from(appointments)
+      .where(and(eq(appointments.sessionId, sessionId), eq(appointments.clientId, clientId)))
       .limit(1);
     return appointment;
   }

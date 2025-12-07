@@ -52,6 +52,118 @@ function categorizeMessageTopic(content: string): string {
   return 'general';
 }
 
+interface ExtractedBookingInfo {
+  name?: string;
+  phone?: string;
+  email?: string;
+  preferredTime?: string;
+  notes?: string;
+  bookingType: 'tour' | 'phone_call';
+  isComplete: boolean;
+}
+
+function extractBookingInfoFromConversation(
+  messages: ChatMessage[],
+  currentReply: string,
+  currentUserMessage: string
+): ExtractedBookingInfo | null {
+  const allText = [...messages.map(m => m.content), currentUserMessage, currentReply].join(' ');
+  const userMessages = messages.filter(m => m.role === 'user').map(m => m.content).join(' ') + ' ' + currentUserMessage;
+  
+  const aiConfirmsBooking = /I'?ve noted|noted your|passed along|team will (reach out|follow up|contact)|will be in touch|request:?[\s\S]*name:?/i.test(currentReply);
+  
+  if (!aiConfirmsBooking) {
+    return null;
+  }
+
+  const tourKeywords = /\b(tour|visit|come see|check out|see the house|see the place|come by|stop by|look around|walk through)\b/i;
+  const callKeywords = /\b(call|phone|speak with|talk to|phone call|give .* a call|chat with|speak to someone)\b/i;
+  
+  const bookingType: 'tour' | 'phone_call' = callKeywords.test(userMessages) ? 'phone_call' : 'tour';
+
+  let name: string | undefined;
+  let phone: string | undefined;
+  let email: string | undefined;
+  let preferredTime: string | undefined;
+
+  const namePatterns = [
+    /(?:my name is|i'?m|name:?|this is)\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
+    /(?:call me|it'?s)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
+    /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)$/m,
+    /Name:\s*([^\n,]+)/i,
+  ];
+  
+  for (const pattern of namePatterns) {
+    const match = allText.match(pattern);
+    if (match && match[1] && match[1].length > 2 && match[1].length < 50) {
+      name = match[1].trim();
+      break;
+    }
+  }
+
+  const phonePatterns = [
+    /(?:phone|number|cell|mobile|call me at|reach me at):?\s*([\d\s\-\(\)\.]{10,})/i,
+    /\b(\(?\d{3}\)?[\s\-\.]?\d{3}[\s\-\.]?\d{4})\b/,
+    /\b(\d{3}[\s\-\.]\d{3}[\s\-\.]\d{4})\b/,
+    /Phone:\s*([\d\s\-\(\)\.]+)/i,
+  ];
+  
+  for (const pattern of phonePatterns) {
+    const match = allText.match(pattern);
+    if (match && match[1]) {
+      const cleaned = match[1].replace(/\D/g, '');
+      if (cleaned.length >= 10) {
+        phone = match[1].trim();
+        break;
+      }
+    }
+  }
+
+  const emailPatterns = [
+    /(?:email|e-mail):?\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i,
+    /\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/,
+    /Email:\s*([^\s,]+)/i,
+  ];
+  
+  for (const pattern of emailPatterns) {
+    const match = allText.match(pattern);
+    if (match && match[1]) {
+      email = match[1].trim();
+      break;
+    }
+  }
+
+  const timePatterns = [
+    /(?:prefer|want|like|available|good for me|works for me|time:?|when:?)\s*(?:on\s+)?([A-Za-z]+(?:\s+(?:morning|afternoon|evening|night|\d{1,2}(?::\d{2})?\s*(?:am|pm)?)))/i,
+    /(?:tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)(?:\s+(?:morning|afternoon|evening|at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?))?/i,
+    /(?:this\s+)?(?:week|weekend|next\s+week)/i,
+    /\d{1,2}(?::\d{2})?\s*(?:am|pm)/i,
+    /Preferred time:\s*([^\n]+)/i,
+  ];
+  
+  for (const pattern of timePatterns) {
+    const match = allText.match(pattern);
+    if (match) {
+      preferredTime = (match[1] || match[0]).trim();
+      break;
+    }
+  }
+  if (!preferredTime) {
+    preferredTime = 'To be confirmed';
+  }
+
+  const isComplete = !!(name && phone);
+
+  return {
+    name,
+    phone,
+    email,
+    preferredTime,
+    bookingType,
+    isComplete,
+  };
+}
+
 const openaiApiKey = process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
 const openai = openaiApiKey
   ? new OpenAI({ apiKey: openaiApiKey })
@@ -659,6 +771,40 @@ class ConversationOrchestrator {
         }
       } catch (error) {
         console.error('[Orchestrator] Error capturing lead:', error);
+      }
+    }
+
+    // AI-driven booking creation: When AI confirms it has "noted" the booking request
+    // with complete info (name + phone required), create an appointment record
+    const bookingInfo = extractBookingInfoFromConversation(messages, reply, userMessage);
+    
+    if (bookingInfo && bookingInfo.isComplete) {
+      try {
+        // Check if we already created a booking for this session
+        const existingAppointment = await storage.getAppointmentBySessionId(
+          sessionData.sessionId,
+          clientId
+        );
+        
+        if (!existingAppointment) {
+          console.log(`[Orchestrator] Creating AI-driven booking for session ${sessionData.sessionId}`);
+          
+          await storage.createAppointment(clientId, {
+            name: bookingInfo.name!,
+            contact: bookingInfo.phone!,
+            email: bookingInfo.email || null,
+            preferredTime: bookingInfo.preferredTime || 'To be confirmed',
+            appointmentType: bookingInfo.bookingType,
+            notes: bookingInfo.notes || null,
+            contactPreference: 'phone',
+            botId: botId,
+            sessionId: sessionData.sessionId,
+          });
+          
+          console.log(`[Orchestrator] Booking created: ${bookingInfo.bookingType} for ${bookingInfo.name}`);
+        }
+      } catch (error) {
+        console.error('[Orchestrator] Error creating AI-driven booking:', error);
       }
     }
 

@@ -157,6 +157,8 @@ interface Appointment {
   status: string;
   createdAt: string;
   notes: string | null;
+  botId?: string | null;
+  sessionId?: string | null;
 }
 
 interface Conversation {
@@ -629,6 +631,22 @@ export default function ClientDashboard() {
     window.location.href = `tel:${phone}`;
   };
 
+  // Booking type breakdown (tours vs phone calls) from appointments
+  // These useMemo hooks must be called before any early returns to satisfy React's rules of hooks
+  const tourBookings = useMemo(() => {
+    if (!appointmentsData?.appointments) return 0;
+    return appointmentsData.appointments.filter((apt: Appointment) => 
+      apt.appointmentType === 'tour' || apt.appointmentType === 'Tour'
+    ).length;
+  }, [appointmentsData]);
+  
+  const phoneCallBookings = useMemo(() => {
+    if (!appointmentsData?.appointments) return 0;
+    return appointmentsData.appointments.filter((apt: Appointment) => 
+      apt.appointmentType === 'phone_call' || apt.appointmentType === 'Phone Call'
+    ).length;
+  }, [appointmentsData]);
+
   if (authLoading || !currentUser) {
     return (
       <div className="min-h-screen bg-[#0B0E13] flex items-center justify-center">
@@ -852,6 +870,59 @@ export default function ClientDashboard() {
           </GlassCardContent>
         </GlassCard>
       </div>
+
+      {(tourBookings > 0 || phoneCallBookings > 0) && (
+        <GlassCard className="bg-gradient-to-br from-purple-500/10 via-pink-500/5 to-cyan-500/10" data-testid="card-executive-summary">
+          <GlassCardHeader>
+            <GlassCardTitle className="flex items-center gap-2 text-lg">
+              <BarChart3 className="h-5 w-5 text-purple-400" />
+              Booking Breakdown
+            </GlassCardTitle>
+            <GlassCardDescription>
+              Tour visits vs phone call requests
+            </GlassCardDescription>
+          </GlassCardHeader>
+          <GlassCardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="p-4 rounded-xl bg-cyan-500/10 border border-cyan-400/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <Eye className="h-4 w-4 text-cyan-400" />
+                  <span className="text-xs text-cyan-400 font-medium">Tours</span>
+                </div>
+                <div className="text-2xl font-bold text-white">{tourBookings}</div>
+                <p className="text-xs text-white/40 mt-1">In-person visits</p>
+              </div>
+              
+              <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-400/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <PhoneCall className="h-4 w-4 text-purple-400" />
+                  <span className="text-xs text-purple-400 font-medium">Phone Calls</span>
+                </div>
+                <div className="text-2xl font-bold text-white">{phoneCallBookings}</div>
+                <p className="text-xs text-white/40 mt-1">Staff call requests</p>
+              </div>
+              
+              <div className="p-4 rounded-xl bg-green-500/10 border border-green-400/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-400" />
+                  <span className="text-xs text-green-400 font-medium">Confirmed</span>
+                </div>
+                <div className="text-2xl font-bold text-white">{displayCompletedBookings}</div>
+                <p className="text-xs text-white/40 mt-1">Follow-ups completed</p>
+              </div>
+              
+              <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-400/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="h-4 w-4 text-amber-400" />
+                  <span className="text-xs text-amber-400 font-medium">Pending</span>
+                </div>
+                <div className="text-2xl font-bold text-white">{displayPendingBookings}</div>
+                <p className="text-xs text-white/40 mt-1">Awaiting follow-up</p>
+              </div>
+            </div>
+          </GlassCardContent>
+        </GlassCard>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <GlassCard data-testid="card-recent-conversations">
@@ -2063,12 +2134,37 @@ export default function ClientDashboard() {
                             )}
                           </div>
                           <div className="flex items-center gap-2 mt-2">
-                            <Badge className="bg-white/10 text-white/70 border-white/20 text-xs">
-                              {apt.appointmentType}
+                            <Badge 
+                              className={`text-xs ${
+                                apt.appointmentType === 'tour' || apt.appointmentType === 'Tour' 
+                                  ? 'bg-cyan-500/20 text-cyan-400 border-cyan-400/40' 
+                                  : apt.appointmentType === 'phone_call' || apt.appointmentType === 'Phone Call'
+                                    ? 'bg-purple-500/20 text-purple-400 border-purple-400/40'
+                                    : 'bg-white/10 text-white/70 border-white/20'
+                              }`}
+                              data-testid={`badge-type-${apt.id}`}
+                            >
+                              {apt.appointmentType === 'phone_call' ? 'Phone Call' : 
+                               apt.appointmentType === 'tour' ? 'Tour' : apt.appointmentType}
                             </Badge>
                             <span className="text-xs text-white/50">
                               Preferred: {apt.preferredTime}
                             </span>
+                            {apt.sessionId && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 px-2 text-xs text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
+                                onClick={() => {
+                                  setActiveSection('conversations');
+                                  setTimeout(() => setExpandedSession(apt.sessionId!), 100);
+                                }}
+                                data-testid={`button-view-conversation-${apt.id}`}
+                              >
+                                <MessageSquare className="h-3 w-3 mr-1" />
+                                View Chat
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </div>
