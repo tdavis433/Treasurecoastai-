@@ -9252,37 +9252,71 @@ function UsersSectionPanel({
               blue: { bg: 'bg-blue-500/10', text: 'text-blue-400', badge: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
             };
             const colors = colorClasses[roleInfo.color];
+            
+            const linkedWorkspace = user.clientId 
+              ? workspaces.find(ws => ws.slug === user.clientId || String(ws.id) === String(user.clientId))
+              : null;
 
             return (
               <GlassCard key={user.id} data-testid={`card-user-${user.id}`}>
                 <GlassCardContent className="py-4">
                   <div className="flex items-center justify-between gap-4 flex-wrap">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-4">
                       <div className={`h-12 w-12 rounded-lg flex items-center justify-center ${colors.bg}`}>
                         <Icon className={`h-6 w-6 ${colors.text}`} />
                       </div>
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-medium text-white">{user.username}</p>
                           <Badge className={colors.badge}>
                             {roleInfo.name}
                           </Badge>
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-white/50 mt-1">
-                          {user.email && (
-                            <span className="flex items-center gap-1">
-                              <Mail className="h-3 w-3" />
-                              {user.email}
+                        
+                        {user.email && (
+                          <p className="text-sm text-white/60 mt-0.5 flex items-center gap-1.5">
+                            <Mail className="h-3.5 w-3.5 text-white/40" />
+                            {user.email}
+                          </p>
+                        )}
+                        
+                        <div className="flex items-center gap-4 text-xs text-white/45 mt-2 flex-wrap">
+                          {linkedWorkspace ? (
+                            <span className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded-md border border-white/10">
+                              <Building2 className="h-3.5 w-3.5 text-cyan-400/70" />
+                              <span className="text-white/70 font-medium">{linkedWorkspace.name}</span>
+                              <span className="text-white/40">({linkedWorkspace.slug})</span>
+                            </span>
+                          ) : user.clientId ? (
+                            <span className="flex items-center gap-1.5 bg-yellow-500/10 px-2 py-1 rounded-md border border-yellow-500/20">
+                              <Building2 className="h-3.5 w-3.5 text-yellow-400/70" />
+                              <span className="text-yellow-400/80">{user.clientId}</span>
+                              <span className="text-yellow-400/50 text-[10px]">(unlinked)</span>
+                            </span>
+                          ) : (roleInfo.id === 'super_admin' || roleInfo.id === 'agency_user') ? (
+                            <span className="flex items-center gap-1.5 text-white/40">
+                              <Globe className="h-3.5 w-3.5" />
+                              Platform-wide access
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1.5 text-white/40">
+                              <AlertCircle className="h-3.5 w-3.5" />
+                              No client assigned
                             </span>
                           )}
-                          {user.clientId && (
-                            <span className="flex items-center gap-1">
-                              <Building2 className="h-3 w-3" />
-                              {user.clientId}
-                            </span>
-                          )}
+                          
                           {user.lastLogin && (
-                            <span>Last login: {new Date(user.lastLogin).toLocaleDateString()}</span>
+                            <span className="flex items-center gap-1.5">
+                              <Clock className="h-3.5 w-3.5" />
+                              Last active: {new Date(user.lastLogin).toLocaleDateString()}
+                            </span>
+                          )}
+                          
+                          {!user.lastLogin && (
+                            <span className="flex items-center gap-1.5 text-amber-400/60">
+                              <Clock className="h-3.5 w-3.5" />
+                              Never logged in
+                            </span>
                           )}
                         </div>
                       </div>
