@@ -322,6 +322,7 @@ export default function SuperAdmin() {
       botsCount: number;
       totalConversations: number;
       lastActive: string | null;
+      isDemo?: boolean;
     }>;
     total: number;
   }>({

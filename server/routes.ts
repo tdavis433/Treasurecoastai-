@@ -7366,6 +7366,9 @@ These suggestions should be relevant to what was just discussed and help guide t
           plan: (workspace as any).plan || 'starter',
           settings: (workspace as any).settings || {},
           createdAt: (workspace as any).createdAt,
+          isDemo: (workspace as any).isDemo ?? false,
+          botsCount: wsBots.length,
+          totalConversations: totalConversations30d,
         },
         stats: {
           conversations30d: totalConversations30d,

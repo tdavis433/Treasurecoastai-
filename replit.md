@@ -60,6 +60,24 @@ The platform features a "Dark Luxury SaaS with Neon-Glass Accents" aesthetic, in
     *   Live: Green badge with radio icon
 *   **DemoInfoBanner Component:** Warning banner displayed on demo dashboards
 
+### Demo Landing Page (`/demo/faith-house`)
+*   **Floating Chat Widget:** Uses real embed.js widget with floating bubble in bottom-right corner
+    *   Click bubble → opens floating chat window
+    *   Click X → closes back to bubble only
+    *   No inline/embedded chat panel - clean landing page layout
+*   **Widget Configuration:**
+    *   `clientId`: `faith_house_demo`
+    *   `botId`: `faith_house_demo_main`
+    *   `data-testid`: `faith-house-demo-widget` (container), `widget-bubble` (bubble)
+*   **Branding:** Treasure Coast AI branding with LIVE DEMO badge, demo info banner
+
+### Super Admin Demo Features
+*   **Workspace Cards:** DEMO badge with TestTube2 icon on demo workspaces
+*   **Workspace Detail Page:** 
+    *   DEMO badge next to workspace name (data-testid: `badge-demo-workspace-detail`)
+    *   "Open Demo Dashboard" button for demo tenants (data-testid: `button-open-demo-dashboard`)
+*   **Reset Demo Data:** Dropdown option on faith_house_demo workspace card
+
 ### Demo Reset Endpoint
 *   **Endpoint:** `POST /api/admin/demo/faith-house/reset` (Super Admin only)
 *   **Safety:** Only workspaces with `is_demo=true` can be reset

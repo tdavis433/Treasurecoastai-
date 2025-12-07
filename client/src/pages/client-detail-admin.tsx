@@ -10,7 +10,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Bot, Users, Settings, BarChart3, MessageSquare, 
   Eye, Edit2, Trash2, Clock, CreditCard, Building2,
-  ChevronLeft, UserPlus, Shield, Plus, RefreshCw
+  ChevronLeft, UserPlus, Shield, Plus, RefreshCw,
+  TestTube2, ExternalLink
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,7 @@ interface WorkspaceData {
   totalConversations: number;
   lastActive: string | null;
   clientId?: string;
+  isDemo?: boolean;
 }
 
 interface BotConfig {
@@ -326,18 +328,40 @@ export default function ClientDetailAdmin() {
                 <Building2 className="h-6 w-6 text-cyan-400" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-white">{workspaceData.name}</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-semibold text-white">{workspaceData.name}</h1>
+                  {workspaceData.isDemo && (
+                    <Badge className="text-[10px] px-1.5 bg-amber-500/20 text-amber-400 border-amber-500/30" data-testid="badge-demo-workspace-detail">
+                      <TestTube2 className="h-2.5 w-2.5 mr-1" />
+                      DEMO
+                    </Badge>
+                  )}
+                </div>
                 <p className="text-sm text-white/55">{workspaceData.slug} • {workspaceData.plan.charAt(0).toUpperCase() + workspaceData.plan.slice(1)} Plan</p>
               </div>
             </div>
           </div>
-          <Badge className={`${
-            workspaceData.status === 'active' ? "bg-green-500/20 text-green-400" :
-            workspaceData.status === 'paused' ? "bg-amber-500/20 text-amber-400" :
-            "bg-red-500/20 text-red-400"
-          }`}>
-            {workspaceData.status.charAt(0).toUpperCase() + workspaceData.status.slice(1)}
-          </Badge>
+          <div className="flex items-center gap-3">
+            {workspaceData.isDemo && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
+                data-testid="button-open-demo-dashboard"
+                onClick={() => window.open(`/client/dashboard?impersonate=${workspaceData.slug}`, '_blank')}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Open Demo Dashboard
+              </Button>
+            )}
+            <Badge className={`${
+              workspaceData.status === 'active' ? "bg-green-500/20 text-green-400" :
+              workspaceData.status === 'paused' ? "bg-amber-500/20 text-amber-400" :
+              "bg-red-500/20 text-red-400"
+            }`}>
+              {workspaceData.status.charAt(0).toUpperCase() + workspaceData.status.slice(1)}
+            </Badge>
+          </div>
         </div>
 
         {/* Tabs */}

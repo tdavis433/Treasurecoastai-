@@ -1,0 +1,228 @@
+Here it is — ONE SINGLE ULTRA-DETAILED MASTER PROMPT that combines:
+
+✔ Everything from the “real widget (corner bubble)” prompt
+
+✔ Everything from the “final polish (demo badge, dashboard link, test ID, etc.)” prompt
+
+✔ Additional clarity + structure so Replit does not misinterpret anything
+
+✔ Explicit instructions, hierarchy, acceptance criteria, QA steps
+
+✔ Written in true “Replit Agent language”
+
+This is the most complete, unambiguous prompt you can give Replit regarding the Faith House Demo Page + Widget + Dashboard Polish.
+
+Just copy/paste exactly as-is into Replit.
+
+⸻
+
+🚀 **MASTER REPLIT AGENT PROMPT
+
+Faith House DEMO Page — Final Widget Fix + Full Visual Polish + All Remaining Fixes**
+
+The Faith House DEMO environment is working well (landing page, demo badges, demo dashboard, demo reset, data isolation, etc.).
+Now I want to finish ALL remaining work in one combined pass and fix every issue at once.
+
+This task has three major goals:
+
+⸻
+
+✅ GOAL 1 — Replace the oversized assistant panel with a REAL floating chat widget
+
+(Small chat bubble bottom-right → opens floating chat window → close returns to bubble)
+
+The current /demo/faith-house page still shows a large fixed assistant panel on the right.
+This MUST be removed.
+It looks unrealistic and will confuse clients (“Is it gonna take up half my homepage?”).
+
+🔧 REQUIRED CHANGES:
+
+1. Remove the inline assistant panel
+	•	On /demo/faith-house, remove the large assistant card from the hero layout entirely.
+	•	The hero area should become clean, text-focused, with NO chat content embedded directly.
+
+2. Mount the REAL chat widget
+
+Use the SAME widget behavior used for embedded client websites:
+
+Closed state:
+	•	A discreet circular chat bubble in the bottom-right corner.
+	•	Fixed position: bottom-right with margin (e.g., 20–24px).
+	•	Use Treasure Coast AI accent color (the same gradient or color used in the page branding).
+	•	White chat icon inside.
+
+Open state:
+	•	Clicking the bubble opens a floating chat window positioned above the bubble.
+	•	The floating window should have:
+	•	Dark/translucent glass background
+	•	Rounded corners
+	•	Subtle border/glow matching TCAI accent colors
+	•	Header:
+	•	Avatar
+	•	“Faith House Assistant”
+	•	Subtitle: “Sober Living • Demo”
+	•	Small “Powered by Treasure Coast AI” label or logo
+	•	Chat body using the SAME widget component used in production.
+
+Close behavior:
+	•	Close button in header closes the floating chat window.
+	•	Returns to bubble ONLY.
+	•	No layout shift.
+
+3. DEMO bot wiring
+
+The widget on /demo/faith-house MUST use:
+
+clientId = faith_house_demo
+botId = faith_house_demo_main
+
+This should NEVER use live tenant IDs.
+
+4. DO NOT modify widget behavior on any other routes
+
+Only /demo/faith-house uses this special mounted widget.
+
+⸻
+
+✅ GOAL 2 — Final UI Polish & Structural Fixes (Demo + Admin)
+
+Replit’s last run noted several small inconsistencies.
+We fix ALL of them here.
+
+2.1 — Add DEMO badge to workspace detail header (super-admin)
+
+Currently:
+	•	DEMO badge shows correctly on workspace cards.
+	•	DEMO badge does NOT appear on the workspace detail header after clicking a workspace.
+
+Fix:
+	•	When viewing a workspace detail page for any workspace with isDemo = true, show the SAME DEMO badge used elsewhere.
+	•	Badge must appear next to the workspace name in the detail header.
+	•	Do not show demo labeling on live tenants.
+
+⸻
+
+2.2 — Add a “View Demo Dashboard” link/button inside workspace detail page
+
+The “View Demo Dashboard” link exists only on /demo/faith-house, but not inside the workspace detail page in super-admin.
+
+Fix:
+	•	In the workspace detail page for faith_house_demo, add a button:
+
+Label:
+Open Demo Dashboard
+
+Behavior:
+	•	Opens the client dashboard view for the demo tenant in a new tab.
+	•	Use the same client dashboard route used for regular tenants.
+
+Visibility:
+	•	Only show if isDemo = true.
+
+⸻
+
+2.3 — Add stable test ID to the chat widget
+
+The automated test could not reliably locate the widget.
+
+Fix:
+	•	Add data-testid="faith-house-demo-widget" to the root widget container used on /demo/faith-house.
+	•	This must NOT affect styling or component behavior.
+
+⸻
+
+2.4 — Ensure Demo Info Banner & TenantBadge always appear correctly
+
+Fix any inconsistencies:
+	•	DemoInfoBanner must appear on demo dashboards.
+	•	TenantBadge (“DEMO” vs “LIVE”) must show in:
+	•	Sidebar header (already working)
+	•	Workspace cards (already working)
+	•	Workspace detail header (fix this)
+
+⸻
+
+2.5 — Ensure all DEMO-only elements fully respect isDemo=true
+
+Examples:
+	•	Demo reset button
+	•	Demo banners
+	•	Demo-only text
+These must NOT appear on faith_house_live.
+
+⸻
+
+✅ GOAL 3 — QA: Validate No Data Bleed + Widget Behavior + Dashboard Links
+
+Perform this QA after implementing the above.
+
+3.1 — Widget QA
+	•	On /demo/faith-house, confirm:
+	•	No big assistant panel exists.
+	•	Small corner bubble is visible.
+	•	Clicking opens the floating chat window.
+	•	Booking flows still work (tour / phone_call).
+	•	Bookings appear ONLY on faith_house_demo dashboard.
+
+3.2 — Data isolation
+	•	Create demo bookings → must ONLY appear in demo dashboard.
+	•	Create live bookings (if testing with live widget) → must ONLY appear in live dashboard.
+	•	Reset demo data → must NOT touch live data.
+
+3.3 — Workspace UI
+	•	Workspace cards: DEMO badge present.
+	•	Workspace detail page:
+	•	DEMO badge present.
+	•	“Open Demo Dashboard” button present IF isDemo=true.
+
+3.4 — Stable test ID
+
+Confirm data-testid="faith-house-demo-widget" is present.
+
+⸻
+
+📄 DOCUMENTATION UPDATES
+
+After implementing everything:
+
+Update replit.md or docs/faith-house-demo-script.md with:
+	•	/demo/faith-house now uses floating widget (bubble → chat window).
+	•	DEMO badge behavior.
+	•	Where to find “Open Demo Dashboard” link.
+	•	Widget test ID.
+	•	Demo vs Live behavior summary.
+
+⸻
+
+🎯 ACCEPTANCE CRITERIA (VERY IMPORTANT)
+
+All of the following MUST be true for this task to be considered complete:
+
+✔ The giant right-side chat card is removed from /demo/faith-house.
+
+✔ A small bottom-right chat icon appears instead.
+
+✔ Clicking the icon opens a floating chat window.
+
+✔ DEMO badge appears in workspace detail header.
+
+✔ “Open Demo Dashboard” link exists in workspace detail page for demo tenant.
+
+✔ Widget has data-testid="faith-house-demo-widget".
+
+✔ No demo UI appears in live tenant.
+
+✔ Demo reset does not touch live data.
+
+✔ Booking flow works in demo widget.
+
+✔ QA checks from Section 3 pass.
+
+⸻
+
+END OF PROMPT
+
+⸻
+
+Once Replit runs this, your demo page → widget → admin views → dashboard → everything will be perfect for pitching.
+Send me the next summary when it finishes.
