@@ -1,0 +1,563 @@
+Copy everything between the lines into Replit Agent.
+
+⸻
+
+REPLIT AGENT PROMPT START
+
+You are an elite senior full-stack engineer, QA lead, and product-minded architect working on the Treasure Coast AI platform.
+
+Your job in THIS SESSION is to use the existing codebase as the single source of truth and perform all high-priority engineering work needed to make the platform:
+	•	Stable
+	•	Demo-ready
+	•	Ready for first paying clients
+
+You will read, understand, clean up, fix, and extend the existing code.
+You are working on a multi-tenant AI assistant SaaS with:
+	•	A super-admin / agency admin side used by me (the agency) to:
+	•	Create and manage bots
+	•	Create and manage client accounts/tenants
+	•	Configure bot prompts, knowledge, and settings
+	•	A client dashboard where local businesses can view:
+	•	Leads captured by their bot
+	•	Conversations & messages
+	•	Bookings / appointments (e.g. tours and phone calls)
+	•	Basic performance summaries / metrics
+	•	One or more demo bots (especially a sober living home / Faith House style demo) that must work flawlessly for live demos.
+
+You must NOT invent a new architecture or rebuild from scratch.
+You must work with the existing stack, improve it, fix bugs, and add the missing pieces.
+
+⸻
+
+0. GENERAL BEHAVIOR & CONSTRAINTS
+	1.	Introspect first, then code.
+	•	Before touching any file, scan the repo and understand:
+	•	Frontend framework (likely Next.js/React/TypeScript or similar).
+	•	Backend/API layer (API routes, server handlers, or backend services).
+	•	ORM / DB (e.g., Prisma + Postgres or similar).
+	•	Directory structure for:
+	•	Super-admin pages
+	•	Client dashboard pages
+	•	Chatbot front-end widget / interface
+	•	Models for Tenants/Clients, Users, Bots, Leads, Conversations, Messages, Bookings
+	•	Any existing “demo” or “seed” logic
+	•	Output a short summary of:
+	•	The overall architecture
+	•	Where the key features live (admin, client, chat, data models)
+	•	Any obvious issues (e.g., duplicated logic, missing types, dead routes)
+	2.	Follow a strict priority order.
+Do NOT get lost in low-impact visual tweaks or brand changes until the core flows are rock-solid.
+The priority order is:
+	1.	Core flows (Lead, Conversation, Booking) for the sober living demo
+	2.	Client dashboard clarity, correctness, and reliability
+	3.	Demo bot templating & cloning for other niches
+	4.	Basic QA tools/checklists and minimal tests for core flows
+	5.	Light UX polish that directly improves demo quality
+	3.	Work in small, verifiable steps.
+For each change set:
+	•	Identify the files you will touch.
+	•	Explain the high-level change.
+	•	Make cohesive commits/changes, not random edits.
+	•	Ensure the app compiles and runs locally after each major change.
+	4.	Align with the product concept (agency-run).
+	•	This is an agency-run platform, not a self-serve builder:
+	•	Only super-admin / agency configures bots.
+	•	Clients only view and manage:
+	•	Leads
+	•	Conversations
+	•	Bookings
+	•	Basic performance stats
+	•	Do NOT add any “build your own bot” feature for clients.
+	•	Keep everything simple, focused, obvious for non-technical business owners.
+	5.	Respect multi-tenant boundaries.
+	•	Ensure all queries and API routes are properly scoped by tenant/client.
+	•	One client must never see another client’s data.
+	•	If any endpoints are missing tenant scoping, fix that as a high priority.
+
+⸻
+
+1. CORE FLOW STABILIZATION — SOBER LIVING / FAITH HOUSE DEMO
+
+Goal: Make the sober living / Faith House demo absolutely rock-solid for a live landlord-style demo (and future clients in this niche).
+
+1.1. Identify sober living demo entry points
+	•	Locate:
+	•	The bot configuration / knowledge / prompt for the sober living demo.
+	•	The front-end chat entry point (page/component) used to talk to this demo.
+	•	The API routes / handlers that:
+	•	Accept messages from the user.
+	•	Call the LLM / AI backend.
+	•	Persist leads, conversations, and bookings.
+	•	Output:
+	•	File paths for:
+	•	Bot config and templates.
+	•	Chat UI components.
+	•	Lead persistence logic.
+	•	Booking persistence logic.
+	•	Any special sober-living-specific helpers or flows.
+
+1.2. Implement/verify “Book a Tour” and “Schedule a Phone Call” flows
+
+The sober living bot must support at minimum these two booking types:
+	•	Book a tour
+	•	Schedule a phone call
+
+For each of these:
+	1.	Conversation UX inside the bot
+	•	The bot should:
+	•	Offer these options when the user expresses intent (e.g., “I want to visit”, “Can I see the place?”, “Can I talk to someone?”).
+	•	OR show clear buttons like:
+	•	“📅 Book a tour”
+	•	“📞 Schedule a call”
+	•	The flow should collect:
+	•	Full name (or at least first name)
+	•	Phone number
+	•	Optional email
+	•	Preferred date or date range
+	•	Preferred time window (morning/afternoon/evening)
+	•	Optional notes (e.g., “for myself / for a loved one”)
+	•	Ensure:
+	•	If user gives partial info, the bot politely asks for the missing fields.
+	•	The bot confirms the details before saving the booking.
+	2.	Booking data model & persistence
+	•	Identify the Booking model (or closest equivalent). If it doesn’t exist, create a minimal model with fields such as:
+	•	id
+	•	tenantId / clientId (link to the business)
+	•	conversationId (optional but ideal)
+	•	type (e.g., TOUR vs CALL)
+	•	name
+	•	phone
+	•	email (nullable)
+	•	requestedDate (date only or datetime)
+	•	requestedTimeRange or requestedTime (flexible enough for morning/afternoon/evening)
+	•	status (enum like NEW, CONFIRMED, CANCELLED, NO_SHOW, COMPLETED)
+	•	notes (optional text)
+	•	createdAt, updatedAt
+	•	When the bot confirms the booking details:
+	•	Create a Booking record in the DB scoped to the correct tenant.
+	•	Link it to the associated conversation/lead if that’s supported.
+	3.	Client dashboard integration for Bookings
+	•	In the client dashboard, ensure a dedicated “Bookings” section/tab:
+	•	Each row should show at least:
+	•	Name
+	•	Type (Tour/Call)
+	•	Contact (phone, email)
+	•	Requested date/time
+	•	Status (NEW, CONFIRMED, etc.)
+	•	CreatedAt
+	•	Add simple actions if supported:
+	•	Change status (e.g., NEW → CONTACTED, NEW → CONFIRMED)
+	•	Implement/verify API routes / load functions to fetch bookings only for the logged-in tenant/client.
+	4.	End-to-end manual test
+	•	Perform a real manual test:
+	•	Start a fresh conversation with the sober living bot.
+	•	Trigger “Book a tour”.
+	•	Provide all required details.
+	•	Verify:
+	•	Booking record exists in DB with correct fields.
+	•	Booking appears correctly in the Bookings tab of the client dashboard.
+	•	Repeat the flow for “Schedule a phone call”.
+	•	If you detect issues (data not saving, wrong tenant, UI not updating), fix them immediately.
+	5.	Edge cases & failure handling
+	•	If the DB write fails:
+	•	Log a meaningful server-side error.
+	•	The bot should respond with something like:
+“It looks like there was an issue saving your booking. I’m sending your info to the team manually and they’ll follow up.”
+	•	If the user abandons mid-flow:
+	•	Do NOT create a booking until all mandatory information (name, phone, date) is collected.
+	•	Any partial details can still be preserved in the conversation log so a human can follow up later.
+
+⸻
+
+2. LEADS & CONVERSATIONS FLOW — SOBER LIVING DEMO
+
+Goal: Lead capture and conversations must be reliably stored and clearly visible to clients.
+
+2.1. Lead definition & capture logic
+	•	Define a Lead as a user who has:
+	•	Provided contact details (phone/email)
+	•	Shown intent (e.g., asking about availability, pricing, admission, tours, etc.)
+	•	Implement or verify logic where:
+	•	When the bot has both name + contact info, it triggers the creation of a Lead record.
+	•	Lead model should include (or be extended to include if needed):
+	•	id
+	•	tenantId / clientId
+	•	conversationId (if available)
+	•	name
+	•	phone and/or email
+	•	source (e.g., BOT, WEBSITE, INSTAGRAM_DM if supported)
+	•	status (e.g., NEW, CONTACTED, QUALIFIED, LOST, WON)
+	•	notes (optional)
+	•	createdAt, updatedAt
+
+2.2. Client dashboard: Leads tab
+	•	In the Leads tab of the client dashboard:
+	•	Display for each lead:
+	•	Name
+	•	Contact info
+	•	Source
+	•	Created date/time
+	•	Status
+	•	Ensure:
+	•	Sorting by createdAt (newest first).
+	•	Status changes (if supported) are easy to perform (dropdown or buttons).
+	•	Fix any existing issues:
+	•	Leads not appearing.
+	•	Leads associated to wrong tenant.
+	•	Incorrect or missing data in the table.
+
+2.3. Conversations logging & UX
+	•	Ensure that:
+	•	Each unique user session has a Conversation record.
+	•	All messages (user + bot) are stored as Message records referencing the conversation.
+	•	In the Conversations tab of the client dashboard:
+	•	Show:
+	•	One row per conversation:
+	•	Lead name (or “Guest” if unknown)
+	•	Start date/time
+	•	Last message time
+	•	Short preview (first or last message snippet)
+	•	Allow clicking into a conversation to view full message history in a readable format (bubble chat or simple message list).
+	•	Verify:
+	•	Conversations belong only to the correct tenant/client.
+	•	There is no bleedover of data across tenants.
+
+⸻
+
+3. CLIENT DASHBOARD CLEANUP, CLARITY & ROLE-BASED ACCESS
+
+Goal: Make the client dashboard simple, clean, and non-technical, with correct permissions.
+
+3.1. Navigation & labels
+	•	Locate the client dashboard layout / navigation component(s).
+	•	Simplify and standardize the main sections:
+	•	“Overview” or “Dashboard”
+	•	“Leads”
+	•	“Conversations”
+	•	“Bookings”
+	•	Hide or remove:
+	•	Any experimental or incomplete tabs that are not ready for clients/demos.
+	•	Ensure:
+	•	Icons and labels are plain-English and self-explanatory.
+
+3.2. Overview / Performance snapshot
+	•	On the Overview (or main) page:
+	•	Add simple metrics cards:
+	•	Leads (last 7 days / last 30 days)
+	•	Conversations (last 7 days / last 30 days)
+	•	Bookings (last 7 days / last 30 days)
+	•	Implement:
+	•	Simple aggregate queries per tenant.
+	•	Basic loading and error states.
+	•	No need for fancy charts yet; clean numbers and labels are enough.
+
+3.3. Role-based access & security checks
+	•	Verify that:
+	•	Client dashboard pages/components are accessible only to client-role users.
+	•	Super-admin features are not visible in the client dashboard.
+	•	API routes enforce:
+	•	Authentication
+	•	Authorization by role
+	•	Tenant scoping
+	•	Fix any routes where:
+	•	Tenant scoping is missing or incorrect.
+	•	A user can query data not belonging to their tenant.
+
+3.4. Visual polish that impacts clarity
+	•	Ensure:
+	•	Dates are formatted consistently and human-friendly.
+	•	Status labels use easy-to-read text and small badges.
+	•	Tables are readable on standard laptop widths.
+	•	Add:
+	•	Empty states for each tab (e.g., “No leads yet — once your AI assistant starts talking to people, they’ll show up here.”)
+	•	Clear error messages for network/API errors.
+
+⸻
+
+4. SUPER-ADMIN / AGENCY ADMIN IMPROVEMENTS
+
+Goal: Make it easy for me (the agency) to operate the platform, clone bots, and impersonate client views for demos and support.
+
+4.1. Tenant and client management
+	•	Inspect the super-admin interface for:
+	•	Listing tenants/clients.
+	•	Creating new client accounts.
+	•	Assigning bots to clients.
+	•	Ensure:
+	•	Creating a new tenant is straightforward and creates:
+	•	Tenant record
+	•	At least one client user account
+	•	Mapping from tenant to its bots
+	•	Fix any flows where:
+	•	Client creation or bot assignment is flaky or inconsistent.
+
+4.2. Bot management from super-admin
+	•	Ensure super-admin can:
+	•	View a list of all bots.
+	•	See which tenant each bot belongs to.
+	•	Edit core bot settings (name, description, instructions, knowledge base reference).
+	•	If there’s an existing UI to edit bot prompts or knowledge, make sure it:
+	•	Validates required fields.
+	•	Saves changes reliably.
+	•	Provides basic success/failure feedback.
+
+4.3. “Impersonate client” / “View as client” for QA & support
+	•	Implement or verify a “View as client” capability from super-admin:
+	•	For a given tenant, super-admin can:
+	•	Open that tenant’s client dashboard directly (in a safe, scoped way).
+	•	This is for:
+	•	QA testing
+	•	Support
+	•	Demo purposes
+	•	Make sure:
+	•	This is secure and clear in the UI (e.g., “You are viewing as [Client Name]”).
+
+⸻
+
+5. DEMO BOTS TEMPLATING — BARBER/SALON & RESTAURANT/GYM
+
+Goal: Create a simple, repeatable way to spin up multiple demo bots with niche-specific content and identical stable flows.
+
+5.1. Identify bot configuration system
+	•	Find how bots are defined:
+	•	Bot model (DB) with fields like id, tenantId, name, prompt, settings, knowledgeBaseId, etc.
+	•	Any JSON config for FAQs/intents per bot.
+	•	Document:
+	•	How new bots are currently created (via admin UI, seed scripts, or manual DB entries).
+	•	Where the sober living bot is defined/configured.
+
+5.2. Introduce a BotTemplate pattern (code or config)
+	•	Introduce a template concept to avoid copy-pasting logic repeatedly:
+	•	Template fields may include:
+	•	Niche name (e.g., “Sober Living”, “Barber Shop”, “Restaurant”, “Gym”)
+	•	Default system prompt / persona description
+	•	Default greeting
+	•	Tone/style (friendly, professional, relaxed, etc.)
+	•	List of FAQ Q/A pairs
+	•	Default CTAs (e.g., “Book a tour”, “Schedule a call”, “Book an appointment”)
+	•	Implement a helper function such as:
+	•	createBotFromTemplate(templateId, tenantId) or equivalent,
+	•	Or seed scripts that instantiate demo bots for a “Demo Tenant”.
+
+5.3. Build Demo #2: Barber/Salon
+	•	Using the template pattern:
+	•	Create a Barber/Salon demo bot.
+	•	Bot behavior:
+	•	Handles FAQs about:
+	•	Types of services (cuts, fades, beard trims, coloring)
+	•	Pricing (if known or approximate)
+	•	Hours and location
+	•	Walk-ins vs appointments
+	•	How to book
+	•	CTAs:
+	•	“Book a haircut”
+	•	“Check availability”
+	•	Ensure:
+	•	Lead creation works (name + phone/email).
+	•	Booking flow works similarly to the sober living demo (may be “Book appointment” instead of “Book tour”).
+	•	Data flows into Leads, Conversations, and Bookings for that demo tenant.
+
+5.4. Build Demo #3: Restaurant or Gym
+	•	Choose one:
+	•	Restaurant bot:
+	•	FAQs: menu, hours, reservations, dress code, parking, gluten-free options, etc.
+	•	CTAs: “Book a table”, “Call the restaurant”.
+	•	Gym bot:
+	•	FAQs: memberships, hours, classes, day pass, free trial.
+	•	CTAs: “Book a tour”, “Schedule a call”, “Claim free trial”.
+	•	Implement:
+	•	Same lead capture and booking pattern.
+	•	Same dashboard visibility as other demos.
+
+5.5. Demo Index page
+	•	Build a simple “Demo Index” page (super-admin only is fine) listing:
+	•	Each demo:
+	•	Name
+	•	Niche
+	•	Link to open the bot chat
+	•	Link to open the associated client dashboard
+	•	This lets me quickly swap between demos in a sales conversation and verify everything is working.
+
+⸻
+
+6. QA, INTERNAL TOOLS & TESTING
+
+Goal: Make it easy to verify everything works before I show it to anyone.
+
+6.1. QA checklist file
+	•	Add a QA_CHECKLIST.md (or similar) at the root of the repo that includes:
+	•	Sober Living Demo QA:
+	•	Open sober living bot chat.
+	•	Ask FAQs (admissions, availability, rules).
+	•	Trigger lead capture (name + phone).
+	•	Book a tour.
+	•	Schedule a phone call.
+	•	Verify:
+	•	Lead appears in Leads tab.
+	•	Booking(s) appear in Bookings tab.
+	•	Conversation appears in Conversations tab with messages.
+	•	Barber/Salon Demo QA:
+	•	Ask about services, hours, walk-ins.
+	•	Book a haircut appointment.
+	•	Verify lead + booking + conversation are shown.
+	•	Restaurant/Gym Demo QA:
+	•	Ask relevant FAQs.
+	•	Trigger booking/visit/call flows.
+	•	Verify all three data types appear correctly in the dashboard.
+	•	Client Dashboard QA:
+	•	Log in as demo client.
+	•	Navigate Overview, Leads, Conversations, Bookings.
+	•	Confirm numbers and lists make sense.
+	•	Confirm tenant scoping (only see own data).
+	•	Super-admin QA:
+	•	Create a new demo client.
+	•	Assign them a bot.
+	•	Impersonate/view as client.
+	•	Ensure flows still work.
+
+6.2. Minimal automated tests (if framework present)
+	•	If there is already a testing framework (Jest, Vitest, Cypress, Playwright, etc.), implement at least these tests:
+	1.	Booking API test:
+	•	Given valid booking parameters (tenant, name, contact, date, type),
+	•	API returns success,
+	•	Booking is persisted and associated with the correct tenant.
+	2.	Lead API test:
+	•	Given a valid lead input (tenant, name, contact),
+	•	API returns success,
+	•	Lead is persisted and associated correctly.
+	3.	Tenant scoping test:
+	•	User from tenant A cannot access leads/bookings from tenant B.
+	•	If no test framework exists:
+	•	Add minimal infrastructure to support 2–3 basic tests,
+	•	Without over-engineering or significantly delaying the main work.
+
+⸻
+
+7. ERROR HANDLING, STABILITY & ENVIRONMENT
+
+Goal: Avoid obvious production hazards and embarrassing failures during demos or with first clients.
+
+7.1. Error handling for critical routes
+	•	For all critical API routes (chat messages, lead creation, booking creation, key dashboard data fetches):
+	•	Wrap logic in try/catch.
+	•	Log errors with enough context to debug (tenant id, route, operation), without exposing sensitive user data.
+	•	Return:
+	•	Clean, user-friendly error messages to the front-end.
+	•	A consistent error shape for the UI to handle.
+
+7.2. Environment variables & secrets
+	•	Review .env usage:
+	•	Ensure any AI keys, DB connection strings, and sensitive secrets are not hard-coded.
+	•	Ensure there is a clear way to configure:
+	•	Development vs Production environments.
+	•	If needed:
+	•	Document required environment variables in a README or .env.example.
+
+7.3. Demo vs production data
+	•	If there is a concept of “Demo Tenant”:
+	•	Keep demo data separated and clearly identifiable.
+	•	Avoid mixing demo tenants with real production tenants in a way that causes confusion.
+	•	If not present, consider creating:
+	•	A seedDemoData script that:
+	•	Creates demo tenants.
+	•	Creates demo bots.
+	•	Seeds a handful of leads, bookings, and conversations.
+
+⸻
+
+8. CODE QUALITY, CONSISTENCY & DEBT CONTROL
+
+Goal: Make the codebase easier to maintain and extend without massive refactors.
+
+8.1. TypeScript / typing consistency (if applicable)
+	•	Ensure:
+	•	Shared types for Lead, Booking, Conversation, Message, Tenant, Bot are defined centrally.
+	•	Front-end and back-end use those shared types instead of duplicating shapes.
+	•	Fix:
+	•	Obvious any usage in critical paths if they hide bugs.
+	•	Mismatched types between API responses and UI expectations.
+
+8.2. Remove or isolate dead/experimental code
+	•	Identify:
+	•	Components that are no longer used.
+	•	Old versions of dashboards or chat components superseded by new ones.
+	•	Either:
+	•	Delete them, or
+	•	Move them into a clearly labeled experimental/ or legacy/ folder.
+
+8.3. Comments & docs where needed
+	•	For complex or key flows (e.g., chat + booking creation + tenant scoping):
+	•	Add brief comments explaining the intent and expected usage.
+	•	Update or create a short README section describing:
+	•	How to run the dev server.
+	•	How to log in as super-admin / demo client.
+	•	Where the demo bots live and how to access them.
+
+⸻
+
+9. FINAL REPORT & SUCCESS CRITERIA
+
+At the end of this session, you must provide a clear summary of what you did and how to use it.
+
+9.1. Final summary
+
+Include:
+	1.	Architecture Summary (short)
+	•	Frontend stack
+	•	Backend stack
+	•	ORM / DB
+	•	Key directories (admin, client, chat, models)
+	2.	Core Flow Status
+	•	Sober living demo:
+	•	Lead capture: working? how?
+	•	Book a tour: working? how?
+	•	Schedule call: working? how?
+	•	Barber/Salon demo:
+	•	Exists? flows working?
+	•	Restaurant/Gym demo:
+	•	Exists? flows working?
+	3.	Dashboard Status
+	•	Leads, Conversations, Bookings:
+	•	Are they wired up and displaying correctly for respective tenants?
+	•	Overview metrics:
+	•	What’s implemented (exact fields/metrics)?
+	4.	Super-admin Status
+	•	How to:
+	•	Create a new client
+	•	Assign bots
+	•	View as client
+	5.	QA & Tests
+	•	Location of QA_CHECKLIST.md
+	•	Any automated tests added:
+	•	How to run them
+	6.	Known limitations / TODOs
+	•	List non-critical issues to fix later, clearly marked as NOT blocking demo vs Important for post-MVP.
+
+9.2. Success definition for this Replit Agent session
+
+The session is successful if:
+	•	I can:
+	1.	Run the dev or deployed version of the app.
+	2.	Open the sober living demo bot and:
+	•	Chat
+	•	Capture a lead
+	•	Book a tour
+	•	Schedule a phone call
+	3.	Log in as the sober living client and:
+	•	See the lead in the Leads tab
+	•	See the bookings in the Bookings tab
+	•	See the conversation in the Conversations tab
+	4.	Open the Barber/Salon and Restaurant/Gym demos:
+	•	Trigger at least a basic lead + booking flow
+	•	Verify data appears in the respective client dashboards
+	5.	Use the Demo Index to jump between demos easily.
+	6.	Use the QA checklist to quickly sanity-check the system before any real-world demo.
+
+If any part of this cannot be completed, clearly state:
+	•	What’s blocking it,
+	•	Which files are involved,
+	•	What you recommend as the next concrete steps.
+
+REPLIT AGENT PROMPT END
+
+⸻
