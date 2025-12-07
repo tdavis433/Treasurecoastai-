@@ -15,7 +15,8 @@
     greetingPopup: null,
     isOpen: false,
     autoOpenTimer: null,
-    greetingDismissed: false
+    greetingDismissed: false,
+    bubblePulseInterval: null
   };
   
   function getScriptConfig() {
@@ -135,16 +136,19 @@
       bubble.innerHTML = getChatIcon(bubbleIcon);
     }
     
-    var glowColorHover = hexToRgba(primaryColor, 0.6);
-    var glowColorDefault = hexToRgba(primaryColor, 0.4);
+    var glowColorHover = hexToRgba(primaryColor, 0.65);
+    var glowColorDefault = hexToRgba(primaryColor, 0.35);
+    var isHovered = false;
     
     bubble.onmouseover = function() {
-      bubble.style.transform = 'scale(1.08)';
-      bubble.style.boxShadow = '0 0 40px ' + glowColorHover + ', 0 10px 30px rgba(0,0,0,0.4)';
+      isHovered = true;
+      bubble.style.transform = 'scale(1.04) rotate(1.5deg)';
+      bubble.style.boxShadow = '0 0 45px ' + glowColorHover + ', 0 10px 30px rgba(0,0,0,0.4)';
     };
     
     bubble.onmouseout = function() {
-      bubble.style.transform = 'scale(1)';
+      isHovered = false;
+      bubble.style.transform = 'scale(1) rotate(0deg)';
       bubble.style.boxShadow = '0 0 30px ' + glowColorDefault + ', 0 8px 25px rgba(0,0,0,0.3)';
     };
     
@@ -159,12 +163,34 @@
       }
     };
     
+    var pulseIntervalId = setInterval(function() {
+      if (!document.body.contains(bubble)) {
+        clearInterval(pulseIntervalId);
+        return;
+      }
+      if (!isHovered && !window.TreasureCoastAI.isOpen) {
+        bubble.style.boxShadow = '0 0 40px ' + hexToRgba(primaryColor, 0.45) + ', 0 8px 25px rgba(0,0,0,0.3)';
+        bubble.style.opacity = '1';
+        setTimeout(function() {
+          if (!isHovered && !window.TreasureCoastAI.isOpen && document.body.contains(bubble)) {
+            bubble.style.boxShadow = '0 0 30px ' + glowColorDefault + ', 0 8px 25px rgba(0,0,0,0.3)';
+            bubble.style.opacity = '0.92';
+          }
+        }, 600);
+      }
+    }, 11000);
+    
+    window.TreasureCoastAI.bubblePulseInterval = pulseIntervalId;
+    
     return bubble;
   }
   
   function getChatIcon(type) {
     if (type === 'message') {
       return '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>';
+    }
+    if (type === 'house-plus') {
+      return '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 3px rgba(255,255,255,0.3));"><path d="M3 9.5l9-7 9 7"></path><path d="M19 9.5v10a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-10"></path><path d="M12 14v4"></path><path d="M10 16h4"></path></svg>';
     }
     return '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>';
   }

@@ -1,0 +1,244 @@
+Build the Upgraded Landing Page Exactly Like the Mockup**
+
+Copy & paste everything below into Replit.
+
+⸻
+
+TASK: Apply full visual upgrade to /demo/faith-house landing page and chat widget so the UI matches the provided mockup (neon glass, cyan glow, futuristic TCAI aesthetic), and implements all enhancements described below.
+
+This prompt includes:
+	•	Landing page styling
+	•	Chat bubble icon + behavior
+	•	Chat window theming
+	•	Micro-animations
+	•	Glow effects
+	•	Ambient gradient background
+	•	Subtle particle field
+	•	Status indicators
+	•	Divider lines
+	•	Typing animation
+	•	AI mode toggle
+	•	Accessibility + cleanup
+
+This must produce a result visually consistent with the mockup and polished to a “billion-dollar agency” standard.
+
+⸻
+
+🔷 1. LANDING PAGE — HERO SECTION THEME
+
+Apply these changes to the /demo/faith-house hero:
+
+1.1 Typography & layout
+	•	Large gradient title using:
+	•	Cyan → aqua → soft violet gradient
+	•	Smooth 45° angle
+	•	Subtitle text: light gray, slightly desaturated, 90% opacity
+	•	Add thin frosted glass “shelf” behind the hero text:
+	•	Very subtle
+	•	Transparent black with 8–12 blur radius
+	•	Soft bottom fade
+
+1.2 Micro-particles behind hero
+	•	Add a subtle particle field:
+	•	0.5%–1% opacity
+	•	Very slow drifting animation
+	•	Cyan and teal particles only
+	•	Keep extremely minimal (no snow effect)
+
+1.3 Gradient underline animation
+	•	Under the “Faith House Sober Living” header, add:
+	•	1–2px neon gradient line
+	•	Animation: gradient slides left→right every 18–22 seconds
+	•	Opacity extremely subtle (15–25%)
+
+1.4 Iconography
+
+Replace all bullet icons with thin neon line icons matching the mockup style:
+	•	1px stroke
+	•	Glow shadow at 35% opacity
+	•	Cyan (#00E5CC) as main accent color
+
+⸻
+
+🔷 2. CHAT BUBBLE (HOUSE + PLUS ICON)
+
+2.1 Bubble design
+	•	Use the house + plus icon from the mockup.
+	•	Bubble shape:
+	•	Perfect circle, 58–64px diameter
+	•	Gradient fill:
+	•	Cyan #00E5CC → deeper aqua
+	•	Neon glow:
+	•	Outer shadow glow rgba(0, 229, 204, 0.35)
+	•	Soft inner highlight
+
+2.2 Hover micro-animation
+	•	Scale: 1.00 → 1.04
+	•	Rotation: 0° → 1.5°
+	•	Duration: 120ms
+	•	Glow intensity increases from 35% → 65%
+
+2.3 Idle animation (gentle pulse)
+
+Every 11 seconds:
+	•	Opacity pulse from 0.9 → 1.0
+	•	Glow pulse from 30% → 45%
+
+MUST remain subtle and elegant.
+
+⸻
+
+🔷 3. CHAT WINDOW (FLOATING) THEME
+
+3.1 Glass card container
+	•	Dark glass:
+	•	Background rgba(10, 15, 20, 0.62)
+	•	Backdrop blur: 18–22px
+	•	Border:
+	•	1px cyan/teal edge gradient
+	•	Slight neon shimmer
+	•	Glow:
+	•	Outer ring: rgba(0, 229, 204, 0.15)
+
+3.2 Header bar
+	•	Avatar: house+plus icon, 42–48px, neon glow
+	•	Title: Faith House Assistant
+	•	Subtitle: Sober Living • Demo
+	•	Add thin gradient bar under header
+	•	Add tiny animated status dot:
+	•	Green → pulse every 6 seconds
+
+3.3 AI Sync Indicator
+
+Below header for 1.5 seconds on open:
+
+AI Sync: Updating knowledge base…
+
+Then fade out.
+
+3.4 “AI / Human” mode toggle (visual only)
+	•	Toggle pill
+	•	AI = active
+	•	Human = disabled (dimmed)
+Adds premium SaaS polish.
+
+⸻
+
+🔷 4. MESSAGE BUBBLES
+
+Bot bubbles
+	•	Gradient fill (cyan → aqua) at 10–15% opacity
+	•	Glow border
+	•	Rounded corners: 16px
+	•	Smooth fade-in transition
+
+User bubbles
+	•	Dark matte tone
+	•	Accent outline
+	•	Minimal glow
+
+Typing indicator
+
+Replace default dots with:
+	•	3 neon bars rising in sequence
+	•	Subtle glow
+	•	Duration 850ms loop
+
+⸻
+
+🔷 5. GREETING POPUP
+
+Build greeting popup EXACTLY in this style:
+	•	Dark glass background
+	•	Cyan border accent
+	•	Soft glow behind avatar
+	•	Title: Faith House Assistant
+	•	Message:
+Hi there — I’m the Faith House Assistant.
+I can answer questions about our sober living home
+and help you book a tour or schedule a call.
+	•	“Start Chat” button:
+	•	Cyan→aqua gradient
+	•	Neon border
+	•	Hover lift
+	•	Glow intensifies
+
+⸻
+
+🔷 6. BACKGROUND (PAGE BEHIND HERO)
+
+6.1 Cinematic gradient motion
+
+The entire page background needs VERY subtle movement:
+	•	Slow horizontal gradient shift
+	•	30–45 second cycle
+	•	Colors: deep navy → black → teal hints
+	•	Stay under 15% color change
+
+6.2 Ambient glow streaks
+
+Add faint, slow-moving cyan streaks (opacity <7%)
+
+⸻
+
+🔷 7. DIVIDERS & LINES
+
+Replace all solid lines with:
+	•	1px frosted glass dividers
+	•	Cyan → transparent gradient edges
+	•	Soft-light blending
+
+Gives the Apple-Vision-Pro look.
+
+⸻
+
+🔷 8. OPTIONAL HIGH-END TOUCH
+
+Add a subtle “AI calibration” animation on widget open:
+	•	Quick 250ms glow ripple
+	•	Thin border pulse
+	•	Then returns to normal
+
+Do NOT overdo it — must look engineered, not flashy.
+
+⸻
+
+🔷 9. FUNCTIONAL REQUIREMENTS
+
+Maintain existing behavior:
+	•	Chat window remains CLOSED until bubble is clicked
+	•	Demo bot = faith_house_demo_main
+	•	Tenant = faith_house_demo
+	•	Do NOT affect live tenant
+	•	All updates isolated to /demo/faith-house theme overrides
+
+⸻
+
+🔷 10. QA CHECKLIST
+
+Before marking complete:
+
+Chat Bubble
+	•	Uses house+plus icon
+	•	Glow + hover works
+	•	Idle pulse subtle
+
+Chat Window
+	•	Glass effect
+	•	Gradient border
+	•	Header & avatar match mockup
+	•	AI sync indicator appears briefly
+
+Background
+	•	Ambient gradient motion
+	•	Particle field extremely subtle
+
+Interactions
+	•	Opening animation
+	•	Typing indicator animation
+	•	Buttons glow on hover
+
+No regressions
+	•	Bookings still work
+	•	Demo vs live still isolated
+	•	Widget cleanup logic remains intact

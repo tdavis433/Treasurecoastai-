@@ -131,9 +131,9 @@
     
     if (state.isLoading) {
       html += '<div class="tcai-typing" data-testid="typing-indicator" aria-label="Assistant is typing">';
-      html += '<div class="tcai-typing-dot"></div>';
-      html += '<div class="tcai-typing-dot"></div>';
-      html += '<div class="tcai-typing-dot"></div>';
+      html += '<div class="tcai-typing-bar"></div>';
+      html += '<div class="tcai-typing-bar"></div>';
+      html += '<div class="tcai-typing-bar"></div>';
       html += '</div>';
     }
     
@@ -221,7 +221,7 @@
     if (config.avatarUrl) {
       return '<div class="tcai-avatar"><img src="' + escapeHtml(config.avatarUrl) + '" alt="' + escapeHtml(config.businessName) + '" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;"></div>';
     }
-    return '<div class="tcai-avatar" style="background: ' + config.primaryColor + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></div>';
+    return '<div class="tcai-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5l9-7 9 7"></path><path d="M19 9.5v10a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-10"></path><path d="M12 14v4"></path><path d="M10 16h4"></path></svg></div>';
   }
   
   function getFooterHtml() {
@@ -338,12 +338,20 @@
       '    ' + getAvatarHtml(),
       '    <div class="tcai-header-text">',
       '      <h1>' + escapeHtml(config.businessName) + '</h1>',
-      '      <p>' + escapeHtml(config.businessSubtitle) + '</p>',
+      '      <p><span class="tcai-status-dot"></span>' + escapeHtml(config.businessSubtitle) + '</p>',
       '    </div>',
+      '  </div>',
+      '  <div class="tcai-mode-toggle" data-testid="mode-toggle">',
+      '    <span class="tcai-mode-btn active">AI</span>',
+      '    <span class="tcai-mode-btn">Human</span>',
       '  </div>',
       '  <button class="tcai-close-btn" data-testid="button-close" aria-label="Close chat" onclick="closeWidget()">',
       '    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
       '  </button>',
+      '</div>',
+      '<div class="tcai-ai-sync" id="tcai-ai-sync" data-testid="ai-sync-indicator">',
+      '  <div class="tcai-ai-sync-dot"></div>',
+      '  <span class="tcai-ai-sync-text">AI Sync: Updating knowledge base...</span>',
       '</div>',
       '<div class="tcai-messages" id="tcai-messages" data-testid="messages-container" role="log" aria-live="polite" aria-label="Chat messages"></div>',
       '<div class="tcai-input-area">',
