@@ -243,6 +243,18 @@
   },
   "quickActions": [
     {
+      "id": "qa-book-tour",
+      "label": "Book a Tour",
+      "labelEs": "Reservar un Tour",
+      "prompt": "I would like to schedule a tour to see The Faith House"
+    },
+    {
+      "id": "qa-schedule-call",
+      "label": "Schedule a Call",
+      "labelEs": "Programar una Llamada",
+      "prompt": "I would like to schedule a phone call to learn more about The Faith House"
+    },
+    {
       "id": "qa-1",
       "label": "How to Apply",
       "labelEs": "Cómo Aplicar",
@@ -253,18 +265,6 @@
       "label": "Program Details",
       "labelEs": "Detalles del Programa",
       "prompt": "Tell me about the Phase Progression System and what to expect."
-    },
-    {
-      "id": "qa-3",
-      "label": "Requirements",
-      "labelEs": "Requisitos",
-      "prompt": "What are the requirements to live at The Faith House?"
-    },
-    {
-      "id": "qa-4",
-      "label": "Contact Info",
-      "labelEs": "Información de Contacto",
-      "prompt": "How can I contact The Faith House?"
     }
   ],
   "metadata": {

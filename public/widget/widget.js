@@ -12,7 +12,8 @@
     showPoweredBy: true,
     notificationSoundEnabled: false,
     businessName: 'Chat Assistant',
-    businessSubtitle: 'Online'
+    businessSubtitle: 'Online',
+    quickActions: []
   };
   
   var state = {
@@ -20,7 +21,8 @@
     conversationId: null,
     isLoading: false,
     isPaused: false,
-    error: null
+    error: null,
+    quickActionsShown: false
   };
   
   var elements = {};
@@ -324,7 +326,57 @@
   };
   
   function handleQuickAction(text) {
+    hideQuickActions();
     sendMessage(text);
+  }
+  
+  function renderQuickActions() {
+    if (state.quickActionsShown || !config.quickActions || config.quickActions.length === 0) {
+      return;
+    }
+    
+    if (state.messages.length > 1) {
+      return;
+    }
+    
+    var existingActions = document.querySelector('.tcai-quick-actions');
+    if (existingActions) {
+      existingActions.remove();
+    }
+    
+    var actionsHtml = '<div class="tcai-quick-actions" data-testid="quick-actions-container">';
+    config.quickActions.forEach(function(action, index) {
+      var label = action.label || action.id;
+      var prompt = action.prompt || label;
+      actionsHtml += '<button class="tcai-quick-action" data-testid="quick-action-' + index + '" data-prompt="' + escapeHtml(prompt) + '">' + escapeHtml(label) + '</button>';
+    });
+    actionsHtml += '</div>';
+    
+    elements.messages.insertAdjacentHTML('beforeend', actionsHtml);
+    
+    var actionButtons = document.querySelectorAll('.tcai-quick-action');
+    actionButtons.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var prompt = this.getAttribute('data-prompt');
+        handleQuickAction(prompt);
+      });
+    });
+    
+    state.quickActionsShown = true;
+    elements.messages.scrollTop = elements.messages.scrollHeight;
+  }
+  
+  function hideQuickActions() {
+    var actionsContainer = document.querySelector('.tcai-quick-actions');
+    if (actionsContainer) {
+      actionsContainer.style.opacity = '0';
+      actionsContainer.style.transition = 'opacity 0.3s ease';
+      setTimeout(function() {
+        if (actionsContainer.parentNode) {
+          actionsContainer.remove();
+        }
+      }, 300);
+    }
   }
   
   function applyTheme() {
@@ -394,6 +446,9 @@
     
     if (!hasExisting && config.greeting) {
       addMessage('assistant', config.greeting);
+      setTimeout(function() {
+        renderQuickActions();
+      }, 100);
     } else {
       renderMessages();
     }
@@ -433,6 +488,20 @@
           }
           if (data.config.businessSubtitle) {
             config.businessSubtitle = data.config.businessSubtitle;
+          }
+          
+          if (data.config.quickActions && Array.isArray(data.config.quickActions)) {
+            config.quickActions = data.config.quickActions;
+            setTimeout(function() {
+              renderQuickActions();
+            }, 150);
+          }
+          
+          if (data.config.fullConfig && data.config.fullConfig.quickActions) {
+            config.quickActions = data.config.fullConfig.quickActions;
+            setTimeout(function() {
+              renderQuickActions();
+            }, 150);
           }
           
           applyTheme();

@@ -206,10 +206,10 @@
     "warmth": 95
   },
   "quickActions": [
+    { "id": "qa-book-tour", "label": "Book a Tour", "prompt": "I would like to schedule a tour to see the facility" },
+    { "id": "qa-schedule-call", "label": "Schedule a Call", "prompt": "I would like to schedule a phone call to learn more" },
     { "id": "qa-1", "label": "Start Application", "prompt": "I'd like to apply or learn about admissions" },
-    { "id": "qa-2", "label": "Program Info", "prompt": "Tell me about your program and requirements" },
-    { "id": "qa-3", "label": "Cost & Payment", "prompt": "How much does it cost?" },
-    { "id": "qa-4", "label": "Schedule Tour", "prompt": "I'd like to schedule a tour" }
+    { "id": "qa-2", "label": "Program Info", "prompt": "Tell me about your program and requirements" }
   ],
   "metadata": {
     "isDemo": true,
