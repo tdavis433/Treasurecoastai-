@@ -67,16 +67,26 @@ The platform features a "Dark Luxury SaaS with Neon-Glass Accents" aesthetic, in
     *   No inline/embedded chat panel - clean landing page layout
 *   **Greeting Popup Feature:** Proactive engagement popup that appears above the chat bubble
     *   Appears 3 seconds after page load (configurable via `data-greeting-delay`)
-    *   Shows avatar icon, greeting title, and message
-    *   "Start Chat" button opens widget and dismisses popup
+    *   Dark glassmorphism styling matching TCAI theme
+    *   House icon avatar with cyan glow effect
+    *   "Start Chat" button with gradient and glow
     *   X button dismisses popup and saves preference to sessionStorage
     *   Auto-hides when widget is opened from bubble
+*   **Full Theme Integration:** Widget and popup fully match TCAI dark luxury aesthetic
+    *   Primary color: `#00E5CC` (cyan/teal)
+    *   Dark glassmorphism backgrounds with blur effects
+    *   Gradient borders and neon glow accents
+    *   Chat bubble with animated glow on hover
+    *   Widget container with gradient top border accent
 *   **Widget Configuration:**
     *   `clientId`: `faith_house_demo`
     *   `botId`: `faith_house_demo_main`
+    *   `data-primary-color`: `#00E5CC` - TCAI cyan accent
+    *   `data-business-name`: `Faith House Assistant`
+    *   `data-business-subtitle`: `Sober Living • Demo`
     *   `data-show-greeting-popup`: `true` - enables popup
-    *   `data-greeting-title`: `Hi there!`
-    *   `data-greeting-message`: `Have questions about The Faith House? I'm here to help!`
+    *   `data-greeting-title`: `Faith House Assistant`
+    *   `data-greeting-message`: Message about sober living and booking tours
     *   `data-greeting-delay`: `3` - seconds before popup appears
     *   `data-testid`: `faith-house-demo-widget` (container), `widget-bubble` (bubble), `greeting-popup` (popup)
 *   **Branding:** Treasure Coast AI branding with LIVE DEMO badge, demo info banner

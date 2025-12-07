@@ -1,0 +1,150 @@
+TASK: Final Theming Pass for Faith House Demo Widget (Colors, Icon, Greeting, Text)
+
+The Faith House demo environment is functionally complete:
+	•	/demo/faith-house landing page uses Treasure Coast AI branding (dark, modern, techy).
+	•	Floating chat widget shows as a bubble in the bottom-right and opens a chat window.
+	•	Demo vs live tenants are separated and stable.
+
+Now I want a final visual/theming pass specifically for the demo widget and its greeting, so everything looks perfectly integrated with the Treasure Coast AI + Faith House theme.
+
+Think of this as:
+
+“Polish the assistant so it looks like it was intentionally designed for this page, not just dropped in.”
+
+⸻
+
+1. Match the AI Assistant UI to the Demo Page Theme
+
+The /demo/faith-house page already has a dark, premium, Treasure Coast AI style (dark background, neon/glass, blue/teal/purple accents).
+
+Requirements:
+	1.	Chat window styling
+	•	Ensure the floating chat window (header, body, borders, background) matches the demo page theme:
+	•	Dark, glassy background (like other cards on the page).
+	•	Subtle gradient or accent border using the same primary accent color(s) as the page.
+	•	Consistent typography (same fonts, font sizes, line height).
+	•	Bot message bubbles:
+	•	Soft, on-brand accent (e.g., muted blue/teal/purple with readable text).
+	•	User message bubbles:
+	•	Contrasting but complementary color (e.g., neutral dark/light gray that fits the dark theme).
+	•	Any icons inside the window (send icon, close icon, etc.) should match the theme:
+	•	Proper colors (no random bright primary color that doesn’t belong).
+	•	Consistent style (e.g., outline or solid, but consistent with the rest of the UI).
+	2.	Header bar
+	•	Title text must be updated to:
+	•	Faith House Assistant
+	•	Subtitle text:
+	•	Sober Living • Demo
+	•	“Powered by Treasure Coast AI” text or logo:
+	•	Use the same color treatment as the rest of Treasure Coast AI branding on this page.
+	•	Make sure the avatar and header icons feel polished:
+	•	Avatar should fit the Faith House + TCAI vibe (simple, professional, not cartoonish).
+	•	Header background and border should match the glass/tech aesthetic of the landing page.
+
+⸻
+
+2. Match the Chat Icon (Bubble) to the Theme
+
+Right now we have a working floating widget, but the chat bubble icon and shape need to be visually dialed in to match the page.
+
+Requirements:
+	1.	Shape & position
+	•	Keep the bubble circular (or a very slightly rounded square if that’s your global style) in the bottom-right corner.
+	•	Position: fixed bottom-right with safe margin, same as current behavior.
+	2.	Colors
+	•	Background color should use the primary Treasure Coast AI accent color used on /demo/faith-house:
+	•	If you’re already using a specific gradient or shade (e.g., teal/blue), reuse that here.
+	•	Icon (chat bubble symbol) should be:
+	•	White or very light, high contrast against the background.
+	3.	Hover/focus states
+	•	On hover or focus (desktop), apply a subtle glow or scale effect consistent with TCAI’s futuristic/techy feel.
+	•	No harsh or off-brand colors.
+	4.	Data attribute
+	•	Keep data-testid="widget-bubble" intact for the bubble container.
+
+⸻
+
+3. Greeting Popup / Welcome Message Styling
+
+If there is a greeting popup or initial welcome message that appears:
+
+Requirements:
+	1.	Visual style
+	•	Match the greeting popup’s background, border, and shadow to the rest of the widget and landing page:
+	•	Dark/glass styling with consistent border-radius.
+	•	On-brand accent border or glow, not random default colors.
+	•	Text color should be readable on dark background (no low-contrast grays).
+	2.	Content & tone
+	•	Title / heading for the greeting (if present) should reference:
+	•	Faith House Assistant
+	•	Text example (you don’t have to hardcode this exact text, this is just a tone guide):
+	•	“Hi, I’m the Faith House Assistant. I can answer questions about our sober living home and help you book a tour or schedule a phone call.”
+	•	Tone: calm, professional, reassuring. No cartoonish language.
+	3.	Iconography
+	•	If the greeting uses an icon/avatar:
+	•	Keep it consistent with the assistant header avatar (same icon, same style, same colors).
+
+⸻
+
+4. Ensure All Labels & Text Match the Assistant Identity
+
+Throughout the widget on /demo/faith-house:
+	•	The assistant should consistently be called:
+	•	“Faith House Assistant”
+	•	Avoid generic labels like:
+	•	“AI Chatbot”, “Support Bot”, “Treasure Coast Assistant” (unless in a “Powered by” context).
+	•	The only place “Treasure Coast AI” should appear is:
+	•	As the brand powering the assistant (e.g., “Powered by Treasure Coast AI”).
+	•	In the page header/branding, not as the assistant’s name.
+
+Check:
+	•	Window header
+	•	Greeting popup
+	•	Tooltip (if any)
+	•	Any “assistant name” labels in the UI
+
+Make sure they all say “Faith House Assistant”.
+
+⸻
+
+5. Add Small, Tasteful Futuristic Touches (Without Going Overboard)
+
+Add minor refinements to keep the techy, futuristic Treasure Coast AI vibe, for example:
+	•	Soft glow around the floating chat window border.
+	•	Very subtle animated gradient or shimmer in:
+	•	The header line, or
+	•	A thin border accent.
+	•	Smooth open/close transition for the chat window:
+	•	e.g., small scale + opacity animation when opening/closing.
+
+Important:
+	•	Keep everything subtle.
+	•	No crazy animations that feel like a game.
+	•	It should still feel appropriate for a sober living facility (professional, calm) while obviously being modern tech.
+
+⸻
+
+6. QA Checklist
+
+After implementing all of the above, confirm:
+	1.	/demo/faith-house:
+	•	Page background, cards, and the widget all feel like one unified design system.
+	•	The chat bubble:
+	•	Uses TCAI accent color.
+	•	Has a clean, modern icon.
+	•	Greeting popup (if used) matches the theme in colors, fonts, and shapes.
+	2.	Widget behavior:
+	•	Closed state: only the bubble shows.
+	•	Open state:
+	•	Floating window looks glassy, modern, and premium.
+	•	Header shows: “Faith House Assistant” + “Sober Living • Demo” + “Powered by Treasure Coast AI”.
+	•	Bot and user message bubbles look on-brand and readable.
+	3.	Text consistency:
+	•	No mismatched names (“Support Bot”, “Generic Assistant”, etc.).
+	•	Everywhere relevant: “Faith House Assistant”.
+	4.	Nothing breaks:
+	•	Demo vs live separation still works.
+	•	Data flow (bookings, conversations) remains unaffected.
+
+Update replit.md or the relevant docs with a brief note that:
+	•	The Faith House demo widget and greeting have been fully themed to match the Treasure Coast AI / Faith House landing page.

@@ -11,7 +11,8 @@
     avatarUrl: '',
     showPoweredBy: true,
     notificationSoundEnabled: false,
-    businessName: 'Chat Assistant'
+    businessName: 'Chat Assistant',
+    businessSubtitle: 'Online'
   };
   
   var state = {
@@ -337,7 +338,7 @@
       '    ' + getAvatarHtml(),
       '    <div class="tcai-header-text">',
       '      <h1>' + escapeHtml(config.businessName) + '</h1>',
-      '      <p>Online</p>',
+      '      <p>' + escapeHtml(config.businessSubtitle) + '</p>',
       '    </div>',
       '  </div>',
       '  <button class="tcai-close-btn" data-testid="button-close" aria-label="Close chat" onclick="closeWidget()">',
@@ -398,9 +399,22 @@
           
           if (data.config.fullConfig && data.config.fullConfig.botConfig) {
             config.businessName = data.config.fullConfig.botConfig.businessName || 'Chat Assistant';
+            config.businessSubtitle = data.config.fullConfig.botConfig.businessSubtitle || 'Online';
+          }
+          
+          if (data.config.businessName) {
+            config.businessName = data.config.businessName;
+          }
+          if (data.config.businessSubtitle) {
+            config.businessSubtitle = data.config.businessSubtitle;
           }
           
           applyTheme();
+          
+          var headerTitle = document.querySelector('.tcai-header-text h1');
+          var headerSubtitle = document.querySelector('.tcai-header-text p');
+          if (headerTitle) headerTitle.textContent = config.businessName;
+          if (headerSubtitle) headerSubtitle.textContent = config.businessSubtitle;
         }
         break;
       case 'TCAI_OPEN':

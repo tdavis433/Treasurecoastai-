@@ -42,7 +42,9 @@
       showGreetingPopup: currentScript.getAttribute('data-show-greeting-popup') !== 'false',
       greetingTitle: currentScript.getAttribute('data-greeting-title') || 'Hi there!',
       greetingMessage: currentScript.getAttribute('data-greeting-message') || '',
-      greetingDelay: parseInt(currentScript.getAttribute('data-greeting-delay') || '3', 10)
+      greetingDelay: parseInt(currentScript.getAttribute('data-greeting-delay') || '3', 10),
+      businessName: currentScript.getAttribute('data-business-name') || '',
+      businessSubtitle: currentScript.getAttribute('data-business-subtitle') || ''
     };
   }
   
@@ -55,6 +57,20 @@
       }
     }
     return window.location.origin;
+  }
+  
+  function hexToRgba(hex, alpha) {
+    var r = parseInt(hex.slice(1, 3), 16);
+    var g = parseInt(hex.slice(3, 5), 16);
+    var b = parseInt(hex.slice(5, 7), 16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+  }
+  
+  function adjustColor(hex, amount) {
+    var r = Math.max(0, Math.min(255, parseInt(hex.slice(1, 3), 16) + amount));
+    var g = Math.max(0, Math.min(255, parseInt(hex.slice(3, 5), 16) + amount));
+    var b = Math.max(0, Math.min(255, parseInt(hex.slice(5, 7), 16) + amount));
+    return '#' + r.toString(16).padStart(2, '0') + g.toString(16).padStart(2, '0') + b.toString(16).padStart(2, '0');
   }
   
   async function fetchFullConfig(token, apiUrl) {
@@ -95,17 +111,18 @@
     
     bubble.style.cssText = [
       'position: fixed',
-      'width: 60px',
-      'height: 60px',
+      'width: 64px',
+      'height: 64px',
       'border-radius: 50%',
-      'background: ' + primaryColor,
+      'background: linear-gradient(135deg, ' + primaryColor + ', ' + adjustColor(primaryColor, -20) + ')',
       'cursor: pointer',
-      'box-shadow: 0 4px 20px rgba(0,0,0,0.3)',
+      'box-shadow: 0 0 30px ' + hexToRgba(primaryColor, 0.4) + ', 0 8px 25px rgba(0,0,0,0.3)',
       'z-index: 2147483646',
       'display: flex',
       'align-items: center',
       'justify-content: center',
-      'transition: transform 0.2s ease, box-shadow 0.2s ease',
+      'transition: transform 0.3s ease, box-shadow 0.3s ease',
+      'border: 2px solid ' + hexToRgba(primaryColor, 0.3),
       positionStyles
     ].join(';');
     
@@ -118,14 +135,17 @@
       bubble.innerHTML = getChatIcon(bubbleIcon);
     }
     
+    var glowColorHover = hexToRgba(primaryColor, 0.6);
+    var glowColorDefault = hexToRgba(primaryColor, 0.4);
+    
     bubble.onmouseover = function() {
-      bubble.style.transform = 'scale(1.1)';
-      bubble.style.boxShadow = '0 6px 25px rgba(0,0,0,0.4)';
+      bubble.style.transform = 'scale(1.08)';
+      bubble.style.boxShadow = '0 0 40px ' + glowColorHover + ', 0 10px 30px rgba(0,0,0,0.4)';
     };
     
     bubble.onmouseout = function() {
       bubble.style.transform = 'scale(1)';
-      bubble.style.boxShadow = '0 4px 20px rgba(0,0,0,0.3)';
+      bubble.style.boxShadow = '0 0 30px ' + glowColorDefault + ', 0 8px 25px rgba(0,0,0,0.3)';
     };
     
     bubble.onclick = function() {
@@ -174,36 +194,39 @@
     
     popup.style.cssText = [
       'position: fixed',
-      positionBottom ? 'bottom: 100px' : 'top: 100px',
+      positionBottom ? 'bottom: 105px' : 'top: 105px',
       positionRight ? 'right: 24px' : 'left: 24px',
-      'width: 280px',
-      'background: white',
+      'width: 300px',
+      'background: linear-gradient(135deg, rgba(15, 21, 32, 0.95), rgba(10, 10, 15, 0.98))',
+      'backdrop-filter: blur(20px)',
+      '-webkit-backdrop-filter: blur(20px)',
       'border-radius: 16px',
-      'box-shadow: 0 8px 30px rgba(0,0,0,0.15)',
+      'border: 1px solid ' + hexToRgba(primaryColor, 0.2),
+      'box-shadow: 0 0 40px ' + hexToRgba(primaryColor, 0.15) + ', 0 20px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)',
       'z-index: 2147483645',
-      'padding: 16px',
+      'padding: 18px',
       'opacity: 0',
       'transform: translateY(10px) scale(0.95)',
-      'transition: opacity 0.3s ease, transform 0.3s ease',
+      'transition: opacity 0.4s ease, transform 0.4s ease',
       'pointer-events: none',
       'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     ].join(';');
     
     var avatarHtml = avatarUrl 
-      ? '<img src="' + avatarUrl + '" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">'
-      : '<div style="width: 40px; height: 40px; border-radius: 50%; background: ' + primaryColor + '; display: flex; align-items: center; justify-content: center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></div>';
+      ? '<img src="' + avatarUrl + '" style="width: 44px; height: 44px; border-radius: 12px; object-fit: cover; box-shadow: 0 0 20px ' + hexToRgba(primaryColor, 0.3) + ';">'
+      : '<div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, ' + primaryColor + ', ' + adjustColor(primaryColor, -20) + '); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px ' + hexToRgba(primaryColor, 0.4) + ';"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></div>';
     
     popup.innerHTML = [
-      '<div style="display: flex; align-items: flex-start; gap: 12px;">',
+      '<div style="display: flex; align-items: flex-start; gap: 14px;">',
       '  <div style="flex-shrink: 0;">' + avatarHtml + '</div>',
       '  <div style="flex: 1; min-width: 0;">',
-      '    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">',
-      '      <span style="font-weight: 600; font-size: 16px; color: #1a1a1a;">' + greetingTitle + '</span>',
-      '      <button id="tcai-greeting-close" style="background: none; border: none; cursor: pointer; padding: 4px; color: #999; display: flex; align-items: center; justify-content: center;" aria-label="Close greeting">' + getSmallCloseIcon() + '</button>',
+      '    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">',
+      '      <span style="font-weight: 600; font-size: 15px; color: #F8FAFC; letter-spacing: -0.01em;">' + greetingTitle + '</span>',
+      '      <button id="tcai-greeting-close" style="background: rgba(255,255,255,0.05); border: none; cursor: pointer; padding: 6px; color: rgba(255,255,255,0.5); display: flex; align-items: center; justify-content: center; border-radius: 6px; transition: all 0.2s;" aria-label="Close greeting">' + getSmallCloseIcon() + '</button>',
       '    </div>',
-      '    <p style="margin: 0 0 12px 0; font-size: 14px; color: #666; line-height: 1.4;">' + greetingMessage + '</p>',
-      '    <button id="tcai-greeting-start" style="width: 100%; padding: 10px 16px; background: ' + primaryColor + '; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: opacity 0.2s;">',
-      '      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>',
+      '    <p style="margin: 0 0 14px 0; font-size: 13px; color: rgba(255,255,255,0.7); line-height: 1.5;">' + greetingMessage + '</p>',
+      '    <button id="tcai-greeting-start" style="width: 100%; padding: 11px 16px; background: linear-gradient(135deg, ' + primaryColor + ', ' + adjustColor(primaryColor, -20) + '); color: #0A0A0F; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.3s; box-shadow: 0 0 20px ' + hexToRgba(primaryColor, 0.3) + ';">',
+      '      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>',
       '      Start Chat',
       '    </button>',
       '  </div>',
@@ -262,15 +285,29 @@
     }
     
     if (startBtn) {
+      var primaryColor = (fullConfig && fullConfig.widgetSettings && fullConfig.widgetSettings.primaryColor) || config.primaryColor;
       startBtn.onclick = function() {
         hideGreetingPopup();
         openWidget();
       };
       startBtn.onmouseover = function() {
-        startBtn.style.opacity = '0.9';
+        startBtn.style.transform = 'translateY(-1px)';
+        startBtn.style.boxShadow = '0 0 30px ' + hexToRgba(primaryColor, 0.5);
       };
       startBtn.onmouseout = function() {
-        startBtn.style.opacity = '1';
+        startBtn.style.transform = 'translateY(0)';
+        startBtn.style.boxShadow = '0 0 20px ' + hexToRgba(primaryColor, 0.3);
+      };
+    }
+    
+    if (closeBtn) {
+      closeBtn.onmouseover = function() {
+        closeBtn.style.background = 'rgba(255,255,255,0.1)';
+        closeBtn.style.color = 'rgba(255,255,255,0.8)';
+      };
+      closeBtn.onmouseout = function() {
+        closeBtn.style.background = 'rgba(255,255,255,0.05)';
+        closeBtn.style.color = 'rgba(255,255,255,0.5)';
       };
     }
     
@@ -362,6 +399,13 @@
           iframeConfig.primaryColor = fullConfig.widgetSettings.primaryColor || iframeConfig.primaryColor;
           iframeConfig.greeting = fullConfig.widgetSettings.greeting || iframeConfig.greeting;
         }
+      }
+      
+      if (config.businessName) {
+        iframeConfig.businessName = config.businessName;
+      }
+      if (config.businessSubtitle) {
+        iframeConfig.businessSubtitle = config.businessSubtitle;
       }
       
       iframe.contentWindow.postMessage({

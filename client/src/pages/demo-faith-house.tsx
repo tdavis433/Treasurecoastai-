@@ -26,12 +26,14 @@ export default function DemoFaithHouse() {
     script.dataset.clientId = "faith_house_demo";
     script.dataset.botId = "faith_house_demo_main";
     script.dataset.theme = "dark";
-    script.dataset.primaryColor = "#06b6d4";
-    script.dataset.greeting = "Hi! I'm the Faith House AI assistant. How can I help you today?";
+    script.dataset.primaryColor = "#00E5CC";
+    script.dataset.greeting = "Hi, I'm the Faith House Assistant. I can answer questions about our sober living home and help you book a tour or schedule a phone call. How can I assist you today?";
     script.dataset.showGreetingPopup = "true";
-    script.dataset.greetingTitle = "Hi there!";
-    script.dataset.greetingMessage = "Have questions about The Faith House? I'm here to help!";
+    script.dataset.greetingTitle = "Faith House Assistant";
+    script.dataset.greetingMessage = "I can answer questions about our sober living home and help you book a tour or schedule a call.";
     script.dataset.greetingDelay = "3";
+    script.dataset.businessName = "Faith House Assistant";
+    script.dataset.businessSubtitle = "Sober Living \u2022 Demo";
     
     script.onload = () => {
       setWidgetLoaded(true);
