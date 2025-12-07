@@ -1,0 +1,171 @@
+You have already implemented:
+	•	Faith House AI-driven in-chat bookings (tour / phone_call)
+	•	Dashboard booking types + “View Chat”
+	•	Executive summary
+	•	Demo script docs
+	•	Regression fixes and defensive code
+
+Now the user wants a clean, safe separation between DEMO mode and LIVE mode for Faith House, with zero risk of data bleeding between them.
+
+The goal:
+
+There should be a demo tenant with fake/sample data that can be freely reset, and a live tenant that stores only real landlord data. They must be fully separated in the DB and UI, with clear labels.
+
+Do not rely on a simple “mode toggle” flag that reuses the same client/tenant for both.
+Instead, implement two logically separate tenants that share the same code paths but not data.
+
+⸻
+
+1. Tenant & bot separation
+	1.	In the DB / seed layer, create two tenants for Faith House:
+	•	Demo tenant
+	•	clientId: faith_house_demo
+	•	slug or similar: faith-house-demo
+	•	isDemo: true
+	•	Bot: faith_house_demo_main (type: sober_living)
+	•	Live tenant
+	•	clientId: faith_house_live
+	•	slug: faith-house-live
+	•	isDemo: false
+	•	Bot: faith_house_live_main (type: sober_living)
+	2.	Ensure all tables that store client-related data (conversations, leads, appointments/bookings, analytics, etc.) always associate rows with the correct clientId.
+	3.	Where you currently reference a single Faith House bot/tenant, split or generalize it so you can support both demo and live versions without hacks.
+
+⸻
+
+2. Separate URLs / routes for demo vs live
+
+Implement distinct entry points:
+	1.	Public demo page (for sales & testing)
+	•	Route: e.g. /demo/faith-house
+	•	Uses:
+	•	clientId = faith_house_demo
+	•	botId = faith_house_demo_main
+	•	Contains:
+	•	A branded page (Hero + short description + “Chat with our 24/7 assistant”)
+	•	Embedded chat widget bound to the demo bot
+	•	Clear label: “Faith House – DEMO” (e.g. in a badge or header subtitle)
+	2.	Live widget (for real website embedding)
+	•	Route: e.g. /widget/faith-house-live or whatever your current widget routing pattern is.
+	•	Uses:
+	•	clientId = faith_house_live
+	•	botId = faith_house_live_main
+	•	This is what will eventually be embedded on the landlord’s real site.
+	3.	If the client dashboard has a notion of “select tenant” or “current client”, make sure:
+	•	Admin can access both tenants for management.
+	•	The landlord’s login can only access the live Faith House tenant (faith_house_live), not the demo one.
+
+⸻
+
+3. Dashboard separation + labels
+
+Update the client dashboard so:
+	1.	When viewing the demo tenant:
+	•	There is a visual indicator in the UI:
+	•	e.g. a tag near the title: Faith House – DEMO
+	•	A short info line: “This dashboard shows sample demo data only.”
+	2.	When viewing the live tenant:
+	•	Title: Faith House – Live or simply Faith House with no demo label.
+	•	No references to “demo” anywhere.
+	•	Only real data is displayed based on clientId = faith_house_live.
+	3.	Ensure navigation and breadcrumbs never confuse demo vs live:
+	•	Example:
+	•	Demo: Demo / Faith House
+	•	Live: Clients / Faith House
+
+⸻
+
+4. Demo Reset endpoint (sandbox only)
+
+Implement a safe “Reset Demo Data” feature for Faith House demo:
+	1.	Backend:
+	•	New endpoint, e.g. POST /api/admin/demo/faith-house/reset
+	•	Behavior:
+	•	Deletes or re-seeds:
+	•	Conversations
+	•	Leads
+	•	Appointments/bookings
+	•	Analytics
+	•	Only for clientId = faith_house_demo.
+	•	Include a hard safety check:
+	•	If the target client is not isDemo = true, abort and log an error.
+	•	This prevents accidentally resetting a live tenant.
+	2.	Frontend:
+	•	Add a button in the super-admin view for Faith House demo only:
+	•	Label: “Reset Faith House Demo Data”
+	•	Confirm dialog: “This will reset demo conversations/leads/bookings for Faith House DEMO only. This does NOT affect live data. Proceed?”
+	•	This button must not appear in the live landlord dashboard.
+	3.	After reset, seed a small set of sample data:
+	•	A few conversations
+	•	2–3 leads
+	•	2–3 bookings with a mix of tour and phone_call
+	•	Enough to make the demo dashboard look “lived in”.
+
+⸻
+
+5. Executive summary behavior
+	1.	Ensure the executive summary card:
+	•	Shows realistic sample numbers for the demo tenant based on seeded data or recent demo interactions.
+	•	Shows real live numbers for the live tenant based solely on faith_house_live data.
+	2.	Confirm that:
+	•	Resetting demo data only recalculates demo stats.
+	•	Live stats remain untouched.
+
+⸻
+
+6. Visual safeguards to avoid confusion
+
+Update UI elements for clarity:
+	1.	Add a small component like <TenantBadge /> that:
+	•	Shows:
+	•	“DEMO” (highlighted) for demo tenants.
+	•	“LIVE” or nothing for live tenants.
+	2.	Use this component consistently on:
+	•	Dashboard header
+	•	Maybe the sidebar or title bar
+	•	Demo page header
+	3.	Make sure screenshots / doc references to Faith House clearly indicate whether they’re demo or live.
+
+⸻
+
+7. QA scenarios to validate no bleeding
+
+Before you’re done, run and document these tests:
+	1.	Demo-only reset:
+	•	Create a fake booking and conversation in faith_house_live.
+	•	Run the demo reset endpoint.
+	•	Confirm:
+	•	Live booking still exists.
+	•	Live conversation still exists.
+	•	Only faith_house_demo data is reset.
+	2.	Side-by-side behavior:
+	•	Interact with the demo chat:
+	•	Confirm bookings, leads, and stats update only for faith_house_demo.
+	•	Interact with the live chat:
+	•	Confirm bookings, leads, and stats update only for faith_house_live.
+	3.	Login separation:
+	•	As landlord (client staff):
+	•	Confirm you can only see live Faith House.
+	•	As super-admin:
+	•	Confirm you can see both demo and live tenants, with correct labels.
+	4.	Widget separation:
+	•	Load /demo/faith-house and /widget/faith-house-live in separate browser tabs.
+	•	Confirm:
+	•	They each create and show data for their respective tenants only.
+	•	No calls mix their clientIds or botIds.
+
+At the end, produce a short summary in docs/faith-house-demo-vs-live.md describing:
+	•	The demo vs live design
+	•	How to reset demo data
+	•	How to access each mode
+	•	Guarantees about data separation
+
+⸻
+
+Do not introduce major new technology or dependencies.
+Reuse existing patterns for:
+	•	Multi-tenant handling
+	•	Drizzle schema
+	•	React routing and layout
+
+The priority is: clean demo vs live separation, no data bleeding, and a polished demo experience.

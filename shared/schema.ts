@@ -528,6 +528,9 @@ export const workspaces = pgTable("workspaces", {
   // Status
   status: text("status").notNull().default("active"), // active, paused, suspended, cancelled
   
+  // Demo flag - marks workspace as demo/sandbox (data can be reset)
+  isDemo: boolean("is_demo").notNull().default(false),
+  
   // Settings (JSONB for flexibility)
   settings: json("settings").$type<{
     timezone?: string;
