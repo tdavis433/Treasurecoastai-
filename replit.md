@@ -47,6 +47,26 @@ The platform features a "Dark Luxury SaaS with Neon-Glass Accents" aesthetic, in
 *   **Session Data Tracking:** Tracks conversation topics, `appointmentRequested`, `leadCaptured`, and `messageCount`.
 *   **Daily Analytics:** Tracks `conversationCount`, `leadCount`, `appointmentRequests`, and `avgResponseTime`.
 
+## Recent Changes (December 2024)
+
+### AI-Driven In-Chat Booking Collection (Faith House Demo)
+*   **New Feature:** AI can now collect booking information directly in conversation instead of just redirecting to external booking links
+*   **Two Conversion Goals:** Book a Tour (cyan badge) or Schedule a Phone Call (purple badge)
+*   **Information Collection:** Name, phone, email (optional), preferred time, notes
+*   **Automatic Appointment Creation:** Orchestrator detects complete booking info and creates appointment records
+*   **Conversation Linking:** Appointments now include `sessionId` and `botId` for linking back to source conversations
+*   **Dashboard Enhancements:**
+    *   Type badges (Tour/Phone Call) on bookings
+    *   "View Chat" button to see the conversation that led to each booking
+    *   Executive summary card with 7-day rolling stats (conversations, leads, tours, phone calls)
+*   **Demo Script:** See `docs/faith-house-demo-script.md` for landlord demo walkthrough
+
+### Faith House Bot Configuration
+*   **Bot ID:** `faith_house_main`
+*   **Workspace:** `ws_faith_house_001`
+*   **Bot Type:** `sober_living`
+*   **Personality:** Warm, supportive, never pushy, acknowledges courage, focuses on helping
+
 ## External Dependencies
 *   **OpenAI GPT-4:** Used for AI engine and conversation analysis.
 *   **Neon (PostgreSQL):** Database hosting.
