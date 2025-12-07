@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -882,7 +882,7 @@ function EditLeadModal({
     notes: '',
   });
 
-  useState(() => {
+  useEffect(() => {
     if (lead) {
       setFormData({
         name: lead.name || '',
@@ -893,7 +893,7 @@ function EditLeadModal({
         notes: lead.notes || '',
       });
     }
-  });
+  }, [lead]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
