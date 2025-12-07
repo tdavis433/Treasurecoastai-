@@ -78,6 +78,36 @@ The platform features a "Dark Luxury SaaS with Neon-Glass Accents" aesthetic, in
     *   Gradient borders and neon glow accents
     *   Chat bubble with animated glow on hover
     *   Widget container with gradient top border accent
+
+### Visual Upgrade (December 2024)
+*   **Landing Page Enhancements:**
+    *   ParticleField: 40 floating cyan particles with drift animation
+    *   AmbientBackground: Radial gradient blobs with ambient shift animation
+    *   Frosted glass hero section with gradient borders
+    *   Gradient title text with shimmer effect
+    *   Animated underline dividers with glow streaks
+*   **Chat Bubble Redesign:**
+    *   House+plus icon (configurable via `data-bubble-icon="house-plus"`)
+    *   Subtle hover animation: scale 1.04, rotate 1.5deg
+    *   Idle pulse animation every 11 seconds to attract attention
+    *   Memory-safe interval cleanup on widget removal
+*   **Chat Widget Premium Effects:**
+    *   Dark glass container with backdrop blur
+    *   Calibration animation on widget open (shimmer border effect)
+    *   AI sync indicator banner with sliding animation
+    *   Status dot with green pulse animation
+    *   AI/Human mode toggle button in header
+*   **Message Styling:**
+    *   Enhanced gradient backgrounds for bot/user messages
+    *   Neon bar typing indicator (vertical bars with shimmer)
+    *   Glow effects on message bubbles
+*   **CSS Keyframe Animations:**
+    *   `ambientShift`: Background gradient motion
+    *   `glowStreak`: Animated divider glow
+    *   `gradientSlide`: Shimmer border effect
+    *   `pulseGlow`: Idle bubble attention pulse
+    *   `statusPulse`: Header status dot animation
+    *   `neonShimmer`: Typing indicator bar animation
 *   **Widget Configuration:**
     *   `clientId`: `faith_house_demo`
     *   `botId`: `faith_house_demo_main`
