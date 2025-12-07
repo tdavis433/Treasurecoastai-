@@ -79,6 +79,13 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { format } from "date-fns";
 import { useLocation } from "wouter";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
@@ -284,6 +291,7 @@ export default function ClientDashboard() {
   const [loadingSession, setLoadingSession] = useState<string | null>(null);
   const [updatingLeadId, setUpdatingLeadId] = useState<string | null>(null);
   const [updatingBookingId, setUpdatingBookingId] = useState<string | null>(null);
+  const [selectedLead, setSelectedLead] = useState<any | null>(null);
 
   const { data: currentUser, isLoading: authLoading } = useQuery<AuthUser>({
     queryKey: ["/api/auth/me"],
@@ -1845,7 +1853,8 @@ export default function ClientDashboard() {
                     return (
                       <div
                         key={lead.id || idx}
-                        className="p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/8 transition-colors"
+                        className="p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-cyan-500/30 transition-colors cursor-pointer"
+                        onClick={() => setSelectedLead(lead)}
                         data-testid={`lead-row-${lead.id || idx}`}
                       >
                         <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -1862,6 +1871,7 @@ export default function ClientDashboard() {
                                   <a 
                                     href={`mailto:${lead.email}`}
                                     className="flex items-center gap-1 hover:text-cyan-400 transition-colors"
+                                    onClick={(e) => e.stopPropagation()}
                                     data-testid={`link-email-${lead.id}`}
                                   >
                                     <Mail className="h-3 w-3" />
@@ -1875,7 +1885,7 @@ export default function ClientDashboard() {
                                 )}
                                 {lead.phone ? (
                                   <button
-                                    onClick={() => handleClickToCall(lead.phone)}
+                                    onClick={(e) => { e.stopPropagation(); handleClickToCall(lead.phone); }}
                                     className="flex items-center gap-1 hover:text-green-400 transition-colors group"
                                     data-testid={`button-call-${lead.id}`}
                                   >
@@ -2678,6 +2688,108 @@ export default function ClientDashboard() {
         {/* Platform Help Bot */}
         <PlatformHelpBot variant="dashboard" />
       </div>
+
+      {/* Lead Details Dialog */}
+      <Dialog open={!!selectedLead} onOpenChange={(open) => !open && setSelectedLead(null)}>
+        <DialogContent className="bg-[#1a1f2e] border-white/10 text-white max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3 text-white">
+              <div className="h-12 w-12 rounded-full bg-gradient-to-br from-green-500/30 to-emerald-500/30 flex items-center justify-center">
+                <span className="text-lg font-medium text-green-400">
+                  {(selectedLead?.name || 'V')[0].toUpperCase()}
+                </span>
+              </div>
+              <div>
+                <span>{selectedLead?.name || 'Anonymous Visitor'}</span>
+                <div className="flex items-center gap-2 mt-1">
+                  {selectedLead && (
+                    <Badge className={LEAD_STATUS_OPTIONS.find(s => s.value === (selectedLead.status || 'new'))?.color || 'bg-white/10 text-white/60 border-white/20'}>
+                      {LEAD_STATUS_OPTIONS.find(s => s.value === (selectedLead.status || 'new'))?.label || 'New'}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </DialogTitle>
+            <DialogDescription className="text-white/50">
+              Lead captured on {selectedLead?.createdAt ? format(new Date(selectedLead.createdAt), "MMMM d, yyyy 'at' h:mm a") : 'Unknown date'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 mt-4">
+            {/* Contact Information */}
+            <div className="bg-white/5 rounded-lg p-4 space-y-3">
+              <h4 className="text-sm font-medium text-white/70 uppercase tracking-wide">Contact Information</h4>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <Mail className="h-4 w-4 text-cyan-400" />
+                  {selectedLead?.email ? (
+                    <a href={`mailto:${selectedLead.email}`} className="text-cyan-400 hover:underline">
+                      {selectedLead.email}
+                    </a>
+                  ) : (
+                    <span className="text-white/40 italic">No email provided</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <PhoneCall className="h-4 w-4 text-green-400" />
+                  {selectedLead?.phone ? (
+                    <a href={`tel:${selectedLead.phone}`} className="text-green-400 hover:underline">
+                      {selectedLead.phone}
+                    </a>
+                  ) : (
+                    <span className="text-white/40 italic">No phone provided</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Conversation Preview */}
+            {selectedLead?.conversationPreview && (
+              <div className="bg-white/5 rounded-lg p-4 space-y-2">
+                <h4 className="text-sm font-medium text-white/70 uppercase tracking-wide flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-cyan-400" />
+                  What They Wanted
+                </h4>
+                <p className="text-white/80">{selectedLead.conversationPreview}</p>
+              </div>
+            )}
+
+            {/* Notes */}
+            {selectedLead?.notes && (
+              <div className="bg-white/5 rounded-lg p-4 space-y-2">
+                <h4 className="text-sm font-medium text-white/70 uppercase tracking-wide">Notes</h4>
+                <p className="text-white/70">{selectedLead.notes}</p>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-2">
+              {selectedLead?.email && (
+                <Button
+                  variant="outline"
+                  className="flex-1 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
+                  onClick={() => window.location.href = `mailto:${selectedLead.email}`}
+                  data-testid="button-email-lead"
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  Send Email
+                </Button>
+              )}
+              {selectedLead?.phone && (
+                <Button
+                  variant="outline"
+                  className="flex-1 border-green-500/30 text-green-400 hover:bg-green-500/10"
+                  onClick={() => window.location.href = `tel:${selectedLead.phone}`}
+                  data-testid="button-call-lead"
+                >
+                  <PhoneCall className="h-4 w-4 mr-2" />
+                  Call Now
+                </Button>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </SidebarProvider>
   );
 }
