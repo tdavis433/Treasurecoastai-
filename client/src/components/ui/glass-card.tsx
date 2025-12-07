@@ -20,10 +20,11 @@ export function GlassCard({
   return (
     <div
       className={cn(
-        "bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md",
-        "shadow-[0px_4px_20px_rgba(0,0,0,0.45)]",
-        hover && "transition-all duration-300 hover:bg-white/10 hover:border-white/20",
-        glow && "hover:shadow-[0px_4px_30px_rgba(79,195,247,0.15)]",
+        "bg-white/[0.03] border border-white/10 rounded-xl backdrop-blur-md",
+        "shadow-[0px_4px_24px_rgba(0,0,0,0.5)]",
+        "transition-all duration-200",
+        hover && "hover:bg-white/[0.06] hover:border-white/15 cursor-pointer",
+        glow && "hover:shadow-[0px_4px_30px_rgba(0,212,255,0.12)]",
         className
       )}
       onClick={onClick}

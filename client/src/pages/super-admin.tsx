@@ -815,17 +815,17 @@ export default function SuperAdmin() {
                         setSelectedBotId(bot.botId);
                         setActiveTab('overview');
                       }}
-                      className={`w-full text-left p-3 rounded-lg mb-1 transition-colors ${
+                      className={`w-full text-left p-3 rounded-lg mb-1.5 transition-all duration-200 ${
                         isSelected 
-                          ? 'bg-cyan-500/10 border border-cyan-400/30' 
-                          : 'hover:bg-white/10'
+                          ? 'bg-cyan-500/10 border border-cyan-400/30 shadow-[0_0_12px_rgba(0,212,255,0.15)]' 
+                          : 'hover:bg-white/10 hover:border-white/10 border border-transparent'
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                        <div className={`h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors duration-200 ${
                           isSelected ? 'bg-cyan-500/20' : 'bg-white/10'
                         }`}>
-                          <Building2 className={`h-4 w-4 ${isSelected ? 'text-cyan-400' : 'text-white/55'}`} />
+                          <Building2 className={`h-4 w-4 transition-colors duration-200 ${isSelected ? 'text-cyan-400' : 'text-white/55'}`} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-sm text-white leading-tight">
@@ -913,24 +913,29 @@ export default function SuperAdmin() {
                 </div>
               </div>
 
-              {/* Navigation Tabs - Organized: Overview, Clients, Assistants, Templates, Knowledge, Integrations, Analytics, Users, System */}
-              <div className="flex items-center gap-1 mb-6 p-1 bg-white/5 rounded-lg border border-white/10 overflow-x-auto">
+              {/* Navigation Tabs - Logical Groups: Dashboard, Clients, Assistants | Content | Analytics | Admin */}
+              <div className="flex items-center gap-1 mb-6 p-1.5 bg-white/5 rounded-xl border border-white/10 overflow-x-auto backdrop-blur-sm">
+                {/* Core Management */}
                 <Button
                   data-testid="button-section-overview"
                   variant="ghost"
                   size="sm"
                   onClick={() => setDashboardSection('overview')}
-                  className={dashboardSection === 'overview' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
+                  className={dashboardSection === 'overview' 
+                    ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_12px_rgba(0,212,255,0.3)] border border-cyan-400/30 transition-all duration-200' 
+                    : 'text-white/70 hover:text-white hover:bg-white/10 transition-all duration-200'}
                 >
                   <Layers className="h-4 w-4 mr-2" />
-                  Overview
+                  Dashboard
                 </Button>
                 <Button
                   data-testid="button-section-workspaces"
                   variant="ghost"
                   size="sm"
                   onClick={() => setDashboardSection('workspaces')}
-                  className={dashboardSection === 'workspaces' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
+                  className={dashboardSection === 'workspaces' 
+                    ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_12px_rgba(0,212,255,0.3)] border border-cyan-400/30 transition-all duration-200' 
+                    : 'text-white/70 hover:text-white hover:bg-white/10 transition-all duration-200'}
                 >
                   <Users2 className="h-4 w-4 mr-2" />
                   Clients
@@ -943,7 +948,9 @@ export default function SuperAdmin() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setDashboardSection('assistants')}
-                  className={dashboardSection === 'assistants' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
+                  className={dashboardSection === 'assistants' 
+                    ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_12px_rgba(0,212,255,0.3)] border border-cyan-400/30 transition-all duration-200' 
+                    : 'text-white/70 hover:text-white hover:bg-white/10 transition-all duration-200'}
                 >
                   <Bot className="h-4 w-4 mr-2" />
                   Assistants
@@ -951,12 +958,18 @@ export default function SuperAdmin() {
                     <Badge className="ml-1.5 bg-white/10 text-white/70 text-xs px-1.5">{clientBots.length}</Badge>
                   )}
                 </Button>
+                
+                <Separator orientation="vertical" className="h-6 bg-white/20 mx-1" />
+                
+                {/* Content & Configuration */}
                 <Button
                   data-testid="button-section-templates"
                   variant="ghost"
                   size="sm"
                   onClick={() => setDashboardSection('templates')}
-                  className={dashboardSection === 'templates' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
+                  className={dashboardSection === 'templates' 
+                    ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_12px_rgba(0,212,255,0.3)] border border-cyan-400/30 transition-all duration-200' 
+                    : 'text-white/70 hover:text-white hover:bg-white/10 transition-all duration-200'}
                 >
                   <FileText className="h-4 w-4 mr-2" />
                   Templates
@@ -969,7 +982,9 @@ export default function SuperAdmin() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setDashboardSection('knowledge')}
-                  className={dashboardSection === 'knowledge' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
+                  className={dashboardSection === 'knowledge' 
+                    ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_12px_rgba(0,212,255,0.3)] border border-cyan-400/30 transition-all duration-200' 
+                    : 'text-white/70 hover:text-white hover:bg-white/10 transition-all duration-200'}
                 >
                   <FileText className="h-4 w-4 mr-2" />
                   Knowledge
@@ -979,7 +994,9 @@ export default function SuperAdmin() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setDashboardSection('integrations')}
-                  className={dashboardSection === 'integrations' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
+                  className={dashboardSection === 'integrations' 
+                    ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_12px_rgba(0,212,255,0.3)] border border-cyan-400/30 transition-all duration-200' 
+                    : 'text-white/70 hover:text-white hover:bg-white/10 transition-all duration-200'}
                 >
                   <Zap className="h-4 w-4 mr-2" />
                   Integrations
@@ -989,38 +1006,56 @@ export default function SuperAdmin() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setDashboardSection('requests')}
-                  className={dashboardSection === 'requests' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
+                  className={dashboardSection === 'requests' 
+                    ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_12px_rgba(0,212,255,0.3)] border border-cyan-400/30 transition-all duration-200' 
+                    : 'text-white/70 hover:text-white hover:bg-white/10 transition-all duration-200'}
                 >
                   <Mail className="h-4 w-4 mr-2" />
                   Requests
                 </Button>
-                <Button
-                  data-testid="button-section-billing"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setDashboardSection('billing')}
-                  className={dashboardSection === 'billing' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
-                >
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  Billing
-                </Button>
+                
                 <Separator orientation="vertical" className="h-6 bg-white/20 mx-1" />
+                
+                {/* Monitoring & Analytics */}
                 <Button
                   data-testid="button-section-analytics"
                   variant="ghost"
                   size="sm"
                   onClick={() => setDashboardSection('analytics')}
-                  className={dashboardSection === 'analytics' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
+                  className={dashboardSection === 'analytics' 
+                    ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_12px_rgba(0,212,255,0.3)] border border-cyan-400/30 transition-all duration-200' 
+                    : 'text-white/70 hover:text-white hover:bg-white/10 transition-all duration-200'}
                 >
                   <TrendingUp className="h-4 w-4 mr-2" />
                   Analytics
                 </Button>
                 <Button
+                  data-testid="button-section-logs"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setDashboardSection('logs')}
+                  className={dashboardSection === 'logs' 
+                    ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_12px_rgba(0,212,255,0.3)] border border-cyan-400/30 transition-all duration-200' 
+                    : 'text-white/70 hover:text-white hover:bg-white/10 transition-all duration-200'}
+                >
+                  <FileWarning className="h-4 w-4 mr-2" />
+                  System
+                  {systemStatus?.errorCount ? (
+                    <Badge className="ml-1.5 bg-red-500/20 text-red-400 text-xs px-1.5">{systemStatus.errorCount}</Badge>
+                  ) : null}
+                </Button>
+                
+                <Separator orientation="vertical" className="h-6 bg-white/20 mx-1" />
+                
+                {/* Administration */}
+                <Button
                   data-testid="button-section-users"
                   variant="ghost"
                   size="sm"
                   onClick={() => setDashboardSection('users')}
-                  className={dashboardSection === 'users' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
+                  className={dashboardSection === 'users' 
+                    ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_12px_rgba(0,212,255,0.3)] border border-cyan-400/30 transition-all duration-200' 
+                    : 'text-white/70 hover:text-white hover:bg-white/10 transition-all duration-200'}
                 >
                   <Shield className="h-4 w-4 mr-2" />
                   Users
@@ -1030,24 +1065,26 @@ export default function SuperAdmin() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setDashboardSection('client-logins')}
-                  className={dashboardSection === 'client-logins' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
+                  className={dashboardSection === 'client-logins' 
+                    ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_12px_rgba(0,212,255,0.3)] border border-cyan-400/30 transition-all duration-200' 
+                    : 'text-white/70 hover:text-white hover:bg-white/10 transition-all duration-200'}
                 >
                   <User className="h-4 w-4 mr-2" />
                   Client Logins
                 </Button>
                 <Button
-                  data-testid="button-section-logs"
+                  data-testid="button-section-billing"
                   variant="ghost"
                   size="sm"
-                  onClick={() => setDashboardSection('logs')}
-                  className={dashboardSection === 'logs' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/70 hover:text-white hover:bg-white/10'}
+                  onClick={() => setDashboardSection('billing')}
+                  className={dashboardSection === 'billing' 
+                    ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_12px_rgba(0,212,255,0.3)] border border-cyan-400/30 transition-all duration-200' 
+                    : 'text-white/70 hover:text-white hover:bg-white/10 transition-all duration-200'}
                 >
-                  <FileWarning className="h-4 w-4 mr-2" />
-                  System
-                  {systemStatus?.errorCount ? (
-                    <Badge className="ml-1.5 bg-red-500/20 text-red-400 text-xs px-1.5">{systemStatus.errorCount}</Badge>
-                  ) : null}
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Billing
                 </Button>
+                
                 <div className="flex-1" />
                 <Button
                   data-testid="button-refresh-data"
@@ -1059,7 +1096,7 @@ export default function SuperAdmin() {
                     queryClient.invalidateQueries({ queryKey: ["/api/super-admin/workspaces"] });
                     toast({ title: "Refreshed", description: "Dashboard data updated" });
                   }}
-                  className="text-white/55 hover:text-white hover:bg-white/10"
+                  className="text-white/55 hover:text-white hover:bg-white/10 transition-all duration-200"
                 >
                   <RefreshCw className="h-4 w-4" />
                 </Button>
@@ -2706,10 +2743,10 @@ export default function SuperAdmin() {
                 </div>
 
                 {/* God Mode Tab Navigation */}
-                <div className="mb-6">
+                <div className="mb-6 space-y-3">
                   {/* Primary Tabs - Core Editing */}
-                  <div className="flex items-center gap-1 flex-wrap mb-2">
-                    <span className="text-xs text-white/40 mr-2 uppercase tracking-wider">Edit</span>
+                  <div className="flex items-center gap-1.5 flex-wrap p-1 bg-white/5 rounded-lg border border-white/10">
+                    <span className="text-xs text-white/40 px-2 uppercase tracking-wider font-medium">Edit</span>
                     {[
                       { value: 'overview', icon: Eye, label: 'Overview' },
                       { value: 'persona', icon: MessageCircle, label: 'Persona & AI' },
@@ -2722,19 +2759,19 @@ export default function SuperAdmin() {
                         size="sm"
                         onClick={() => setActiveTab(tab.value)}
                         className={activeTab === tab.value 
-                          ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' 
-                          : 'text-white/55 hover:text-white hover:bg-white/10'}
+                          ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_10px_rgba(0,212,255,0.2)] transition-all duration-200' 
+                          : 'text-white/55 hover:text-white hover:bg-white/10 transition-all duration-200'}
                         data-testid={`tab-${tab.value}`}
                       >
-                        <tab.icon className="h-4 w-4 mr-1" />
+                        <tab.icon className="h-4 w-4 mr-1.5" />
                         {tab.label}
                       </Button>
                     ))}
                   </div>
                   
                   {/* Secondary Tabs - Deployment & Testing */}
-                  <div className="flex items-center gap-1 flex-wrap mb-2">
-                    <span className="text-xs text-white/40 mr-2 uppercase tracking-wider">Deploy</span>
+                  <div className="flex items-center gap-1.5 flex-wrap p-1 bg-white/5 rounded-lg border border-white/10">
+                    <span className="text-xs text-white/40 px-2 uppercase tracking-wider font-medium">Deploy</span>
                     {[
                       { value: 'booking', icon: Calendar, label: 'Booking & Links' },
                       { value: 'channels', icon: Palette, label: 'Channels & Widget' },
@@ -2746,19 +2783,21 @@ export default function SuperAdmin() {
                         size="sm"
                         onClick={() => setActiveTab(tab.value)}
                         className={activeTab === tab.value 
-                          ? (tab.highlight ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30')
-                          : 'text-white/55 hover:text-white hover:bg-white/10'}
+                          ? (tab.highlight 
+                              ? 'bg-green-500/20 text-green-400 border border-green-500/30 shadow-[0_0_10px_rgba(34,197,94,0.2)] transition-all duration-200' 
+                              : 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_10px_rgba(0,212,255,0.2)] transition-all duration-200')
+                          : 'text-white/55 hover:text-white hover:bg-white/10 transition-all duration-200'}
                         data-testid={`tab-${tab.value}`}
                       >
-                        <tab.icon className="h-4 w-4 mr-1" />
+                        <tab.icon className="h-4 w-4 mr-1.5" />
                         {tab.label}
                       </Button>
                     ))}
                   </div>
                   
                   {/* Tertiary Tabs - Monitoring & Admin */}
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <span className="text-xs text-white/40 mr-2 uppercase tracking-wider">Monitor</span>
+                  <div className="flex items-center gap-1.5 flex-wrap p-1 bg-white/5 rounded-lg border border-white/10">
+                    <span className="text-xs text-white/40 px-2 uppercase tracking-wider font-medium">Monitor</span>
                     {[
                       { value: 'analytics', icon: BarChart3, label: 'Analytics' },
                       { value: 'logs', icon: MessageSquare, label: 'Logs' },
@@ -2770,11 +2809,11 @@ export default function SuperAdmin() {
                         size="sm"
                         onClick={() => setActiveTab(tab.value)}
                         className={activeTab === tab.value 
-                          ? 'bg-white/10 text-white border border-white/20' 
-                          : 'text-white/55 hover:text-white hover:bg-white/10'}
+                          ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.2)] transition-all duration-200' 
+                          : 'text-white/55 hover:text-white hover:bg-white/10 transition-all duration-200'}
                         data-testid={`tab-${tab.value}`}
                       >
-                        <tab.icon className="h-4 w-4 mr-1" />
+                        <tab.icon className="h-4 w-4 mr-1.5" />
                         {tab.label}
                       </Button>
                     ))}
