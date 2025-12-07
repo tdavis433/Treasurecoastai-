@@ -28,6 +28,10 @@ export default function DemoFaithHouse() {
     script.dataset.theme = "dark";
     script.dataset.primaryColor = "#06b6d4";
     script.dataset.greeting = "Hi! I'm the Faith House AI assistant. How can I help you today?";
+    script.dataset.showGreetingPopup = "true";
+    script.dataset.greetingTitle = "Hi there!";
+    script.dataset.greetingMessage = "Have questions about The Faith House? I'm here to help!";
+    script.dataset.greetingDelay = "3";
     
     script.onload = () => {
       setWidgetLoaded(true);
@@ -41,8 +45,10 @@ export default function DemoFaithHouse() {
       }
       const widgetBubble = document.getElementById("tcai-bubble");
       const widgetIframe = document.getElementById("tcai-iframe");
+      const greetingPopup = document.getElementById("tcai-greeting-popup");
       if (widgetBubble) widgetBubble.remove();
       if (widgetIframe) widgetIframe.remove();
+      if (greetingPopup) greetingPopup.remove();
       if (window.TreasureCoastAI) {
         window.TreasureCoastAI.initialized = false;
       }

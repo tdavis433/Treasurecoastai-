@@ -12,8 +12,10 @@
     fullConfig: null,
     iframe: null,
     bubble: null,
+    greetingPopup: null,
     isOpen: false,
-    autoOpenTimer: null
+    autoOpenTimer: null,
+    greetingDismissed: false
   };
   
   function getScriptConfig() {
@@ -36,7 +38,11 @@
       greeting: currentScript.getAttribute('data-greeting') || 'Hi! How can I help you today?',
       bubbleIcon: currentScript.getAttribute('data-bubble-icon') || 'chat',
       theme: currentScript.getAttribute('data-theme') || 'dark',
-      apiUrl: currentScript.getAttribute('data-api-url') || getBaseUrl()
+      apiUrl: currentScript.getAttribute('data-api-url') || getBaseUrl(),
+      showGreetingPopup: currentScript.getAttribute('data-show-greeting-popup') !== 'false',
+      greetingTitle: currentScript.getAttribute('data-greeting-title') || 'Hi there!',
+      greetingMessage: currentScript.getAttribute('data-greeting-message') || '',
+      greetingDelay: parseInt(currentScript.getAttribute('data-greeting-delay') || '3', 10)
     };
   }
   
@@ -145,6 +151,134 @@
   
   function getCloseIcon() {
     return '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+  }
+  
+  function getSmallCloseIcon() {
+    return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+  }
+  
+  function createGreetingPopup(config, fullConfig) {
+    var popup = document.createElement('div');
+    popup.id = 'tcai-greeting-popup';
+    popup.setAttribute('data-testid', 'greeting-popup');
+    
+    var position = (fullConfig && fullConfig.widgetSettings && fullConfig.widgetSettings.position) || config.position;
+    var primaryColor = (fullConfig && fullConfig.widgetSettings && fullConfig.widgetSettings.primaryColor) || config.primaryColor;
+    var avatarUrl = fullConfig && fullConfig.widgetSettings && fullConfig.widgetSettings.avatarUrl;
+    
+    var positionRight = position.indexOf('right') !== -1;
+    var positionBottom = position.indexOf('bottom') !== -1;
+    
+    var greetingTitle = config.greetingTitle;
+    var greetingMessage = config.greetingMessage || (fullConfig && fullConfig.widgetSettings && fullConfig.widgetSettings.greeting) || config.greeting;
+    
+    popup.style.cssText = [
+      'position: fixed',
+      positionBottom ? 'bottom: 100px' : 'top: 100px',
+      positionRight ? 'right: 24px' : 'left: 24px',
+      'width: 280px',
+      'background: white',
+      'border-radius: 16px',
+      'box-shadow: 0 8px 30px rgba(0,0,0,0.15)',
+      'z-index: 2147483645',
+      'padding: 16px',
+      'opacity: 0',
+      'transform: translateY(10px) scale(0.95)',
+      'transition: opacity 0.3s ease, transform 0.3s ease',
+      'pointer-events: none',
+      'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    ].join(';');
+    
+    var avatarHtml = avatarUrl 
+      ? '<img src="' + avatarUrl + '" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">'
+      : '<div style="width: 40px; height: 40px; border-radius: 50%; background: ' + primaryColor + '; display: flex; align-items: center; justify-content: center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></div>';
+    
+    popup.innerHTML = [
+      '<div style="display: flex; align-items: flex-start; gap: 12px;">',
+      '  <div style="flex-shrink: 0;">' + avatarHtml + '</div>',
+      '  <div style="flex: 1; min-width: 0;">',
+      '    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">',
+      '      <span style="font-weight: 600; font-size: 16px; color: #1a1a1a;">' + greetingTitle + '</span>',
+      '      <button id="tcai-greeting-close" style="background: none; border: none; cursor: pointer; padding: 4px; color: #999; display: flex; align-items: center; justify-content: center;" aria-label="Close greeting">' + getSmallCloseIcon() + '</button>',
+      '    </div>',
+      '    <p style="margin: 0 0 12px 0; font-size: 14px; color: #666; line-height: 1.4;">' + greetingMessage + '</p>',
+      '    <button id="tcai-greeting-start" style="width: 100%; padding: 10px 16px; background: ' + primaryColor + '; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: opacity 0.2s;">',
+      '      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>',
+      '      Start Chat',
+      '    </button>',
+      '  </div>',
+      '</div>'
+    ].join('');
+    
+    return popup;
+  }
+  
+  function showGreetingPopup() {
+    var tcai = window.TreasureCoastAI;
+    if (!tcai.greetingPopup || tcai.greetingDismissed || tcai.isOpen) return;
+    
+    tcai.greetingPopup.style.display = 'block';
+    tcai.greetingPopup.style.opacity = '1';
+    tcai.greetingPopup.style.transform = 'translateY(0) scale(1)';
+    tcai.greetingPopup.style.pointerEvents = 'auto';
+  }
+  
+  function hideGreetingPopup() {
+    var tcai = window.TreasureCoastAI;
+    if (!tcai.greetingPopup) return;
+    
+    tcai.greetingPopup.style.opacity = '0';
+    tcai.greetingPopup.style.transform = 'translateY(10px) scale(0.95)';
+    tcai.greetingPopup.style.pointerEvents = 'none';
+    tcai.greetingPopup.style.display = 'none';
+  }
+  
+  function setupGreetingPopup(config, fullConfig) {
+    var tcai = window.TreasureCoastAI;
+    if (!config.showGreetingPopup) return;
+    
+    try {
+      if (sessionStorage.getItem('tcai_greeting_dismissed') === 'true') {
+        tcai.greetingDismissed = true;
+        return;
+      }
+    } catch (e) {}
+    
+    var popup = createGreetingPopup(config, fullConfig);
+    tcai.greetingPopup = popup;
+    document.body.appendChild(popup);
+    
+    var closeBtn = document.getElementById('tcai-greeting-close');
+    var startBtn = document.getElementById('tcai-greeting-start');
+    
+    if (closeBtn) {
+      closeBtn.onclick = function() {
+        tcai.greetingDismissed = true;
+        hideGreetingPopup();
+        try {
+          sessionStorage.setItem('tcai_greeting_dismissed', 'true');
+        } catch (e) {}
+      };
+    }
+    
+    if (startBtn) {
+      startBtn.onclick = function() {
+        hideGreetingPopup();
+        openWidget();
+      };
+      startBtn.onmouseover = function() {
+        startBtn.style.opacity = '0.9';
+      };
+      startBtn.onmouseout = function() {
+        startBtn.style.opacity = '1';
+      };
+    }
+    
+    setTimeout(function() {
+      if (!tcai.greetingDismissed && !tcai.isOpen) {
+        showGreetingPopup();
+      }
+    }, config.greetingDelay * 1000);
   }
   
   function getPositionStyles(position, element) {
@@ -256,6 +390,8 @@
       clearTimeout(tcai.autoOpenTimer);
       tcai.autoOpenTimer = null;
     }
+    
+    hideGreetingPopup();
     
     tcai.isOpen = true;
     tcai.iframe.style.opacity = '1';
@@ -412,6 +548,7 @@
     
     setupThemeListener();
     setupAutoOpen(config, fullConfig);
+    setupGreetingPopup(config, fullConfig);
     
     window.TreasureCoastAI.initialized = true;
     window.TreasureCoastAI.open = openWidget;

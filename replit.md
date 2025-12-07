@@ -65,10 +65,20 @@ The platform features a "Dark Luxury SaaS with Neon-Glass Accents" aesthetic, in
     *   Click bubble → opens floating chat window
     *   Click X → closes back to bubble only
     *   No inline/embedded chat panel - clean landing page layout
+*   **Greeting Popup Feature:** Proactive engagement popup that appears above the chat bubble
+    *   Appears 3 seconds after page load (configurable via `data-greeting-delay`)
+    *   Shows avatar icon, greeting title, and message
+    *   "Start Chat" button opens widget and dismisses popup
+    *   X button dismisses popup and saves preference to sessionStorage
+    *   Auto-hides when widget is opened from bubble
 *   **Widget Configuration:**
     *   `clientId`: `faith_house_demo`
     *   `botId`: `faith_house_demo_main`
-    *   `data-testid`: `faith-house-demo-widget` (container), `widget-bubble` (bubble)
+    *   `data-show-greeting-popup`: `true` - enables popup
+    *   `data-greeting-title`: `Hi there!`
+    *   `data-greeting-message`: `Have questions about The Faith House? I'm here to help!`
+    *   `data-greeting-delay`: `3` - seconds before popup appears
+    *   `data-testid`: `faith-house-demo-widget` (container), `widget-bubble` (bubble), `greeting-popup` (popup)
 *   **Branding:** Treasure Coast AI branding with LIVE DEMO badge, demo info banner
 
 ### Super Admin Demo Features
