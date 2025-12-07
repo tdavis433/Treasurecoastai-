@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import express from "express";
 import crypto from "crypto";
 import { storage, db } from "./storage";
-import { insertAppointmentSchema, insertClientSettingsSchema, adminUsers, type AdminRole, bots, botSettings, leads, appointments, clientSettings, workspaces, workspaceMemberships, botRequests, insertBotRequestSchema } from "@shared/schema";
+import { insertAppointmentSchema, insertClientSettingsSchema, adminUsers, type AdminRole, bots, botSettings, leads, appointments, clientSettings, workspaces, workspaceMemberships, botRequests, insertBotRequestSchema, chatSessions, conversationMessages, chatAnalyticsEvents, dailyAnalytics } from "@shared/schema";
 import OpenAI from "openai";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -5046,8 +5046,8 @@ These suggestions should be relevant to what was just discussed and help guide t
       const daysParam = req.query.days as string | undefined;
       const days = daysParam === '7' ? 7 : daysParam === '30' ? 30 : null;
       
-      // Get bot config for this client
-      const allBots = getAllBotConfigs();
+      // Get bot config for this client (use async to include database-only bots)
+      const allBots = await getAllBotConfigsAsync();
       const botConfig = allBots.find(bot => bot.clientId === clientId);
       
       if (!botConfig) {
@@ -5205,6 +5205,18 @@ These suggestions should be relevant to what was just discussed and help guide t
         .map(([topic, count]) => ({ topic, count }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
+      
+      // Fetch workspace info including isDemo flag
+      const [workspaceInfo] = await db.select({
+        id: workspaces.id,
+        name: workspaces.name,
+        slug: workspaces.slug,
+        isDemo: workspaces.isDemo,
+        status: workspaces.status,
+      })
+        .from(workspaces)
+        .where(eq(workspaces.slug, clientId))
+        .limit(1);
 
       res.json({
         clientId,
@@ -5226,6 +5238,13 @@ These suggestions should be relevant to what was just discussed and help guide t
           messages: d.totalMessages,
           appointmentRequests: d.appointmentRequests,
         })),
+        // Workspace metadata for demo/live distinction
+        workspace: workspaceInfo ? {
+          id: workspaceInfo.id,
+          name: workspaceInfo.name,
+          isDemo: workspaceInfo.isDemo ?? false,
+          status: workspaceInfo.status,
+        } : null,
       });
     } catch (error) {
       console.error("Get client stats error:", error);
@@ -8248,6 +8267,233 @@ These suggestions should be relevant to what was just discussed and help guide t
     } catch (error) {
       console.error("Delete client note error:", error);
       res.status(500).json({ error: "Failed to delete note" });
+    }
+  });
+
+  // =============================================
+  // DEMO RESET ENDPOINT - Faith House Demo
+  // =============================================
+  
+  app.post("/api/admin/demo/faith-house/reset", requireSuperAdmin, async (req, res) => {
+    try {
+      const DEMO_CLIENT_ID = "faith_house_demo";
+      const DEMO_BOT_ID = "faith_house_demo_main";
+      
+      // CRITICAL SAFETY CHECK: Verify target is actually a demo workspace
+      const [workspace] = await db.select()
+        .from(workspaces)
+        .where(eq(workspaces.slug, DEMO_CLIENT_ID))
+        .limit(1);
+      
+      if (!workspace) {
+        console.error(`[DEMO RESET] Workspace not found: ${DEMO_CLIENT_ID}`);
+        return res.status(404).json({ error: "Demo workspace not found" });
+      }
+      
+      if (!workspace.isDemo) {
+        console.error(`[DEMO RESET] SAFETY ABORT: Attempted reset on non-demo workspace: ${DEMO_CLIENT_ID}`);
+        return res.status(403).json({ 
+          error: "Cannot reset non-demo workspace",
+          message: "This is a safety feature to prevent accidental data loss on live workspaces."
+        });
+      }
+      
+      console.log(`[DEMO RESET] Starting reset for demo workspace: ${DEMO_CLIENT_ID}`);
+      
+      // Delete demo data in order (respecting foreign key constraints)
+      // 1. Delete appointments
+      const deletedAppointments = await db.delete(appointments)
+        .where(eq(appointments.clientId, DEMO_CLIENT_ID))
+        .returning();
+      
+      // 2. Delete leads
+      const deletedLeads = await db.delete(leads)
+        .where(eq(leads.clientId, DEMO_CLIENT_ID))
+        .returning();
+      
+      // 3. Delete chat messages (by sessionId in sessions belonging to demo)
+      const demoSessions = await db.select({ sessionId: chatSessions.sessionId })
+        .from(chatSessions)
+        .where(eq(chatSessions.clientId, DEMO_CLIENT_ID));
+      
+      let deletedMessages = 0;
+      for (const session of demoSessions) {
+        const deleted = await db.delete(conversationMessages)
+          .where(eq(conversationMessages.sessionId, session.sessionId))
+          .returning();
+        deletedMessages += deleted.length;
+      }
+      
+      // 4. Delete chat analytics events
+      const deletedAnalyticsEvents = await db.delete(chatAnalyticsEvents)
+        .where(eq(chatAnalyticsEvents.clientId, DEMO_CLIENT_ID))
+        .returning();
+      
+      // 5. Delete chat sessions
+      const deletedSessions = await db.delete(chatSessions)
+        .where(eq(chatSessions.clientId, DEMO_CLIENT_ID))
+        .returning();
+      
+      // 6. Delete daily analytics
+      const deletedDailyAnalytics = await db.delete(dailyAnalytics)
+        .where(eq(dailyAnalytics.clientId, DEMO_CLIENT_ID))
+        .returning();
+      
+      console.log(`[DEMO RESET] Deleted: ${deletedAppointments.length} appointments, ${deletedLeads.length} leads, ${deletedMessages} messages, ${deletedSessions.length} sessions, ${deletedAnalyticsEvents.length} analytics events, ${deletedDailyAnalytics.length} daily analytics`);
+      
+      // Re-seed demo data
+      const now = new Date();
+      const seededData = { leads: 0, appointments: 0, sessions: 0 };
+      
+      // Create sample leads
+      const sampleLeads = [
+        { name: "Michael Thompson", phone: "(555) 123-4567", email: "michael.t@email.com", source: "chat", notes: "Interested in Phase 1 program, has prior treatment experience" },
+        { name: "David Rodriguez", phone: "(555) 234-5678", email: "david.r@email.com", source: "chat", notes: "Family member reached out, brother needs help" },
+        { name: "James Wilson", phone: "(555) 345-6789", email: null, source: "chat", notes: "Called about pricing, seems motivated" },
+      ];
+      
+      for (const lead of sampleLeads) {
+        await db.insert(leads).values({
+          clientId: DEMO_CLIENT_ID,
+          botId: DEMO_BOT_ID,
+          name: lead.name,
+          phone: lead.phone,
+          email: lead.email,
+          source: lead.source,
+          notes: lead.notes,
+          status: "new",
+          createdAt: new Date(now.getTime() - Math.random() * 7 * 24 * 60 * 60 * 1000), // Random within last 7 days
+        });
+        seededData.leads++;
+      }
+      
+      // Create sample appointments
+      const sampleAppointments = [
+        { name: "Michael Thompson", phone: "(555) 123-4567", email: "michael.t@email.com", appointmentType: "tour", preferredTime: "Tomorrow at 2pm", notes: "Coming with family" },
+        { name: "Robert Johnson", phone: "(555) 456-7890", email: "robert.j@email.com", appointmentType: "phone_call", preferredTime: "Monday morning", notes: "Wants to discuss payment options" },
+        { name: "William Davis", phone: "(555) 567-8901", email: null, appointmentType: "tour", preferredTime: "This Saturday", notes: "Referred by AA sponsor" },
+      ];
+      
+      for (const apt of sampleAppointments) {
+        await db.insert(appointments).values({
+          clientId: DEMO_CLIENT_ID,
+          botId: DEMO_BOT_ID,
+          name: apt.name,
+          phone: apt.phone,
+          email: apt.email,
+          appointmentType: apt.appointmentType as 'tour' | 'phone_call',
+          preferredTime: apt.preferredTime,
+          notes: apt.notes,
+          status: "pending",
+          createdAt: new Date(now.getTime() - Math.random() * 5 * 24 * 60 * 60 * 1000), // Random within last 5 days
+        });
+        seededData.appointments++;
+      }
+      
+      // Create sample chat sessions
+      const sampleSessions = [
+        { visitorName: "Michael T.", messageCount: 8, leadCaptured: true, appointmentRequested: true },
+        { visitorName: "Anonymous Visitor", messageCount: 4, leadCaptured: false, appointmentRequested: false },
+        { visitorName: "David R.", messageCount: 12, leadCaptured: true, appointmentRequested: false },
+      ];
+      
+      for (const session of sampleSessions) {
+        const sessionId = `demo_session_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+        await db.insert(chatSessions).values({
+          sessionId,
+          clientId: DEMO_CLIENT_ID,
+          botId: DEMO_BOT_ID,
+          visitorName: session.visitorName,
+          messageCount: session.messageCount,
+          leadCaptured: session.leadCaptured,
+          appointmentRequested: session.appointmentRequested,
+          startedAt: new Date(now.getTime() - Math.random() * 3 * 24 * 60 * 60 * 1000),
+          endedAt: null,
+        });
+        seededData.sessions++;
+      }
+      
+      // Log the reset
+      await storage.createSystemLog({
+        level: 'info',
+        source: 'demo-reset',
+        message: `Demo data reset for Faith House (${DEMO_CLIENT_ID})`,
+        workspaceId: workspace.id,
+        details: {
+          deleted: {
+            appointments: deletedAppointments.length,
+            leads: deletedLeads.length,
+            messages: deletedMessages,
+            sessions: deletedSessions.length,
+          },
+          seeded: seededData,
+          resetBy: req.session.userId,
+        },
+      });
+      
+      res.json({
+        success: true,
+        message: "Demo data has been reset successfully",
+        deleted: {
+          appointments: deletedAppointments.length,
+          leads: deletedLeads.length,
+          messages: deletedMessages,
+          sessions: deletedSessions.length,
+          analyticsEvents: deletedAnalyticsEvents.length,
+          dailyAnalytics: deletedDailyAnalytics.length,
+        },
+        seeded: seededData,
+      });
+    } catch (error) {
+      console.error("[DEMO RESET] Error resetting demo data:", error);
+      res.status(500).json({ error: "Failed to reset demo data" });
+    }
+  });
+  
+  // Get demo status endpoint
+  app.get("/api/admin/demo/faith-house/status", requireSuperAdmin, async (req, res) => {
+    try {
+      const DEMO_CLIENT_ID = "faith_house_demo";
+      
+      const [workspace] = await db.select()
+        .from(workspaces)
+        .where(eq(workspaces.slug, DEMO_CLIENT_ID))
+        .limit(1);
+      
+      if (!workspace) {
+        return res.status(404).json({ error: "Demo workspace not found" });
+      }
+      
+      // Get counts
+      const [leadsCount] = await db.select({ count: sql<number>`count(*)` })
+        .from(leads)
+        .where(eq(leads.clientId, DEMO_CLIENT_ID));
+      
+      const [appointmentsCount] = await db.select({ count: sql<number>`count(*)` })
+        .from(appointments)
+        .where(eq(appointments.clientId, DEMO_CLIENT_ID));
+      
+      const [sessionsCount] = await db.select({ count: sql<number>`count(*)` })
+        .from(chatSessions)
+        .where(eq(chatSessions.clientId, DEMO_CLIENT_ID));
+      
+      res.json({
+        workspace: {
+          id: workspace.id,
+          name: workspace.name,
+          slug: workspace.slug,
+          isDemo: workspace.isDemo,
+          status: workspace.status,
+        },
+        data: {
+          leads: Number(leadsCount?.count || 0),
+          appointments: Number(appointmentsCount?.count || 0),
+          sessions: Number(sessionsCount?.count || 0),
+        },
+      });
+    } catch (error) {
+      console.error("Get demo status error:", error);
+      res.status(500).json({ error: "Failed to get demo status" });
     }
   });
 

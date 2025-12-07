@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TreasureCoastLogo } from "@/components/treasure-coast-logo";
 import { PlatformHelpBot } from "@/components/platform-help-bot";
+import { TenantBadge, DemoInfoBanner } from "@/components/tenant-badge";
 import {
   SidebarProvider,
   Sidebar,
@@ -127,6 +128,12 @@ interface ClientStats {
   };
   lastActivity: string | null;
   notificationEmail: string | null;
+  workspace?: {
+    id: string;
+    name: string;
+    isDemo: boolean;
+    status: string;
+  } | null;
 }
 
 interface ClientProfile {
@@ -2552,9 +2559,14 @@ export default function ClientDashboard() {
             <div className="flex items-center gap-3">
               <TreasureCoastLogo variant="icon" size="md" />
               <div className="flex-1 min-w-0">
-                <h2 className="text-sm font-semibold text-white truncate" data-testid="text-sidebar-business-name">
-                  {businessName}
-                </h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-semibold text-white truncate" data-testid="text-sidebar-business-name">
+                    {businessName}
+                  </h2>
+                  {stats?.workspace && (
+                    <TenantBadge isDemo={stats.workspace.isDemo} size="sm" showLabel={false} />
+                  )}
+                </div>
                 <p className="text-xs text-white/50 truncate capitalize">{businessType}</p>
               </div>
             </div>
@@ -2656,6 +2668,9 @@ export default function ClientDashboard() {
           </header>
 
           <main className="flex-1 overflow-auto p-6">
+            {stats?.workspace?.isDemo && (
+              <DemoInfoBanner className="mb-6" />
+            )}
             {renderContent()}
           </main>
         </div>

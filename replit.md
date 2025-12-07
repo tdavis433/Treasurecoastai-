@@ -49,6 +49,26 @@ The platform features a "Dark Luxury SaaS with Neon-Glass Accents" aesthetic, in
 
 ## Recent Changes (December 2024)
 
+### Demo vs Live Tenant Separation
+*   **New Feature:** Demo and Live environments are now separate tenants with dedicated workspaces and bots
+*   **isDemo Flag:** Workspaces table includes `is_demo` boolean column (default false) to flag demo environments
+*   **Faith House Tenants:**
+    *   Demo: `faith_house_demo` workspace with `faith_house_demo_main` bot
+    *   Live: `faith_house_live` workspace with `faith_house_live_main` bot
+*   **TenantBadge Component:** Visual DEMO/LIVE indicators displayed in dashboards
+    *   Demo: Amber badge with test tube icon
+    *   Live: Green badge with radio icon
+*   **DemoInfoBanner Component:** Warning banner displayed on demo dashboards
+
+### Demo Reset Endpoint
+*   **Endpoint:** `POST /api/admin/demo/faith-house/reset` (Super Admin only)
+*   **Safety:** Only workspaces with `is_demo=true` can be reset
+*   **Actions:**
+    *   Deletes all appointments, leads, messages, sessions, and analytics for demo tenant
+    *   Re-seeds with sample demo data (3 leads, 3 appointments, 3 sessions)
+    *   Creates system log entry
+*   **Status Endpoint:** `GET /api/admin/demo/faith-house/status` returns demo workspace info and data counts
+
 ### AI-Driven In-Chat Booking Collection (Faith House Demo)
 *   **New Feature:** AI can now collect booking information directly in conversation instead of just redirecting to external booking links
 *   **Two Conversion Goals:** Book a Tour (cyan badge) or Schedule a Phone Call (purple badge)

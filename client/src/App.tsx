@@ -23,6 +23,7 @@ import ChangePassword from "@/pages/change-password";
 import NotFound from "@/pages/not-found";
 import DemosPage from "@/pages/demos";
 import DemoBotPage from "@/pages/demo-bot";
+import DemoFaithHouse from "@/pages/demo-faith-house";
 import { useEffect } from "react";
 
 function PasswordChangeGuard({ children }: { children: React.ReactNode }) {
@@ -56,6 +57,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/demos" component={DemosPage} />
+      <Route path="/demo/faith-house" component={DemoFaithHouse} />
       <Route path="/demo/:botId" component={DemoBotPage} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
