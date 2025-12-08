@@ -4,7 +4,7 @@
 Treasure Coast AI is an agency-first AI assistant platform empowering agencies to build and manage custom AI assistants for local businesses. The platform provides local businesses with 24/7 AI assistants for lead capture, appointment booking, and answering questions. Clients access a view-only dashboard, while agencies manage bot creation and deployment. The platform aims to be a premium, dark luxury SaaS with neon-glass accents, targeting the local business market with a streamlined, agency-managed solution for AI-driven customer interaction and market potential to revolutionize local business customer engagement.
 
 ## User Preferences
-Not specified.
+- Super Admin Login: username `admin`, password `admin123`
 
 ## System Architecture
 
