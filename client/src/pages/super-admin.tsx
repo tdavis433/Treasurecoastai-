@@ -242,6 +242,10 @@ export default function SuperAdmin() {
   const [editingWorkspace, setEditingWorkspace] = useState<{ slug: string; name: string; plan: string; ownerId?: string; adminNotes?: string } | null>(null);
   const [generatedCredentials, setGeneratedCredentials] = useState<{ email: string; temporaryPassword: string; dashboardUrl: string } | null>(null);
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  
+  // Integration modal state
+  const [integrationSlug, setIntegrationSlug] = useState<string | null>(null);
+  const [embedCodeCopied, setEmbedCodeCopied] = useState(false);
 
   const { data: currentUser, isLoading: authLoading } = useQuery<AuthUser>({
     queryKey: ["/api/auth/me"],
@@ -816,6 +820,64 @@ export default function SuperAdmin() {
         variant: "destructive" 
       });
     },
+  });
+
+  // Reset demo workspace by slug (new generalized version)
+  const resetDemoBySlugMutation = useMutation({
+    mutationFn: async (slug: string) => {
+      const response = await apiRequest("POST", `/api/super-admin/demo-workspaces/${slug}/reset`);
+      return response.json();
+    },
+    onSuccess: async (data) => {
+      await queryClient.refetchQueries({ queryKey: ["/api/super-admin/workspaces"] });
+      toast({ 
+        title: "Demo Reset Complete", 
+        description: data.message || "Demo data has been reset and reseeded."
+      });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Reset Failed", 
+        description: error.message || "Failed to reset demo data.", 
+        variant: "destructive" 
+      });
+    },
+  });
+
+  // Seed all demo workspaces
+  const seedAllDemosMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/super-admin/demo-workspaces/seed-all");
+      return response.json();
+    },
+    onSuccess: async (data) => {
+      await queryClient.refetchQueries({ queryKey: ["/api/super-admin/workspaces"] });
+      toast({ 
+        title: "Demo Workspaces Seeded", 
+        description: `Seeded ${data.seeded?.length || 0} demo workspaces: ${data.seeded?.join(', ') || 'none'}`
+      });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Seeding Failed", 
+        description: error.message || "Failed to seed demo workspaces.", 
+        variant: "destructive" 
+      });
+    },
+  });
+
+  // Query integration info when a workspace is selected for integration
+  const { data: integrationData, isLoading: integrationLoading } = useQuery({
+    queryKey: ["/api/super-admin/workspaces", integrationSlug, "integration"],
+    queryFn: async () => {
+      if (!integrationSlug) return null;
+      const response = await fetch(`/api/super-admin/workspaces/${integrationSlug}/integration`, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch integration data");
+      return response.json();
+    },
+    enabled: !!integrationSlug,
   });
 
   const handleLogout = async () => {
@@ -1927,6 +1989,20 @@ export default function SuperAdmin() {
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
+                          variant="outline"
+                          onClick={() => seedAllDemosMutation.mutate()}
+                          disabled={seedAllDemosMutation.isPending}
+                          className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+                          data-testid="button-seed-all-demos"
+                        >
+                          {seedAllDemosMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Database className="h-4 w-4 mr-2" />
+                          )}
+                          Seed All Demos
+                        </Button>
+                        <Button
                           onClick={() => setShowCreateWorkspaceModal(true)}
                           className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white"
                           data-testid="button-add-workspace"
@@ -2220,6 +2296,18 @@ export default function SuperAdmin() {
                                   >
                                     <Settings className="h-4 w-4" />
                                     Edit Client
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    className="text-purple-400 hover:bg-purple-500/10 gap-2"
+                                    onClick={(e) => { 
+                                      e.stopPropagation(); 
+                                      setEmbedCodeCopied(false);
+                                      setIntegrationSlug(workspace.slug); 
+                                    }}
+                                    data-testid={`button-integration-${workspace.slug}`}
+                                  >
+                                    <Code className="h-4 w-4" />
+                                    Integration
                                   </DropdownMenuItem>
                                   {/* Demo Reset Option - Only for demo workspaces */}
                                   {workspace.isDemo && workspace.slug === 'faith_house_demo' && (
@@ -3313,6 +3401,134 @@ export default function SuperAdmin() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Integration / Widget Embed Modal */}
+      <Dialog open={!!integrationSlug} onOpenChange={(open) => { if (!open) setIntegrationSlug(null); }}>
+        <DialogContent className="bg-[#1a1d24] border-white/10 max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <Code className="h-5 w-5 text-purple-400" />
+              Widget Integration
+            </DialogTitle>
+            <DialogDescription className="text-white/55">
+              Embed your AI assistant on any website with the code below.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {integrationLoading ? (
+            <div className="py-8 text-center">
+              <Loader2 className="h-6 w-6 animate-spin mx-auto text-purple-400" />
+              <p className="text-white/55 mt-2">Loading integration details...</p>
+            </div>
+          ) : integrationData ? (
+            <div className="space-y-6 py-4">
+              {/* Warning if no bot configured */}
+              {integrationData.needsBot && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
+                  <p className="text-amber-400 text-sm flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    No assistant configured yet. Create an assistant first to customize the widget settings.
+                  </p>
+                </div>
+              )}
+              
+              {/* Workspace Info */}
+              <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-white/55">Workspace:</span>
+                    <p className="text-white font-medium">{integrationData.workspaceName}</p>
+                  </div>
+                  <div>
+                    <span className="text-white/55">Bot:</span>
+                    <p className="text-white font-medium">{integrationData.primaryBotName || <span className="text-white/40 italic">Not configured</span>}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Embed Code */}
+              <div className="space-y-2">
+                <Label className="text-white/85 flex items-center gap-2">
+                  Widget Embed Code
+                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-[10px]">Copy & Paste</Badge>
+                </Label>
+                <div className="relative">
+                  <pre className="bg-black/50 border border-white/10 rounded-lg p-4 text-cyan-400 text-sm font-mono overflow-x-auto whitespace-pre-wrap">
+                    {integrationData.widgetEmbedCode}
+                  </pre>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="absolute top-2 right-2 h-8 w-8 text-white/55 hover:text-white hover:bg-white/10"
+                    onClick={() => {
+                      navigator.clipboard.writeText(integrationData.widgetEmbedCode);
+                      setEmbedCodeCopied(true);
+                      toast({ title: "Copied!", description: "Widget embed code copied to clipboard" });
+                    }}
+                    data-testid="button-copy-embed-code"
+                  >
+                    {embedCodeCopied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Instructions */}
+              <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
+                <h4 className="text-purple-400 font-medium text-sm mb-2 flex items-center gap-2">
+                  <Info className="h-4 w-4" />
+                  Installation Instructions
+                </h4>
+                <ol className="text-white/70 text-sm space-y-1 list-decimal list-inside">
+                  <li>Copy the embed code above</li>
+                  <li>Paste it just before the closing <code className="bg-black/30 px-1 rounded">&lt;/body&gt;</code> tag on your website</li>
+                  <li>The widget will appear as a floating chat bubble in the bottom-right corner</li>
+                </ol>
+              </div>
+
+              {/* Customization Info */}
+              <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                <h4 className="text-white/85 font-medium text-sm mb-3">Current Configuration</h4>
+                <div className="grid grid-cols-3 gap-3 text-sm">
+                  <div>
+                    <span className="text-white/55 text-xs">Primary Color</span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div 
+                        className="w-4 h-4 rounded border border-white/20" 
+                        style={{ backgroundColor: integrationData.customization?.primaryColor || '#00E5CC' }}
+                      />
+                      <code className="text-white/70 text-xs">{integrationData.customization?.primaryColor || '#00E5CC'}</code>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-white/55 text-xs">Business Name</span>
+                    <p className="text-white/85 mt-1 text-xs">{integrationData.customization?.businessName}</p>
+                  </div>
+                  <div>
+                    <span className="text-white/55 text-xs">Subtitle</span>
+                    <p className="text-white/85 mt-1 text-xs">{integrationData.customization?.businessSubtitle}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="py-8 text-center text-white/55">
+              <AlertCircle className="h-8 w-8 mx-auto mb-2 text-red-400" />
+              <p>Failed to load integration details</p>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIntegrationSlug(null)}
+              className="border-white/10 text-white hover:bg-white/10"
+              data-testid="button-close-integration-modal"
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* New Client Wizard Dialog */}
       <Dialog open={showNewClientWizard} onOpenChange={(open) => { if (!open) resetWizard(); }}>

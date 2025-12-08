@@ -78,6 +78,8 @@ import {
 } from './env';
 
 import { scrapeWebsite, applyScrapedDataToBot } from './scraper';
+import { resetDemoWorkspace, seedAllDemoWorkspaces, getDemoSlugs, getDemoConfig } from './demoSeed';
+import { getWidgetEmbedCode, getEmbedInstructions, type WidgetEmbedOptions } from './embed';
 
 // =============================================
 // PHASE 2.4: SIGNED WIDGET TOKENS
@@ -8205,7 +8207,7 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
-  // Reset demo workspace data
+  // Reset demo workspace data (clears and reseeds)
   app.post("/api/super-admin/demo-workspaces/:slug/reset", requireSuperAdmin, async (req, res) => {
     try {
       const { slug } = req.params;
@@ -8220,32 +8222,172 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(403).json({ error: "Only demo workspaces can be reset" });
       }
       
-      const clientId = slug;
+      // Check if this is a known demo workspace with seed data
+      const demoConfig = getDemoConfig(slug);
+      if (!demoConfig) {
+        // Just clear data if no seed config available
+        const clientId = slug;
+        await db.delete(appointments).where(eq(appointments.clientId, clientId));
+        await db.delete(leads).where(eq(leads.clientId, clientId));
+        await db.delete(chatAnalyticsEvents).where(eq(chatAnalyticsEvents.clientId, clientId));
+        await db.delete(chatSessions).where(eq(chatSessions.clientId, clientId));
+        await db.delete(dailyAnalytics).where(eq(dailyAnalytics.clientId, clientId));
+        
+        await storage.createSystemLog({
+          level: 'info',
+          source: 'super-admin',
+          message: `Demo workspace ${slug} data cleared (no seed config)`,
+          workspaceId: (workspace as any).id,
+          details: { resetBy: (req as any).session?.userId },
+        });
+        
+        return res.json({ 
+          success: true, 
+          message: `Demo data for ${slug} has been cleared`,
+          workspace: { slug, name: (workspace as any).name },
+          stats: { leads: 0, bookings: 0, sessions: 0 },
+        });
+      }
       
-      // Delete all demo data
-      await db.delete(appointments).where(eq(appointments.clientId, clientId));
-      await db.delete(leads).where(eq(leads.clientId, clientId));
-      await db.delete(chatAnalyticsEvents).where(eq(chatAnalyticsEvents.clientId, clientId));
-      await db.delete(chatSessions).where(eq(chatSessions.clientId, clientId));
-      await db.delete(dailyAnalytics).where(eq(dailyAnalytics.clientId, clientId));
+      // Reset and reseed with demo data
+      const result = await resetDemoWorkspace(slug);
       
       // Log this action
       await storage.createSystemLog({
         level: 'info',
         source: 'super-admin',
-        message: `Demo workspace ${slug} data reset`,
+        message: `Demo workspace ${slug} data reset and reseeded`,
         workspaceId: (workspace as any).id,
-        details: { resetBy: (req as any).session?.userId },
+        details: { 
+          resetBy: (req as any).session?.userId,
+          stats: result.stats,
+        },
       });
       
       res.json({ 
         success: true, 
-        message: `Demo data for ${slug} has been reset`,
+        message: `Demo data for ${slug} has been reset and reseeded`,
         workspace: { slug, name: (workspace as any).name },
+        stats: result.stats,
       });
     } catch (error) {
       console.error("Reset demo error:", error);
       res.status(500).json({ error: "Failed to reset demo data" });
+    }
+  });
+
+  // Seed all demo workspaces (create them if they don't exist)
+  app.post("/api/super-admin/demo-workspaces/seed-all", requireSuperAdmin, async (req, res) => {
+    try {
+      const result = await seedAllDemoWorkspaces();
+      
+      await storage.createSystemLog({
+        level: 'info',
+        source: 'super-admin',
+        message: `Seeded ${result.seeded.length} demo workspaces`,
+        details: { seeded: result.seeded, errors: result.errors },
+      });
+      
+      res.json({ 
+        success: true, 
+        message: `Seeded ${result.seeded.length} demo workspaces`,
+        seeded: result.seeded,
+        errors: result.errors,
+        availableDemos: getDemoSlugs(),
+      });
+    } catch (error) {
+      console.error("Seed all demos error:", error);
+      res.status(500).json({ error: "Failed to seed demo workspaces" });
+    }
+  });
+
+  // =============================================
+  // INTEGRATION / WIDGET EMBED ENDPOINTS
+  // =============================================
+
+  // Get integration info and widget embed code for a workspace
+  app.get("/api/super-admin/workspaces/:slug/integration", requireSuperAdmin, async (req, res) => {
+    try {
+      const { slug } = req.params;
+      
+      const workspace = await getWorkspaceBySlug(slug);
+      if (!workspace) {
+        return res.status(404).json({ error: "Workspace not found" });
+      }
+      
+      // Get the primary bot for this workspace
+      const workspaceBots = await getBotsByWorkspaceId((workspace as any).id);
+      
+      // Handle case where workspace has no bots yet
+      if (!workspaceBots || workspaceBots.length === 0) {
+        // Generate a placeholder embed code using workspace slug as bot ID
+        const placeholderBotId = `${slug}_main`;
+        const embedOptions: WidgetEmbedOptions = {
+          workspaceSlug: slug,
+          botId: placeholderBotId,
+          primaryColor: "#00E5CC",
+          businessName: (workspace as any).name || "AI Assistant",
+          businessSubtitle: "Powered by TCAI",
+          showGreetingPopup: false,
+        };
+        
+        const widgetEmbedCode = getWidgetEmbedCode(embedOptions);
+        const instructions = getEmbedInstructions();
+        
+        return res.json({
+          workspaceSlug: slug,
+          workspaceName: (workspace as any).name,
+          workspaceId: (workspace as any).id,
+          primaryBotId: null,
+          primaryBotName: null,
+          hasBot: false,
+          needsBot: true,
+          message: "No bot configured yet. Create an assistant first, then the embed code will use its settings.",
+          widgetEmbedCode,
+          embedInstructions: instructions,
+          customization: {
+            primaryColor: embedOptions.primaryColor,
+            businessName: embedOptions.businessName,
+            businessSubtitle: embedOptions.businessSubtitle,
+          },
+        });
+      }
+      
+      // Use the first bot as the primary
+      const primaryBot = workspaceBots[0];
+      
+      // Build embed options from bot configuration
+      const embedOptions: WidgetEmbedOptions = {
+        workspaceSlug: slug,
+        botId: primaryBot.botId,
+        primaryColor: primaryBot.theme?.primaryColor || "#00E5CC",
+        businessName: primaryBot.businessProfile?.businessName || primaryBot.name || "AI Assistant",
+        businessSubtitle: primaryBot.businessProfile?.type || "Powered by TCAI",
+        showGreetingPopup: false,
+      };
+      
+      const widgetEmbedCode = getWidgetEmbedCode(embedOptions);
+      const instructions = getEmbedInstructions();
+      
+      res.json({
+        workspaceSlug: slug,
+        workspaceName: (workspace as any).name,
+        workspaceId: (workspace as any).id,
+        primaryBotId: primaryBot.botId,
+        primaryBotName: primaryBot.name,
+        hasBot: true,
+        needsBot: false,
+        widgetEmbedCode,
+        embedInstructions: instructions,
+        customization: {
+          primaryColor: embedOptions.primaryColor,
+          businessName: embedOptions.businessName,
+          businessSubtitle: embedOptions.businessSubtitle,
+        },
+      });
+    } catch (error) {
+      console.error("Get integration error:", error);
+      res.status(500).json({ error: "Failed to get integration info" });
     }
   });
 

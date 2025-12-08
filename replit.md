@@ -166,6 +166,38 @@ The platform features a "Dark Luxury SaaS with Neon-Glass Accents" aesthetic, in
 *   **Bot Type:** `sober_living`
 *   **Personality:** Warm, supportive, never pushy, acknowledges courage, focuses on helping
 
+### Demo Seed Module (December 2024 - New)
+*   **Module:** `server/demoSeed.ts` - Reusable demo data seeding functions
+*   **Demo Types Supported:**
+    *   `faith_house_demo` - Sober living with tour/call bookings
+    *   `barber_demo` - Barber shop with appointment bookings
+    *   `gym_demo` - Fitness center with membership interest leads
+*   **Data Distribution:** 40% within 7 days, 60% within 30 days for realistic metrics
+*   **Seed Data Per Workspace:**
+    *   3-5 leads with varied statuses (new, contacted, qualified, converted)
+    *   3-5 appointments with type badges (tour, phone_call, appointment)
+    *   2-4 chat sessions with realistic message counts
+*   **API Endpoints:**
+    *   `POST /api/super-admin/demo-workspaces/:slug/reset` - Clear and reseed specific demo
+    *   `POST /api/super-admin/demo-workspaces/seed-all` - Seed all demos at once
+
+### Integration Panel (December 2024 - New)
+*   **Module:** `server/embed.ts` - Widget embed code generation helper
+*   **Features:**
+    *   Generates persistent widget embed code for any workspace
+    *   Customizable: primary color, business name, subtitle, greeting popup
+    *   Installation instructions included
+*   **UI Integration:**
+    *   "Integration" button in workspace dropdown menu
+    *   Modal dialog with embed code and copy functionality
+    *   Live configuration preview (color swatch, names)
+*   **API Endpoint:** `GET /api/super-admin/workspaces/:slug/integration`
+
+### Super Admin Enhancements (December 2024)
+*   **Seed All Demos Button:** One-click button in Clients section to seed all demo workspaces
+*   **Generalized Demo Reset:** Clears AND reseeds (not just clears)
+*   **Integration Modal:** Purple-themed code display with copy functionality
+
 ## External Dependencies
 *   **OpenAI GPT-4:** Used for AI engine and conversation analysis.
 *   **Neon (PostgreSQL):** Database hosting.

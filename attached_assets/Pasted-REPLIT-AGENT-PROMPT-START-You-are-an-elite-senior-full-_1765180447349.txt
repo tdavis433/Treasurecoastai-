@@ -1,0 +1,636 @@
+REPLIT AGENT PROMPT START
+
+You are an elite senior full-stack engineer + QA lead working on the Treasure Coast AI platform.
+
+You must:
+
+Read and understand the existing code first.
+
+Follow every instruction in this prompt word-for-word.
+
+Do NOT rebuild or over-engineer.
+
+Only extend and polish what already exists.
+
+This session is focused ONLY on:
+
+Demo readiness & polish
+
+Booking status UI
+
+Persistent “Integration” / widget embed section
+
+Security/rate-limiting and big test suites will be handled in a separate session.
+Do not attempt to implement major security changes here.
+
+0. CURRENT STATE — VERIFY FIRST
+
+Before making any changes, you MUST confirm the following based on the latest code:
+
+Demo Index & Demo API
+
+There is a GET /api/super-admin/demo-workspaces endpoint in server/routes.ts that returns workspaces where isDemo = true (or is_demo, depending on naming).
+
+The super-admin page (likely client/src/pages/super-admin.tsx) contains a “Demo Workspaces” section that:
+
+Calls the demo workspaces endpoint.
+
+Renders demo workspace cards with:
+
+A DEMO badge.
+
+Buttons:
+
+“View Public Demo”
+
+“View as Client”
+
+“Reset Data” (with confirmation dialog).
+
+Current limitation (from previous session summary):
+
+Database has no workspaces with isDemo = true, so the Demo Index appears empty.
+
+“Reset Data” button may not be fully wired to a real backend reset/seed implementation.
+
+New Client Wizard
+
+There is a POST /api/super-admin/new-client endpoint in server/routes.ts that:
+
+Creates a workspace.
+
+Creates a client_admin user.
+
+Creates a bot for that workspace based on a template and persona/FAQ data.
+
+The super-admin React page has a multi-step “New Client Wizard” dialog with:
+
+Step 1: Business basics (name, slug auto-generation, industry template, plan, contact email).
+
+Step 2: AI persona configuration (assistant name, role, tone keywords, target customer).
+
+Step 3: Custom FAQs (add/remove Q&A pairs).
+
+Step 4: Review summary.
+
+Step 5: Success screen with:
+
+Login email.
+
+Password.
+
+Dashboard URL.
+
+Widget embed code.
+
+Client Dashboard Overview & Status
+
+GET /api/client/stats in server/routes.ts returns:
+
+overview object with:
+
+leadsLast7Days, leadsLast30Days
+
+conversationsLast7Days, conversationsLast30Days
+
+bookingsLast7Days, bookingsLast30Days
+
+plus avgResponseTimeMs (from previous work).
+
+client/src/pages/client-dashboard.tsx:
+
+Uses these stats to render a “Quick Stats” section with “7d / 30d” metrics for chats, leads, and bookings.
+
+Renders an inline status dropdown on each Lead row in the Leads tab.
+
+This uses an existing PATCH /api/client/leads/:id endpoint.
+
+Booking Status Endpoint
+
+PATCH /api/client/bookings/:id exists in server/routes.ts.
+
+It:
+
+Validates tenant/workspace.
+
+Updates booking status.
+
+The previous session changed frontend references from /api/appointments/... to /api/client/bookings/:id in client-dashboard.tsx.
+
+There may NOT yet be a visible UI control (dropdown) on the Bookings tab rows to update status.
+
+You must briefly summarize in your own output what you confirmed (routes, components, and what they currently do) before making changes.
+
+1. DEMO WORKSPACES & DEMO DATA SEEDING
+1.1 GOAL
+
+Make the Demo Index in super-admin actually useful by:
+
+Creating real demo workspaces with isDemo = true.
+
+Attaching demo bots (sober living / Faith House, barber, gym, etc.).
+
+Seeding sample leads, bookings, and conversations so:
+
+Overview metrics (7d / 30d) show non-zero values.
+
+Leads/Conversations/Bookings tabs are populated.
+
+Implementing a “Reset Data” behavior that clears & reseeds demo data on demand.
+
+The aim: when I open the Demo Workspaces section, I see multiple demos that look alive and ready to show.
+
+1.2 DEMO DATA MODEL & SEEDING STRATEGY
+
+You must create a clean, repeatable seed/reset flow.
+Do NOT hard-code one-off scripts that are impossible to reuse.
+
+Identify models used for:
+
+Workspaces / tenants (e.g., workspaces or clients table via Drizzle).
+
+Bots / bot templates (e.g., bots, botTemplates, botConfigs).
+
+Leads.
+
+Bookings.
+
+Conversations and Messages.
+
+Define 3–5 demo workspaces at minimum, for example:
+
+faith_house_demo — Sober Living / “Faith House”
+
+barber_demo — Barber / salon
+
+gym_demo — Gym / fitness studio
+
+Optionally: restaurant_demo, auto_shop_demo, etc.
+
+Each demo workspace must include:
+
+isDemo = true (or is_demo = true).
+
+Reasonable name and slug.
+
+A client_admin or internal demo user (for impersonation).
+
+A bot configured for that niche (via existing template logic where possible).
+
+Seed realistic sample data per demo workspace:
+
+For each demo workspace:
+
+Conversations:
+
+At least 3–5 conversations with:
+
+Timestamps within the last 7 days and last 30 days, so metrics show both 7d/30d differences.
+
+Messages alternating between end-user and the assistant.
+
+Content that matches the niche (e.g., “Do you have beds available?” for sober living, “Can I book a fade?” for barber).
+
+Leads:
+
+At least 5–10 leads with:
+
+Names.
+
+Phone / email.
+
+Statuses (mix of NEW, CONTACTED, QUALIFIED, CONVERTED, LOST).
+
+createdAt timestamps distributed across last 7/30 days.
+
+Bookings:
+
+At least 3–7 bookings with:
+
+Type (tour, phone call, appointment).
+
+Preferred time.
+
+Status (NEW, CONFIRMED, COMPLETED, etc.).
+
+createdAt in last 7/30 days.
+
+Implement a reusable seeding function / helper
+
+Create a helper module (for example server/demoSeed.ts or similar) that exports functions like:
+
+seedDemoWorkspaceFaithHouse()
+
+seedDemoWorkspaceBarber()
+
+seedDemoWorkspaceGym()
+
+Each function should:
+
+Ensure a workspace exists with the expected slug + isDemo = true.
+
+Ensure a bot exists and is associated with that workspace (use existing template-based creation logic where possible).
+
+Seed or reseed leads, bookings, and conversations.
+
+You may also create a single generic function like seedDemoWorkspace(config) if you can keep it simple.
+
+1.3 “RESET DATA” ENDPOINT FOR DEMO WORKSPACES
+
+Hook the Demo Index “Reset Data” button up to a concrete backend route.
+
+Add a backend endpoint, for example:
+
+POST /api/super-admin/demo-workspaces/:slug/reset
+
+Requirements:
+
+Protected by requireSuperAdmin.
+
+Looks up the workspace by slug.
+
+Verifies isDemo = true.
+
+If not true, return 400 or 403 and do not touch the workspace.
+
+Behavior of reset:
+
+For the demo workspace identified:
+
+Delete (or soft-delete, depending on your schema) all:
+
+Leads belonging to that workspace.
+
+Bookings.
+
+Conversations and messages.
+
+Optionally reset any analytics tables tied to this workspace.
+
+Then call the appropriate seeding function for that workspace:
+
+e.g., seedDemoWorkspaceFaithHouse() for slug faith_house_demo.
+
+The goal: after reset, the workspace looks like a fresh but realistic demo with sample data.
+
+Integrate with frontend Demo Index:
+
+In client/src/pages/super-admin.tsx (or equivalent):
+
+Ensure the “Reset Data” button for each demo card:
+
+Calls the new reset endpoint with the correct slug.
+
+Shows a confirmation dialog (already exists per previous summary).
+
+Shows a loading state/spinner while reset is in progress.
+
+Refreshes the demo data in the UI after reset (either re-fetch or trust that the existing stats tables will pull fresh data when the client visits).
+
+QA Checklist updates for Demo Index:
+
+Update QA_CHECKLIST.md to include:
+
+“Demo Workspaces Seeding & Reset” section with steps:
+
+Run a script or manual trigger that seeds demo workspaces (if needed).
+
+Open Demo Workspaces section.
+
+Confirm that each demo workspace is listed.
+
+Open “View Public Demo” and “View as Client” for each.
+
+Click “Reset Data”, confirm:
+
+Leads/Bookings/Conversations are cleared and re-populated.
+
+Overview metrics show non-zero 7d/30d values.
+
+2. BOOKING STATUS UI IN CLIENT DASHBOARD
+2.1 GOAL
+
+You already built lead status management in the Leads tab and a backend PATCH /api/client/bookings/:id endpoint to update booking status.
+
+Now you must:
+
+Add a status UI control for each booking row in the Bookings tab.
+
+Wire it to the booking status endpoint.
+
+Provide loading and error feedback.
+
+2.2 IMPLEMENTATION
+
+Locate Bookings tab component
+
+In client/src/pages/client-dashboard.tsx (or related subcomponent), find the Bookings section/table.
+
+Identify how bookings are fetched:
+
+Confirm the endpoint used to load bookings (likely tenant-scoped).
+
+Add status dropdown per row
+
+For each booking row:
+
+Add a control similar in style/behavior to the lead status dropdown:
+
+Use Select or DropdownMenu from shadcn/ui (matching existing patterns).
+
+Status options should correspond to your Booking model enum. Example options:
+
+New
+
+Contacted
+
+Confirmed
+
+Completed
+
+Cancelled
+
+No-show
+
+Map these to the backend status values correctly.
+
+Wire API call
+
+On change of dropdown:
+
+Call PATCH /api/client/bookings/:id with a JSON body like:
+
+{ status: "CONFIRMED" }
+
+Ensure:
+
+Proper headers (auth cookies etc.) are sent.
+
+Error handling is present.
+
+UX behavior
+
+While the request is in flight:
+
+Disable the control and show a small loading indicator (spinner or “Saving…” text).
+
+On success:
+
+Either:
+
+Optimistically update the booking row’s status, or
+
+Re-fetch bookings list (depending on current pattern).
+
+On failure:
+
+Revert the change (if optimistic).
+
+Show a toast or inline error to the user.
+
+QA Checklist updates for Booking status
+
+In QA_CHECKLIST.md, add steps:
+
+As a client user:
+
+Navigate to Bookings tab.
+
+Change a booking from NEW → CONTACTED → CONFIRMED → COMPLETED.
+
+Refresh the page and confirm that the new status persists.
+
+Negative test:
+
+Confirm that bookings from another workspace cannot be updated by this client (should already be enforced by backend tenant validation).
+
+3. PERSISTENT “INTEGRATION / EMBED” SECTION PER WORKSPACE
+3.1 GOAL
+
+Currently, the widget embed code is shown only on the New Client Wizard success screen.
+
+You must:
+
+Make this embed code persistently accessible for each workspace.
+
+Add an Integration section (super-admin-only, at minimum) where I can always:
+
+See the widget embed snippet.
+
+Copy it again later, without re-running the wizard.
+
+3.2 BACKEND — CENTRALIZE EMBED SNIPPET GENERATION
+
+Find existing logic generating widget embed code
+
+Locate where the wizard success step currently creates the embed snippet.
+This may be in:
+
+client/src/pages/super-admin.tsx (front-end-only string).
+
+Or as part of the backend response from POST /api/super-admin/new-client.
+
+Move embed snippet generation to backend (if not already)
+
+Add a helper function in a server-side module, e.g. server/embed.ts:
+
+export function getWidgetEmbedCode(options: {
+  workspaceSlug: string;
+  botId?: string;
+}): string {
+  // Build a <script> tag with proper src and data attributes.
+  // Example (adjust to your actual widget loader URL / config):
+  // return `<script src="https://.../widget.js" data-workspace="${workspaceSlug}" data-bot-id="${botId}"></script>`;
+}
+
+
+Make sure the embed code construction:
+
+Uses the correct widget script URL consistent with existing widget usage.
+
+Includes the necessary identifiers:
+
+workspace slug / client id
+
+bot id if required
+
+Does NOT expose secrets.
+
+Expose embed code via API
+
+Add a new super-admin-only endpoint, e.g.:
+
+GET /api/super-admin/workspaces/:slug/integration
+
+That:
+
+Requires requireSuperAdmin.
+
+Looks up the workspace by slug.
+
+Determines for that workspace:
+
+Primary bot ID (or default bot).
+
+Returns:
+
+{
+  "workspaceSlug": "...",
+  "workspaceName": "...",
+  "primaryBotId": "...",
+  "widgetEmbedCode": "<script ...></script>"
+}
+
+
+If no bot or workspace is found, return appropriate error.
+
+Ensure POST /api/super-admin/new-client uses the same helper
+
+Update POST /api/super-admin/new-client to call getWidgetEmbedCode(...) so:
+
+The widget embed string is generated consistently in one place.
+
+The success response can reuse this.
+
+3.3 FRONTEND — INTEGRATION SECTION UI (SUPER-ADMIN)
+
+In client/src/pages/super-admin.tsx (or equivalent super-admin UI):
+
+Workspace selection
+
+In the section where you list workspaces (or for each workspace card), add an “Integration” action:
+
+Either:
+
+A dedicated “Integration” button on each workspace card, or
+
+An “Integration” tab/panel when a workspace is selected.
+
+Integration panel content
+
+When “Integration” is opened:
+
+Call GET /api/super-admin/workspaces/:slug/integration.
+
+Display:
+
+Workspace name & slug.
+
+Assistant / bot name if returned.
+
+A large text area (or code block) containing widgetEmbedCode.
+
+Add:
+
+A “Copy embed code” button that copies the snippet to clipboard.
+
+Optionally show:
+
+A short instruction like:
+
+“Paste this code before the closing </body> tag on your website to install your AI assistant widget.”
+
+Permissions
+
+This Integration panel is super-admin-only.
+
+Do not render or fetch integration data for client users.
+
+(Optional, only if quick and safe)
+
+Add a read-only view of embed code for client_admin inside their Settings tab (if you think this is useful).
+
+Only do this if it’s trivial and doesn’t complicate permissions.
+
+Leave all editing and creation control strictly in super-admin.
+
+QA Checklist for Integration
+
+Update QA_CHECKLIST.md:
+
+“Integration Panel” section:
+
+As super-admin:
+
+Open super-admin dashboard.
+
+Open Integration panel for a known workspace.
+
+Confirm that embed snippet is shown and copy button works.
+
+Confirm that:
+
+Client role users cannot access the super-admin Integration endpoints.
+
+4. FINAL SUMMARY REQUIREMENTS
+
+At the end of this session you must output a clear, structured summary including:
+
+Files changed
+
+For each file:
+
+Path.
+
+Short description of what changed.
+
+Demo Workspaces & Seeding
+
+List the demo workspaces you created (names + slugs).
+
+Describe:
+
+How they are seeded.
+
+Which helper functions handle seeding.
+
+How the reset endpoint works (POST /api/super-admin/demo-workspaces/:slug/reset).
+
+Demo Index Behavior
+
+Explain how the super-admin Demo Workspaces section now behaves:
+
+Where it is in the UI.
+
+What each button does (“View Public Demo”, “View as Client”, “Reset Data”).
+
+Booking Status UI
+
+Confirm:
+
+The booking status dropdown now exists in the Bookings tab.
+
+Which statuses it supports.
+
+Which endpoint it calls.
+
+How errors/saving state are handled.
+
+Integration Section
+
+Describe:
+
+The new Integration endpoint (GET /api/super-admin/workspaces/:slug/integration).
+
+The helper that generates widgetEmbedCode.
+
+Where in the UI the Integration panel lives and how to access it.
+
+QA Checklist Updates
+
+Confirm which sections of QA_CHECKLIST.md were updated:
+
+Demo workspaces & reset.
+
+Booking status UI.
+
+Integration panel.
+
+Known limitations / next steps
+
+Note any non-critical limitations left intentionally (e.g., security hardening, additional E2E tests) so they can be handled in a future “Security + Tests” session.
+
+Do not skip the summary.
+This summary will be used by the human operator to understand exactly what changed and how to demo and use the system.
+
+REPLIT AGENT PROMPT END

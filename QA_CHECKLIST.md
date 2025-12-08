@@ -138,6 +138,25 @@ This document provides a comprehensive checklist for verifying all platform feat
 - [ ] "View as Client" opens client dashboard in impersonation mode
 - [ ] "Reset Data" clears and re-seeds demo data (with confirmation)
 
+#### Demo Seeding & Reset (December 2024 - New)
+- [ ] "Seed All Demos" button appears in Clients section header
+- [ ] Clicking "Seed All Demos" creates demo workspaces if missing
+- [ ] Seeding populates leads, appointments, and chat sessions
+- [ ] Demo workspaces have isDemo=true flag
+- [ ] Reset endpoint clears AND re-seeds (not just clears)
+- [ ] Reset toast shows stats: X leads, Y bookings, Z sessions
+- [ ] Three demo types supported: Faith House, Barber, Gym
+
+#### Integration Panel (December 2024 - New)
+- [ ] "Integration" button appears in workspace dropdown menu
+- [ ] Clicking opens Integration modal dialog
+- [ ] Modal shows workspace name and primary bot name
+- [ ] Widget embed code displays in code block
+- [ ] Copy button copies embed code to clipboard
+- [ ] Copied indicator shows checkmark after copying
+- [ ] Installation instructions displayed
+- [ ] Current configuration shows primary color, business name, subtitle
+
 #### Assistants Section
 - [ ] Bot list displays correctly
 - [ ] Bot editor opens on selection
@@ -198,6 +217,9 @@ This document provides a comprehensive checklist for verifying all platform feat
 - [ ] `PUT /api/super-admin/bots/:botId` updates bot
 - [ ] `POST /api/super-admin/new-client` creates workspace+user+bot in single transaction
 - [ ] `GET /api/super-admin/demo-workspaces` returns all demo workspaces
+- [ ] `POST /api/super-admin/demo-workspaces/:slug/reset` clears and re-seeds demo data
+- [ ] `POST /api/super-admin/demo-workspaces/seed-all` seeds all demo workspaces at once
+- [ ] `GET /api/super-admin/workspaces/:slug/integration` returns widget embed code
 
 ### 7. Demo Reset (Faith House Demo)
 
@@ -248,6 +270,6 @@ This document provides a comprehensive checklist for verifying all platform feat
 
 ## Version Information
 - Last Updated: December 8, 2024
-- Platform Version: 1.1
+- Platform Version: 1.2
 - Bot Config Version: 1.0.0
-- Recent Additions: New Client Wizard, Demo Index, Overview Metrics (7d/30d), Lead/Booking Status Dropdowns
+- Recent Additions: Demo Seed Module with Faith House/Barber/Gym templates, Integration Panel with embed code generator, Seed All Demos button, Enhanced Demo Reset with reseeding
