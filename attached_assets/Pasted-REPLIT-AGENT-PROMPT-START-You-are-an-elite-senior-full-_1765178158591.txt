@@ -1,0 +1,793 @@
+REPLIT AGENT PROMPT START
+
+You are an elite senior full-stack engineer + QA lead working on the Treasure Coast AI platform.
+
+You must:
+
+Read and understand the existing codebase first.
+
+Follow every instruction in this prompt word-for-word.
+
+Do NOT rebuild the architecture or remove working features.
+
+Only extend and unify what already exists.
+
+Your job in this session:
+
+Unify the “New Client” flow into a single, custom, agency-only wizard that:
+
+Creates a workspace + client user
+
+Creates a bot from the correct template
+
+Applies custom persona + FAQs per client
+
+Hooks into the existing multi-tenant dashboards
+
+Add a Demo Index / Demo Launcher in super-admin.
+
+Add Overview metrics cards (leads / convos / bookings) to the client dashboard.
+
+Add status management UI for leads & bookings (NEW → CONTACTED → etc.).
+
+Keep everything agency-run (no self-serve builder for clients).
+
+You MUST base all changes on the existing code and architecture.
+Do NOT guess; always inspect files first.
+
+0. CURRENT STATE — TREAT THIS AS FACT, VERIFY IN CODE
+
+Before any changes, you MUST:
+
+Locate and confirm the following in the repo:
+
+Backend / server
+
+server/routes.ts (or similar central API router)
+
+Frontend
+
+client/src/pages/super-admin.tsx (or similar super admin page)
+
+client/src/pages/client-dashboard.tsx (or equivalent client dashboard)
+
+Data & models
+
+Drizzle ORM model definitions for:
+
+Workspaces / clients / tenants
+
+Bots / botTemplates
+
+Leads
+
+Bookings
+
+Conversations / Messages
+
+Confirm (by reading code) that the following already exist:
+
+A “New Client” modal / form in super-admin that:
+
+Calls an endpoint similar to POST /api/super-admin/workspaces
+
+Creates:
+
+A workspace (tenant)
+
+A client_admin user
+
+A default “generic” bot
+
+Client settings
+
+Then shows a “Generated Credentials” modal (login email, temp password, dashboard URL)
+
+A template-based client/bot creation flow, where:
+
+There is an endpoint like POST /api/super-admin/clients/from-template or POST /api/super-admin/bots/from-template
+
+It:
+
+Accepts templateBotId, clientId, clientName, businessProfile, contact, billing, customFaqs, etc.
+
+Loads a template from botTemplates
+
+Creates a new bot instance from the template
+
+Merges template FAQs with custom FAQs
+
+A multi-tenant system with:
+
+Workspaces, slugs, isDemo flag
+
+effectiveClientId / workspace scoping
+
+Role-based auth (super_admin, client, etc.)
+
+A client stats endpoint in server/routes.ts (or similar) that:
+
+Returns dbStats including avgResponseTimeMs
+
+Client dashboard Overview that:
+
+Displays avgResponseTimeMs in a card
+
+Lead / Booking / Conversation flows:
+
+Lead capture logic
+
+Booking model with type + contact info + preferred time + status
+
+Conversations logging
+
+A QA_CHECKLIST.md at repo root with detailed manual QA.
+
+You must summarize what you found briefly in your output before coding, so it is clear which parts are where.
+
+1. UNIFY “NEW CLIENT” FLOW INTO A CUSTOM, AGENCY-ONLY WIZARD
+1.1. GOAL
+
+Create a single, agency-only “New Client Wizard” in the super-admin UI that:
+
+Is only visible to super_admin.
+
+In ONE flow:
+
+Collects business basics & industry.
+
+Collects assistant persona & tone (custom per client).
+
+Collects client-specific FAQs (using template FAQs as suggestions).
+
+Creates:
+
+Workspace (tenant)
+
+client_admin user
+
+Bot created from industry template, with:
+
+Template defaults
+
+Client persona overrides
+
+Client FAQs overrides
+
+Client settings (business profile, contact info)
+
+Returns a summary for the agency (NOT client) with:
+
+Client login info (email, “password sent” note)
+
+Dashboard URL
+
+Widget embed snippet (if available)
+
+“View as client” link
+
+The client must never see templates, prompts, or persona editor.
+This wizard is for you (agency) only.
+
+1.2. FRONTEND: New Client Wizard UI (super-admin only)
+
+In the super-admin frontend (likely client/src/pages/super-admin.tsx):
+
+Locate existing “New Client” modal:
+
+Identify the button (e.g. “New Client”) and modal that currently:
+
+Collects name, slug, clientEmail, plan, etc.
+
+Calls createWorkspaceMutation.
+
+Locate existing template wizard (if present):
+
+Identify multi-step UI that calls POST /api/super-admin/clients/from-template (or similar).
+
+Confirm what formData fields it uses:
+
+clientId, clientName, businessName, location, FAQ questions, etc.
+
+Replace / unify these into a single wizard component:
+
+Use a multi-step form that maintains a single newClientWizardState object with fields such as:
+
+businessName
+
+industry (maps to template ID)
+
+slug
+
+contactName, contactEmail, contactPhone
+
+businessLocation (city, state)
+
+websiteUrl
+
+Persona fields:
+
+assistantName
+
+assistantRole
+
+toneKeywords (array of strings)
+
+toneDescription (free-text)
+
+targetCustomer (string)
+
+uniqueSellingPoints (string[])
+
+FAQ fields:
+
+faqs (array of { question, answer })
+
+customFaqs (extra ones added by you)
+
+Plan/billing fields (if relevant).
+
+Steps (UI):
+
+Step 1 – Business Basics
+
+Business name
+
+Industry (select from available templates)
+
+Slug (auto-filled from name, editable)
+
+Contact name + email + phone
+
+Location (city, state), website
+
+Step 2 – Assistant Persona
+
+Assistant Name (e.g., “Faith House Assistant”)
+
+Role (e.g., “front-desk coordinator”, “care coordinator”)
+
+Tone checkboxes (friendly, professional, luxury, clinical, casual, etc.)
+
+Free-text field: “Describe how this assistant should sound in 1–2 sentences”
+
+Target customer description
+
+Unique selling points (1–3 bullet-style inputs)
+
+Step 3 – FAQs & Scenarios
+
+On mount, call a backend endpoint (or reuse existing template fetch) to:
+
+Get recommended FAQs for the chosen template/industry.
+
+Render a list:
+
+Show each template FAQ question
+
+Input field for the answer (to be customized by you per client)
+
+Allow adding extra custom Q/A rows.
+
+Store all in newClientWizardState.faqs.
+
+Step 4 – Review & Create
+
+Show a summary:
+
+Business info
+
+Assistant name + persona summary
+
+FAQ count
+
+“Create Client” button triggers the unified backend endpoint (see 1.3).
+
+UI constraints:
+
+This wizard must be:
+
+Only visible when user.role === "super_admin" (or equivalent).
+
+Not renderable/accessible at all to client users.
+
+If any existing “New Client” modal remains, it should either:
+
+Be replaced by this wizard, or
+
+Be clearly marked as deprecated and unused.
+
+1.3. BACKEND: Unified New Client Creation Endpoint
+
+Create a single backend endpoint that the wizard calls, for example:
+
+POST /api/super-admin/new-client (name can vary, but must be super-admin only)
+
+The endpoint must:
+
+Require super admin:
+
+Wrap with requireSuperAdmin (or equivalent).
+
+Validate input:
+
+Required:
+
+businessName
+
+slug
+
+industry or templateBotId
+
+contactEmail
+
+Optional:
+
+Persona fields
+
+FAQ list
+
+Location, website, etc.
+
+Check for conflicts:
+
+Ensure slug / workspace ID is unique.
+
+Ensure no other workspace/client uses that same clientId/slug in the chosen context.
+
+Create workspace + client user (use existing logic):
+
+Reuse the logic currently in POST /api/super-admin/workspaces:
+
+Create workspace record with:
+
+name = businessName
+
+slug
+
+plan (use default if not specified)
+
+isDemo = false
+
+Owner set to client_admin user.
+
+If clientEmail is provided:
+
+Create client_admin user with this email.
+
+Generate secure temp password or use existing onboarding pattern.
+
+Associate user to workspace membership.
+
+Extract this logic into a reusable function if necessary:
+
+e.g., createWorkspaceWithClientAdmin({ name, slug, clientEmail, plan, settings }).
+
+Create bot from template with persona & FAQs:
+
+Use existing template functions (e.g., from /api/super-admin/clients/from-template or /api/super-admin/bots/from-template):
+
+Identify template by:
+
+templateBotId (if passed), OR
+
+industry mapped to template id (e.g., starter-sober-living, starter-barber, etc.)
+
+Clone the template into a new bot for this workspace:
+
+Set:
+
+botId unique to this workspace (e.g., ${slug}_assistant).
+
+name = assistantName from wizard (or ${businessName} Assistant as fallback).
+
+businessProfile merged:
+
+Template profile + overrides:
+
+businessName, location, phone, website, etc.
+
+personaConfig:
+
+assistantName, assistantRole, toneKeywords, toneDescription, targetCustomer, uniqueSellingPoints.
+
+faqs:
+
+Template FAQs merged with wizard-provided FAQ answers, preferring the specific answers you entered per client.
+
+Persist persona & FAQ config in an appropriate place (existing config tables or JSON fields).
+
+Ensure orchestrator.ts uses these persona + FAQ fields as part of the system messages to the LLM.
+
+Create / update client settings:
+
+For the new workspace/client:
+
+Update client settings (if a table exists, e.g., clientSettings or workspaceSettings) with:
+
+businessName
+
+tagline or short description (optional, from persona)
+
+primaryEmail
+
+phone
+
+location
+
+businessHours (if collected)
+
+This ensures the client dashboard displays correct branding and info.
+
+Prepare response object with everything the wizard needs:
+
+Return JSON including:
+
+workspaceId, workspaceSlug
+
+clientLoginEmail
+
+(Do NOT return password; just indicate that a temp password or onboarding email exists.)
+
+clientDashboardUrl (e.g., /client/dashboard or /client/${slug}/dashboard)
+
+assistantName
+
+botId
+
+widgetEmbedCode (if possible):
+
+Script embed snippet that includes this workspace/bot id.
+
+Any Stripe/customer IDs if your billing is tied in.
+
+Do NOT break existing production behavior:
+
+If existing routes (/api/super-admin/workspaces, /api/super-admin/clients/from-template) are used elsewhere, either:
+
+Keep them but stop using them in the wizard, OR
+
+Refactor them to reuse a shared internal function.
+
+1.4. Summary UI After Creation (Wizard Step 4)
+
+After the backend returns success:
+
+Show a summary screen (still super-admin-only) that displays:
+
+Business name + industry
+
+Assistant name + short persona description
+
+Client login email
+
+Dashboard URL
+
+“View as client” button using the existing impersonation mechanism (?impersonate=workspace_slug).
+
+Widget embed snippet in a <textarea> with “Copy to clipboard” button.
+
+This summary is for the agency, not the client.
+
+2. DEMO INDEX / DEMO LAUNCHER (SUPER-ADMIN)
+2.1. GOAL
+
+Create a “Demo Index” page in super-admin that:
+
+Lists all demo workspaces (isDemo = true).
+
+For each demo, lets me:
+
+Open the public demo page / widget.
+
+“View as client” (open client dashboard as that demo workspace).
+
+Trigger demo reset if a reset endpoint exists.
+
+2.2. Implementation Steps
+
+Backend: fetching demo workspaces
+
+Add a super-admin-only endpoint, e.g.:
+
+GET /api/super-admin/demo-workspaces
+
+That:
+
+Finds all workspaces where isDemo = true.
+
+For each workspace, returns:
+
+id
+
+name
+
+slug
+
+industry or associated template category (if stored)
+
+isDemo
+
+Any relevant URLs if precomputed (optional).
+
+Backend: demo reset endpoint (if not already formalized)
+
+If your code already has demo reset logic (as per QA checklist), formalize an endpoint:
+
+POST /api/super-admin/demo-workspaces/:slug/reset
+
+Requires requireSuperAdmin.
+
+Clears leads, bookings, conversations, and maybe recreates seed data for that workspace.
+
+This must only operate on isDemo = true workspaces.
+
+Frontend: Demo Index Page
+
+Add a super-admin-only route, e.g., /super-admin/demo-index or a section on the super-admin dashboard.
+
+Fetch from /api/super-admin/demo-workspaces.
+
+Render a table or cards, each showing:
+
+Demo name (e.g., “Faith House Sober Living Demo”).
+
+Industry (sober living, barber, gym, restaurant, auto-shop).
+
+Badges: DEMO.
+
+Buttons:
+
+“View public demo”:
+
+Link to the existing demo page/widget URL for that workspace.
+
+“View as client”:
+
+Link to client dashboard with the correct impersonation parameter for that workspace (?impersonate=workspace_slug).
+
+“Reset demo data” (if you have the reset endpoint):
+
+On click, confirm via modal.
+
+Call POST /api/super-admin/demo-workspaces/:slug/reset.
+
+Show success/failure toast.
+
+Protect the page with requireSuperAdmin (or equivalent on frontend + backend calls).
+
+QA Checklist update
+
+Add to QA_CHECKLIST.md:
+
+“Demo Index Page” section with:
+
+Steps to open the page, verify list of demo workspaces, test “View as client” links, and test “Reset demo” on at least one workspace.
+
+3. CLIENT DASHBOARD OVERVIEW METRICS (LEADS / CONVOS / BOOKINGS)
+3.1. Backend — Extend Stats Endpoint
+
+In the stats endpoint (where avgResponseTimeMs is added):
+
+Locate the route in server/routes.ts (e.g. /api/client/stats or similar) that builds dbStats.
+
+Add per-tenant aggregate counts for time windows:
+
+For the authenticated effectiveClientId (or workspace):
+
+leadsLast7Days
+
+leadsLast30Days
+
+conversationsLast7Days
+
+conversationsLast30Days
+
+bookingsLast7Days
+
+bookingsLast30Days
+
+Use Drizzle queries like:
+
+SELECT COUNT(*) FROM leads WHERE clientId = effectiveClientId AND createdAt >= NOW() - 7 days
+
+Repeat for 30 days and for bookings + conversations.
+
+Add these fields to the stats response object (e.g., dbStats or metrics).
+
+Ensure the endpoint still returns avgResponseTimeMs as currently implemented.
+
+3.2. Frontend — Overview Cards
+
+In client/src/pages/client-dashboard.tsx (or equivalent):
+
+Update the ClientStats / dbStats interface to include:
+
+leadsLast7Days, leadsLast30Days
+
+conversationsLast7Days, conversationsLast30Days
+
+bookingsLast7Days, bookingsLast30Days
+
+In the Overview tab:
+
+Add stat cards for:
+
+Leads
+
+Label: “Leads”
+
+Subtitle: “7 days / 30 days”
+
+Value: X / Y (e.g., 11 / 32)
+
+Bookings
+
+Label: “Bookings”
+
+Subtitle: “7 days / 30 days”
+
+Conversations
+
+Label: “Conversations”
+
+Subtitle: “7 days / 30 days”
+
+Keep the existing Avg Response Time card.
+
+Ensure formatting:
+
+Use safe defaults (0 if undefined or null).
+
+Respect existing styling (Tailwind + shadcn/ui).
+
+Update QA_CHECKLIST.md:
+
+Add checks:
+
+Seed some leads/bookings/conversations, then confirm counts match what the Overview displays for 7/30 days.
+
+4. LEAD & BOOKING STATUS MANAGEMENT UI
+4.1. Backend — Status Update Endpoints
+
+Confirm models:
+
+Find Lead and Booking Drizzle models.
+
+Confirm status fields (e.g., status enums: NEW, CONTACTED, QUALIFIED, WON, LOST for leads; NEW, CONFIRMED, CANCELLED, NO_SHOW for bookings).
+
+Add (or confirm existing) endpoints:
+
+Leads:
+
+PATCH /api/client/leads/:id/status
+
+Body: { status: "NEW" | "CONTACTED" | "QUALIFIED" | "WON" | "LOST" }
+
+Checks:
+
+Authenticated as client tied to effectiveClientId
+
+Lead belongs to that client/workspace
+
+Bookings:
+
+PATCH /api/client/bookings/:id/status
+
+Body: { status: "NEW" | "CONTACTED" | "CONFIRMED" | "CANCELLED" | "NO_SHOW" }
+
+Same scoping and auth checks.
+
+Return:
+
+Updated lead/booking object, or a success status + updated status field.
+
+Error handling:
+
+Use try/catch.
+
+If unauthorized or wrong tenant, return appropriate error (403/404).
+
+Do NOT leak other tenants’ IDs or data.
+
+4.2. Frontend — UI Controls
+
+In the client Leads and Bookings tabs:
+
+Leads tab:
+
+Add a status control per row:
+
+Either a dropdown (Select) with allowed statuses, or a small segmented control.
+
+On status change:
+
+Optimistically update row or refetch the list after PATCH success.
+
+Show loading / disabled state while saving.
+
+Show error toast if the API call fails.
+
+Bookings tab:
+
+Same pattern:
+
+Drop-down for statuses (NEW, CONTACTED, CONFIRMED, etc.).
+
+Wired to booking status endpoint.
+
+Constraints:
+
+Only client users associated with that workspace can change statuses.
+
+Make sure UI is not shown for unauthorized roles (if any extra roles exist).
+
+Update QA_CHECKLIST.md:
+
+Add steps:
+
+Change a lead from NEW → CONTACTED → WON.
+
+Change a booking from NEW → CONFIRMED.
+
+Verify DB reflects the new statuses.
+
+Verify that an attempted update for a lead of another workspace is blocked (negative test).
+
+5. FINAL CHECK & SUMMARY
+
+At the end of this session, you MUST output a clear summary including:
+
+Files changed (with paths and short descriptions).
+
+New Client Wizard:
+
+Where it lives (component/file).
+
+Which endpoint it calls.
+
+Exact steps (fields collected per step).
+
+New unified backend endpoint:
+
+Route (e.g., POST /api/super-admin/new-client).
+
+What it does:
+
+Workspace creation
+
+client_admin creation
+
+Bot creation from template
+
+Persona/FAQ storage
+
+Demo Index:
+
+Route (frontend) and API endpoint.
+
+How to open a demo.
+
+How to “view as client.”
+
+How to reset demo data (if implemented).
+
+Overview metrics:
+
+Fields added to stats API.
+
+How they appear on the dashboard.
+
+Lead & booking status UI:
+
+Endpoints for status updates.
+
+Where the controls are in the UI.
+
+Any known limitations / TODOs:
+
+Only list items that are non-critical for demos and first client onboarding.
+
+Only when all of the above are complete, and you have run the app and verified the core flows (using QA_CHECKLIST.md as a guide), consider this session successful.
+
+REPLIT AGENT PROMPT END
