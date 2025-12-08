@@ -5692,15 +5692,14 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       const rawMessages = await storage.getSessionMessages(sessionId, clientId);
       
-      // Return messages with properties that frontend expects (ChatAnalyticsEvent interface)
+      // Return messages with properties that frontend expects (ChatMessage interface)
       const messages = rawMessages.map((msg) => ({
         id: msg.id,
         sessionId: msg.sessionId,
         botId: msg.botId,
-        actor: msg.actor,
-        messageContent: msg.messageContent || '',
-        category: msg.category,
-        createdAt: msg.createdAt?.toISOString() || new Date().toISOString(),
+        role: msg.actor === 'user' ? 'user' : 'assistant',
+        content: msg.messageContent || '',
+        timestamp: msg.createdAt?.toISOString() || new Date().toISOString(),
       }));
       
       res.json({
