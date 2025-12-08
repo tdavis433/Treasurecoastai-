@@ -106,12 +106,57 @@ app.use(express.urlencoded({ extended: false }));
 
 // Security: CORS for widget embeds on third-party sites ONLY
 // Admin/internal routes use same-origin policy (no CORS)
+// Configure allowed origins via WIDGET_ALLOWED_ORIGINS environment variable
+// Format: comma-separated list of domains (e.g., "https://example.com,https://client.com")
+// In development, localhost origins are always allowed
+const parseAllowedOrigins = (): string[] => {
+  const envOrigins = process.env.WIDGET_ALLOWED_ORIGINS || '';
+  const origins = envOrigins
+    .split(',')
+    .map(o => o.trim())
+    .filter(o => o.length > 0);
+  
+  // In development, always allow localhost origins
+  if (isDev) {
+    origins.push(
+      'http://localhost:3000',
+      'http://localhost:5000',
+      'http://localhost:5173',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:5000',
+      'http://127.0.0.1:5173'
+    );
+  }
+  
+  return origins;
+};
+
+const allowedWidgetOrigins = parseAllowedOrigins();
+
 const widgetCorsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl)
+    // Allow requests with no origin (like mobile apps, curl, or server-side requests)
     if (!origin) return callback(null, true);
-    // Allow all origins for widget embedding functionality
-    callback(null, true);
+    
+    // If no allowed origins configured, allow all (backwards compatibility)
+    if (allowedWidgetOrigins.length === 0) {
+      return callback(null, true);
+    }
+    
+    // Check if origin is in the allow-list
+    if (allowedWidgetOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // In development, be more permissive
+    if (isDev) {
+      console.log(`[CORS] Allowing dev origin: ${origin}`);
+      return callback(null, true);
+    }
+    
+    // Origin not allowed
+    console.warn(`[CORS] Blocked origin: ${origin}`);
+    callback(new Error('Not allowed by CORS'));
   },
   credentials: false, // Widget doesn't need credentials
   methods: ['GET', 'POST', 'OPTIONS'],

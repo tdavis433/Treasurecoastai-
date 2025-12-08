@@ -259,17 +259,64 @@ This document provides a comprehensive checklist for verifying all platform feat
 
 ---
 
+## Security Features
+
+### Authentication Security
+- [ ] **Password Policy**: New passwords require 8+ characters, uppercase, lowercase, number, and special character
+- [ ] **Account Lockout**: After 5 failed login attempts, account is locked for 15 minutes
+  - Configurable via `LOGIN_MAX_ATTEMPTS` (default: 5) and `LOGIN_LOCKOUT_MINUTES` (default: 15)
+  - Lockout window: `LOGIN_WINDOW_MINUTES` (default: 15)
+- [ ] **Session Security**: httpOnly cookies, secure flag in production, 7-day max age
+- [ ] **Rate Limiting**:
+  - Login: 10 requests per 15 minutes (production)
+  - Chat API: 30 requests per minute (production)
+  - General API: 100 requests per 15 minutes (production)
+
+### CORS & Headers
+- [ ] **Helmet**: Security headers enabled (CSP, X-Frame-Options, XSS protection, etc.)
+- [ ] **Widget CORS**: Configurable via `WIDGET_ALLOWED_ORIGINS` environment variable
+  - Format: Comma-separated list of allowed domains
+  - Example: `https://client1.com,https://client2.com`
+  - In development, localhost origins are auto-allowed
+
+### Multi-Tenancy Security
+- [ ] Data isolation by `clientId` on all tenant-scoped queries
+- [ ] Cross-tenant data access prevention at database query level
+- [ ] Tests verify leads and appointments are isolated per workspace
+
+---
+
+## Automated Tests
+
+### Unit Tests
+Run with: `npx vitest --run tests/unit/`
+- `automations.test.ts` - Keyword triggers, office hours, lead capture detection
+- `conversationLogger.test.ts` - Conversation logging functionality
+- `planLimits.test.ts` - Plan tier limits and usage tracking
+- `utils.test.ts` - Utility functions
+
+### Integration Tests
+Run with: `npx vitest --run tests/integration/`
+- `multitenancy.test.ts` - Multi-tenant data isolation
+  - Verifies leads are isolated per workspace
+  - Verifies appointments are isolated per workspace
+  - Tests cross-tenant query prevention
+  - Tests scoped update/delete operations
+
+---
+
 ## Known Issues / Edge Cases
 
 1. **Empty Response Time**: If no conversations tracked, avgResponseTimeMs may be null/undefined - displays as "—"
 2. **Session Cleanup**: Old sessions are not automatically cleaned up - may need manual intervention
 3. **Rate Limiting**: Chat API has rate limiting - demo may slow down under heavy load
 4. **Image Uploads**: Not currently supported in chat widget
+5. **Account Lockout**: In-memory storage resets on server restart
 
 ---
 
 ## Version Information
 - Last Updated: December 8, 2024
-- Platform Version: 1.2
+- Platform Version: 1.3
 - Bot Config Version: 1.0.0
-- Recent Additions: Demo Seed Module with Faith House/Barber/Gym templates, Integration Panel with embed code generator, Seed All Demos button, Enhanced Demo Reset with reseeding
+- Recent Additions: Security hardening (account lockout, CORS allow-list, password policy), Multi-tenancy tests, Demo Seed Module

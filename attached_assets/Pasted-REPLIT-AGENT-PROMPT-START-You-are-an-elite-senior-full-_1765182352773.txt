@@ -1,0 +1,476 @@
+REPLIT AGENT PROMPT START
+
+You are an elite senior full-stack engineer + security/QA lead working on the Treasure Coast AI platform.
+
+Your job in this session is to focus on:
+
+Security hardening
+
+Login / auth robustness
+
+Basic automated tests (E2E / integration) for core flows & multi-tenancy
+
+You MUST:
+
+Read existing code and docs first (server/routes.ts, server/app.ts or equivalent, auth middleware, tests, QA_CHECKLIST.md).
+
+Follow every instruction in this prompt word-for-word.
+
+Do not rebuild core architecture or rename existing routes.
+
+Do not change business logic or UI flows except where required for security/tests.
+
+0. CONTEXT — WHAT ALREADY EXISTS (VERIFY FIRST)
+
+Before making changes, you MUST confirm and note:
+
+Server setup
+
+Location of Express app initialization (e.g. server/app.ts or server/index.ts).
+
+How sessions are configured:
+
+Session store (in-memory or external).
+
+SESSION_SECRET usage.
+
+Whether helmet() is already used.
+
+Current CORS configuration, especially for:
+
+Widget/chat endpoints.
+
+Login endpoints.
+
+Auth
+
+Login route(s), likely:
+
+POST /login (and/or /admin/login legacy).
+
+Middlewares:
+
+requireSuperAdmin
+
+requireClientAuth or similar
+
+User model:
+
+Fields: password hash, roles, mustChangePassword, etc.
+
+Any existing validation on login (Zod, etc.).
+
+Multi-tenancy
+
+How effectiveClientId or workspace scoping is determined (middleware / helper).
+
+Which routes rely on it:
+
+Leads.
+
+Bookings.
+
+Conversations.
+
+Stats.
+
+Tests
+
+Existing test setup (e.g. Jest/Vitest/Playwright).
+
+Existing tests for:
+
+conversationLogger
+
+planLimits
+
+automations
+
+Any E2E tests (even if currently failing).
+
+You must briefly summarize in your own output what you found (where main app file is, how login works, what test framework is used) before coding.
+
+1. SECURITY HARDENING — RATE LIMITING
+1.1 GOAL
+
+Protect against brute force login and abuse of chat/widget endpoints by adding rate limiting.
+
+1.2 IMPLEMENTATION
+
+Add a rate limiting library (if not already present), e.g. express-rate-limit.
+
+Create two rate limiters:
+
+Login rate limiter, e.g.:
+
+Keyed by IP (and optionally username).
+
+Allow only a small number of attempts per 15 minutes (for example 5–10 attempts).
+
+After limit reached:
+
+Return 429 with a generic message (do not reveal whether username exists).
+
+Chat/widget rate limiter, e.g.:
+
+Applied to:
+
+Chat/assistant endpoints used by the widget (e.g. /api/chat, /api/widget/*, etc.).
+
+Allow a reasonable number of requests per IP per minute (you decide a sane number).
+
+Protects OpenAI usage from abuse.
+
+Apply login rate limiter to:
+
+The actual login route used in production, for example:
+
+POST /login
+
+If there’s also /admin/login, apply there as well or make sure legacy routes are not used.
+
+Apply chat/widget limiter to:
+
+Any route where an end-user (not authenticated client_admin) sends conversations to the assistant.
+
+Ensure:
+
+Rate limiter is configured conservatively:
+
+Development environment can use higher limits or disabled.
+
+Production environment uses strict limits.
+
+Configuration is easy to adjust via environment variables.
+
+2. SECURITY HARDENING — HEADERS & CORS
+2.1 helmet() and security headers
+
+In the main Express app file:
+
+If helmet() is not being used:
+
+Install and configure helmet() with sane defaults.
+
+At minimum:
+
+Enable:
+
+dnsPrefetchControl
+
+frameguard
+
+hidePoweredBy
+
+hsts (only if you’re behind HTTPS in production)
+
+noSniff
+
+xssFilter or contentSecurityPolicy if feasible.
+
+Ensure you do not break existing frontend by over-strict CSP:
+
+If CSP causes issues:
+
+Start with a relaxed CSP or leave CSP off for now.
+
+Keep other helmet protections enabled.
+
+2.2 CORS tightening (especially for widget)
+
+Find existing CORS configuration:
+
+Identify where cors() is used.
+
+Identify current origin setting (likely * or “reflect any origin”).
+
+Replace any wildcard CORS for sensitive endpoints with a configurable allow-list:
+
+Use env variable like:
+
+WIDGET_ALLOWED_ORIGINS (comma-separated).
+
+Parse it into an array.
+
+Configure CORS so that:
+
+Only those origins can load widget/chat endpoints.
+
+In development:
+
+Allow localhost dev origins (e.g., http://localhost:3000, http://localhost:5000).
+
+Apply the tighter CORS to:
+
+Widget/chat endpoints.
+
+Any public demo endpoints where cross-origin traffic is expected.
+
+Document in README / QA_CHECKLIST:
+
+Where to set WIDGET_ALLOWED_ORIGINS.
+
+How to configure when adding a new client domain.
+
+3. AUTH HARDENING — PASSWORD POLICY & ACCOUNT LOCKOUT
+3.1 Password complexity
+
+Identify where user registration / password set or reset happens:
+
+Super admin creation (env-driven).
+
+Client user creation.
+
+Change-password route (e.g. POST /change-password).
+
+Implement a central password validation function (e.g. validatePasswordStrength(password)), using either:
+
+Zod schema, or
+
+Custom function.
+
+Password rules (reasonable defaults):
+
+Minimum length: e.g. 10 characters.
+
+Include at least:
+
+1 lowercase letter.
+
+1 uppercase letter.
+
+1 digit.
+
+Optionally 1 special character.
+
+Enforce this in:
+
+New client user creation route.
+
+Change-password route.
+
+Any place a password can be set by a human.
+
+If validation fails:
+
+Return a clear, but generic message (e.g. “Password must be at least 10 characters and include upper, lower, and a number.”).
+
+3.2 Login attempt lockout
+
+Implement failed login tracking:
+
+In memory or via database keyed by username/email and possibly IP.
+
+Track failed attempts in a rolling window (e.g. last 15 minutes).
+
+Behavior:
+
+After N failed attempts (e.g. N=5) in the window:
+
+Lockout further login attempts for that username/IP for a defined period (e.g. 15 minutes).
+
+Return a generic error (“Too many attempts. Try again later.”).
+
+Make N and the lockout period configurable via env variables (e.g. LOGIN_MAX_ATTEMPTS, LOGIN_LOCKOUT_MINUTES).
+
+Ensure:
+
+Successful login resets the failed attempts counter.
+
+4. SESSION / IDLE TIMEOUT
+
+Locate session configuration (e.g. session({ ... })).
+
+Ensure:
+
+cookie.maxAge is set to a sane duration (e.g. 8–12 hours).
+
+httpOnly: true, secure: true (in production with HTTPS), sameSite set appropriately.
+
+Implement simple idle timeout behavior if feasible:
+
+At minimum, change the session cookie maxAge and ensure it refreshes on activity.
+
+Optionally add a server-side last activity timestamp and invalidate after idle time.
+
+Update QA_CHECKLIST:
+
+Note the expected session duration.
+
+Add a test to confirm cookie flags (httpOnly, secure in prod).
+
+5. MULTI-TENANCY & DATA ISOLATION TESTS
+5.1 GOAL
+
+Add automated tests that prove:
+
+One tenant cannot see or modify another tenant’s data.
+
+5.2 IMPLEMENTATION
+
+Using the existing test framework (Jest/Vitest/etc.):
+
+Create a test file, e.g. tests/multitenancy.test.ts (name can vary).
+
+Test scenarios:
+
+Setup:
+
+Create two workspaces: tenantA, tenantB.
+
+Create separate client users for each.
+
+Seed:
+
+A lead + booking for tenantA.
+
+A different lead + booking for tenantB.
+
+Visibility test:
+
+Log in as tenantA client.
+
+Call:
+
+Leads list endpoint.
+
+Bookings list endpoint.
+
+Assert:
+
+Only tenantA data is returned.
+
+Repeat as tenantB client and ensure no tenantA data appears.
+
+Update protection test:
+
+Try updating a tenantA lead/booking while authenticated as tenantB.
+
+Expect 403 or 404, and no changes to the record.
+
+Ensure tests:
+
+Run via existing test command (document if needed).
+
+Are independent (clean up any created data or use test DB utilities).
+
+6. BASIC E2E FLOW TESTS (HAPPY PATH)
+6.1 GOAL
+
+Have at least one end-to-end test that simulates:
+
+Super admin → New Client Wizard.
+
+Client → Dashboard usage.
+
+You can use Playwright, Cypress, or the existing E2E framework if already installed.
+
+6.2 MINIMUM TEST FLOW
+
+Super admin flow:
+
+Open login page.
+
+Log in using known super admin credentials (e.g. admin / admin123 if that’s what the project uses in dev).
+
+Open New Client Wizard.
+
+Fill in minimal required fields.
+
+Submit and wait for success.
+
+Capture:
+
+The client email.
+
+The dashboard URL if available.
+
+Client flow:
+
+Open client login page.
+
+Log in as the new client (credentials from super admin step).
+
+Navigate to dashboard:
+
+Confirm Overview renders (no crashes).
+
+Confirm Leads, Bookings, Conversations tabs render.
+
+(If seeded) verify at least one lead/booking row exists OR just confirm empty states render correctly.
+
+Make this test robust but not over-fragile:
+
+Use data-test attributes if needed to avoid brittle selectors.
+
+Ensure E2E tests don’t depend on prior failed config:
+
+Use the correct login route and workspace slugs (fixing earlier E2E issues).
+
+7. DOCUMENTATION UPDATES
+
+Update README.md and/or QA_CHECKLIST.md to include:
+
+Security features:
+
+Rate limiting behavior (login + chat).
+
+Password rules.
+
+Lockout behavior.
+
+Session duration / flags.
+
+CORS config via WIDGET_ALLOWED_ORIGINS.
+
+Tests:
+
+How to run unit/integration tests.
+
+How to run E2E tests.
+
+Brief description of what the multi-tenancy tests cover.
+
+8. FINAL SUMMARY (MANDATORY)
+
+At the end of this session, you MUST output a clear summary including:
+
+Files changed (paths + short description).
+
+Rate limiting:
+
+Which routes have rate limits.
+
+Config values and where they’re set.
+
+Security headers & CORS:
+
+Confirm helmet() usage.
+
+Explain new CORS allow-list and env variable(s).
+
+Auth hardening:
+
+Password rules.
+
+Lockout threshold and lockout time.
+
+Session behavior:
+
+Cookie flags.
+
+Session duration.
+
+Tests:
+
+New test files added.
+
+How to run them.
+
+What scenarios they cover (especially multi-tenancy).
+
+Known limitations / TODOs:
+
+Only note remaining items that are non-critical or intentionally postponed.
+
+REPLIT AGENT PROMPT END

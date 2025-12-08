@@ -166,6 +166,90 @@ const strongPasswordSchema = z.string()
   );
 
 // =============================================
+// ACCOUNT LOCKOUT SYSTEM
+// =============================================
+// Configurable via environment variables
+const LOGIN_MAX_ATTEMPTS = parseInt(process.env.LOGIN_MAX_ATTEMPTS || '5', 10);
+const LOGIN_LOCKOUT_MINUTES = parseInt(process.env.LOGIN_LOCKOUT_MINUTES || '15', 10);
+const LOGIN_WINDOW_MINUTES = parseInt(process.env.LOGIN_WINDOW_MINUTES || '15', 10);
+
+interface LoginAttempt {
+  attempts: number;
+  firstAttempt: number;
+  lockedUntil: number | null;
+}
+
+// In-memory store for failed login tracking (keyed by username)
+const failedLoginAttempts = new Map<string, LoginAttempt>();
+
+// Clean up old entries periodically (every 30 minutes)
+setInterval(() => {
+  const now = Date.now();
+  const windowMs = LOGIN_WINDOW_MINUTES * 60 * 1000;
+  for (const [key, value] of failedLoginAttempts.entries()) {
+    // Remove entries older than 2x the window and not locked
+    if (!value.lockedUntil && now - value.firstAttempt > windowMs * 2) {
+      failedLoginAttempts.delete(key);
+    }
+    // Remove expired lockouts
+    if (value.lockedUntil && now > value.lockedUntil) {
+      failedLoginAttempts.delete(key);
+    }
+  }
+}, 30 * 60 * 1000);
+
+function isAccountLocked(username: string): { locked: boolean; remainingMinutes?: number } {
+  const record = failedLoginAttempts.get(username.toLowerCase());
+  if (!record) return { locked: false };
+  
+  const now = Date.now();
+  
+  // Check if currently locked
+  if (record.lockedUntil && now < record.lockedUntil) {
+    const remainingMs = record.lockedUntil - now;
+    const remainingMinutes = Math.ceil(remainingMs / (60 * 1000));
+    return { locked: true, remainingMinutes };
+  }
+  
+  // If lock expired, clear it
+  if (record.lockedUntil && now >= record.lockedUntil) {
+    failedLoginAttempts.delete(username.toLowerCase());
+    return { locked: false };
+  }
+  
+  return { locked: false };
+}
+
+function recordFailedLogin(username: string): { attemptsRemaining: number; locked: boolean } {
+  const now = Date.now();
+  const windowMs = LOGIN_WINDOW_MINUTES * 60 * 1000;
+  const key = username.toLowerCase();
+  
+  let record = failedLoginAttempts.get(key);
+  
+  if (!record || now - record.firstAttempt > windowMs) {
+    // Start new window
+    record = { attempts: 1, firstAttempt: now, lockedUntil: null };
+  } else {
+    record.attempts += 1;
+  }
+  
+  // Check if we should lock
+  if (record.attempts >= LOGIN_MAX_ATTEMPTS) {
+    record.lockedUntil = now + (LOGIN_LOCKOUT_MINUTES * 60 * 1000);
+    failedLoginAttempts.set(key, record);
+    return { attemptsRemaining: 0, locked: true };
+  }
+  
+  failedLoginAttempts.set(key, record);
+  return { attemptsRemaining: LOGIN_MAX_ATTEMPTS - record.attempts, locked: false };
+}
+
+function clearFailedLogins(username: string): void {
+  failedLoginAttempts.delete(username.toLowerCase());
+}
+
+// =============================================
 // ZOD VALIDATION SCHEMAS FOR API ROUTES
 // =============================================
 
@@ -2924,9 +3008,19 @@ These suggestions should be relevant to what was just discussed and help guide t
       const validatedData = loginSchema.parse(req.body);
       const { username, password } = validatedData;
 
+      // Check if account is locked due to failed attempts
+      const lockStatus = isAccountLocked(username);
+      if (lockStatus.locked) {
+        return res.status(429).json({ 
+          error: `Too many login attempts. Please try again in ${lockStatus.remainingMinutes} minute(s).` 
+        });
+      }
+
       const user = await storage.findAdminByUsername(username);
       
       if (!user) {
+        // Record failed attempt even for non-existent users (timing-safe)
+        recordFailedLogin(username);
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
@@ -2938,8 +3032,18 @@ These suggestions should be relevant to what was just discussed and help guide t
       const isValid = await bcrypt.compare(password, user.passwordHash);
       
       if (!isValid) {
+        // Record failed attempt
+        const result = recordFailedLogin(username);
+        if (result.locked) {
+          return res.status(429).json({ 
+            error: `Too many login attempts. Account locked for ${LOGIN_LOCKOUT_MINUTES} minutes.` 
+          });
+        }
         return res.status(401).json({ error: "Invalid credentials" });
       }
+
+      // Successful login - clear any failed attempts
+      clearFailedLogins(username);
 
       // Update lastLoginAt
       await db

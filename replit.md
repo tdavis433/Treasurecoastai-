@@ -1,33 +1,36 @@
 # Treasure Coast AI - Agency-First AI Assistant Platform
 
 ## Overview
-Treasure Coast AI is an agency-first AI assistant platform empowering agencies to build and manage custom AI assistants for local businesses. The platform provides local businesses with 24/7 AI assistants for lead capture, appointment booking, and answering questions. Clients access a view-only dashboard, while agencies manage bot creation and deployment. The platform aims to be a premium, dark luxury SaaS with neon-glass accents, targeting the local business market with a streamlined, agency-managed solution for AI-driven customer interaction and market potential to revolutionize local business customer engagement.
+Treasure Coast AI is an agency-first AI assistant platform designed to empower agencies in building and managing custom AI assistants for local businesses. It provides 24/7 AI assistants for lead capture, appointment booking, and answering questions. The platform features a two-sided interface: a comprehensive agency-facing dashboard for bot creation and deployment, and a simplified, view-only client dashboard for analytics. The vision is to be a premium, dark luxury SaaS with neon-glass accents, revolutionizing local business customer engagement through streamlined, agency-managed AI solutions.
 
 ## User Preferences
-- Super Admin Login: username `admin`, password `admin123`
+Super Admin Login: username `admin`, password `admin123`
 
 ## System Architecture
 
 ### Design Philosophy
-The platform features a "Dark Luxury SaaS with Neon-Glass Accents" aesthetic, inspired by Linear, Vercel, and Stripe, utilizing deep blacks, glassmorphism cards, vibrant cyan and electric purple accents, neon glow effects, and smooth micro-animations.
+The platform adopts a "Dark Luxury SaaS with Neon-Glass Accents" aesthetic, drawing inspiration from platforms like Linear, Vercel, and Stripe. This includes deep blacks, glassmorphism cards, vibrant cyan and electric purple accents, neon glow effects, and smooth micro-animations.
 
-### Two-Surface System
-1.  **Admin Dashboard (Agency Side):** Comprehensive interface for bot building, website scraping, knowledge management, FAQ configuration, personality customization, widget design, and deployment.
+### System Structure
+The platform operates on a two-surface system:
+1.  **Admin Dashboard (Agency Side):** A comprehensive interface for bot building, website scraping, knowledge management, FAQ configuration, personality customization, widget design, and deployment.
 2.  **Client Dashboard:** A simplified, view-only analytics portal for clients to monitor conversations, leads, and bookings.
 
 ### Key Features
-*   **Website Scraper:** Admin-only AI-powered tool to extract and structure business information.
-*   **AI Engine (GPT-4 Powered):** Provides conversational AI, dynamic context building, smart lead and booking intent detection, and a safety layer.
-*   **AI Conversation Analysis:** Asynchronously generates conversation summaries, detects user intent, sentiment, lead quality, and booking intent using GPT-4o-mini.
+*   **Website Scraper:** AI-powered tool for extracting and structuring business information (admin-only).
+*   **AI Engine (GPT-4 Powered):** Handles conversational AI, dynamic context building, lead/booking intent detection, and incorporates a safety layer.
+*   **AI Conversation Analysis:** Asynchronously analyzes conversations for summaries, user intent, sentiment, lead quality, and booking intent using GPT-4o-mini.
 *   **Needs Review / Flagged Conversations System:** AI automatically flags critical conversations for admin review.
-*   **Chat Widget:** Customizable, glassmorphism-designed, mobile-responsive widget with neon accents.
-*   **Visual Widget Appearance Editor:** Comprehensive visual editor for customizing chat widget appearance, including color schemes, layout, identity settings, and a live preview.
-*   **Client Analytics (View Only):** Provides conversation history, lead management, booking overviews.
-*   **Super Admin Dashboard:** Consolidated hub for platform management, client and assistant management, template galleries, global knowledge management, API key hub, billing, system logs, and user role management.
-*   **Assistant Editor (Bot Builder):** Tools for defining AI persona, managing knowledge, setting up automations, customizing channels, and a testing sandbox.
+*   **Chat Widget:** Customizable, glassmorphism-designed, mobile-responsive widget with neon accents and a visual editor for appearance.
+*   **Client Analytics:** Provides view-only access to conversation history, lead management, and booking overviews.
+*   **Super Admin Dashboard:** Centralized hub for platform management, client/assistant management, template galleries, global knowledge, API key management, billing, system logs, and user roles.
+*   **Assistant Editor (Bot Builder):** Tools for defining AI persona, knowledge management, automation setup, channel customization, and a testing sandbox.
+*   **AI-Driven In-Chat Booking Collection:** AI can collect booking information (name, phone, email, time, notes) directly within conversations and automatically create appointment records.
+*   **Demo & Live Tenant Separation:** Provides distinct environments for demo and live instances with dedicated workspaces and bots.
+*   **Integration Panel:** Generates customizable widget embed code for easy integration into client websites.
 
 ### Core Architecture Principle
-"ONE BRAIN ONE BEHAVIOR": All chat entry points utilize a single Unified Conversation Orchestrator for consistent AI behavior.
+"ONE BRAIN ONE BEHAVIOR": All chat entry points are routed through a single Unified Conversation Orchestrator to ensure consistent AI behavior across the platform.
 
 ### Technical Implementation
 *   **Frontend:** React 18, TypeScript, Tailwind CSS, shadcn/ui, Framer Motion.
@@ -35,171 +38,28 @@ The platform features a "Dark Luxury SaaS with Neon-Glass Accents" aesthetic, in
 *   **Database:** PostgreSQL (Neon) with Drizzle ORM.
 *   **AI:** OpenAI GPT-4.
 *   **Payments:** Stripe integration.
-*   **Authentication:** Admin and client accounts with view-only access for clients.
-*   **API Endpoints:** Structured for core chat interactions, widget configuration, and protected routes for admin and client dashboards.
-*   **Security:** Rate limiting, HMAC-signed widget tokens, per-bot security settings (e.g., `requireWidgetToken`, `allowedDomains`), domain validation, and Helmet for secure HTTP headers and CSP.
+*   **Authentication:** Admin and client accounts (clients have view-only access).
+*   **API Endpoints:** Structured for core chat interactions, widget configuration, and protected routes.
+*   **Security:** Rate limiting, HMAC-signed widget tokens, per-bot security settings (e.g., `requireWidgetToken`, `allowedDomains`), domain validation, Helmet for secure HTTP headers and CSP, account lockout, and strong password policies.
+*   **Key Architecture Components:** Unified Conversation Orchestrator, Enhanced Bot Config Cache, Multi-Tenant Data Isolation, Session Data Tracking, and Daily Analytics.
 
-### Key Architecture Components
-*   **Unified Conversation Orchestrator (`server/orchestrator.ts`):** Central brain for chat interactions, handling config loading, knowledge retrieval, OpenAI prompt construction, post-processing (lead/booking detection), and session management.
-*   **Enhanced Bot Config Cache (`server/configCache.ts`):** In-memory, TTL-based caching layer for bot configurations with invalidation.
-*   **Routes Layer (`server/routes.ts`):** Handles HTTP specifics like security, response formatting, rate limiting, and error handling.
-*   **Multi-Tenant Data Isolation:** Strict tenant isolation enforced through scoped queries and session data.
-*   **Session Data Tracking:** Tracks conversation topics, `appointmentRequested`, `leadCaptured`, and `messageCount`.
-*   **Daily Analytics:** Tracks `conversationCount`, `leadCount`, `appointmentRequests`, and `avgResponseTime`.
-
-## Recent Changes (December 2024)
-
-### Demo vs Live Tenant Separation
-*   **New Feature:** Demo and Live environments are now separate tenants with dedicated workspaces and bots
-*   **isDemo Flag:** Workspaces table includes `is_demo` boolean column (default false) to flag demo environments
-*   **Faith House Tenants:**
-    *   Demo: `faith_house_demo` workspace with `faith_house_demo_main` bot
-    *   Live: `faith_house_live` workspace with `faith_house_live_main` bot
-*   **TenantBadge Component:** Visual DEMO/LIVE indicators displayed in dashboards
-    *   Demo: Amber badge with test tube icon
-    *   Live: Green badge with radio icon
-*   **DemoInfoBanner Component:** Warning banner displayed on demo dashboards
-
-### Demo Landing Page (`/demo/faith-house`)
-*   **Floating Chat Widget:** Uses real embed.js widget with floating bubble in bottom-right corner
-    *   Click bubble → opens floating chat window
-    *   Click X → closes back to bubble only
-    *   No inline/embedded chat panel - clean landing page layout
-*   **Greeting Popup Feature:** Proactive engagement popup that appears above the chat bubble
-    *   Appears 3 seconds after page load (configurable via `data-greeting-delay`)
-    *   Dark glassmorphism styling matching TCAI theme
-    *   House icon avatar with cyan glow effect
-    *   "Start Chat" button with gradient and glow
-    *   X button dismisses popup and saves preference to sessionStorage
-    *   Auto-hides when widget is opened from bubble
-*   **Full Theme Integration:** Widget and popup fully match TCAI dark luxury aesthetic
-    *   Primary color: `#00E5CC` (cyan/teal)
-    *   Dark glassmorphism backgrounds with blur effects
-    *   Gradient borders and neon glow accents
-    *   Chat bubble with animated glow on hover
-    *   Widget container with gradient top border accent
-
-### Visual Upgrade (December 2024)
-*   **Landing Page Enhancements:**
-    *   ParticleField: 40 floating cyan particles with drift animation
-    *   AmbientBackground: Radial gradient blobs with ambient shift animation
-    *   Frosted glass hero section with gradient borders
-    *   Gradient title text with shimmer effect
-    *   Animated underline dividers with glow streaks
-*   **Chat Bubble Redesign:**
-    *   House+plus icon (configurable via `data-bubble-icon="house-plus"`)
-    *   Subtle hover animation: scale 1.04, rotate 1.5deg
-    *   Idle pulse animation every 11 seconds to attract attention
-    *   Memory-safe interval cleanup on widget removal
-*   **Chat Widget Premium Effects:**
-    *   Dark glass container with backdrop blur
-    *   Calibration animation on widget open (shimmer border effect)
-    *   AI sync indicator banner with sliding animation
-    *   Status dot with green pulse animation
-    *   AI/Human mode toggle button in header
-*   **Message Styling:**
-    *   Enhanced gradient backgrounds for bot/user messages
-    *   Neon bar typing indicator (vertical bars with shimmer)
-    *   Glow effects on message bubbles
-    *   Bounce/scale-in animation on new messages (cubic-bezier spring effect)
-    *   Border ripple glow effect when sending messages
-*   **Status Indicators:**
-    *   AI Sync indicator: "AI Sync: Updating knowledge base..." (1.5s fade)
-    *   Status bar: "Online • Secured by TCAI" (appears after AI sync fades)
-    *   Green status dot with 6s pulse animation next to title
-*   **CSS Keyframe Animations:**
-    *   `ambientShift`: Background gradient motion (35s)
-    *   `cinematicRotate`: Slow rotating conic gradient (100s full rotation)
-    *   `glowStreak`: Animated divider glow
-    *   `gradientSlide`: Shimmer border effect
-    *   `pulseGlow`: Idle bubble attention pulse (11s)
-    *   `statusPulse`: Header status dot animation (6s)
-    *   `tcai-messageIn`: Message bounce/scale animation
-    *   `tcai-userMessageIn`: User message with glow pulse
-    *   `tcai-borderRipple`: Container border glow on message send
-    *   `tcai-bar-rise`: Neon typing indicator bars (850ms)
-    *   `tcai-status-appear`: Status bar fade-in after AI sync
-*   **Widget Configuration:**
-    *   `clientId`: `faith_house_demo`
-    *   `botId`: `faith_house_demo_main`
-    *   `data-primary-color`: `#00E5CC` - TCAI cyan accent
-    *   `data-business-name`: `Faith House Assistant`
-    *   `data-business-subtitle`: `Sober Living • Demo`
-    *   `data-show-greeting-popup`: `true` - enables popup
-    *   `data-greeting-title`: `Faith House Assistant`
-    *   `data-greeting-message`: Message about sober living and booking tours
-    *   `data-greeting-delay`: `3` - seconds before popup appears
-    *   `data-testid`: `faith-house-demo-widget` (container), `widget-bubble` (bubble), `greeting-popup` (popup)
-*   **Branding:** Treasure Coast AI branding with LIVE DEMO badge, demo info banner
-
-### Super Admin Demo Features
-*   **Workspace Cards:** DEMO badge with TestTube2 icon on demo workspaces
-*   **Workspace Detail Page:** 
-    *   DEMO badge next to workspace name (data-testid: `badge-demo-workspace-detail`)
-    *   "Open Demo Dashboard" button for demo tenants (data-testid: `button-open-demo-dashboard`)
-*   **Reset Demo Data:** Dropdown option on faith_house_demo workspace card
-
-### Demo Reset Endpoint
-*   **Endpoint:** `POST /api/admin/demo/faith-house/reset` (Super Admin only)
-*   **Safety:** Only workspaces with `is_demo=true` can be reset
-*   **Actions:**
-    *   Deletes all appointments, leads, messages, sessions, and analytics for demo tenant
-    *   Re-seeds with sample demo data (3 leads, 3 appointments, 3 sessions)
-    *   Creates system log entry
-*   **Status Endpoint:** `GET /api/admin/demo/faith-house/status` returns demo workspace info and data counts
-
-### AI-Driven In-Chat Booking Collection (Faith House Demo)
-*   **New Feature:** AI can now collect booking information directly in conversation instead of just redirecting to external booking links
-*   **Two Conversion Goals:** Book a Tour (cyan badge) or Schedule a Phone Call (purple badge)
-*   **Information Collection:** Name, phone, email (optional), preferred time, notes
-*   **Automatic Appointment Creation:** Orchestrator detects complete booking info and creates appointment records
-*   **Conversation Linking:** Appointments now include `sessionId` and `botId` for linking back to source conversations
-*   **Dashboard Enhancements:**
-    *   Type badges (Tour/Phone Call) on bookings
-    *   "View Chat" button to see the conversation that led to each booking
-    *   Executive summary card with 7-day rolling stats (conversations, leads, tours, phone calls)
-*   **Demo Script:** See `docs/faith-house-demo-script.md` for landlord demo walkthrough
-
-### Faith House Bot Configuration
-*   **Bot ID:** `faith_house_main`
-*   **Workspace:** `ws_faith_house_001`
-*   **Bot Type:** `sober_living`
-*   **Personality:** Warm, supportive, never pushy, acknowledges courage, focuses on helping
-
-### Demo Seed Module (December 2024 - New)
-*   **Module:** `server/demoSeed.ts` - Reusable demo data seeding functions
-*   **Demo Types Supported:**
-    *   `faith_house_demo` - Sober living with tour/call bookings
-    *   `barber_demo` - Barber shop with appointment bookings
-    *   `gym_demo` - Fitness center with membership interest leads
-*   **Data Distribution:** 40% within 7 days, 60% within 30 days for realistic metrics
-*   **Seed Data Per Workspace:**
-    *   3-5 leads with varied statuses (new, contacted, qualified, converted)
-    *   3-5 appointments with type badges (tour, phone_call, appointment)
-    *   2-4 chat sessions with realistic message counts
-*   **API Endpoints:**
-    *   `POST /api/super-admin/demo-workspaces/:slug/reset` - Clear and reseed specific demo
-    *   `POST /api/super-admin/demo-workspaces/seed-all` - Seed all demos at once
-
-### Integration Panel (December 2024 - New)
-*   **Module:** `server/embed.ts` - Widget embed code generation helper
-*   **Features:**
-    *   Generates persistent widget embed code for any workspace
-    *   Customizable: primary color, business name, subtitle, greeting popup
-    *   Installation instructions included
-*   **UI Integration:**
-    *   "Integration" button in workspace dropdown menu
-    *   Modal dialog with embed code and copy functionality
-    *   Live configuration preview (color swatch, names)
-*   **API Endpoint:** `GET /api/super-admin/workspaces/:slug/integration`
-
-### Super Admin Enhancements (December 2024)
-*   **Seed All Demos Button:** One-click button in Clients section to seed all demo workspaces
-*   **Generalized Demo Reset:** Clears AND reseeds (not just clears)
-*   **Integration Modal:** Purple-themed code display with copy functionality
+### Security Features (December 2024)
+*   **Account Lockout:** Locks accounts after 5 failed login attempts for 15 minutes
+    *   Environment variables: `LOGIN_MAX_ATTEMPTS` (default: 5), `LOGIN_LOCKOUT_MINUTES` (default: 15), `LOGIN_WINDOW_MINUTES` (default: 15)
+    *   Successful login clears failed attempt counter
+    *   **Limitations:** In-memory tracking resets on server restart; keyed by username only (not IP)
+*   **Password Policy:** Strong password requirements for new passwords
+    *   Minimum 8 characters, at least one uppercase, lowercase, number, and special character
+*   **Rate Limiting:** Configurable limits for login (10/15min), chat (30/min), and general API (100/15min)
+*   **CORS Allow-list:** Widget endpoints can be restricted via `WIDGET_ALLOWED_ORIGINS` environment variable
+    *   Format: Comma-separated list of allowed domains (e.g., `https://client1.com,https://client2.com`)
+    *   Localhost origins auto-allowed in development
+    *   **Note:** Changes require server restart to take effect
+*   **Session Security:** httpOnly cookies, secure flag in production, 7-day max age
+*   **Helmet Headers:** CSP, X-Frame-Options, XSS protection, and other security headers enabled
 
 ## External Dependencies
-*   **OpenAI GPT-4:** Used for AI engine and conversation analysis.
-*   **Neon (PostgreSQL):** Database hosting.
-*   **Drizzle ORM:** Object-Relational Mapper.
-*   **Stripe:** Payment processing.
+*   **OpenAI GPT-4:** Used for the core AI engine and conversational analysis.
+*   **Neon (PostgreSQL):** Provides managed PostgreSQL database hosting.
+*   **Drizzle ORM:** Utilized as the Object-Relational Mapper for database interactions.
+*   **Stripe:** Integrated for payment processing functionalities.
