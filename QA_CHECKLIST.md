@@ -59,12 +59,21 @@ This document provides a comprehensive checklist for verifying all platform feat
 - [ ] Average response time displays (ms or seconds)
 - [ ] Date range selector works (7 days, 30 days, All Time)
 - [ ] Booking breakdown card shows tours vs phone calls
+- [ ] 7d/30d comparison strip shows (when data available)
+- [ ] Comparison strip shows chats: X / Y format
+- [ ] Comparison strip shows leads: X / Y format
+- [ ] Comparison strip shows bookings: X / Y format
 
 #### Leads Tab
 - [ ] Leads table displays all leads
 - [ ] Search functionality works
 - [ ] Export button present
-- [ ] Status badges show correctly (New, Contacted, Qualified, etc.)
+- [ ] Inline status dropdown appears on each lead row
+- [ ] Status dropdown shows options: New, Contacted, Qualified, Converted, Lost
+- [ ] Changing status updates immediately (loading spinner shown)
+- [ ] Status change persists after refresh
+- [ ] Click-to-call links work on phone numbers
+- [ ] Click email links open email client
 - [ ] Empty state shows when no leads
 
 #### Conversations Tab
@@ -102,6 +111,32 @@ This document provides a comprehensive checklist for verifying all platform feat
 - [ ] Delete workspace requires confirmation
 - [ ] DEMO badge shows on demo workspaces
 - [ ] "View as Client" opens client dashboard with impersonation
+
+#### New Client Wizard (December 2024)
+- [ ] Click "New Client" button opens 4-step wizard
+- [ ] Step 1: Enter business name (auto-generates slug)
+- [ ] Step 1: Select industry template (sober_living, barber, gym, etc.)
+- [ ] Step 1: Select plan (starter, pro, enterprise)
+- [ ] Step 1: Enter contact email (required)
+- [ ] Step 2: Configure assistant persona (name, role, tone keywords)
+- [ ] Step 2: Tone keywords toggle on/off
+- [ ] Step 2: Enter target customer description
+- [ ] Step 3: Add custom FAQs (question + answer pairs)
+- [ ] Step 3: Remove FAQ works
+- [ ] Step 4: Review summary shows all entered data
+- [ ] Step 4: "Create Client" button creates workspace, user, and bot
+- [ ] Step 5: Success screen shows generated credentials
+- [ ] Step 5: Copy buttons work for email, password, dashboard URL
+- [ ] Step 5: Widget embed code displayed
+
+#### Demo Index Section (December 2024)
+- [ ] "Demo Index" collapsible appears when demo workspaces exist
+- [ ] Shows count of demo workspaces
+- [ ] Expanding shows demo workspace cards
+- [ ] Each card shows demo badge and workspace name
+- [ ] "View Public Demo" opens public demo page
+- [ ] "View as Client" opens client dashboard in impersonation mode
+- [ ] "Reset Data" clears and re-seeds demo data (with confirmation)
 
 #### Assistants Section
 - [ ] Bot list displays correctly
@@ -146,9 +181,11 @@ This document provides a comprehensive checklist for verifying all platform feat
 
 #### Client API
 - [ ] `GET /api/client/stats` returns dashboard data
+- [ ] `GET /api/client/stats` includes `overview` object with 7d/30d metrics
 - [ ] `GET /api/client/leads` returns leads with pagination
+- [ ] `PATCH /api/client/leads/:id` updates lead status
 - [ ] `GET /api/client/appointments` returns bookings
-- [ ] `PATCH /api/client/appointments/:id` updates status
+- [ ] `PATCH /api/client/bookings/:id` updates booking status (new endpoint)
 - [ ] `GET /api/client/sessions` returns conversation sessions
 
 #### Admin API
@@ -159,6 +196,8 @@ This document provides a comprehensive checklist for verifying all platform feat
 - [ ] `GET /api/super-admin/bots` returns all bots
 - [ ] `POST /api/super-admin/bots` creates new bot
 - [ ] `PUT /api/super-admin/bots/:botId` updates bot
+- [ ] `POST /api/super-admin/new-client` creates workspace+user+bot in single transaction
+- [ ] `GET /api/super-admin/demo-workspaces` returns all demo workspaces
 
 ### 7. Demo Reset (Faith House Demo)
 
@@ -208,6 +247,7 @@ This document provides a comprehensive checklist for verifying all platform feat
 ---
 
 ## Version Information
-- Last Updated: December 2024
-- Platform Version: 1.0
+- Last Updated: December 8, 2024
+- Platform Version: 1.1
 - Bot Config Version: 1.0.0
+- Recent Additions: New Client Wizard, Demo Index, Overview Metrics (7d/30d), Lead/Booking Status Dropdowns

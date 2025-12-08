@@ -62,6 +62,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
   Bot, Users, FileText, Settings, Settings2, BarChart3, MessageSquare, 
@@ -204,6 +205,40 @@ export default function SuperAdmin() {
   const [editingUser, setEditingUser] = useState<{ id: string; username: string; role: string } | null>(null);
   const [showCreateWorkspaceModal, setShowCreateWorkspaceModal] = useState(false);
   const [newWorkspaceForm, setNewWorkspaceForm] = useState({ name: '', slug: '', clientEmail: '', plan: 'starter' });
+  
+  // New Client Wizard state
+  const [showNewClientWizard, setShowNewClientWizard] = useState(false);
+  const [wizardStep, setWizardStep] = useState(1);
+  const [wizardData, setWizardData] = useState({
+    // Step 1: Business Basics
+    businessName: '',
+    industry: 'general',
+    slug: '',
+    contactName: '',
+    contactEmail: '',
+    contactPhone: '',
+    businessCity: '',
+    businessState: '',
+    websiteUrl: '',
+    plan: 'starter',
+    // Step 2: Persona
+    assistantName: '',
+    assistantRole: '',
+    toneKeywords: [] as string[],
+    toneDescription: '',
+    targetCustomer: '',
+    uniqueSellingPoints: [] as string[],
+    // Step 3: FAQs
+    faqs: [] as Array<{ question: string; answer: string }>,
+  });
+  const [wizardResult, setWizardResult] = useState<{
+    success: boolean;
+    workspace?: { slug: string; name: string };
+    bot?: { botId: string; name: string };
+    clientCredentials?: { email: string; temporaryPassword: string; dashboardUrl: string };
+    widgetEmbedCode?: string;
+    viewAsClientUrl?: string;
+  } | null>(null);
   const [editingWorkspace, setEditingWorkspace] = useState<{ slug: string; name: string; plan: string; ownerId?: string; adminNotes?: string } | null>(null);
   const [generatedCredentials, setGeneratedCredentials] = useState<{ email: string; temporaryPassword: string; dashboardUrl: string } | null>(null);
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
@@ -673,6 +708,66 @@ export default function SuperAdmin() {
     },
   });
 
+  // New Client Wizard mutation
+  const createClientWizardMutation = useMutation({
+    mutationFn: async (data: typeof wizardData) => {
+      const response = await apiRequest("POST", "/api/super-admin/new-client", {
+        businessName: data.businessName,
+        industry: data.industry,
+        slug: data.slug,
+        contactName: data.contactName,
+        contactEmail: data.contactEmail,
+        contactPhone: data.contactPhone,
+        businessLocation: { city: data.businessCity, state: data.businessState },
+        websiteUrl: data.websiteUrl,
+        plan: data.plan,
+        assistantName: data.assistantName,
+        assistantRole: data.assistantRole,
+        toneKeywords: data.toneKeywords,
+        toneDescription: data.toneDescription,
+        targetCustomer: data.targetCustomer,
+        uniqueSellingPoints: data.uniqueSellingPoints,
+        faqs: data.faqs,
+      });
+      return response.json();
+    },
+    onSuccess: async (data) => {
+      await queryClient.refetchQueries({ queryKey: ["/api/super-admin/workspaces"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/super-admin/bots"] });
+      setWizardResult(data);
+      setWizardStep(5); // Move to success/summary step
+      toast({ title: "Client Created", description: `${data.workspace?.name} has been created successfully.` });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to create client.", variant: "destructive" });
+    },
+  });
+
+  const resetWizard = () => {
+    setWizardStep(1);
+    setWizardData({
+      businessName: '',
+      industry: 'general',
+      slug: '',
+      contactName: '',
+      contactEmail: '',
+      contactPhone: '',
+      businessCity: '',
+      businessState: '',
+      websiteUrl: '',
+      plan: 'starter',
+      assistantName: '',
+      assistantRole: '',
+      toneKeywords: [],
+      toneDescription: '',
+      targetCustomer: '',
+      uniqueSellingPoints: [],
+      faqs: [],
+    });
+    setWizardResult(null);
+    setShowNewClientWizard(false);
+  };
+
   const updateWorkspaceMutation = useMutation({
     mutationFn: async ({ slug, ...data }: { slug: string; name?: string; ownerId?: string; plan?: string; adminNotes?: string }) => {
       const response = await apiRequest("PATCH", `/api/super-admin/workspaces/${slug}`, data);
@@ -916,7 +1011,7 @@ export default function SuperAdmin() {
                   <div className="flex items-center gap-2">
                     <Button
                       data-testid="button-create-client"
-                      onClick={() => setShowCreateWorkspaceModal(true)}
+                      onClick={() => setShowNewClientWizard(true)}
                       className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white"
                     >
                       <UserPlus className="h-4 w-4 mr-2" />
@@ -1908,6 +2003,89 @@ export default function SuperAdmin() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Demo Index Section */}
+                  {(workspacesData?.workspaces || []).filter((w: any) => w.isDemo).length > 0 && (
+                    <div className="mb-6">
+                      <Collapsible defaultOpen={false}>
+                        <CollapsibleTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="w-full justify-between border-amber-500/30 bg-amber-500/5 text-amber-400 hover:bg-amber-500/10"
+                            data-testid="toggle-demo-index"
+                          >
+                            <span className="flex items-center gap-2">
+                              <TestTube2 className="h-4 w-4" />
+                              Demo Index
+                              <Badge className="bg-amber-500/20 text-amber-400 text-xs">
+                                {(workspacesData?.workspaces || []).filter((w: any) => w.isDemo).length} demos
+                              </Badge>
+                            </span>
+                            <ChevronDown className="h-4 w-4" />
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="pt-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {(workspacesData?.workspaces || []).filter((w: any) => w.isDemo).map((demoWorkspace: any) => (
+                              <GlassCard key={demoWorkspace.id} className="border-amber-500/20" data-testid={`demo-card-${demoWorkspace.slug}`}>
+                                <GlassCardHeader className="pb-2">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <TestTube2 className="h-4 w-4 text-amber-400" />
+                                      <GlassCardTitle className="text-base">{demoWorkspace.name}</GlassCardTitle>
+                                    </div>
+                                    <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs">
+                                      DEMO
+                                    </Badge>
+                                  </div>
+                                  <GlassCardDescription className="text-xs">{demoWorkspace.slug}</GlassCardDescription>
+                                </GlassCardHeader>
+                                <GlassCardContent className="pt-2">
+                                  <div className="flex flex-wrap gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
+                                      onClick={() => window.open(`/demo/${demoWorkspace.slug.replace('_demo', '').replace('_', '-')}`, '_blank')}
+                                      data-testid={`demo-view-public-${demoWorkspace.slug}`}
+                                    >
+                                      <ExternalLink className="h-3 w-3 mr-1" />
+                                      View Public Demo
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="border-white/10 text-white/85 hover:bg-white/10"
+                                      onClick={() => window.open(`/client/dashboard?impersonate=${demoWorkspace.slug}`, '_blank')}
+                                      data-testid={`demo-view-as-client-${demoWorkspace.slug}`}
+                                    >
+                                      <Eye className="h-3 w-3 mr-1" />
+                                      View as Client
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+                                      disabled={resetDemoMutation.isPending}
+                                      onClick={() => {
+                                        if (confirm(`Reset all conversations, leads, bookings, and analytics for ${demoWorkspace.name}? This cannot be undone.`)) {
+                                          resetDemoMutation.mutate();
+                                        }
+                                      }}
+                                      data-testid={`demo-reset-${demoWorkspace.slug}`}
+                                    >
+                                      <RefreshCw className={`h-3 w-3 mr-1 ${resetDemoMutation.isPending ? 'animate-spin' : ''}`} />
+                                      Reset Data
+                                    </Button>
+                                  </div>
+                                </GlassCardContent>
+                              </GlassCard>
+                            ))}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </div>
+                  )}
 
                   {/* Edit Workspace Modal */}
                   <AlertDialog open={!!editingWorkspace} onOpenChange={(open) => !open && setEditingWorkspace(null)}>
@@ -3135,6 +3313,443 @@ export default function SuperAdmin() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* New Client Wizard Dialog */}
+      <Dialog open={showNewClientWizard} onOpenChange={(open) => { if (!open) resetWizard(); }}>
+        <DialogContent className="bg-[#1a1d24] border-white/10 max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                {wizardStep < 5 && (
+                  <>
+                    <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${wizardStep >= 1 ? 'bg-cyan-500 text-white' : 'bg-white/10 text-white/50'}`}>1</span>
+                    <ChevronRight className="h-4 w-4 text-white/30" />
+                    <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${wizardStep >= 2 ? 'bg-cyan-500 text-white' : 'bg-white/10 text-white/50'}`}>2</span>
+                    <ChevronRight className="h-4 w-4 text-white/30" />
+                    <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${wizardStep >= 3 ? 'bg-cyan-500 text-white' : 'bg-white/10 text-white/50'}`}>3</span>
+                    <ChevronRight className="h-4 w-4 text-white/30" />
+                    <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${wizardStep >= 4 ? 'bg-cyan-500 text-white' : 'bg-white/10 text-white/50'}`}>4</span>
+                  </>
+                )}
+                {wizardStep === 5 && <CheckCircle2 className="h-6 w-6 text-green-400" />}
+              </div>
+            </DialogTitle>
+            <DialogDescription className="text-white/55">
+              {wizardStep === 1 && 'Step 1: Business Information'}
+              {wizardStep === 2 && 'Step 2: Assistant Persona'}
+              {wizardStep === 3 && 'Step 3: FAQs & Knowledge'}
+              {wizardStep === 4 && 'Step 4: Review & Create'}
+              {wizardStep === 5 && 'Client Created Successfully!'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Step 1: Business Basics */}
+          {wizardStep === 1 && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2 col-span-2">
+                  <Label className="text-white/85">Business Name *</Label>
+                  <Input
+                    value={wizardData.businessName}
+                    onChange={(e) => {
+                      const name = e.target.value;
+                      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+                      setWizardData(d => ({ ...d, businessName: name, slug }));
+                    }}
+                    className="bg-white/5 border-white/10 text-white"
+                    placeholder="e.g. Faith House Sober Living"
+                    data-testid="wizard-input-business-name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-white/85">Industry *</Label>
+                  <Select value={wizardData.industry} onValueChange={(v) => setWizardData(d => ({ ...d, industry: v }))}>
+                    <SelectTrigger className="bg-white/5 border-white/10 text-white" data-testid="wizard-select-industry">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#1a1d24] border-white/10">
+                      <SelectItem value="sober_living" className="text-white">Sober Living / Recovery</SelectItem>
+                      <SelectItem value="barber" className="text-white">Barber / Salon</SelectItem>
+                      <SelectItem value="gym" className="text-white">Gym / Fitness</SelectItem>
+                      <SelectItem value="restaurant" className="text-white">Restaurant / Food Service</SelectItem>
+                      <SelectItem value="auto" className="text-white">Auto / Mechanic</SelectItem>
+                      <SelectItem value="home_services" className="text-white">Home Services</SelectItem>
+                      <SelectItem value="general" className="text-white">General Business</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-white/85">Plan</Label>
+                  <Select value={wizardData.plan} onValueChange={(v) => setWizardData(d => ({ ...d, plan: v }))}>
+                    <SelectTrigger className="bg-white/5 border-white/10 text-white" data-testid="wizard-select-plan">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#1a1d24] border-white/10">
+                      <SelectItem value="starter" className="text-white">Starter</SelectItem>
+                      <SelectItem value="pro" className="text-white">Pro</SelectItem>
+                      <SelectItem value="enterprise" className="text-white">Enterprise</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label className="text-white/85">Slug (auto-generated)</Label>
+                  <Input
+                    value={wizardData.slug}
+                    onChange={(e) => setWizardData(d => ({ ...d, slug: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') }))}
+                    className="bg-white/5 border-white/10 text-white"
+                    placeholder="e.g. faith_house_sober_living"
+                    data-testid="wizard-input-slug"
+                  />
+                  <p className="text-xs text-white/40">Lowercase letters, numbers, and underscores only</p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-white/85">Contact Name</Label>
+                  <Input
+                    value={wizardData.contactName}
+                    onChange={(e) => setWizardData(d => ({ ...d, contactName: e.target.value }))}
+                    className="bg-white/5 border-white/10 text-white"
+                    placeholder="John Smith"
+                    data-testid="wizard-input-contact-name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-white/85">Contact Email *</Label>
+                  <Input
+                    type="email"
+                    value={wizardData.contactEmail}
+                    onChange={(e) => setWizardData(d => ({ ...d, contactEmail: e.target.value }))}
+                    className="bg-white/5 border-white/10 text-white"
+                    placeholder="client@business.com"
+                    data-testid="wizard-input-email"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-white/85">Contact Phone</Label>
+                  <Input
+                    value={wizardData.contactPhone}
+                    onChange={(e) => setWizardData(d => ({ ...d, contactPhone: e.target.value }))}
+                    className="bg-white/5 border-white/10 text-white"
+                    placeholder="(555) 123-4567"
+                    data-testid="wizard-input-phone"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-white/85">Website</Label>
+                  <Input
+                    value={wizardData.websiteUrl}
+                    onChange={(e) => setWizardData(d => ({ ...d, websiteUrl: e.target.value }))}
+                    className="bg-white/5 border-white/10 text-white"
+                    placeholder="https://example.com"
+                    data-testid="wizard-input-website"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-white/85">City</Label>
+                  <Input
+                    value={wizardData.businessCity}
+                    onChange={(e) => setWizardData(d => ({ ...d, businessCity: e.target.value }))}
+                    className="bg-white/5 border-white/10 text-white"
+                    placeholder="Stuart"
+                    data-testid="wizard-input-city"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-white/85">State</Label>
+                  <Input
+                    value={wizardData.businessState}
+                    onChange={(e) => setWizardData(d => ({ ...d, businessState: e.target.value }))}
+                    className="bg-white/5 border-white/10 text-white"
+                    placeholder="FL"
+                    data-testid="wizard-input-state"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Persona */}
+          {wizardStep === 2 && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-white/85">Assistant Name</Label>
+                  <Input
+                    value={wizardData.assistantName}
+                    onChange={(e) => setWizardData(d => ({ ...d, assistantName: e.target.value }))}
+                    className="bg-white/5 border-white/10 text-white"
+                    placeholder={`${wizardData.businessName || 'Business'} Assistant`}
+                    data-testid="wizard-input-assistant-name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-white/85">Assistant Role</Label>
+                  <Input
+                    value={wizardData.assistantRole}
+                    onChange={(e) => setWizardData(d => ({ ...d, assistantRole: e.target.value }))}
+                    className="bg-white/5 border-white/10 text-white"
+                    placeholder="e.g. admissions coordinator, front-desk assistant"
+                    data-testid="wizard-input-assistant-role"
+                  />
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label className="text-white/85">Tone Keywords (click to toggle)</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {['friendly', 'professional', 'warm', 'supportive', 'casual', 'formal', 'luxury', 'clinical', 'enthusiastic'].map(tone => (
+                      <Badge
+                        key={tone}
+                        className={`cursor-pointer ${wizardData.toneKeywords.includes(tone) ? 'bg-cyan-500 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}
+                        onClick={() => setWizardData(d => ({
+                          ...d,
+                          toneKeywords: d.toneKeywords.includes(tone)
+                            ? d.toneKeywords.filter(t => t !== tone)
+                            : [...d.toneKeywords, tone]
+                        }))}
+                        data-testid={`wizard-tone-${tone}`}
+                      >
+                        {tone}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label className="text-white/85">Tone Description</Label>
+                  <Textarea
+                    value={wizardData.toneDescription}
+                    onChange={(e) => setWizardData(d => ({ ...d, toneDescription: e.target.value }))}
+                    className="bg-white/5 border-white/10 text-white min-h-[80px]"
+                    placeholder="Describe how this assistant should sound in 1-2 sentences..."
+                    data-testid="wizard-input-tone-description"
+                  />
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label className="text-white/85">Target Customer</Label>
+                  <Input
+                    value={wizardData.targetCustomer}
+                    onChange={(e) => setWizardData(d => ({ ...d, targetCustomer: e.target.value }))}
+                    className="bg-white/5 border-white/10 text-white"
+                    placeholder="e.g. adults seeking recovery support, families looking for sober living options"
+                    data-testid="wizard-input-target-customer"
+                  />
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label className="text-white/85">Unique Selling Points (one per line)</Label>
+                  <Textarea
+                    value={wizardData.uniqueSellingPoints.join('\n')}
+                    onChange={(e) => setWizardData(d => ({ ...d, uniqueSellingPoints: e.target.value.split('\n').filter(s => s.trim()) }))}
+                    className="bg-white/5 border-white/10 text-white min-h-[80px]"
+                    placeholder="24/7 support staff\nBeach location\nFree insurance verification"
+                    data-testid="wizard-input-selling-points"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: FAQs */}
+          {wizardStep === 3 && (
+            <div className="space-y-4 py-4">
+              <p className="text-white/60 text-sm">Add frequently asked questions that the assistant should know how to answer.</p>
+              <div className="space-y-4">
+                {wizardData.faqs.map((faq, index) => (
+                  <div key={index} className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/60 text-sm">FAQ #{index + 1}</span>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 text-white/40 hover:text-red-400"
+                        onClick={() => setWizardData(d => ({ ...d, faqs: d.faqs.filter((_, i) => i !== index) }))}
+                        data-testid={`wizard-remove-faq-${index}`}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <Input
+                      value={faq.question}
+                      onChange={(e) => setWizardData(d => ({
+                        ...d,
+                        faqs: d.faqs.map((f, i) => i === index ? { ...f, question: e.target.value } : f)
+                      }))}
+                      className="bg-white/5 border-white/10 text-white"
+                      placeholder="Question..."
+                      data-testid={`wizard-faq-question-${index}`}
+                    />
+                    <Textarea
+                      value={faq.answer}
+                      onChange={(e) => setWizardData(d => ({
+                        ...d,
+                        faqs: d.faqs.map((f, i) => i === index ? { ...f, answer: e.target.value } : f)
+                      }))}
+                      className="bg-white/5 border-white/10 text-white min-h-[60px]"
+                      placeholder="Answer..."
+                      data-testid={`wizard-faq-answer-${index}`}
+                    />
+                  </div>
+                ))}
+                <Button
+                  variant="outline"
+                  className="w-full border-dashed border-white/20 text-white/60 hover:bg-white/5"
+                  onClick={() => setWizardData(d => ({ ...d, faqs: [...d.faqs, { question: '', answer: '' }] }))}
+                  data-testid="wizard-add-faq"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add FAQ
+                </Button>
+              </div>
+              {wizardData.faqs.length === 0 && (
+                <p className="text-white/40 text-sm text-center py-4">No FAQs added. Template defaults will be used.</p>
+              )}
+            </div>
+          )}
+
+          {/* Step 4: Review */}
+          {wizardStep === 4 && (
+            <div className="space-y-4 py-4">
+              <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+                <h4 className="text-white font-medium">Business Information</h4>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div><span className="text-white/50">Name:</span> <span className="text-white">{wizardData.businessName}</span></div>
+                  <div><span className="text-white/50">Industry:</span> <span className="text-white">{wizardData.industry}</span></div>
+                  <div><span className="text-white/50">Slug:</span> <span className="text-cyan-400">{wizardData.slug}</span></div>
+                  <div><span className="text-white/50">Plan:</span> <span className="text-white">{wizardData.plan}</span></div>
+                  <div><span className="text-white/50">Email:</span> <span className="text-white">{wizardData.contactEmail}</span></div>
+                  <div><span className="text-white/50">Phone:</span> <span className="text-white">{wizardData.contactPhone || '-'}</span></div>
+                </div>
+              </div>
+              <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+                <h4 className="text-white font-medium">Assistant Persona</h4>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div><span className="text-white/50">Name:</span> <span className="text-white">{wizardData.assistantName || `${wizardData.businessName} Assistant`}</span></div>
+                  <div><span className="text-white/50">Role:</span> <span className="text-white">{wizardData.assistantRole || 'customer service representative'}</span></div>
+                  <div className="col-span-2"><span className="text-white/50">Tone:</span> <span className="text-white">{wizardData.toneKeywords.join(', ') || 'friendly, professional'}</span></div>
+                </div>
+              </div>
+              <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+                <h4 className="text-white font-medium">FAQs</h4>
+                <p className="text-sm text-white/60">{wizardData.faqs.length > 0 ? `${wizardData.faqs.length} custom FAQ(s)` : 'Using template defaults'}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Step 5: Success */}
+          {wizardStep === 5 && wizardResult && (
+            <div className="space-y-4 py-4">
+              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 text-center">
+                <CheckCircle2 className="h-12 w-12 text-green-400 mx-auto mb-2" />
+                <h3 className="text-white font-medium text-lg">{wizardResult.workspace?.name} Created!</h3>
+                <p className="text-white/60 text-sm">The client account and bot have been set up successfully.</p>
+              </div>
+              
+              {wizardResult.clientCredentials && (
+                <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+                  <h4 className="text-white font-medium">Client Login Credentials</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/50 text-sm">Email:</span>
+                      <div className="flex items-center gap-2">
+                        <code className="text-cyan-400 text-sm">{wizardResult.clientCredentials.email}</code>
+                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { navigator.clipboard.writeText(wizardResult.clientCredentials!.email); toast({ title: "Copied" }); }}>
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/50 text-sm">Password:</span>
+                      <div className="flex items-center gap-2">
+                        <code className="text-cyan-400 text-sm">{wizardResult.clientCredentials.temporaryPassword}</code>
+                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { navigator.clipboard.writeText(wizardResult.clientCredentials!.temporaryPassword); toast({ title: "Copied" }); }}>
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/50 text-sm">Dashboard:</span>
+                      <div className="flex items-center gap-2">
+                        <code className="text-cyan-400 text-sm truncate max-w-[200px]">{window.location.origin}{wizardResult.clientCredentials.dashboardUrl}</code>
+                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}${wizardResult.clientCredentials!.dashboardUrl}`); toast({ title: "Copied" }); }}>
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {wizardResult.widgetEmbedCode && (
+                <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-white font-medium">Widget Embed Code</h4>
+                    <Button size="sm" variant="outline" className="border-white/20" onClick={() => { navigator.clipboard.writeText(wizardResult.widgetEmbedCode!); toast({ title: "Embed code copied" }); }}>
+                      <Copy className="h-3 w-3 mr-2" />
+                      Copy
+                    </Button>
+                  </div>
+                  <pre className="bg-black/30 rounded p-3 text-xs text-cyan-400 overflow-x-auto">{wizardResult.widgetEmbedCode}</pre>
+                </div>
+              )}
+              
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+                <p className="text-amber-400 text-sm flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  Save these credentials now. The password cannot be retrieved later.
+                </p>
+              </div>
+              
+              {wizardResult.viewAsClientUrl && (
+                <Button
+                  variant="outline"
+                  className="w-full border-white/10 text-white hover:bg-white/10"
+                  onClick={() => window.open(wizardResult.viewAsClientUrl, '_blank')}
+                  data-testid="wizard-view-as-client"
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  View as Client
+                </Button>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            {wizardStep > 1 && wizardStep < 5 && (
+              <Button variant="outline" className="border-white/10 text-white" onClick={() => setWizardStep(s => s - 1)} data-testid="wizard-back">
+                Back
+              </Button>
+            )}
+            {wizardStep < 4 && (
+              <Button
+                className="bg-cyan-500 hover:bg-cyan-600 text-white"
+                onClick={() => setWizardStep(s => s + 1)}
+                disabled={wizardStep === 1 && (!wizardData.businessName || !wizardData.slug || !wizardData.contactEmail)}
+                data-testid="wizard-next"
+              >
+                Next
+              </Button>
+            )}
+            {wizardStep === 4 && (
+              <Button
+                className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white"
+                onClick={() => createClientWizardMutation.mutate(wizardData)}
+                disabled={createClientWizardMutation.isPending}
+                data-testid="wizard-create-client"
+              >
+                {createClientWizardMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  'Create Client'
+                )}
+              </Button>
+            )}
+            {wizardStep === 5 && (
+              <Button className="bg-cyan-500 hover:bg-cyan-600 text-white" onClick={resetWizard} data-testid="wizard-done">
+                Done
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
     </SaveLockProvider>
   );

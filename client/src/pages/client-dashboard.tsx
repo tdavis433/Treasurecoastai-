@@ -142,6 +142,16 @@ interface ClientStats {
     isDemo: boolean;
     status: string;
   } | null;
+  overview?: {
+    conversations7Days: number;
+    conversations30Days: number;
+    leads7Days: number;
+    leads30Days: number;
+    bookings7Days: number;
+    bookings30Days: number;
+    newLeads7Days: number;
+    pendingBookings7Days: number;
+  };
 }
 
 interface ClientProfile {
@@ -622,7 +632,7 @@ export default function ClientDashboard() {
   const handleUpdateBookingStatus = async (bookingId: string, newStatus: string) => {
     setUpdatingBookingId(bookingId);
     try {
-      const response = await fetch(appendClientId(`/api/appointments/${bookingId}/status`), {
+      const response = await fetch(appendClientId(`/api/client/bookings/${bookingId}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -919,6 +929,36 @@ export default function ClientDashboard() {
           </GlassCardContent>
         </GlassCard>
       </div>
+
+      {/* Quick 7d/30d Comparison Strip */}
+      {stats?.overview && (
+        <div className="flex flex-wrap items-center justify-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10" data-testid="overview-comparison-strip">
+          <div className="text-xs text-white/50 uppercase tracking-wider font-medium">7d / 30d</div>
+          <div className="flex items-center gap-2">
+            <MessageSquare className="h-4 w-4 text-cyan-400" />
+            <span className="text-sm text-white font-medium" data-testid="overview-conversations">
+              {stats.overview.conversations7Days} / {stats.overview.conversations30Days}
+            </span>
+            <span className="text-xs text-white/40">chats</span>
+          </div>
+          <div className="h-4 w-px bg-white/20" />
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-green-400" />
+            <span className="text-sm text-white font-medium" data-testid="overview-leads">
+              {stats.overview.leads7Days} / {stats.overview.leads30Days}
+            </span>
+            <span className="text-xs text-white/40">leads</span>
+          </div>
+          <div className="h-4 w-px bg-white/20" />
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-purple-400" />
+            <span className="text-sm text-white font-medium" data-testid="overview-bookings">
+              {stats.overview.bookings7Days} / {stats.overview.bookings30Days}
+            </span>
+            <span className="text-xs text-white/40">bookings</span>
+          </div>
+        </div>
+      )}
 
       {(tourBookings > 0 || phoneCallBookings > 0) && (
         <GlassCard className="bg-gradient-to-br from-purple-500/10 via-pink-500/5 to-cyan-500/10" data-testid="card-executive-summary">
@@ -1909,13 +1949,30 @@ export default function ClientDashboard() {
                               </div>
                             </div>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <Badge 
-                              className={`text-xs px-3 py-1 ${statusOption?.color || 'bg-white/10 text-white/60 border-white/20'}`}
-                              data-testid={`badge-lead-status-${lead.id}`}
+                          <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                            <Select
+                              value={lead.status || 'new'}
+                              onValueChange={(value) => handleUpdateLeadStatus(lead.id, value)}
+                              disabled={isUpdating}
                             >
-                              {statusOption?.label || 'New'}
-                            </Badge>
+                              <SelectTrigger 
+                                className={`w-28 h-8 text-xs border ${statusOption?.color || 'bg-white/10 text-white/60 border-white/20'}`}
+                                data-testid={`select-lead-status-${lead.id}`}
+                              >
+                                {isUpdating ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <SelectValue />
+                                )}
+                              </SelectTrigger>
+                              <SelectContent className="bg-[#1a1d24] border-white/10">
+                                {LEAD_STATUS_OPTIONS.map(opt => (
+                                  <SelectItem key={opt.value} value={opt.value} className="text-white">
+                                    {opt.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                             <span className="text-xs text-white/40">
                               {lead.createdAt ? format(new Date(lead.createdAt), "MMM d, yyyy") : '—'}
                             </span>

@@ -5219,6 +5219,50 @@ These suggestions should be relevant to what was just discussed and help guide t
         .from(workspaces)
         .where(eq(workspaces.slug, clientId))
         .limit(1);
+      
+      // Calculate overview stats for 7-day and 30-day periods (always included)
+      const thirtyDaysAgo = new Date(todayStart.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const sevenDaysAgo = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+      
+      // Get summaries for both periods
+      const sevenDaySummary = await storage.getClientAnalyticsSummary(clientId, botConfig.botId, sevenDaysAgo);
+      const thirtyDaySummary = await storage.getClientAnalyticsSummary(clientId, botConfig.botId, thirtyDaysAgo);
+      
+      // Filter leads and bookings for each period
+      const leads7Days = leads.filter((l: any) => {
+        const d = l.createdAt ? new Date(l.createdAt) : null;
+        return d && d >= sevenDaysAgo;
+      }).length;
+      const leads30Days = leads.filter((l: any) => {
+        const d = l.createdAt ? new Date(l.createdAt) : null;
+        return d && d >= thirtyDaysAgo;
+      }).length;
+      const bookings7Days = appointments.filter((a: any) => {
+        const d = a.createdAt ? new Date(a.createdAt) : null;
+        return d && d >= sevenDaysAgo;
+      }).length;
+      const bookings30Days = appointments.filter((a: any) => {
+        const d = a.createdAt ? new Date(a.createdAt) : null;
+        return d && d >= thirtyDaysAgo;
+      }).length;
+      
+      const overview = {
+        conversations7Days: sevenDaySummary.totalConversations,
+        conversations30Days: thirtyDaySummary.totalConversations,
+        leads7Days,
+        leads30Days,
+        bookings7Days,
+        bookings30Days,
+        // Additional breakdown
+        newLeads7Days: leads.filter((l: any) => {
+          const d = l.createdAt ? new Date(l.createdAt) : null;
+          return d && d >= sevenDaysAgo && l.status === 'new';
+        }).length,
+        pendingBookings7Days: appointments.filter((a: any) => {
+          const d = a.createdAt ? new Date(a.createdAt) : null;
+          return d && d >= sevenDaysAgo && (a.status === 'new' || a.status === 'pending');
+        }).length,
+      };
 
       res.json({
         clientId,
@@ -5247,6 +5291,8 @@ These suggestions should be relevant to what was just discussed and help guide t
           isDemo: workspaceInfo.isDemo ?? false,
           status: workspaceInfo.status,
         } : null,
+        // Overview metrics for dashboard cards
+        overview,
       });
     } catch (error) {
       console.error("Get client stats error:", error);
@@ -6448,6 +6494,49 @@ These suggestions should be relevant to what was just discussed and help guide t
     } catch (error) {
       console.error("Get booking leads error:", error);
       res.status(500).json({ error: "Failed to fetch booking leads" });
+    }
+  });
+
+  // Update booking status (PATCH)
+  const updateBookingStatusSchema = z.object({
+    status: z.enum(['new', 'pending', 'confirmed', 'completed', 'cancelled', 'no_show']).optional(),
+    notes: z.string().optional(),
+  });
+
+  app.patch("/api/client/bookings/:id", requireClientAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const clientId = (req as any).effectiveClientId;
+      
+      // Validate body
+      const bodyValidation = validateRequest(updateBookingStatusSchema, req.body);
+      if (!bodyValidation.success) {
+        return res.status(400).json({ error: bodyValidation.error });
+      }
+      
+      // Get the appointment to verify ownership
+      const appointments = await storage.getAllAppointments(clientId);
+      const appointment = appointments.find((a: any) => a.id.toString() === id);
+      
+      if (!appointment) {
+        return res.status(404).json({ error: "Booking not found" });
+      }
+      
+      // Update the appointment
+      const updates: Record<string, any> = {};
+      if (bodyValidation.data.status) updates.status = bodyValidation.data.status;
+      if (bodyValidation.data.notes !== undefined) updates.notes = bodyValidation.data.notes;
+      
+      // Use the appointments table for update
+      const [updated] = await db.update(appointments)
+        .set(updates)
+        .where(eq(appointments.id, parseInt(id)))
+        .returning();
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Update booking status error:", error);
+      res.status(500).json({ error: "Failed to update booking" });
     }
   });
 
@@ -7734,6 +7823,429 @@ These suggestions should be relevant to what was just discussed and help guide t
     } catch (error) {
       console.error("Create workspace error:", error);
       res.status(500).json({ error: "Failed to create workspace" });
+    }
+  });
+
+  // =============================================
+  // UNIFIED NEW CLIENT WIZARD ENDPOINT
+  // =============================================
+  // Creates workspace + client_admin + bot from template with persona/FAQ overrides
+  app.post("/api/super-admin/new-client", requireSuperAdmin, async (req, res) => {
+    try {
+      const {
+        // Business basics
+        businessName,
+        industry, // maps to template ID (e.g., "sober_living", "barber", "gym")
+        slug,
+        contactName,
+        contactEmail,
+        contactPhone,
+        businessLocation, // { city, state }
+        websiteUrl,
+        plan,
+        // Persona fields
+        assistantName,
+        assistantRole,
+        toneKeywords, // array of strings
+        toneDescription,
+        targetCustomer,
+        uniqueSellingPoints, // array of strings
+        // FAQs
+        faqs, // array of { question, answer }
+      } = req.body;
+
+      // Validate required fields
+      if (!businessName || !slug || !contactEmail) {
+        return res.status(400).json({ 
+          error: "businessName, slug, and contactEmail are required" 
+        });
+      }
+
+      // Validate slug format
+      if (!/^[a-z0-9_]+$/.test(slug)) {
+        return res.status(400).json({ 
+          error: "Slug must be lowercase alphanumeric with underscores only" 
+        });
+      }
+
+      // Check if slug already exists
+      const existingWorkspace = await getWorkspaceBySlug(slug);
+      if (existingWorkspace) {
+        return res.status(409).json({ 
+          error: `Workspace with slug '${slug}' already exists` 
+        });
+      }
+
+      // Check if email already exists
+      const existingUser = await storage.findAdminByUsername(contactEmail);
+      if (existingUser) {
+        return res.status(409).json({ 
+          error: `An account with email '${contactEmail}' already exists` 
+        });
+      }
+
+      // 1. Create client user account
+      const temporaryPassword = generateTemporaryPassword();
+      const passwordHash = await bcrypt.hash(temporaryPassword, 10);
+      
+      const [clientUser] = await db.insert(adminUsers).values({
+        username: contactEmail,
+        passwordHash,
+        role: "client_admin",
+        clientId: slug,
+      }).returning();
+
+      // 2. Create workspace
+      const workspace = await createWorkspace({
+        name: businessName,
+        slug,
+        ownerId: clientUser.id,
+        plan: plan || 'starter',
+        settings: {},
+      });
+
+      // 3. Create workspace membership
+      await db.insert(workspaceMemberships).values({
+        workspaceId: workspace.id,
+        userId: clientUser.id,
+        role: "owner",
+        status: "active",
+        acceptedAt: new Date(),
+      });
+
+      // 4. Get template config based on industry
+      const templateMapping: Record<string, string> = {
+        'sober_living': 'starter-sober-living',
+        'barber': 'starter-barber',
+        'gym': 'starter-gym',
+        'restaurant': 'starter-restaurant',
+        'auto': 'starter-auto',
+        'home_services': 'starter-home',
+        'general': 'starter-general',
+      };
+      
+      const starterTemplates: Record<string, { 
+        botType: string; 
+        services: string[]; 
+        systemPrompt: string; 
+        defaultFaqs: Array<{ question: string; answer: string }>; 
+      }> = {
+        'starter-sober-living': {
+          botType: 'sober_living',
+          services: ['Structured Living', 'Group Therapy', 'Job Placement', 'Alumni Support', 'Family Programs'],
+          systemPrompt: 'You are a compassionate admissions counselor for a sober living facility. Be warm, non-judgmental, and supportive. Never be pushy. Focus on helping visitors understand the facility and feel comfortable reaching out.',
+          defaultFaqs: [
+            { question: 'What insurance do you accept?', answer: 'We work with most major insurance providers including PPO plans. Contact us for a free verification.' },
+            { question: 'How long is the typical stay?', answer: 'Most residents stay 90 days to 6 months, depending on individual needs and recovery goals.' },
+            { question: 'Do you accept couples?', answer: 'We have separate housing for men and women. Please contact us to discuss your specific situation.' },
+          ],
+        },
+        'starter-barber': {
+          botType: 'barber',
+          services: ['Classic Cuts', 'Fades', 'Beard Trims', 'Hot Towel Shave', 'Kids Cuts'],
+          systemPrompt: 'You are a friendly front-desk assistant for an upscale barber shop. Be casual but professional.',
+          defaultFaqs: [
+            { question: 'Do you take walk-ins?', answer: 'Yes! Walk-ins are welcome, but appointments guarantee your spot.' },
+            { question: 'How much is a haircut?', answer: 'Classic cuts start at $25. Fades are $35, and beard trims are $15.' },
+          ],
+        },
+        'starter-gym': {
+          botType: 'gym',
+          services: ['24/7 Gym Access', 'Personal Training', 'Group Classes', 'Nutrition Coaching'],
+          systemPrompt: 'You are an enthusiastic fitness consultant. Be motivating and helpful.',
+          defaultFaqs: [
+            { question: 'How much is a membership?', answer: 'Memberships start at $29/month for basic access. Premium memberships are $49/month.' },
+            { question: 'Do you offer personal training?', answer: 'Yes! We have certified trainers available for one-on-one sessions.' },
+          ],
+        },
+        'starter-restaurant': {
+          botType: 'restaurant',
+          services: ['Dine-In', 'Takeout', 'Private Events', 'Catering'],
+          systemPrompt: 'You are a warm, professional restaurant host. Help guests with reservations and menu questions.',
+          defaultFaqs: [
+            { question: 'Do you take reservations?', answer: 'Yes! You can book online or call us.' },
+            { question: 'Do you offer vegetarian options?', answer: 'Absolutely! We have several delicious vegetarian and vegan options.' },
+          ],
+        },
+        'starter-auto': {
+          botType: 'auto',
+          services: ['Oil Changes', 'Brake Service', 'Engine Diagnostics', 'Tire Service'],
+          systemPrompt: 'You are a friendly, trustworthy auto service advisor. Explain repairs in simple terms.',
+          defaultFaqs: [
+            { question: 'How much is an oil change?', answer: 'Conventional oil changes start at $39.99, synthetic at $69.99.' },
+            { question: 'Do you offer warranties?', answer: 'Yes, all our work comes with a 12-month/12,000-mile warranty.' },
+          ],
+        },
+        'starter-home': {
+          botType: 'home_services',
+          services: ['Plumbing', 'Electrical', 'HVAC', 'General Repairs'],
+          systemPrompt: 'You are a helpful home services coordinator. Be friendly and knowledgeable about home repairs.',
+          defaultFaqs: [
+            { question: 'Do you offer free estimates?', answer: 'Yes! We provide free estimates for most services.' },
+            { question: 'Are you licensed and insured?', answer: 'Absolutely! All our technicians are fully licensed, bonded, and insured.' },
+          ],
+        },
+        'starter-general': {
+          botType: 'general',
+          services: ['Customer Service', 'Information', 'Support'],
+          systemPrompt: 'You are a helpful customer service assistant. Be friendly, professional, and helpful.',
+          defaultFaqs: [
+            { question: 'What are your hours?', answer: 'Our business hours vary. Please contact us for specific availability.' },
+            { question: 'How can I contact you?', answer: 'You can reach us by phone, email, or through this chat!' },
+          ],
+        },
+      };
+
+      const templateId = templateMapping[industry || 'general'] || 'starter-general';
+      const template = starterTemplates[templateId] || starterTemplates['starter-general'];
+
+      // 5. Build persona config from wizard inputs
+      const personaConfig = {
+        assistantName: assistantName || `${businessName} Assistant`,
+        assistantRole: assistantRole || 'customer service representative',
+        toneKeywords: toneKeywords || ['friendly', 'professional'],
+        toneDescription: toneDescription || 'Be helpful, friendly, and professional.',
+        targetCustomer: targetCustomer || '',
+        uniqueSellingPoints: uniqueSellingPoints || [],
+      };
+
+      // 6. Build enhanced system prompt with persona
+      const buildSystemPrompt = () => {
+        let prompt = template.systemPrompt;
+        
+        if (personaConfig.assistantName) {
+          prompt = `Your name is ${personaConfig.assistantName}. ${prompt}`;
+        }
+        if (personaConfig.assistantRole) {
+          prompt += ` You are the ${personaConfig.assistantRole} for ${businessName}.`;
+        }
+        if (personaConfig.toneDescription) {
+          prompt += ` ${personaConfig.toneDescription}`;
+        }
+        if (personaConfig.targetCustomer) {
+          prompt += ` Your target customers are: ${personaConfig.targetCustomer}.`;
+        }
+        if (personaConfig.uniqueSellingPoints && personaConfig.uniqueSellingPoints.length > 0) {
+          prompt += ` Key selling points to highlight: ${personaConfig.uniqueSellingPoints.join(', ')}.`;
+        }
+        
+        return prompt;
+      };
+
+      // 7. Merge template FAQs with custom FAQs
+      const mergedFaqs = faqs && faqs.length > 0 ? faqs : template.defaultFaqs;
+
+      // 8. Create bot in database
+      const botId = `${slug}_assistant`;
+      await db.insert(bots).values({
+        botId,
+        workspaceId: workspace.id,
+        name: personaConfig.assistantName,
+        botType: template.botType,
+        businessProfile: {
+          businessName,
+          type: template.botType,
+          location: businessLocation ? `${businessLocation.city || ''}, ${businessLocation.state || ''}`.trim() : '',
+          phone: contactPhone || '',
+          email: contactEmail,
+          website: websiteUrl || '',
+          services: template.services,
+        },
+        personaConfig,
+        systemPrompt: buildSystemPrompt(),
+        theme: {
+          primaryColor: "#06b6d4",
+          welcomeMessage: `Welcome to ${businessName}! How can I help you today?`,
+        },
+        status: "active",
+      });
+
+      // 9. Create bot settings with FAQs
+      await db.insert(botSettings).values({
+        botId,
+        faqs: mergedFaqs,
+        rules: {
+          allowedTopics: ["general information", "services", "pricing", "contact methods", "hours of operation"],
+          forbiddenTopics: ["medical advice", "legal advice", "financial advice"],
+        },
+        automations: {},
+      });
+
+      // 10. Create client settings
+      await db.insert(clientSettings).values({
+        clientId: slug,
+        businessName,
+        tagline: personaConfig.assistantRole ? `Your ${personaConfig.assistantRole}` : "Welcome to our business",
+        primaryEmail: contactEmail,
+        phone: contactPhone || '',
+        location: businessLocation ? `${businessLocation.city || ''}, ${businessLocation.state || ''}`.trim() : '',
+        website: websiteUrl || '',
+        status: "active",
+        knowledgeBase: {
+          about: `Welcome to ${businessName}.`,
+          requirements: "",
+          pricing: "",
+          application: "",
+        },
+        operatingHours: {
+          enabled: false,
+          timezone: "America/New_York",
+          schedule: {
+            monday: { open: "09:00", close: "17:00", enabled: true },
+            tuesday: { open: "09:00", close: "17:00", enabled: true },
+            wednesday: { open: "09:00", close: "17:00", enabled: true },
+            thursday: { open: "09:00", close: "17:00", enabled: true },
+            friday: { open: "09:00", close: "17:00", enabled: true },
+            saturday: { open: "09:00", close: "17:00", enabled: false },
+            sunday: { open: "09:00", close: "17:00", enabled: false },
+          },
+          afterHoursMessage: "We're currently closed. Please leave a message and we'll get back to you.",
+        },
+      });
+
+      // 11. Log this action
+      await storage.createSystemLog({
+        level: 'info',
+        source: 'super-admin',
+        message: `New client created via wizard: ${businessName} (${slug})`,
+        workspaceId: workspace.id,
+        details: {
+          industry: industry || 'general',
+          templateUsed: templateId,
+          contactEmail,
+          botId,
+          personaConfigured: !!(assistantName || assistantRole || toneDescription),
+          faqCount: mergedFaqs.length,
+        },
+      });
+
+      // 12. Generate widget embed code
+      const baseUrl = req.protocol + '://' + req.get('host');
+      const widgetEmbedCode = `<script>
+!function(w,d,s,id,f){if(d.getElementById(id))return;
+  var js=d.createElement(s);js.id=id;js.src=f;js.async=1;
+  d.head.appendChild(js);
+  js.onload=function(){tcai('init',{botId:'${botId}',clientId:'${slug}'})};
+}(window,document,'script','tcai-widget','${baseUrl}/widget/embed.js');
+</script>`;
+
+      // 13. Return success response with all relevant info
+      res.status(201).json({
+        success: true,
+        workspace: {
+          id: workspace.id,
+          slug,
+          name: businessName,
+          plan: plan || 'starter',
+        },
+        bot: {
+          botId,
+          name: personaConfig.assistantName,
+          type: template.botType,
+          faqCount: mergedFaqs.length,
+        },
+        clientCredentials: {
+          email: contactEmail,
+          temporaryPassword,
+          loginUrl: '/login',
+          dashboardUrl: '/client/dashboard',
+          message: 'Share these credentials with your client. They can change their password after logging in.',
+        },
+        widgetEmbedCode,
+        viewAsClientUrl: `/client/dashboard?impersonate=${slug}`,
+      });
+
+    } catch (error) {
+      console.error("New client wizard error:", error);
+      res.status(500).json({ error: "Failed to create client" });
+    }
+  });
+
+  // =============================================
+  // DEMO WORKSPACES ENDPOINTS
+  // =============================================
+  
+  // Get all demo workspaces
+  app.get("/api/super-admin/demo-workspaces", requireSuperAdmin, async (req, res) => {
+    try {
+      const demoWorkspaces = await db
+        .select()
+        .from(workspaces)
+        .where(eq(workspaces.isDemo, true));
+      
+      // Enrich with bot info
+      const enrichedWorkspaces = await Promise.all(demoWorkspaces.map(async (ws) => {
+        // Get associated bots
+        const wsBots = await db
+          .select()
+          .from(bots)
+          .where(eq(bots.workspaceId, ws.id));
+        
+        return {
+          id: ws.id,
+          name: ws.name,
+          slug: ws.slug,
+          plan: ws.plan,
+          isDemo: ws.isDemo,
+          createdAt: ws.createdAt,
+          bots: wsBots.map(b => ({
+            botId: b.botId,
+            name: b.name,
+            botType: b.botType,
+          })),
+          demoPageUrl: `/demo/${ws.slug.replace(/_/g, '-')}`,
+          viewAsClientUrl: `/client/dashboard?impersonate=${ws.slug}`,
+        };
+      }));
+      
+      res.json({ demoWorkspaces: enrichedWorkspaces });
+    } catch (error) {
+      console.error("Get demo workspaces error:", error);
+      res.status(500).json({ error: "Failed to fetch demo workspaces" });
+    }
+  });
+
+  // Reset demo workspace data
+  app.post("/api/super-admin/demo-workspaces/:slug/reset", requireSuperAdmin, async (req, res) => {
+    try {
+      const { slug } = req.params;
+      
+      // Get workspace and verify it's a demo
+      const workspace = await getWorkspaceBySlug(slug);
+      if (!workspace) {
+        return res.status(404).json({ error: "Workspace not found" });
+      }
+      
+      if (!(workspace as any).isDemo) {
+        return res.status(403).json({ error: "Only demo workspaces can be reset" });
+      }
+      
+      const clientId = slug;
+      
+      // Delete all demo data
+      await db.delete(appointments).where(eq(appointments.clientId, clientId));
+      await db.delete(leads).where(eq(leads.clientId, clientId));
+      await db.delete(chatAnalyticsEvents).where(eq(chatAnalyticsEvents.clientId, clientId));
+      await db.delete(chatSessions).where(eq(chatSessions.clientId, clientId));
+      await db.delete(dailyAnalytics).where(eq(dailyAnalytics.clientId, clientId));
+      
+      // Log this action
+      await storage.createSystemLog({
+        level: 'info',
+        source: 'super-admin',
+        message: `Demo workspace ${slug} data reset`,
+        workspaceId: (workspace as any).id,
+        details: { resetBy: (req as any).session?.userId },
+      });
+      
+      res.json({ 
+        success: true, 
+        message: `Demo data for ${slug} has been reset`,
+        workspace: { slug, name: (workspace as any).name },
+      });
+    } catch (error) {
+      console.error("Reset demo error:", error);
+      res.status(500).json({ error: "Failed to reset demo data" });
     }
   });
 
