@@ -1,0 +1,133 @@
+You are continuing to improve the Treasure Coast AI SaaS in this Replit project.
+
+IMPORTANT:
+- Multi-tenant isolation, landing page responsiveness, and some “View as Client” UX are already handled. 
+- DO NOT touch those again.
+- Focus this prompt on assistant configuration, Test Chat, and widget embed, plus one small E2E.
+
+THIS PROMPT’S GOAL:
+1) Make assistant configuration (tabs) actually save and persist.
+2) Make Test Chat UI robust (ignoring OpenAI rate limits).
+3) Expose a clear, copyable widget embed snippet.
+4) Verify one basic end-to-end flow using a QA workspace + QA assistant.
+
+Use a dedicated QA assistant:
+- Name: “QA Test Assistant – Deep Config”
+- If it does not exist yet, create it for a QA workspace.
+
+────────────────────
+PART A – ASSISTANT CONFIG DRAWER UX & TABS
+────────────────────
+Find the UI for assistant detail / side drawer.
+
+Tasks:
+
+1. **Drawer/Panel scrolling**
+   - Ensure that on a typical laptop viewport:
+     - You can scroll through all sections.
+     - Save/Apply buttons are reachable.
+   - Fix any tiny or confusing scrollbars by using a single scrollable container where possible.
+
+2. **Tabs & Persistence**
+   For the “QA Test Assistant – Deep Config” assistant:
+
+   - Overview / Business Profile:
+     - Change name/description to include “QA”.
+     - Save.
+     - Reload → values must persist.
+
+   - Persona / System Prompt:
+     - Add a harmless “QA marker” line in the prompt.
+     - Save.
+     - Reload → prompt still contains the QA marker.
+
+   - Hours:
+     - Modify at least one day’s hours.
+     - Save + reload → hours persist.
+
+   - FAQs:
+     - Add FAQ:
+       - Q: “Is this a QA test?”
+       - A: “Yes, this is only a QA test.”
+     - Save + reload → FAQ persists.
+
+   - Website Intelligence / Knowledge:
+     - If fully implemented:
+       - Add a test URL like https://example.com or a QA doc.
+       - Save + reload → entry persists.
+     - If not really implemented yet:
+       - Hide this feature or mark as “Coming soon” and disable inputs, so the UI isn’t misleading.
+
+   - Automations / Notifications / Security / Appointments:
+     - If they are active tabs with toggles/inputs:
+       - Make sure changes save and persist.
+     - If not ready yet:
+       - Hide or clearly disable them.
+
+────────────────────
+PART B – TEST CHAT UX
+────────────────────
+In the same assistant’s “Test Chat” tab:
+
+- Ensure:
+  - There is a visible text input and send button.
+  - When sending a message:
+    - The user’s message appears in the chat.
+    - A loading indicator is shown while waiting.
+  - On OpenAI rate limit or API error:
+    - Show a friendly message like “We’re a bit busy right now, please try again soon.”
+    - DO NOT show raw stack traces or JSON errors in the UI.
+
+You do not need to change backend rate-limit behavior, just handle UI state gracefully.
+
+────────────────────
+PART C – WIDGET EMBED SNIPPET
+────────────────────
+Provide a clear way for a user to embed the assistant widget on their own site.
+
+Tasks:
+- In a “Channels & Widget” or “Install” tab for the assistant:
+
+  - Show a code block containing:
+    - A `<script>` tag (or tags) with the correct assistant/workspace identifiers.
+    - Any minimal HTML container needed to mount the widget.
+
+  - Add a “Copy code” button that copies this snippet to the clipboard.
+
+  - Ensure there are no obviously wrong placeholders like "YOUR_ID_HERE" unless explicitly documented for replacement.
+
+────────────────────
+PART D – MINIMAL QA E2E FLOW
+────────────────────
+Use a QA workspace + QA assistant to prove things hang together:
+
+1. In a QA workspace:
+   - Ensure there is at least one client user.
+   - Log in as that client.
+
+2. As that QA client:
+   - Open the assistant configuration.
+   - Confirm the values you edited in Part A are visible.
+
+3. In the UI for that QA workspace:
+   - If the app supports test links or preview pages for the widget, open one and verify:
+     - Widget loads.
+     - You can open the chat and see the assistant name/persona you configured.
+
+(If there is no such preview route, just rely on Test Chat + embed snippet as proof.)
+
+────────────────────
+ACCEPTANCE CRITERIA
+────────────────────
+- ✅ Assistant drawer is scrollable and usable at normal laptop size.
+- ✅ For “QA Test Assistant – Deep Config”, changes in Overview, Persona, Hours, FAQs (and Knowledge/Automations/etc. if enabled) persist across reload.
+- ✅ Test Chat:
+  - Shows user messages, a loading state, and friendly errors on failures.
+  - Never shows raw stack traces/JSON.
+- ✅ Widget embed snippet:
+  - Is clearly visible.
+  - Points to the correct assistant/workspace IDs.
+  - Has a working “Copy code” UX.
+- ✅ A QA workspace client can log in, view the assistant, and see that configuration is properly wired.
+
+Make the necessary frontend and backend changes to achieve this.
