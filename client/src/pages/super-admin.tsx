@@ -3573,8 +3573,36 @@ export default function SuperAdmin() {
       </Dialog>
 
       {/* New Client Wizard Dialog */}
-      <Dialog open={showNewClientWizard} onOpenChange={(open) => { if (!open) resetWizard(); }}>
-        <DialogContent className="bg-[#1a1d24] border-white/10 max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0">
+      <Dialog open={showNewClientWizard} onOpenChange={(open) => { 
+        // Only allow closing via explicit Cancel/Done button - prevent accidental closures
+        // This prevents the modal from closing when clicking on Select dropdowns (which use portals)
+        if (!open && wizardStep === 5) {
+          // Allow closing after success step
+          resetWizard();
+        }
+        // For steps 1-4, ignore onOpenChange - user must click Cancel explicitly
+      }}>
+        <DialogContent 
+          className="bg-[#1a1d24] border-white/10 max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0"
+          onInteractOutside={(e) => {
+            // Prevent closing when clicking outside during wizard steps 1-4
+            if (wizardStep < 5) {
+              e.preventDefault();
+            }
+          }}
+          onPointerDownOutside={(e) => {
+            // Prevent closing when pointer down outside during wizard steps 1-4
+            if (wizardStep < 5) {
+              e.preventDefault();
+            }
+          }}
+          onEscapeKeyDown={(e) => {
+            // Prevent closing via Escape during wizard steps 1-4
+            if (wizardStep < 5) {
+              e.preventDefault();
+            }
+          }}
+        >
           <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
             <DialogTitle className="text-white flex items-center gap-3">
               <div className="flex items-center gap-2">
@@ -4003,6 +4031,11 @@ export default function SuperAdmin() {
           {/* End Scrollable Content Area */}
 
           <DialogFooter className="gap-2 px-6 py-4 border-t border-white/10 flex-shrink-0">
+            {wizardStep < 5 && (
+              <Button variant="ghost" className="text-white/60 hover:text-white hover:bg-white/10 mr-auto" onClick={resetWizard} data-testid="wizard-cancel">
+                Cancel
+              </Button>
+            )}
             {wizardStep > 1 && wizardStep < 5 && (
               <Button variant="outline" className="border-white/10 text-white" onClick={() => setWizardStep(s => s - 1)} data-testid="wizard-back">
                 Back
