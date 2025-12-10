@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from "date-fns";
 import {
   Users, Plus, Search, Phone, Mail, MessageSquare,
@@ -506,19 +507,35 @@ export default function LeadsPage() {
                               selectedLead?.id === lead.id ? 'text-cyan-400' : 'text-white/55'
                             }`} />
                           </div>
-                          <div>
-                            <div className="font-medium text-white">
-                              {lead.name || 'Unknown'}
-                            </div>
-                            <div className="flex items-center gap-2 mt-1">
+                          <div className="min-w-0 flex-1">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="font-medium text-white truncate max-w-[200px]">
+                                  {lead.name || 'Unknown'}
+                                </div>
+                              </TooltipTrigger>
+                              {lead.name && lead.name.length > 25 && (
+                                <TooltipContent side="bottom">
+                                  {lead.name}
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
+                            <div className="flex items-center gap-2 mt-1 max-w-[280px]">
                               {lead.email && (
-                                <span className="text-xs text-white/55 flex items-center gap-1">
-                                  <Mail className="h-3 w-3" />
-                                  {lead.email}
-                                </span>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="text-xs text-white/55 flex items-center gap-1 truncate max-w-[160px]">
+                                      <Mail className="h-3 w-3 flex-shrink-0" />
+                                      <span className="truncate">{lead.email}</span>
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="bottom" className="max-w-[300px] break-all">
+                                    {lead.email}
+                                  </TooltipContent>
+                                </Tooltip>
                               )}
                               {lead.phone && (
-                                <span className="text-xs text-white/55 flex items-center gap-1">
+                                <span className="text-xs text-white/55 flex items-center gap-1 flex-shrink-0">
                                   <Phone className="h-3 w-3" />
                                   {lead.phone}
                                 </span>
