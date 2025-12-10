@@ -558,12 +558,26 @@ function requireAdminRole(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+/**
+ * MULTI-TENANT ISOLATION MIDDLEWARE
+ * 
+ * This middleware enforces tenant isolation for all client-facing routes:
+ * - For client_admin users: clientId is derived from session (set at login)
+ * - For super_admin users: clientId MUST be specified via query param
+ * 
+ * The resulting (req as any).effectiveClientId is then used by all client routes
+ * to scope data queries. ALL storage methods that access leads, bookings, 
+ * conversations, and appointments MUST use this clientId to filter results.
+ * 
+ * SECURITY: Never trust clientId from request body/params for client routes.
+ * Always use effectiveClientId from this middleware.
+ */
 async function requireClientAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.session.userId) {
     return res.status(401).json({ error: "Authentication required" });
   }
   
-  // Client admin users MUST have a clientId and valid workspace membership
+  // MULTI-TENANT: Client admin users MUST have a clientId and valid workspace membership
   if (req.session.userRole === "client_admin") {
     if (!req.session.clientId) {
       return res.status(403).json({ error: "Client configuration required. Please contact your administrator." });
@@ -7681,6 +7695,12 @@ These suggestions should be relevant to what was just discussed and help guide t
           }
         }
         
+        // MULTI-TENANT: Count users (client logins) for this workspace
+        // Users with clientId matching the workspace slug are considered workspace members
+        const workspaceUsers = await db.select({ id: adminUsers.id })
+          .from(adminUsers)
+          .where(eq(adminUsers.clientId, ws.slug));
+        
         return {
           id: ws.id,
           name: ws.name,
@@ -7688,6 +7708,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           status: ws.status || 'active',
           plan: ws.plan || 'starter',
           botsCount: wsBots.length,
+          usersCount: workspaceUsers.length,  // For "View as Client" button state
           totalConversations,
           lastActive: lastActive?.toISOString() || null,
           createdAt: ws.createdAt,

@@ -389,6 +389,7 @@ export default function SuperAdmin() {
       status: string;
       plan: string;
       botsCount: number;
+      usersCount: number;  // Client logins count for "View as Client" button state
       totalConversations: number;
       lastActive: string | null;
       isDemo?: boolean;
@@ -2163,12 +2164,16 @@ export default function SuperAdmin() {
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      className="border-white/10 text-white/85 hover:bg-white/10"
-                                      onClick={() => window.open(`/client/dashboard?clientId=${demoWorkspace.slug}`, '_blank')}
+                                      className={demoWorkspace.usersCount > 0 
+                                        ? "border-white/10 text-white/85 hover:bg-white/10" 
+                                        : "border-white/10 text-white/40 cursor-not-allowed"}
+                                      onClick={() => demoWorkspace.usersCount > 0 && window.open(`/client/dashboard?clientId=${demoWorkspace.slug}`, '_blank')}
+                                      disabled={demoWorkspace.usersCount === 0}
+                                      title={demoWorkspace.usersCount === 0 ? "No client logins exist for this workspace" : undefined}
                                       data-testid={`demo-view-as-client-${demoWorkspace.slug}`}
                                     >
                                       <Eye className="h-3 w-3 mr-1" />
-                                      View as Client
+                                      {demoWorkspace.usersCount === 0 ? "No Client Logins" : "View as Client"}
                                     </Button>
                                     <Button
                                       size="sm"
@@ -2311,15 +2316,20 @@ export default function SuperAdmin() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="bg-[#1a1d24] border-white/10 min-w-[160px]" onClick={(e) => e.stopPropagation()}>
                                   <DropdownMenuItem 
-                                    className="text-cyan-400 hover:bg-cyan-500/10 gap-2"
+                                    className={workspace.usersCount > 0 
+                                      ? "text-cyan-400 hover:bg-cyan-500/10 gap-2" 
+                                      : "text-white/40 gap-2 cursor-not-allowed"}
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      window.open(`/client/dashboard?clientId=${workspace.slug}`, '_blank');
+                                      if (workspace.usersCount > 0) {
+                                        window.open(`/client/dashboard?clientId=${workspace.slug}`, '_blank');
+                                      }
                                     }}
+                                    disabled={workspace.usersCount === 0}
                                     data-testid={`button-view-as-client-${workspace.slug}`}
                                   >
                                     <Eye className="h-4 w-4" />
-                                    View as Client
+                                    {workspace.usersCount === 0 ? "No Client Logins" : "View as Client"}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem 
                                     className="text-white hover:bg-white/10 gap-2"
