@@ -94,6 +94,19 @@ The platform operates on a two-surface system:
 *   **Message Count Display:** Shows formatted "{count} msgs" for clearer conversation sizing
 *   **Widget Header Actions:** Container groups reset and close buttons with consistent styling
 
+### Workspace Management (December 2024)
+*   **Edit Workspace Name:** Super-admin can edit workspace names via Settings tab → Edit Name button
+    *   Modal with validation (non-empty name required)
+    *   Immediate UI refresh after save via cache invalidation
+*   **Workspace Users List Fix:** Fixed API response handling so newly created users appear immediately
+    *   Users query now handles both array and object response formats
+    *   Cache invalidation correctly refreshes user list after creation
+*   **Create Client Login Validation:** Enhanced form validation with inline errors
+    *   Email format validation with visual feedback
+    *   Password strength requirements (8+ chars with letters and numbers)
+    *   Touched field tracking for better UX
+    *   Submit button enabled to trigger validation on click
+
 ## External Dependencies
 *   **OpenAI GPT-4:** Used for the core AI engine and conversational analysis.
 *   **Neon (PostgreSQL):** Provides managed PostgreSQL database hosting.
