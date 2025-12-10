@@ -1,0 +1,161 @@
+You are an elite full-stack engineer, QA lead, and product finisher.
+
+You are working on the Treasure Coast AI platform in this Replit project.
+
+Goal of this phase:
+  Fix all critical backend/data issues and admin flows so the platform is:
+  - Reliable for lead + booking capture.
+  - Safe and isolated for multi-tenant data.
+  - Solid for creating clients, users, and impersonating them.
+  - Clean logout experience for all users.
+
+Do NOT:
+  - Rip out or radically rewrite the architecture.
+  - Remove or break the Faith House workspace, assistant, or /demo/faith-house page.
+  - Introduce new billing/Stripe dependencies.
+
+────────────────────────
+TASK GROUP 1 – OpenAI FALLBACK & BOOKING RESILIENCE
+────────────────────────
+
+Problem:
+  Booking flows rely heavily on live OpenAI responses. Under load / rate-limit, the assistant shows friendly “high demand” messages, but:
+    - Leads/bookings for that session may never be created.
+    - The conversation becomes effectively dead.
+
+Your tasks:
+
+1) Implement resilient lead & booking persistence:
+   - If the user has provided contact info (name, phone, email), that info MUST be saved as a Lead
+     even if OpenAI times out or returns a rate-limit error.
+   - For booking intents (“Book a Tour”, “Schedule a Call”):
+     - If you can parse date/time: store it as an actual scheduled datetime.
+     - If you cannot parse due to OpenAI error or ambiguous wording:
+         • Still create a Booking record with:
+             - type = Tour or Phone Call (based on recognized intent),
+             - a raw `preferredTimeText` field (e.g. “tomorrow afternoon”),
+             - a status like “Pending – needs confirmation”.
+   - In short: OpenAI being busy must NOT mean “no lead and no booking”.
+
+2) Handle OpenAI errors gracefully:
+   - On rate-limit / transient error:
+       • Show a friendly, non-technical message like:
+         “We’re experiencing some delays, but I’ve saved your info and our team will reach out to confirm.”
+       • Log full details server-side only (no raw error in the UI).
+   - Make sure the chat session can continue after this (see Phase 2 for UX).
+
+3) Guard against regression:
+   - Write a small integration test (or test helper) for:
+       - Chat conversation with contact info + booking intent → Lead + Booking created for Faith House.
+   - Ensure these records show in both:
+       • Faith House client dashboard.
+       • Admin → Clients → Faith House workspace.
+
+────────────────────────
+TASK GROUP 2 – MULTI-TENANT ISOLATION WITH A SECOND WORKSPACE
+────────────────────────
+
+Goal:
+  Prove that multi-tenant behavior is correct, not just for Faith House.
+
+Your tasks:
+
+1) Create a QA test workspace:
+   - As super-admin, use the “Add Client” wizard to create a workspace named e.g.:
+       “QA Isolation Test”.
+   - Create a client login for it.
+   - Create at least one assistant for this workspace (clone Faith House config or simple generic).
+
+2) Add a demo entry point:
+   - Either:
+       • Add a route similar to /demo/faith-house for the QA workspace.
+       • Or use the widget embed in a test page that clearly uses the QA workspace.
+
+3) Run a full flow:
+   - As a visitor, talk to the QA assistant:
+       • Ask basic questions.
+       • Provide contact info.
+       • Book either a tour or a call.
+   - As QA client user:
+       • Log in and verify:
+           – New lead appears.
+           – New booking appears.
+           – Conversation transcript exists.
+   - As super-admin:
+       • Open the QA workspace and verify you see the same lead + booking.
+
+4) Check isolation:
+   - Verify:
+       • No Faith House data appears under QA workspace.
+       • No QA data appears under Faith House.
+   - Audit backend queries:
+       • Ensure all lead/booking/conversation/analytics queries are scoped by workspace/client ID.
+       • Fix any leftover routes or storage functions that trust IDs without checking tenant membership.
+
+If anything leaks across workspaces, fix it at the query and route-guard level (not just UI).
+
+────────────────────────
+TASK GROUP 3 – HARDEN ADMIN FLOWS (CLIENTS, USERS, IMPERSONATION, LOGOUT)
+────────────────────────
+
+Goal:
+  Make all super-admin operations boringly reliable and safe.
+
+Your tasks:
+
+1) New Client wizard:
+   - Ensure the multi-step form:
+       • Never returns server 500s for valid input.
+       • Is fully scrollable on normal laptop screens (buttons always reachable).
+   - Validate required fields (business name, contact email, etc.) with friendly messages.
+   - On success:
+       • New client appears in the Clients list.
+       • Show a clear success toast.
+
+2) Workspace user creation (“Create Login”):
+   - Confirm the create-login endpoint:
+       • Persists the new user.
+       • Associates them with the correct workspace.
+   - Frontend must:
+       • Show inline errors for invalid email / weak password / duplicate email.
+       • Show a success toast when it works.
+       • Immediately refresh the Users list so the new user row appears.
+   - Verify:
+       • You can log out and log in as this new user.
+       • They land in the correct workspace and see only that client dashboard.
+
+3) “View as Client” (impersonation):
+   - Ensure that clicking “View as Client”:
+       • Opens the correct client dashboard in a new tab.
+       • Does not get stuck on about:blank.
+   - Add:
+       • A loading state/spinner or simple “Loading client view…” page while impersonation is setting up.
+   - On failure (bad token, expired, etc.):
+       • Show a styled error page with a human-readable message.
+       • Do not leave a blank screen.
+
+4) Logout UX:
+   - Ensure there is a clear “Logout” button or menu item for BOTH:
+       • Super-admin dashboard.
+       • Client dashboard.
+   - Logging out must:
+       • Kill the session server-side.
+       • Redirect to the login screen.
+       • Prevent access to protected pages on refresh.
+
+────────────────────────
+DELIVERABLE FOR THIS PHASE
+────────────────────────
+
+When finished, provide a concise summary (in this chat) that includes:
+  • What you changed (grouped by: OpenAI fallback, multi-tenant isolation, admin flows).
+  • Key files touched.
+  • Manual tests you ran:
+      – Faith House chat → lead/booking → client + admin dashboards.
+      – QA workspace chat → lead/booking → client + admin dashboards.
+      – New client wizard.
+      – Create Login + logging in as new user.
+      – View as Client.
+      – Logout flows.
+  • Any remaining limits clearly marked as:
+      “Not fully tested – environment limitation (e.g., OpenAI rate limit)”.
