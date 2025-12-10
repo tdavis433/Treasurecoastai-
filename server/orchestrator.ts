@@ -294,6 +294,112 @@ export function extractBookingInfoFromConversation(
   };
 }
 
+/**
+ * Extract contact info and booking intent from conversation messages
+ * without requiring AI confirmation. Used as fallback when OpenAI fails.
+ */
+export function extractContactAndBookingFromMessages(
+  messages: ChatMessage[],
+  currentUserMessage: string
+): {
+  name?: string;
+  phone?: string;
+  email?: string;
+  preferredTime?: string;
+  scheduledAt?: string;
+  bookingType?: 'tour' | 'phone_call';
+  hasBookingIntent: boolean;
+} {
+  const userMessages = messages.filter(m => m.role === 'user').map(m => m.content);
+  userMessages.push(currentUserMessage);
+  const allUserText = userMessages.join(' ');
+  
+  // Extract contact info from user messages
+  let name: string | undefined;
+  let phone: string | undefined;
+  let email: string | undefined;
+  let preferredTime: string | undefined;
+  
+  // Name patterns
+  const namePatterns = [
+    /(?:my name is|i'?m|name:?|this is)\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
+    /(?:call me|it'?s)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
+  ];
+  for (const pattern of namePatterns) {
+    const match = allUserText.match(pattern);
+    if (match && match[1] && match[1].length > 2 && match[1].length < 50) {
+      name = match[1].trim();
+      break;
+    }
+  }
+  
+  // Phone patterns
+  const phonePatterns = [
+    /(?:phone|number|cell|mobile|call me at|reach me at):?\s*([\d\s\-\(\)\.]{10,})/i,
+    /\b(\(?\d{3}\)?[\s\-\.]?\d{3}[\s\-\.]?\d{4})\b/,
+  ];
+  for (const pattern of phonePatterns) {
+    const match = allUserText.match(pattern);
+    if (match && match[1]) {
+      const cleaned = match[1].replace(/\D/g, '');
+      if (cleaned.length >= 10) {
+        phone = match[1].trim();
+        break;
+      }
+    }
+  }
+  
+  // Email patterns
+  const emailPattern = /\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/;
+  const emailMatch = allUserText.match(emailPattern);
+  if (emailMatch && emailMatch[1]) {
+    email = emailMatch[1].trim();
+  }
+  
+  // Time patterns
+  const timePatterns = [
+    /(?:tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)(?:\s+(?:morning|afternoon|evening|at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?))?/i,
+    /(?:this\s+)?(?:week|weekend|next\s+week)/i,
+    /\d{1,2}(?::\d{2})?\s*(?:am|pm)/i,
+  ];
+  for (const pattern of timePatterns) {
+    const match = allUserText.match(pattern);
+    if (match) {
+      preferredTime = match[0].trim();
+      break;
+    }
+  }
+  
+  // Booking intent detection
+  const tourKeywords = /\b(tour|visit|come see|check out|see the house|see the place|come by|stop by|look around|walk through)\b/i;
+  const callKeywords = /\b(call|phone|speak with|talk to|phone call|give .* a call|chat with|speak to someone)\b/i;
+  const bookingKeywords = /\b(book|booking|schedule|scheduling|appointment|reserve|reservation|tour|visit|phone call|call you|speak with|talk to|come see|check out the house)\b/i;
+  
+  const hasBookingIntent = bookingKeywords.test(allUserText);
+  let bookingType: 'tour' | 'phone_call' | undefined;
+  
+  if (hasBookingIntent) {
+    if (callKeywords.test(allUserText)) {
+      bookingType = 'phone_call';
+    } else if (tourKeywords.test(allUserText)) {
+      bookingType = 'tour';
+    }
+  }
+  
+  // Parse time to datetime if we have a preferredTime
+  const scheduledAt = preferredTime ? parseVagueTimeToDatetime(preferredTime) || undefined : undefined;
+  
+  return {
+    name,
+    phone,
+    email,
+    preferredTime,
+    scheduledAt,
+    bookingType,
+    hasBookingIntent,
+  };
+}
+
 const openaiApiKey = process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
 const openai = openaiApiKey
   ? new OpenAI({ apiKey: openaiApiKey })
@@ -704,18 +810,93 @@ class ConversationOrchestrator {
     } catch (error: any) {
       console.error('[Orchestrator] Stream error:', error);
       
-      // Check for OpenAI rate limit errors
+      // Check for OpenAI rate limit errors or transient errors
       const isRateLimitError = error?.status === 429 || 
         error?.code === 'rate_limit_exceeded' ||
         error?.message?.includes('Rate limit') ||
         error?.message?.includes('rate_limit') ||
         error?.message?.includes('429');
       
-      if (isRateLimitError) {
-        console.error('[Orchestrator] OpenAI rate limit exceeded - returning friendly message');
+      const isTransientError = isRateLimitError || 
+        error?.code === 'ETIMEDOUT' ||
+        error?.code === 'ECONNRESET' ||
+        error?.message?.includes('timeout') ||
+        error?.message?.includes('network');
+      
+      if (isTransientError) {
+        console.error('[Orchestrator] OpenAI error - attempting to save lead/booking before returning friendly message');
+        
+        // RESILIENT PERSISTENCE: Extract and save contact info even when OpenAI fails
+        let savedLead = false;
+        let savedBooking = false;
+        
+        try {
+          const extracted = extractContactAndBookingFromMessages(messages, lastUserMessage?.content || '');
+          
+          // Save lead if we have contact info
+          if (extracted.phone || extracted.email) {
+            const existingLead = await storage.getLeadBySessionId(sessionId, clientId);
+            
+            if (!existingLead) {
+              await storage.createLead({
+                clientId,
+                botId,
+                sessionId,
+                name: extracted.name || null,
+                email: extracted.email || null,
+                phone: extracted.phone || null,
+                status: 'new',
+                priority: extracted.hasBookingIntent ? 'high' : 'medium',
+                source: 'chat',
+                notes: 'Lead captured during AI service interruption - needs follow-up',
+              });
+              savedLead = true;
+              console.log('[Orchestrator] Resilient lead saved despite OpenAI error:', {
+                clientId, sessionId, hasPhone: !!extracted.phone, hasEmail: !!extracted.email
+              });
+            }
+          }
+          
+          // Save booking if we have booking intent and contact info
+          if (extracted.hasBookingIntent && extracted.phone && extracted.name) {
+            const existingAppointment = await storage.getAppointmentBySessionId(sessionId, clientId);
+            
+            if (!existingAppointment) {
+              await storage.createAppointment(clientId, {
+                name: extracted.name,
+                contact: extracted.phone,
+                email: extracted.email || null,
+                preferredTime: extracted.preferredTime || 'Pending - needs confirmation',
+                scheduledAt: extracted.scheduledAt ? new Date(extracted.scheduledAt) : null,
+                appointmentType: extracted.bookingType || 'tour',
+                notes: 'Booking created during AI service interruption - requires staff confirmation',
+                contactPreference: 'phone',
+                botId,
+                sessionId,
+              });
+              savedBooking = true;
+              console.log('[Orchestrator] Resilient booking saved despite OpenAI error:', {
+                clientId, sessionId, bookingType: extracted.bookingType, name: extracted.name
+              });
+            }
+          }
+        } catch (saveError) {
+          console.error('[Orchestrator] Error saving resilient lead/booking:', saveError);
+        }
+        
+        // Build appropriate friendly message based on what was saved
+        let friendlyMessage: string;
+        if (savedBooking) {
+          friendlyMessage = "I'm experiencing some delays right now, but I've saved your information and booking request! Our team will reach out shortly to confirm the details. Thank you for your patience!";
+        } else if (savedLead) {
+          friendlyMessage = "I'm experiencing some delays right now, but don't worry - I've saved your contact information. Our team will reach out to you soon. Thank you for your patience!";
+        } else {
+          friendlyMessage = "I apologize, but I'm experiencing high demand right now. Please try again in a moment, or feel free to call us directly for immediate assistance.";
+        }
+        
         yield { 
           type: 'done', 
-          reply: "I apologize, but I'm experiencing high demand right now. Please try again in a moment, or feel free to call us directly for immediate assistance.",
+          reply: friendlyMessage,
           meta: {
             clientId,
             botId,
@@ -725,6 +906,8 @@ class ConversationOrchestrator {
             externalBookingUrl: null,
             externalPaymentUrl: null,
             suggestedReplies: ["When can I call you?", "What are your hours?"],
+            leadCaptured: savedLead,
+            bookingSaved: savedBooking,
           }
         };
         return;
