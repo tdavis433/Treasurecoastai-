@@ -6902,10 +6902,25 @@ These suggestions should be relevant to what was just discussed and help guide t
         try {
           const OpenAI = (await import("openai")).default;
           const openai = new OpenAI({ apiKey: openAIConfig.apiKey, baseURL: openAIConfig.baseURL });
-          await openai.models.list();
-          openaiStatus = 'connected';
+          
+          // Check if using Replit's localhost proxy (doesn't support models.list)
+          const isReplitProxy = openAIConfig.baseURL?.includes('localhost') || openAIConfig.baseURL?.includes('127.0.0.1');
+          
+          if (isReplitProxy) {
+            // For Replit proxy, just verify we can reach it with a minimal chat request
+            await openai.chat.completions.create({
+              model: "gpt-4o-mini",
+              messages: [{ role: "user", content: "hi" }],
+              max_tokens: 1,
+            });
+            openaiStatus = 'connected';
+          } else {
+            // For direct OpenAI API, use models.list
+            await openai.models.list();
+            openaiStatus = 'connected';
+          }
         } catch (e: any) {
-          // Key exists but is invalid
+          // Key exists but is invalid or service unavailable
           openaiStatus = 'error';
           console.log("OpenAI status check failed:", e.message);
         }
