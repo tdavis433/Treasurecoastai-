@@ -1,0 +1,208 @@
+You are an elite full-stack engineer working inside the Treasure Coast AI codebase.
+
+Your job right now is to complete TWO focused polish tasks WITHOUT breaking existing working flows:
+
+1) Fix the Demo/Preview page crash for assistants.
+2) Upgrade booking time extraction so bookings store a real datetime instead of vague phrases.
+
+Do NOT refactor unrelated code. Make surgical, targeted changes and re-test.
+
+────────────────────────
+CONTEXT / CURRENT STATE
+────────────────────────
+
+From previous work and QA:
+
+- The main platform is now stable:
+  - Super admin login, client login, multi-tenant isolation.
+  - Add Client wizard fixed and working.
+  - Admin can view clients, leads, bookings, conversations, analytics.
+  - Client dashboards show leads, bookings, conversations, overview.
+  - Logout buttons work for admin and clients.
+
+- Known remaining issues we want to address now:
+
+1) Demo/Preview Page Crash
+   - Component: something like `DemoBotPage` or “preview” route for bots.
+   - Symptom: When previewing newly created assistants/bots from the admin panel, the React app crashes (runtime error).
+   - Likely cause: The preview page assumes preconfigured JSON/demo bots, but newly created bots have slightly different data shape or missing fields.
+   - Impact: This only affects the admin-side preview feature, not the live widget or client dashboards.
+
+2) Booking Time Extraction
+   - Function: `extractBookingInfoFromConversation()` in `server/orchestrator.ts` (or similar).
+   - Current behavior: Stores vague times like `"tomorrow afternoon"` instead of a precise datetime.
+   - Impact: Bookings still work and are visible in dashboards, but the scheduling details are fuzzy and not ideal for a real business.
+
+We’re going to fix these with minimal risk.
+
+────────────────────────
+TASK 1 – Fix Demo/Preview Page Crash
+────────────────────────
+
+Goal: Admin should be able to click “Preview” on ANY assistant (including newly created bots) without crashing the app.
+
+Steps:
+
+1. Locate the preview code:
+   - Search for components/pages like:
+     - `DemoBotPage`
+     - `Preview` button handlers on the assistant/bot list.
+     - Any route like `/admin/assistants/:id/preview` or `/demo/:slug` used by admin.
+
+2. Identify the crash:
+   - Run the app locally and:
+     - Create a new test assistant/bot (e.g., “QA Preview Test Bot”).
+     - Click the Preview button for that bot.
+   - Observe:
+     - Exact React/runtime error (missing field, undefined config, etc.).
+   - Inspect the component’s props/data:
+     - What fields does it expect? (prompt, personaConfig, templateId, etc.)
+     - Which of those are missing or null for newly created bots?
+
+3. Harden the component:
+   - Add robust null-checks and fallback logic:
+     - If bot/assistant data is missing a field, use safe defaults.
+     - If no chat template or persona exists yet, show a friendly placeholder instead of crashing.
+       - Example message: “Preview not available yet – please finish configuring this assistant.”
+   - DO NOT assume that every bot has legacy JSON config structure.
+   - Use type guards around any `JSON.parse` or deep access into config.
+
+4. Add defensive error boundary (if not present):
+   - For the preview route, consider wrapping the main preview content in an error boundary component.
+   - If a runtime error occurs, render a friendly error message instead of taking down the whole app.
+
+5. Confirm:
+
+   Acceptance criteria for Task 1:
+   - Creating a new assistant/bot and clicking Preview:
+     - Does NOT crash the app.
+     - Either:
+       - Shows a live preview if enough config exists, OR
+       - Shows a clear “preview not available” style message if config is incomplete.
+   - Preview still works for any existing demo/preconfigured assistants as before.
+   - No impact on:
+     - Client dashboards.
+     - Public demo pages (`/demo/faith-house`).
+     - Chat widget embedded behavior.
+
+────────────────────────
+TASK 2 – Upgrade Booking Time Extraction
+────────────────────────
+
+Goal: Bookings created via conversation capture should store a concrete datetime (ISO) instead of vague phrases like “tomorrow afternoon”, while maintaining backward compatibility.
+
+Current implementation:
+- `extractBookingInfoFromConversation()` reads conversation messages and extracts:
+  - Booking type: e.g., tour vs phone call.
+  - Vague time phrases like “tomorrow afternoon”.
+
+We want:
+- A parsed datetime (e.g., `2025-12-10T14:00:00Z`) stored alongside or instead of the vague string.
+- Safe fallbacks if parsing fails.
+
+Steps:
+
+1. Locate the function:
+   - Find `extractBookingInfoFromConversation()` in `server/orchestrator.ts` or the relevant server file.
+   - Inspect how it:
+     - Parses the conversation.
+     - Builds the booking object.
+     - Stores fields into the appointments/bookings table.
+
+2. Introduce parsing logic:
+   - Implement a parser that can handle:
+     - Relative days: `today`, `tomorrow`, `next Monday`, `next week`.
+     - Times of day: “morning”, “afternoon”, “evening”, “night”.
+   - Map:
+     - Morning → 09:00
+     - Afternoon → 14:00
+     - Evening → 18:00
+     - Night → 20:00
+   - If user gives specific times (“3 PM”, “10:30am”), use those.
+
+   Implementation guidelines:
+   - Prefer using any existing date/time utility already in the repo (e.g., `date-fns`, `luxon`, etc.).
+   - If none exist and you cannot add new dependencies easily, implement a small, conservative parser:
+     - Identify keywords (tomorrow, next, morning, afternoon, evening, at HH:MM, etc.).
+     - Use current date as reference for “today”/“tomorrow”.
+     - Build a Date object, then convert to ISO.
+
+3. Maintain backward compatibility:
+   - Keep storing the original “human” phrase as something like `rawRequestedTime` if it already exists.
+   - Add a new field (if schema allows) such as:
+     - `scheduledAt` or `preferredTime` as an ISO datetime.
+   - If the schema already has a datetime field:
+     - Start populating that field with parsed datetime.
+   - If parsing fails:
+     - Do NOT crash.
+     - Fall back to storing the human string only.
+     - Log a warning (once per request) so we know to improve parsing later.
+
+4. Update any booking display logic:
+   - If the client/admin dashboards currently show vague strings:
+     - Prefer to display a formatted date/time when the parsed datetime is available.
+       - e.g., “Wed Dec 10, 2:00 PM” instead of “tomorrow afternoon”.
+     - If parsed datetime is missing, fall back to the original string so nothing breaks.
+
+5. Confirm:
+
+   Acceptance criteria for Task 2:
+   - From the Faith House demo chat, run two scenarios:
+     - “Book a tour for tomorrow at 3 PM.”
+     - “Schedule a phone call next Monday evening.”
+   - For each booking:
+     - In the database / storage:
+       - The booking record has:
+         - Correct type (tour vs phone call).
+         - Parsed ISO datetime reflecting the requested time, within reasonable interpretation.
+         - (Optional) The original human phrase stored as well.
+     - In the client dashboard Bookings view:
+       - The booking shows a clear, specific date/time string, not just “tomorrow afternoon”.
+     - In the admin Bookings view for that workspace:
+       - The same bookings appear with matching date/time.
+   - If the phrase is too ambiguous or parsing fails:
+     - Booking is still created.
+     - No server crash.
+     - Dashboards show the original phrase as a fallback.
+
+────────────────────────
+POST-FIX VERIFICATION CHECKLIST
+────────────────────────
+
+After implementing both tasks, re-run these manual checks (describe results in your summary):
+
+1) Demo/Preview:
+   - Create “QA Preview Test Bot” for any workspace.
+   - Click Preview.
+   - Confirm:
+     - No crash.
+     - Either a preview or a graceful “no preview yet” message.
+
+2) Booking extraction:
+   - From the Faith House demo page, run:
+     - “I’d like to book a tour for tomorrow at 3 PM.”
+     - “I’d like to schedule a phone call next Monday evening.”
+   - Confirm in both:
+     - Faith House client dashboard → Bookings.
+     - Super admin → Faith House workspace Bookings.
+   - That:
+     - Both bookings exist.
+     - Types are correct.
+     - Times look like properly formatted real dates, not vague phrases.
+
+3) Regression sanity:
+   - Ensure:
+     - Existing bookings still display.
+     - No errors thrown on existing data that only has vague time strings.
+     - Client and admin dashboards still load normally.
+
+────────────────────────
+OUTPUT FORMAT
+────────────────────────
+
+When you are done, output a short Markdown summary:
+
+- Files modified for Demo/Preview fix and why.
+- Files modified for booking time extraction and why.
+- Any parsing limitations or edge cases you intentionally did NOT handle.
+- Confirmation of the manual checks and whether they all passed.
