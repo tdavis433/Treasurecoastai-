@@ -2625,8 +2625,7 @@ export default function ClientDashboard() {
           <div className="relative">
             <pre className="p-4 bg-black/40 border border-white/10 rounded-lg overflow-x-auto text-sm font-mono text-white/80">
 {`<!-- Treasure Coast AI Widget -->
-<script src="${window.location.origin}/widget/embed.js"></script>
-<script>tcai('init', { botId: '${botId}' });</script>`}
+<script src="${window.location.origin}/widget/embed.js" data-client-id="${clientId}" data-bot-id="${botId}"></script>`}
             </pre>
             <Button
               onClick={handleCopyWidgetCode}
