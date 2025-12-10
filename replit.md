@@ -64,6 +64,16 @@ The platform operates on a two-surface system:
     *   Storage layer enforces clientId in WHERE clauses for getLeadById, updateLead, deleteLead
 *   **Environment-Based Configuration:** Staff user creation uses `DEFAULT_STAFF_CLIENT_ID` env var instead of hardcoded values
 
+### Resilient Persistence (December 2024)
+*   **OpenAI Failure Recovery:** When OpenAI API fails (rate limit, timeout, network errors), the orchestrator:
+    *   Extracts contact info (name, phone, email) from all conversation messages
+    *   Saves leads automatically if phone or email is found
+    *   Creates "pending confirmation" bookings if booking intent + name + phone are detected
+    *   Returns context-aware friendly messages confirming what data was saved
+*   **No Data Loss:** User contact information is preserved even during AI service outages
+*   **Implementation:** `extractContactAndBookingFromMessages()` function in `server/orchestrator.ts`
+*   **Booking Schema:** `preferredTime` stores raw time phrase, `scheduledAt` stores parsed ISO datetime
+
 ### Form Validation (December 2024)
 *   **New Client Wizard (Step 1):** Inline validation for business name and contact email fields
     *   Validates on blur and when clicking Next
