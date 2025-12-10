@@ -303,11 +303,44 @@
     } catch (error) {
       state.isLoading = false;
       renderMessages();
-      renderError(error.message || 'Failed to send message. Please try again.');
+      
+      // Show friendly error with retry hint
+      var errorMsg = error.message || 'Failed to send message.';
+      if (errorMsg.includes('high demand') || errorMsg.includes('rate limit') || errorMsg.includes('overloaded')) {
+        renderErrorWithRetry('Our AI is experiencing high demand. Please wait a moment and try again.');
+      } else {
+        renderErrorWithRetry(errorMsg);
+      }
       console.error('Chat error:', error);
     } finally {
       elements.sendBtn.disabled = false;
     }
+  }
+  
+  function renderErrorWithRetry(message) {
+    var errorDiv = document.createElement('div');
+    errorDiv.className = 'tcai-error tcai-error-recoverable';
+    errorDiv.setAttribute('data-testid', 'error-message');
+    errorDiv.setAttribute('role', 'alert');
+    errorDiv.innerHTML = [
+      '<div class="tcai-error-content">',
+      '  <span>' + escapeHtml(message) + '</span>',
+      '</div>',
+      '<div class="tcai-error-hint">',
+      '  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>',
+      '  <span>Type your message again to retry</span>',
+      '</div>'
+    ].join('');
+    elements.messages.appendChild(errorDiv);
+    elements.messages.scrollTop = elements.messages.scrollHeight;
+    
+    // Re-enable input after brief timeout
+    setTimeout(function() {
+      if (elements.input) {
+        elements.input.disabled = false;
+        elements.input.focus();
+      }
+    }, 500);
   }
   
   function handleKeyPress(e) {
@@ -323,6 +356,35 @@
   
   window.closeWidget = function() {
     window.parent.postMessage({ type: 'TCAI_CLOSE' }, '*');
+  };
+  
+  window.resetChat = function() {
+    // Clear local state and storage (does NOT delete saved leads/bookings in DB)
+    state.messages = [];
+    state.conversationId = null;
+    state.quickActionsShown = false;
+    state.error = null;
+    state.isLoading = false;
+    
+    try {
+      localStorage.removeItem(getStorageKey());
+    } catch (e) {
+      console.warn('Failed to clear conversation from storage:', e);
+    }
+    
+    // Re-render with greeting
+    if (config.greeting) {
+      addMessage('assistant', config.greeting);
+      setTimeout(function() {
+        renderQuickActions();
+      }, 100);
+    } else {
+      renderMessages();
+    }
+    
+    if (elements.input) {
+      elements.input.focus();
+    }
   };
   
   function handleQuickAction(text) {
@@ -406,13 +468,14 @@
       '      <p><span class="tcai-status-dot"></span>' + escapeHtml(config.businessSubtitle) + '</p>',
       '    </div>',
       '  </div>',
-      '  <div class="tcai-mode-toggle" data-testid="mode-toggle">',
-      '    <span class="tcai-mode-btn active">AI</span>',
-      '    <span class="tcai-mode-btn">Human</span>',
+      '  <div class="tcai-header-actions">',
+      '    <button class="tcai-reset-btn" data-testid="button-reset" aria-label="Reset chat" onclick="resetChat()" title="Reset Chat">',
+      '      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>',
+      '    </button>',
+      '    <button class="tcai-close-btn" data-testid="button-close" aria-label="Close chat" onclick="closeWidget()">',
+      '      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
+      '    </button>',
       '  </div>',
-      '  <button class="tcai-close-btn" data-testid="button-close" aria-label="Close chat" onclick="closeWidget()">',
-      '    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
-      '  </button>',
       '</div>',
       '<div class="tcai-ai-sync" id="tcai-ai-sync" data-testid="ai-sync-indicator">',
       '  <div class="tcai-ai-sync-dot"></div>',

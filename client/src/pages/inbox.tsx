@@ -205,6 +205,9 @@ export default function InboxPage() {
     
     let filtered = sessionsData.sessions;
     
+    // Hide sessions with 0 messages (empty/abandoned sessions)
+    filtered = filtered.filter(s => (s.userMessageCount || 0) + (s.botMessageCount || 0) > 0);
+    
     if (statusFilter === "crisis") {
       filtered = filtered.filter(s => s.crisisDetected);
     } else if (statusFilter === "appointment") {
@@ -222,6 +225,25 @@ export default function InboxPage() {
     
     return filtered;
   }, [sessionsData, statusFilter, searchQuery]);
+  
+  // Helper to get a meaningful session preview snippet
+  const getSessionSnippet = (session: ChatSession): string => {
+    const metadata = session.metadata as { aiSummary?: string; userIntent?: string } | null;
+    if (metadata?.aiSummary) {
+      return metadata.aiSummary.slice(0, 80) + (metadata.aiSummary.length > 80 ? '...' : '');
+    }
+    if (metadata?.userIntent) {
+      return metadata.userIntent;
+    }
+    const topics = session.topics as string[] || [];
+    if (topics.length > 0) {
+      return topics.slice(0, 2).join(', ');
+    }
+    if (session.appointmentRequested) {
+      return 'Requested appointment';
+    }
+    return 'Conversation started';
+  };
 
   const formatTimeAgo = (date: Date | string) => {
     const now = new Date();
@@ -291,12 +313,15 @@ export default function InboxPage() {
                     </Badge>
                   )}
                 </div>
-                <div className="flex items-center gap-3 text-white/55 text-sm">
+                <p className="text-white/55 text-sm line-clamp-1 mb-1">
+                  {getSessionSnippet(session)}
+                </p>
+                <div className="flex items-center gap-3 text-white/45 text-xs">
                   <span className="flex items-center gap-1">
-                    <MessageSquare className="h-3.5 w-3.5" />
-                    {session.userMessageCount + session.botMessageCount}
+                    <MessageSquare className="h-3 w-3" />
+                    {session.userMessageCount + session.botMessageCount} msgs
                   </span>
-                  <span>Session: {session.sessionId.slice(0, 8)}...</span>
+                  <span>ID: {session.sessionId.slice(0, 8)}</span>
                 </div>
                 {(session.topics as string[] || []).length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-2">

@@ -1,0 +1,153 @@
+You are continuing work on the same Treasure Coast AI platform.
+
+Assume:
+  • Core lead/booking pipeline is now resilient.
+  • Multi-tenant isolation and admin flows are working.
+
+Goal of this phase:
+  Make the user-facing experience (chat + dashboards + assistant builder + navigation) simple, obvious, and clean.
+
+Do NOT:
+  • Break any working flows from Phase 1.
+  • Rebrand or radically redesign – keep the dark neon look.
+
+────────────────────────
+TASK GROUP 1 – CHAT WIDGET UX & ERROR RECOVERY
+────────────────────────
+
+1) Send vs Reset clarity:
+   - Public and demo chat widgets must:
+       • Have a single, obvious “Send” action:
+           – Enter key sends.
+           – A clear paper-plane icon sends.
+       • Move “Reset” / “Restart” away from the send icon.
+           – Put it in the header as “Reset chat” or in a menu.
+           – Use a clear label or tooltip.
+   - Remove any confusing duplicate arrows that cause accidental resets.
+
+2) Conversation reset on demo:
+   - On /demo/faith-house (and any other demo routes):
+       • Add a clearly labeled “Reset Chat” control (↻ Reset).
+       • Clicking it should:
+           – Clear visible conversation history.
+           – Reset local state/session for that widget.
+       • This reset must NOT delete already-saved leads/bookings in the DB.
+
+3) Error recovery:
+   - When OpenAI returns a “high demand” / error:
+       • Show a friendly message and allow user to continue after a short timeout.
+       • Optionally show hint: “Please wait a moment, then ask again.”
+       • Ensure the input is re-enabled.
+   - Conversation should not become permanently dead due to one error.
+
+4) Scroll behavior:
+   - Make the chat conversation area a single, intuitive scroll area.
+   - Ensure:
+       • New messages auto-scroll into view.
+       • There’s no confusing double-scroll (outer vs inner) if possible.
+
+────────────────────────
+TASK GROUP 2 – BOOKINGS, LEADS, AND CONVERSATIONS UX
+────────────────────────
+
+1) Booking details:
+   - Confirm that both Tour and Phone Call bookings:
+       • Are created with correct type.
+       • Show a precise datetime OR a clear “preferred time” description consistent with what user requested.
+   - Fix any mismatch where a specific time becomes vague (“tomorrow afternoon”).
+       • Store both a machine datetime and human-readable text if needed.
+
+2) Admin Conversations cleanup:
+   - In admin Conversations list:
+       • Hide or filter out entries with 0 messages (“Anonymous Visitor – 0 msgs”).
+       • For real conversations:
+           – Show a meaningful snippet (e.g. first user message or intent).
+           – Make rows clickable to open the full transcript (like client view).
+
+3) List scroll & refresh:
+   - Leads/Bookings lists (admin and client):
+       • Avoid non-obvious internal scroll containers where possible.
+       • Prefer full-page scroll, or clearly show a scrollbar inside the card.
+   - Ensure lists refresh reliably when new data comes in (no stale UI).
+
+────────────────────────
+TASK GROUP 3 – USER MANAGEMENT UX
+────────────────────────
+
+1) Create Login UX:
+   - After creating a user:
+       • Immediately show the new user row in the table.
+       • Show a success toast (“Login created for …”).
+   - On failure:
+       • Show inline field errors (invalid email, password too short, duplicate email).
+       • Never show raw JSON.
+
+2) Basic management (if feasible without big changes):
+   - Add minimal controls such as:
+       • Ability to deactivate a user or trigger a password reset.
+   - If full reset flow is too heavy for now:
+       • At least plan for it and make sure UI doesn’t promise something that isn’t implemented.
+
+────────────────────────
+TASK GROUP 4 – SETTINGS & ASSISTANT BUILDER UX
+────────────────────────
+
+1) Hide or finish incomplete settings:
+   - Audit Settings areas:
+       • Workspace “Edit” forms that only show “Coming soon”.
+       • Integration toggles that don’t actually do anything.
+   - For anything not wired up:
+       • Hide it, disable it, or clearly label as “Coming soon” so users are not misled.
+
+2) Assistant builder & wizard:
+   - Ensure Create Assistant wizard:
+       • Is fully scrollable on laptop screens.
+       • Has visible Next/Submit buttons on all steps.
+   - In existing assistant tabs (Business Profile, Hours, FAQs, Widget Design, etc.):
+       • Ensure long content (e.g. many FAQs, long forms) is scrollable.
+       • Avoid fields getting cut off (especially on Widget Design).
+   - Test Chat tab:
+       • Should load latest assistant config.
+       • Provide a way to reset context if needed so admins can test from a clean slate.
+
+────────────────────────
+TASK GROUP 5 – NAVIGATION & LAYOUT POLISH
+────────────────────────
+
+1) Top navigation overflow:
+   - On pages where the top nav (Dashboard, Clients, Assistants, etc.) overflows:
+       • Implement responsive behavior:
+           – Wrap items to second line OR
+           – Collapse extras into a menu at narrower widths.
+       • Avoid horizontal scrollbars for nav.
+
+2) Modals & scroll:
+   - Ensure all modals/popups:
+       • Show a clear internal scrollbar when content exceeds viewport.
+       • Do not trap the user in a weird double-scroll situation.
+
+3) Maintain layout consistency:
+   - As you tweak UI, preserve:
+       • Dark neon aesthetic.
+       • Consistent card spacing, headings, table alignment.
+   - No new text overflow or alignment issues should be introduced.
+
+────────────────────────
+DELIVERABLE FOR THIS PHASE
+────────────────────────
+
+When done, summarize:
+
+  • Changes to:
+       – Chat UX (send/reset, error handling, scroll).
+       – Bookings/leads/conversations UX.
+       – User management UX.
+       – Settings and assistant builder.
+       – Navigation/layout.
+  • Files you touched.
+  • Manual checks you ran:
+       – Faith House demo chat behavior.
+       – Dashboards (client + admin) lists and filters.
+       – Create Login and user appearance.
+       – Assistant creation and editing.
+       – Navigation at normal + smaller widths.
