@@ -501,8 +501,37 @@ class ConversationOrchestrator {
           contactInfo: postProcessResult.contactInfo,
         },
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('[Orchestrator] Error processing message:', error);
+      
+      // Check for OpenAI rate limit errors
+      const isRateLimitError = error?.status === 429 || 
+        error?.code === 'rate_limit_exceeded' ||
+        error?.message?.includes('Rate limit') ||
+        error?.message?.includes('rate_limit') ||
+        error?.message?.includes('429');
+      
+      if (isRateLimitError) {
+        console.error('[Orchestrator] OpenAI rate limit exceeded - returning friendly message as normal reply');
+        // Return as a successful response so the widget shows it as a normal message, not an error toast
+        const friendlyMessage = "I apologize, but I'm experiencing high demand right now. Please try again in a moment, or feel free to call us directly for immediate assistance.";
+        return {
+          success: true,
+          reply: friendlyMessage,
+          meta: {
+            clientId: request.clientId,
+            botId: request.botId,
+            sessionId: request.sessionId || `session_${Date.now()}`,
+            responseTimeMs: Date.now() - startTime,
+            showBooking: false,
+            externalBookingUrl: null,
+            externalPaymentUrl: null,
+            suggestedReplies: ["When can I call you?", "What are your hours?"],
+            rateLimited: true,
+          },
+        };
+      }
+      
       return this.errorResponse('INTERNAL_ERROR', 'An error occurred processing your message', startTime, request);
     }
   }
@@ -673,8 +702,36 @@ class ConversationOrchestrator {
         },
       };
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('[Orchestrator] Stream error:', error);
+      
+      // Check for OpenAI rate limit errors
+      const isRateLimitError = error?.status === 429 || 
+        error?.code === 'rate_limit_exceeded' ||
+        error?.message?.includes('Rate limit') ||
+        error?.message?.includes('rate_limit') ||
+        error?.message?.includes('429');
+      
+      if (isRateLimitError) {
+        console.error('[Orchestrator] OpenAI rate limit exceeded - returning friendly message');
+        yield { 
+          type: 'done', 
+          reply: "I'm experiencing high demand right now. Please try again in a moment, or feel free to call us directly for immediate assistance.",
+          meta: {
+            clientId,
+            botId,
+            sessionId,
+            responseTimeMs: Date.now() - startTime,
+            showBooking: false,
+            externalBookingUrl: null,
+            externalPaymentUrl: null,
+            suggestedReplies: ["When can I call you?", "What are your hours?"],
+            rateLimited: true,
+          }
+        };
+        return;
+      }
+      
       yield { type: 'error', message: 'An error occurred processing your message' };
     }
   }

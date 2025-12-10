@@ -1,0 +1,74 @@
+You are an elite full-stack engineer and QA lead.
+
+You are working on the Treasure Coast AI platform running in this Replit project.
+Live URL (for reference): 
+  https://treasure-coast-ai-platform--mlgrushskill.replit.app/
+
+FOCUS ONLY ON THIS FOR NOW:
+  • Faith House demo chatbot → leads → bookings → conversations.
+
+CONSTRAINTS:
+  • Do NOT redesign the UI.
+  • Do NOT delete the Faith House workspace or assistant.
+  • Make minimal, correct backend + integration fixes so the flow is RELIABLE.
+
+WHAT SHOULD WORK (ACCEPTANCE CRITERIA):
+
+1) From `/demo/faith-house`:
+
+   - Start a conversation as a visitor.
+   - Ask realistic questions:
+       • “Do you have any beds available?”
+       • “What are the rules about curfew or visitors?”
+       • “How much is the weekly cost?”
+   - Provide contact info when asked:
+       Name:  "QA Demo Visitor 1"
+       Phone: "555-111-2222"
+       Email: "qa.visitor1@example.com"
+   - Then say:
+       • “I’d like to book a tour tomorrow at 3 PM.”
+       • “I’d like to schedule a phone call on Saturday at 10 AM.”
+
+   AFTER THIS CONVERSATION:
+
+   A. In the FAITH HOUSE CLIENT dashboard (login: demo_faith_house / demo123):
+      - Leads page:
+          • There is a new lead for "QA Demo Visitor 1" with correct phone + email.
+      - Bookings page:
+          • There are TWO bookings:
+              – One clearly labeled as a Tour with correct date/time.
+              – One clearly labeled as a Phone Call with correct date/time.
+      - Conversations page:
+          • The conversation transcript is present and readable.
+
+   B. In the SUPER ADMIN workspace for Faith House (login: admin / admin123):
+      - Go to Clients → Faith House workspace.
+      - Leads tab:
+          • The same lead record appears.
+      - Bookings tab:
+          • The same two bookings appear.
+
+   C. During normal flows:
+      - No visible "An error occurred while processing your message" toast.
+      - If any OpenAI or backend error happens, show a friendly message to the user
+        and log the full technical details on the server ONLY (not in the UI).
+
+YOUR TASK:
+
+1. Run the app in this Replit project (npm install / npm run dev or whatever is configured).
+2. Find the code path for the Faith House assistant conversation handling:
+   - Chat completion handler.
+   - Lead creation.
+   - Booking creation.
+   - Conversation persistence.
+3. Fix the bugs so the acceptance criteria above are satisfied.
+   - Make sure workspace/assistant IDs are correctly used.
+   - Make sure lead + booking writes are not failing silently.
+   - Make sure the faith-house demo is configured correctly to use this pipeline.
+4. Add reasonable error handling so the red error toast is NOT shown for valid flows.
+5. When you are done, describe what you changed and re-run the end-to-end flow yourself
+   to confirm that:
+   - Lead is created.
+   - Tour booking is created.
+   - Phone call booking is created.
+   - All visible in BOTH client and admin Faith House views.
