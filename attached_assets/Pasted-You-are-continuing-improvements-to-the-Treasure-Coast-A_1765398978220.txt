@@ -1,0 +1,117 @@
+You are continuing improvements to the Treasure Coast AI SaaS in this Replit project.
+
+IMPORTANT:
+- Multi-tenant isolation and landing responsiveness are already handled.
+- Do NOT change those parts; focus on workspace user management and the New Client wizard.
+
+THIS PROMPT’S GOAL:
+1) Make **Create Login / Workspace Users** fully functional and validated.
+2) Fix and polish the **New Client / New Workspace** wizard.
+3) Allow basic editing of workspace metadata (name/email).
+
+────────────────────
+PART A – WORKSPACE USER MANAGEMENT (CREATE / LIST / LOGIN)
+────────────────────
+Find the UI and backend logic for:
+- “Workspace Users” or similar page.
+- “Create Login” modal / form.
+
+Tasks:
+
+1. **Validation rules for Create Login**
+   - Email:
+     - Required.
+     - Must be a valid email format.
+   - Password:
+     - Required.
+     - Minimum 8 characters.
+     - Should include letters and numbers (realistic for SaaS).
+
+   Behavior:
+   - If validation fails:
+     - Do NOT hit the API.
+     - Show inline error near each field (and/or a toast) explaining what’s wrong.
+
+2. **User creation + listing**
+   - A successful Create Login should:
+     - Create a user record associated with the current workspace/clientId.
+     - Immediately show the new user in the workspace’s user list (trigger a refetch or state update).
+   - After a hard refresh, the user should still appear in the list.
+
+3. **User login behavior**
+   - Newly created user should be able to:
+     - Log in using the client login flow.
+     - Land on the correct workspace dashboard.
+   - They should NOT see super admin-only routes.
+
+4. **Edit / disable / delete (if UI supports it)**
+   - If the UI displays actions to edit or delete a user, implement them:
+     - Edit email with the same email validation.
+     - Disable/delete:
+       - Mark user inactive or soft-delete.
+       - Prevent them from logging in if disabled/deleted.
+   - If the product is not ready for those actions:
+     - Hide or disable those buttons to avoid dead UI.
+
+────────────────────
+PART B – NEW CLIENT / NEW WORKSPACE WIZARD
+────────────────────
+Find the code for the “New Client” wizard launched from the super admin area.
+
+Tasks:
+
+1. **Open reliability**
+   - “New Client” button should always open the wizard modal.
+   - No silent failures.
+
+2. **Step 1 validation**
+   - Required fields (e.g., Business Name, Contact Email) must be validated.
+   - Clicking Next with missing/invalid values:
+     - Shows inline validation errors.
+     - Keeps the modal open.
+   - With valid values:
+     - Proceeds to Step 2.
+
+3. **Wizard scrolling & layout**
+   - Ensure on typical laptop resolution:
+     - All fields and the Next/Back buttons are reachable.
+   - If the wizard uses nested scroll, simplify if possible:
+     - Prefer one scrollable area with sticky footer buttons.
+
+4. **Workspace creation**
+   - Completing all steps should:
+     - Create a new workspace record in DB.
+     - Make it appear in the Clients list immediately (or after a controlled refetch).
+   - Optionally, create a default client login or assistant if that is part of your product design.
+
+────────────────────
+PART C – EDIT WORKSPACE METADATA
+────────────────────
+For an existing workspace (especially a QA or non-Faith House workspace):
+
+- Provide a UI to edit:
+  - Workspace name.
+  - Contact email.
+  - Any other primary metadata already displayed.
+
+- Ensure:
+  - Changes are validated (email format).
+  - Changes are saved to DB.
+  - Clients list and workspace overview show updated values after refresh.
+
+────────────────────
+ACCEPTANCE CRITERIA
+────────────────────
+- ✅ Create Login:
+  - Rejects invalid email/password with clear messages.
+  - Creates users tied to the correct workspace.
+  - New users appear in the workspace user list immediately and after refresh.
+- ✅ Newly created workspace users can log in and only see their workspace.
+- ✅ New Client wizard:
+  - Validates required fields.
+  - Does not close silently on error.
+  - Successfully creates a new workspace.
+  - New workspace appears in clients list without a full app reload.
+- ✅ Workspace metadata (name/email) is editable and persists correctly.
+
+Make the necessary frontend + backend changes to achieve this.
