@@ -1,0 +1,132 @@
+You are an elite full-stack engineer working inside an existing multi-tenant SaaS repo called Treasure Coast AI.
+
+Your task now is to implement a focused P0 fix set to make the platform safe and clean enough for a real client demo.
+
+DO NOT redesign the architecture. Make tightly scoped, surgical changes.
+
+────────────────────────
+CONTEXT (READ CAREFULLY)
+────────────────────────
+
+Treasure Coast AI is a multi-tenant AI assistant platform:
+
+- Multi-tenant: each client/business = one workspace (clientId / workspaceId).
+- Roles:
+  - super_admin (me, the agency owner)
+  - workspace_admin (optional)
+  - member / client (view-only, minimal safe actions)
+- Data isolation is critical:
+  - Leads, conversations, bookings, analytics must NEVER leak between workspaces.
+
+Current problems (from an external audit):
+
+1. Some storage functions fetch/update/delete entities by ID only (e.g. leads, appointments), with NO clientId/workspaceId constraint.
+2. API routes trust the clientId in the URL and do not verify the authenticated user’s workspace membership.
+3. Destructive actions (delete lead, delete workspace, delete bots/automations) are not always restricted to admins.
+4. There are hardcoded demo IDs like "faith_house" in live logic.
+5. Tables in client/admin dashboards risk text overflow because long fields are rendered with no truncation.
+6. There are minimal loading and empty states, making screens look broken while data loads or when lists are empty.
+
+Your job: implement P0 fixes for these in a clean, idiomatic way.
+
+────────────────────────
+PHASE 1 – ADD TENANT SCOPING TO STORAGE FUNCTIONS
+────────────────────────
+
+1. Locate the central storage/DB layer (likely server/storage.ts or similar).
+2. Identify functions like:
+   - getLeadById(id)
+   - updateLead(id, data)
+   - deleteLead(id)
+   - getAppointmentById(id)
+   - updateAppointment(id, data)
+   - deleteAppointment(id)
+   - updateAppointmentStatus(id, status)
+   - and any similar “by id” operations for leads/appointments.
+3. Refactor these to ALWAYS take a tenant identifier (clientId or workspaceId) as the first parameter, e.g.:
+   - getLeadById(clientId, id)
+   - updateLead(clientId, id, data)
+   - deleteLead(clientId, id)
+4. Update the underlying queries so they constrain on BOTH the id and the clientId/workspaceId, e.g.:
+   - where(eq(leads.id, id), eq(leads.clientId, clientId))
+5. Find all call sites and update them to pass the correct clientId/workspaceId from the authenticated context or route params.
+
+Goal: it should be impossible to fetch or mutate a lead/appointment across tenants just by knowing the ID.
+
+────────────────────────
+PHASE 2 – ADD WORKSPACE MEMBERSHIP CHECK MIDDLEWARE
+────────────────────────
+
+1. Create a dedicated middleware/helper, e.g. requireWorkspaceMembership(req, res, next) or a function used in route handlers:
+   - Load the authenticated user from the session.
+   - Query the workspace_memberships table (or equivalent) to get all workspaces the user belongs to.
+   - Compare the clientId / workspaceId in the route params/body against this list.
+   - If the user is NOT a member of that workspace, return 403 Forbidden.
+2. Apply this check to ALL routes under /api/client/:clientId/... and /api/workspace/:workspaceId/... that access tenant data.
+3. For admin routes that operate across workspaces, enforce that the user has super_admin role, not just any user.
+
+Goal: an authenticated user cannot call APIs for a workspace they don’t belong to, even if they guess the ID.
+
+────────────────────────
+PHASE 3 – LOCK DESTRUCTIVE ACTIONS TO ADMIN ROLES
+────────────────────────
+
+1. Implement a simple RBAC helper, e.g. requireRole("super_admin") and requireRole("workspace_admin"), that:
+   - Reads the user’s role from the session or user record.
+   - Throws an error / returns 403 if the role is insufficient.
+2. Apply these checks to destructive routes, including but not limited to:
+   - Delete workspace
+   - Delete lead
+   - Delete appointment
+   - Delete bot
+   - Delete automation
+   - Any route that changes global workspace configuration
+3. Ensure that plain “client/member” users in a workspace CANNOT:
+   - Delete other clients’ data
+   - Delete the workspace itself
+   - Change global bot configuration
+
+Goal: destructive operations require explicit admin roles, never just “logged in”.
+
+────────────────────────
+PHASE 4 – REMOVE HARDCODED DEMO IDS FROM LIVE LOGIC
+────────────────────────
+
+1. Search the repo for hardcoded strings like "faith_house" or any demo workspace IDs.
+2. Wherever these are used in live logic (routes, storage, client components), replace them with:
+   - Workspace IDs coming from the database and/or
+   - Seed-only scripts that run in development/demo environments.
+3. Keep demo seeding for Faith House, but do NOT bake that ID into generic route handlers or shared components.
+
+Goal: the system is truly multi-tenant, not secretly tied to a specific demo workspace ID.
+
+────────────────────────
+PHASE 5 – QUICK UX FIXES: TRUNCATION + STATES
+────────────────────────
+
+1. Locate the client and admin dashboards showing:
+   - Leads table
+   - Conversations/messages
+   - Bookings/appointments
+2. For fields that can be long (names, emails, phone, notes, messages):
+   - Wrap them in a truncating style, e.g.:
+     - Tailwind: className="truncate max-w-[200px]" (or an appropriate width)
+     - Add title={fullText} or a tooltip so the full value is accessible on hover.
+3. Add basic loading and empty states:
+   - When a React Query hook is loading, show a skeleton or spinner instead of a blank table.
+   - When a list is empty, show a friendly “No leads yet” / “No bookings yet” message in a simple card.
+
+Goal: no obvious text overflow/bleeding on the main tables; app doesn’t look broken when data is loading or empty.
+
+────────────────────────
+PHASE 6 – SANITY PASS & DIFF SUMMARY
+────────────────────────
+
+1. After making changes, run the TypeScript build and any available tests in this environment.
+2. Print a concise summary of:
+   - All functions you updated for tenant scoping
+   - All routes now protected by membership/role checks
+   - All components where you added truncation and loading/empty states
+3. Ensure the diff stays focused on the P0 items above and does not introduce unrelated refactors.
+
+Now begin implementing these changes step by step.

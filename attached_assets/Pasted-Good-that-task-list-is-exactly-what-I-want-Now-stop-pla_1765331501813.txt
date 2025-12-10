@@ -1,0 +1,40 @@
+Good, that task list is exactly what I want.
+
+Now stop planning and actually IMPLEMENT all of those tasks in the codebase, step by step:
+
+1) For “Separate data by client ID” and “Pass client ID to all functions”:
+   - Find all storage functions that fetch/update/delete leads and appointments by ID.
+   - Update them so they ALWAYS take clientId/workspaceId as a parameter and enforce it in the WHERE clause.
+   - Update all call sites to pass the correct clientId/workspaceId.
+
+2) For “Check user belongs to workspace” and “Apply workspace checks to routes”:
+   - Implement workspace membership checks using the existing workspace_memberships (or equivalent).
+   - Apply this to ALL /api/client/:clientId and similar tenant routes so a user can’t hit another tenant’s data.
+
+3) For “Restrict deletion to admins only”:
+   - Add role-based checks (super_admin / workspace_admin) on destructive routes:
+     - delete workspace, lead, appointment, bot, automations, etc.
+   - Make sure normal client users cannot delete or globally reconfigure anything.
+
+4) For “Remove hardcoded demo IDs”:
+   - Search for hardcoded “faith_house” or demo IDs in routes/storage/shared logic.
+   - Replace them with proper tenant-aware logic (demo seeding is fine, but no hardcoded IDs in live code).
+
+5) For “Shorten long text with tooltips”:
+   - In the client/admin dashboards, update tables for leads/conversations/bookings so long fields use truncation
+     (e.g. Tailwind truncate + max width) and show full text on hover via title/tooltip.
+
+6) For “Add loading states to lists”:
+   - Wherever lists of leads/conversations/bookings/analytics are loaded, show a loading state (spinner or skeleton)
+     while fetching, and a clear empty state when there’s no data.
+
+7) Finally, “Build code and summarize changes”:
+   - Run the TypeScript build and any tests that exist.
+   - Fix any compile errors you introduced.
+   - Then give me a concise summary of:
+     - Files/functions changed for security/multi-tenancy,
+     - Files/components changed for UI truncation/loading/empty states,
+     - Any remaining TODOs you think are P1/P2, not P0.
+
+Do NOT just restate the plan.
+Actually modify the code, run the build, and then report back on what you changed.
