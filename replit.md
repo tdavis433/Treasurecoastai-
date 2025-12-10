@@ -57,6 +57,12 @@ The platform operates on a two-surface system:
     *   **Note:** Changes require server restart to take effect
 *   **Session Security:** httpOnly cookies, secure flag in production, 7-day max age
 *   **Helmet Headers:** CSP, X-Frame-Options, XSS protection, and other security headers enabled
+*   **RBAC for Destructive Actions:** Middleware `requireAdminRole` restricts delete operations to super_admin and workspace_admin roles
+    *   Applied to: appointment deletion, automation workflow deletion
+    *   Other destructive endpoints use `requireSuperAdmin` for higher privilege
+*   **Tenant Isolation:** All lead operations require explicit clientId parameter; no fallback to "default-client"
+    *   Storage layer enforces clientId in WHERE clauses for getLeadById, updateLead, deleteLead
+*   **Environment-Based Configuration:** Staff user creation uses `DEFAULT_STAFF_CLIENT_ID` env var instead of hardcoded values
 
 ## External Dependencies
 *   **OpenAI GPT-4:** Used for the core AI engine and conversational analysis.
