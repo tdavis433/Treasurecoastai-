@@ -93,6 +93,12 @@ The platform operates on a two-surface system:
 *   **Conversation Snippets:** Session items display meaningful previews from AI summary, user intent, topics, or default fallbacks
 *   **Message Count Display:** Shows formatted "{count} msgs" for clearer conversation sizing
 *   **Widget Header Actions:** Container groups reset and close buttons with consistent styling
+*   **Test Chat Error Handling:** User-friendly error messages for common issues:
+    *   Rate limit/429 errors → "I'm experiencing high demand right now"
+    *   Timeout errors → "The request took too long"
+    *   Network errors → "There seems to be a connection issue"
+    *   OpenAI/API errors → "The AI service is temporarily unavailable"
+    *   Raw error details preserved in debug panel for developers
 
 ### Workspace Management (December 2024)
 *   **Edit Workspace Name:** Super-admin can edit workspace names via Settings tab → Edit Name button
