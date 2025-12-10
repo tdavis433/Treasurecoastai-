@@ -112,6 +112,28 @@ The platform operates on a two-surface system:
     *   Password strength requirements (8+ chars with letters and numbers)
     *   Touched field tracking for better UX
     *   Submit button enabled to trigger validation on click
+*   **View as Client UX:** Button disabled with tooltip when workspace has no client logins
+    *   Workspace list now shows user count for each workspace
+    *   Clear guidance on creating login credentials when none exist
+
+### Multi-Tenant Architecture Documentation (December 2024)
+*   **Backend Documentation:** Comprehensive JSDoc comments added to `requireClientAuth` middleware
+    *   Documents how `effectiveClientId` is derived for client_admin vs super_admin users
+    *   Security warnings about never trusting clientId from request body/params
+    *   Pattern guidance for scoping all storage queries by clientId
+*   **Tenant Isolation Verification:** All client routes confirmed to use effectiveClientId
+    *   Leads, bookings, conversations, appointments properly scoped at storage layer
+    *   Storage methods enforce clientId in WHERE clauses
+
+### Mobile Responsiveness (December 2024)
+*   **Landing Page (home.tsx):** Enhanced for mobile viewports
+    *   Navigation: Responsive padding/spacing, "Login" (mobile) / "Client Login" (desktop), "Start" (mobile) / "Get Started" (desktop)
+    *   Hero: Responsive typography scaling (text-4xl → text-7xl), full-width buttons on mobile
+    *   Stats: Responsive gap and text sizing for small screens
+    *   Accessibility: aria-label on nav CTA for screen readers
+*   **Dashboards:** Client and admin dashboards already use responsive grids
+    *   Grid patterns: grid-cols-1 md:grid-cols-2 lg:grid-cols-4 throughout
+    *   Sidebar uses Shadcn responsive sidebar with trigger
 
 ## External Dependencies
 *   **OpenAI GPT-4:** Used for the core AI engine and conversational analysis.
