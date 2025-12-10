@@ -3490,8 +3490,10 @@ These suggestions should be relevant to what was just discussed and help guide t
       const users = await db
         .select({
           id: adminUsers.id,
+          username: adminUsers.username,
           email: adminUsers.username,
           role: adminUsers.role,
+          clientId: adminUsers.clientId,
           createdAt: adminUsers.createdAt,
           disabled: adminUsers.disabled,
           mustChangePassword: adminUsers.mustChangePassword,
@@ -3504,7 +3506,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         ))
         .orderBy(desc(adminUsers.createdAt));
       
-      res.json({ users });
+      res.json(users);
     } catch (error) {
       console.error("Get workspace users error:", error);
       res.status(500).json({ error: "Failed to fetch workspace users" });

@@ -10558,7 +10558,7 @@ function ClientLoginsSectionPanel({ workspaces }: ClientLoginsSectionPanelProps)
 
   const getWorkspaceName = (clientId: string | null) => {
     if (!clientId) return 'Unknown';
-    const ws = workspaces.find(w => w.id === clientId);
+    const ws = workspaces.find(w => w.id === clientId || w.slug === clientId);
     return ws?.name || clientId;
   };
 
