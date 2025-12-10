@@ -1,0 +1,214 @@
+You are an elite full-stack engineer and QA lead working inside the Treasure Coast AI codebase.
+
+Your job is to **fix only the critical demo-breaking issues** for the live platform.
+
+You must NOT refactor or “improve” unrelated code. Make surgical fixes.
+
+────────────────────────
+0. CONTEXT & MUST-HAVE FLOW
+────────────────────────
+
+We are preparing a demo where the ONLY thing that truly matters is this:
+
+1. A visitor goes to `/demo/faith-house`.
+2. They chat with the Faith House bot:
+   - Ask about beds, rules, pricing.
+   - Give name + phone + email.
+   - Book a tour (with a date/time).
+   - Book a phone call (with a date/time).
+3. Those interactions MUST result in:
+   - A Lead record.
+   - Appointment/Booking records.
+   - Conversation transcript.
+4. Those records MUST be visible in:
+   - Faith House client dashboard (logging in as `demo_faith_house`).
+   - Admin dashboard → Faith House workspace (logging in as `admin`).
+
+If these don’t work, the product demo fails.
+
+Everything else (Stripe, new client wizard, multiple assistants) is secondary.
+
+────────────────────────
+1. DIAGNOSE & FIX – FAITH HOUSE CHAT → LEADS + BOOKINGS
+────────────────────────
+
+Goal: When the Faith House bot collects contact info and booking details, it must create real Lead and Appointment records with no runtime errors.
+
+Steps:
+
+1. Locate the Faith House demo chat entrypoint:
+   - Routes like `/demo/faith-house`.
+   - Components that mount the chat widget for that page.
+   - Backend API route(s) that handle chat messages for that demo, e.g. `/api/chat`, `/api/appointment`, or similar.
+
+2. Replicate the failing scenario:
+   - Run the app (same way as production).
+   - In the Faith House demo chat:
+     - Ask about rules and pricing.
+     - Provide:
+       - Name: `QA Demo Visitor`
+       - Phone: `555-111-2222`
+       - Email: `qa.visitor@example.com`
+     - Say: 
+       - “I’d like to book a tour for tomorrow at 3 PM.”
+       - “I’d also like to schedule a phone call next Monday evening.”
+   - Observe:
+     - Where does “An error occurred processing your message” originate?
+     - Which handler throws? (log stack trace / error).
+
+3. Fix the error:
+   - Add logging around:
+     - Chat orchestration logic.
+     - Lead creation logic.
+     - Booking creation logic.
+   - Identify:
+     - Are we missing required fields (e.g. clientId, workspaceId)?
+     - Is there a schema mismatch (column names, null constraints)?
+     - Is there an assumption that fails only for this demo?
+
+4. Ensure records are written:
+   - Confirm that:
+     - Creating a booking from the conversation results in:
+       - A Lead row with the visitor’s name/phone/email.
+       - One or more Appointment rows with:
+         - Correct clientId (Faith House workspace).
+         - Type: tour vs phone call.
+         - `scheduled_at` (or similar) populated with a real datetime.
+   - If necessary:
+     - Add a single, explicit function like `createLeadAndBookingFromConversation(conversation, clientId)` that:
+       - Validates inputs.
+       - Inserts lead.
+       - Inserts appointment(s) in a single, sane place.
+   - Handle ALL errors gracefully:
+     - If something fails, log it server-side.
+     - Return a user-friendly message, NOT a red generic “An error occurred processing your message”.
+
+5. Verify in the database (via read APIs, not direct DB):
+   - After running the test scenario:
+     - Call the same endpoints used by the dashboards (admin + client) and confirm:
+       - Lead appears in the list.
+       - Bookings appear with correct type and time.
+
+────────────────────────
+2. SYNC – CLIENT DASHBOARD & ADMIN DASHBOARD
+────────────────────────
+
+Goal: Both dashboards must show the same new leads/bookings.
+
+1. Identify how the Faith House client dashboard loads data:
+   - For `demo_faith_house` login:
+     - Find the API endpoints used by:
+       - Leads page.
+       - Bookings/appointments page.
+       - Conversations page.
+
+2. Identify how Admin → Faith House workspace loads data:
+   - For `admin` login:
+     - Find endpoints used by:
+       - Leads tab.
+       - Bookings tab.
+       - Conversations tab.
+
+3. Ensure alignment:
+   - All “lead list” endpoints for Faith House must read from the same underlying table with the same clientId/workspaceId.
+   - Same for bookings.
+   - If there are multiple code paths (e.g., one for legacy JSON bots, one for DB-backed bots), align them or at least make sure Faith House uses the correct, DB-backed path.
+
+4. After fixing chat creation, run this test:
+
+   - Scenario:
+     - Use `/demo/faith-house` to generate:
+       - Lead + Tour booking + Phone call booking.
+   - Check:
+     - Log in as `demo_faith_house`:
+       - Leads page: new lead is present.
+       - Bookings page: at least two appointments show with correct type and times.
+     - Log in as `admin`:
+       - Open Faith House workspace:
+         - Leads tab: same lead exists.
+         - Bookings tab: same appointments exist.
+   - Any mismatch between client and admin views = BUG that must be fixed.
+
+────────────────────────
+3. ADMIN FLOWS – EITHER WORK OR HIDE
+────────────────────────
+
+Goal: For the upcoming demo, the user must not hit obviously broken admin flows.
+
+Priorities:
+
+1. **Add Client Wizard**
+   - If you can fix it cleanly (no more 500, scrollable, fully working), do so.
+   - If it’s messy and risky:
+     - Add a quick guard to:
+       - Either hide the “Add Client” button entirely.
+       - Or disable it with a clear “Coming Soon” tooltip so the demo user never clicks it.
+
+2. **Create Assistant Wizard**
+   - Same rule:
+     - If you can quickly make the scroll + submit flow fully working, do it.
+     - Otherwise, disable or hide the “New Assistant” CTA for now.
+
+3. **User creation**
+   - If it’s fast to fix:
+     - Make sure new users appear in the list after creation.
+     - Show real error messages when invalid.
+   - If not:
+     - Hide or disable the “Add User” button where it’s broken.
+
+4. **View as Client**
+   - If current implementation is flaky (about:blank first):
+     - Either:
+       - Fix the navigation to directly open the client dashboard with a proper loading state.
+       - Or hide/disable “View as Client” for the demo.
+
+The key is: for the demo, NO ONE should click a button that leads to a crash or an obvious failure.
+
+────────────────────────
+4. ACCEPTANCE CRITERIA
+────────────────────────
+
+You are DONE ONLY WHEN ALL of the following are TRUE:
+
+1. Faith House Chat E2E:
+   - From `/demo/faith-house`, you can:
+     - Run a full conversation where:
+       - Bot answers questions.
+       - You give name, phone, email.
+       - You book a tour (explicit date/time).
+       - You schedule a phone call (explicit date/time).
+   - NO “An error occurred processing your message” appears in this flow.
+
+2. Faith House Client Dashboard:
+   - Logging in as `demo_faith_house`:
+     - Leads page shows the new lead created from that conversation.
+     - Bookings page shows all bookings from that conversation:
+       - Types: tour + phone call.
+       - Times: reasonably accurate, formatted datetime.
+     - Conversations page shows the full transcript.
+
+3. Admin → Faith House Workspace:
+   - Logging in as `admin`:
+     - Leads tab: same lead as the client view.
+     - Bookings tab: same appointments as the client view.
+     - If conversations tab exists: same conversation(s).
+
+4. Broken admin flows:
+   - “Add Client”, “New Assistant”, “Add User”, and “View as Client”:
+     - Either:
+       - Fully work without errors.
+       - Or are clearly disabled/hidden so a demo user will not click into something broken.
+
+────────────────────────
+5. OUTPUT FORMAT
+────────────────────────
+
+When finished, output a short Markdown summary with:
+
+- **What you changed** (files, functions, routes).
+- **How you fixed chat → lead/booking creation**.
+- **How you aligned admin vs client dashboards**.
+- **Which admin flows are working vs disabled for now**.
+- **Manual test results** for the Faith House scenario described above.
+
+Do not include code in the summary, only explanations and verification notes.
