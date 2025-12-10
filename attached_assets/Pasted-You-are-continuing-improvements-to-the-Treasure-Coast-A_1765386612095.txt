@@ -1,0 +1,106 @@
+You are continuing improvements to the Treasure Coast AI SaaS in this Replit project.
+
+Auth and Faith House parity should now be fixed from previous blocks.
+
+────────────────────
+GOAL OF THIS BLOCK
+────────────────────
+1. Fix **user management** inside a workspace (Create Login, list, lifecycle).
+2. Fix **New Client / Workspace wizard** validation and UX.
+3. Ensure basic editing of workspace metadata works.
+
+────────────────────
+PART A – WORKSPACE USER MANAGEMENT
+────────────────────
+Target the “Workspace Users” / “Create Login” flow for a QA workspace (not Faith House).
+
+1. **Validation**
+   - Email:
+     - Required.
+     - Must be a valid email format.
+   - Password:
+     - Required.
+     - Minimum 8 characters.
+     - Should include letters and numbers at least.
+
+   Behavior:
+   - If invalid → show inline errors + prevent submit.
+   - No silent failure, no creation of broken users.
+
+2. **User creation**
+   - When a user is created via “Create Login”:
+     - Associate them with the correct workspace id.
+     - Immediately show the new user in the workspace user list (trigger refetch/invalidate cache as needed).
+   - After hard refresh, user should still appear.
+
+3. **User login**
+   - A newly created workspace user should:
+     - Log in using the client login route.
+     - Land on the correct workspace dashboard.
+     - Not see super admin routes.
+
+4. **Edit / Disable / Delete (if supported)**
+   - If the UI currently has actions to edit or delete a user:
+     - Implement them fully:
+       - Edit email (with validation).
+       - Disable or delete user (prefer soft delete/disable).
+     - Ensure a disabled/deleted user can no longer log in.
+
+If the product does NOT intend to support editing/deleting users from UI yet:
+- Hide or disable such controls to avoid “fake” buttons.
+
+────────────────────
+PART B – NEW CLIENT / WORKSPACE WIZARD
+────────────────────
+Fix the “New Client” button and wizard behavior.
+
+1. **Open reliably**
+   - Clicking “New Client” should always open the wizard modal.
+
+2. **Step 1 validation**
+   - Required: Business Name, Contact Email (and any other essential fields).
+   - Clicking Next with missing/invalid fields:
+     - Shows inline errors.
+     - Keeps the modal open – NO silent close.
+   - With valid values:
+     - Moves to Step 2.
+
+3. **Scrolling and layout**
+   - Wizard content should be scrollable without hiding the Next/Back buttons.
+   - On smaller laptop screens, user should still be able to reach all fields and actions.
+
+4. **Completion**
+   - Completing all steps must create a new workspace record.
+   - New workspace should appear in Clients list without manual refresh if possible.
+
+────────────────────
+PART C – EDIT WORKSPACE METADATA
+────────────────────
+For a QA workspace (e.g., newly created “QA Full Lifecycle Workspace”):
+
+- Implement or fix editing workspace metadata:
+  - Name.
+  - Contact email.
+  - Any public-facing labels.
+
+- Ensure changes:
+  - Save successfully.
+  - Reflect in:
+    - Clients list card.
+    - Workspace overview header.
+  - Persist across reload.
+
+────────────────────
+ACCEPTANCE CRITERIA FOR THIS BLOCK
+────────────────────
+- ✅ Create Login rejects invalid email/password with clear messages.
+- ✅ Users created via the UI:
+  - Show up immediately in the users list.
+  - Can log in and see only their workspace.
+- ✅ New Client wizard:
+  - Validates fields.
+  - Doesn’t close silently on errors.
+  - Successfully creates a new workspace.
+- ✅ Workspace metadata (name/email) is editable and persists.
+
+Make the necessary changes now.
