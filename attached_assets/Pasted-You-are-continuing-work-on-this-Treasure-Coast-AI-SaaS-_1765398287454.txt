@@ -1,0 +1,90 @@
+You are continuing work on this Treasure Coast AI SaaS.
+
+IMPORTANT:
+- Multi-tenant isolation middleware and storage scoping (effectiveClientId, clientId WHERE clauses) were already audited and documented – DO NOT rewrite them.
+- Landing page and general responsiveness have already been improved – leave `home.tsx` alone.
+
+THIS PROMPT’S GOAL:
+1) Establish a **single canonical Faith House workspace**.
+2) Make sure the Faith House **client dashboard** and **admin workspace view** show the SAME leads, bookings, and conversations.
+
+CREDENTIALS:
+- Faith House client user:
+  - Username: demo_faith_house
+  - Password: demo123
+
+────────────────────
+STEP 1 – FIND THE REAL FAITH HOUSE WORKSPACE
+────────────────────
+In the database/models:
+- Locate all workspaces/clients that look like Faith House:
+  - Slugs or names like: `faith_house`, `faith_house_demo`, `faith_house_live`, “Faith House (Demo)”, etc.
+- Determine which one is actually linked to the user `demo_faith_house`.
+
+Define this as the **canonical Faith House workspace**:
+- That is the workspace the client login should use.
+- That is the workspace the super-admin should open when selecting Faith House.
+
+If multiple exist, either:
+- Migrate necessary data into the canonical one and mark others as deprecated/hidden.
+- Or ensure only the canonical one appears as the main Faith House entry in the admin UI.
+
+Add comments in the code where this mapping is clear (e.g., seed data, workspace creation).
+
+────────────────────
+STEP 2 – WIRE ADMIN VIEW TO THE CANONICAL WORKSPACE
+────────────────────
+In the super admin Clients/Workspaces UI:
+- The “Faith House” card must open the **canonical** Faith House workspace.
+
+In that workspace’s admin view:
+- Overview should display correct counts for:
+  - Total leads for that Faith House clientId.
+  - Total bookings.
+  - Conversations/messages (if tracked).
+- Leads tab should list all leads for that clientId.
+- Bookings tab should list all bookings for that clientId.
+- Conversations tab (if present) should list conversations for that same clientId.
+
+All queries should filter by this canonical workspace’s clientId (using your existing isolation mechanism).
+
+────────────────────
+STEP 3 – MATCH CLIENT DASHBOARD DATA WITH ADMIN DATA
+────────────────────
+For the **same canonical Faith House workspace**:
+
+- Client dashboard (when logged in as `demo_faith_house`) must show:
+  - The same total leads / bookings / conversations as the admin Faith House workspace view.
+  - Leads table with the same records as admin.
+  - Bookings table with the same records as admin.
+
+- Status sync:
+  - If admin changes a lead status (e.g., New → Contacted), that status must:
+    - Persist in the database.
+    - Appear in the client dashboard after page reload.
+  - Same for bookings (e.g., Pending → Confirmed).
+
+If necessary, update the client dashboard queries to use the same workspace id and storage methods as admin.
+
+────────────────────
+STEP 4 – /demo/faith-house ROUTE
+────────────────────
+Check how `/demo/faith-house` is wired:
+
+- Ideally, it should use the same assistant/workspace as the canonical Faith House workspace, so:
+  - Conversations or leads coming from the public demo can show up in that workspace.
+- If you must keep `/demo/faith-house` isolated from “real” data:
+  - Document in code comments that it uses a separate demo workspace.
+  - Ensure that the client login `demo_faith_house` is NOT attached to that separate workspace.
+
+────────────────────
+ACCEPTANCE CRITERIA
+────────────────────
+- ✅ A single canonical Faith House workspace is clearly identified and used consistently in code.
+- ✅ The Faith House client login (`demo_faith_house`) uses this workspace.
+- ✅ The super admin “Faith House” workspace view uses this same workspace.
+- ✅ Leads, bookings, and conversations match between admin and client for Faith House.
+- ✅ Status changes made from admin are visible on the client dashboard and persist after refresh.
+- ✅ `/demo/faith-house` either uses this workspace OR is clearly documented as a separate demo workspace.
+
+Implement whatever model, query, or routing changes are needed to achieve this.
