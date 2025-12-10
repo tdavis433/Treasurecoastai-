@@ -63,6 +63,16 @@
       ],
       "status": "active",
       "createdAt": "2025-12-03"
+    },
+    {
+      "id": "test_bot_creation_qa_vbds",
+      "name": "Test Bot Creation QA VBDS",
+      "type": "auto_shop",
+      "bots": [
+        "test_bot_creation_qa_vbds_main"
+      ],
+      "status": "active",
+      "createdAt": "2025-12-10"
     }
   ]
 }

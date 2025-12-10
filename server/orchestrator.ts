@@ -53,7 +53,7 @@ function categorizeMessageTopic(content: string): string {
   return 'general';
 }
 
-interface ExtractedBookingInfo {
+export interface ExtractedBookingInfo {
   name?: string;
   phone?: string;
   email?: string;
@@ -184,7 +184,7 @@ function parseVagueTimeToDatetime(timePhrase: string): string | null {
   }
 }
 
-function extractBookingInfoFromConversation(
+export function extractBookingInfoFromConversation(
   messages: ChatMessage[],
   currentReply: string,
   currentUserMessage: string

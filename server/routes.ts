@@ -80,6 +80,7 @@ import {
 import { scrapeWebsite, applyScrapedDataToBot } from './scraper';
 import { resetDemoWorkspace, seedAllDemoWorkspaces, getDemoSlugs, getDemoConfig } from './demoSeed';
 import { getWidgetEmbedCode, getEmbedInstructions, type WidgetEmbedOptions } from './embed';
+import { extractBookingInfoFromConversation, type ExtractedBookingInfo, type ChatMessage as OrchestratorChatMessage } from './orchestrator';
 
 // =============================================
 // PHASE 2.4: SIGNED WIDGET TOKENS
@@ -2177,13 +2178,86 @@ These suggestions should be relevant to what was just discussed and help guide t
             analysis?.bookingIntent || sessionData.appointmentRequested || false,
             analysis
           );
+          
+          // AI-driven appointment creation: When AI confirms booking with complete info
+          try {
+            const lastUserMsg = messages[messages.length - 1]?.content || "";
+            // Convert messages to orchestrator format
+            const orchestratorMessages: OrchestratorChatMessage[] = messages.map(m => ({
+              role: m.role as 'user' | 'assistant',
+              content: m.content
+            }));
+            const bookingInfo = extractBookingInfoFromConversation(orchestratorMessages, cleanReply, lastUserMsg);
+            
+            if (bookingInfo && bookingInfo.isComplete) {
+              // Check if we already created a booking for this session
+              const existingAppointment = await storage.getAppointmentBySessionId(actualSessionId, clientId);
+              
+              if (!existingAppointment) {
+                console.log(`[Streaming] Creating AI-driven booking for session ${actualSessionId}`, {
+                  clientId,
+                  botId,
+                  sessionId: actualSessionId,
+                  bookingType: bookingInfo.bookingType,
+                  name: bookingInfo.name,
+                  hasPhone: !!bookingInfo.phone,
+                  hasEmail: !!bookingInfo.email,
+                });
+                
+                await storage.createAppointment(clientId, {
+                  name: bookingInfo.name!,
+                  contact: bookingInfo.phone!,
+                  email: bookingInfo.email || null,
+                  preferredTime: bookingInfo.preferredTime || 'To be confirmed',
+                  scheduledAt: bookingInfo.scheduledAt ? new Date(bookingInfo.scheduledAt) : null,
+                  appointmentType: bookingInfo.bookingType,
+                  notes: bookingInfo.notes || null,
+                  contactPreference: 'phone',
+                  botId: botId,
+                  sessionId: actualSessionId,
+                });
+                
+                console.log(`[Streaming] Booking created successfully: ${bookingInfo.bookingType} for ${bookingInfo.name}`);
+              }
+            }
+          } catch (bookingErr) {
+            console.error('[Streaming] Error creating AI-driven booking:', bookingErr);
+          }
         } catch (err) {
           console.error('[AI Analysis] Streaming processing failed:', err);
         }
       })();
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Streaming chat error:", error);
+      
+      // Check for OpenAI rate limit error
+      const isRateLimitError = error?.status === 429 || 
+        error?.code === 'rate_limit_exceeded' ||
+        error?.message?.includes('Rate limit') ||
+        error?.message?.includes('rate_limit');
+      
+      if (isRateLimitError) {
+        console.error("[Streaming] OpenAI rate limit exceeded - providing fallback response");
+        const fallbackMessage = "I apologize, but our AI service is currently experiencing high demand. Please try again in a few moments, or feel free to call us directly at the number listed on this page for immediate assistance.";
+        
+        if (!res.headersSent) {
+          res.setHeader('Content-Type', 'text/event-stream');
+          res.setHeader('Cache-Control', 'no-cache');
+          res.setHeader('Connection', 'keep-alive');
+          res.flushHeaders();
+        }
+        
+        res.write(`data: ${JSON.stringify({ type: 'chunk', content: fallbackMessage })}\n\n`);
+        res.write(`data: ${JSON.stringify({ 
+          type: 'done', 
+          suggestedReplies: ["When is a good time to call?", "What are your operating hours?"],
+          meta: { clientId, botId, sessionId: sessionId || `session_${Date.now()}`, rateLimited: true }
+        })}\n\n`);
+        res.end();
+        return;
+      }
+      
       if (!res.headersSent) {
         res.status(500).json({ error: "Failed to process chat message" });
       } else {
@@ -3985,7 +4059,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         status: 'paused', // Start duplicates as paused
       };
       
-      const success = saveBotConfig(newBotId, duplicatedConfig);
+      const success = createBotConfig(duplicatedConfig);
       
       if (success) {
         res.json(duplicatedConfig);
@@ -4132,7 +4206,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         status: 'active',
       };
       
-      const success = saveBotConfig(newBotId, newConfig);
+      const success = createBotConfig(newConfig);
       
       if (success) {
         // Add bot to client's bot list
@@ -4641,8 +4715,8 @@ These suggestions should be relevant to what was just discussed and help guide t
         },
       };
       
-      // Save the new bot config
-      const saveSuccess = saveBotConfig(newBotId, newConfig);
+      // Create the new bot config (use createBotConfig for new bots)
+      const saveSuccess = createBotConfig(newConfig);
       
       if (!saveSuccess) {
         return res.status(500).json({ error: "Failed to save bot config" });
@@ -5644,10 +5718,34 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       const summary = await storage.getClientAnalyticsSummary(clientId, botId, start, end);
       
+      // Get leads and appointments counts for last 7 days
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      const { leads } = await storage.getLeads(clientId, { limit: 10000 });
+      const allAppointments = await storage.getAllAppointments(clientId);
+      
+      // Count items from last 7 days
+      const leadsLast7d = leads.filter((l: any) => {
+        const created = new Date(l.createdAt);
+        return created >= sevenDaysAgo;
+      }).length;
+      
+      const bookingsLast7d = allAppointments.filter((a: any) => {
+        const created = new Date(a.createdAt);
+        return created >= sevenDaysAgo;
+      }).length;
+      
+      // Count messages from conversations in last 7 days
+      const messagesLast7d = summary.totalMessages;
+      
       res.json({
         clientId,
         botId: botId || 'all',
         ...summary,
+        leadsLast7d,
+        bookingsLast7d,
+        messagesLast7d,
       });
     } catch (error) {
       console.error("Get client analytics summary error:", error);
