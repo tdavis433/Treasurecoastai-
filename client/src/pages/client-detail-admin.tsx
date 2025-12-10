@@ -305,7 +305,8 @@ export default function ClientDetailAdmin() {
       const response = await fetch(`/api/super-admin/workspaces/${slug}/users`, { credentials: "include" });
       if (!response.ok) return [];
       const data = await response.json();
-      return data.users || [];
+      // API returns array directly, not wrapped in users property
+      return Array.isArray(data) ? data : (data.users || []);
     },
     enabled: !!slug && activeTab === 'users',
   });
