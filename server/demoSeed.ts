@@ -57,6 +57,26 @@ interface DemoWorkspaceConfig {
   }>;
 }
 
+/**
+ * DEMO WORKSPACE CONFIGURATIONS
+ * 
+ * IMPORTANT: Faith House Workspace Architecture
+ * ==============================================
+ * There are multiple Faith House workspaces in the system:
+ * 
+ * 1. "faith_house" (CANONICAL) - The primary Faith House workspace
+ *    - Used by client login: demo_faith_house (password: demo123)
+ *    - Used by admin when viewing "Faith House" in super-admin panel
+ *    - Contains real/production-like data for demos
+ * 
+ * 2. "faith_house_demo" (DEMO RESET TARGET) - Separate demo workspace
+ *    - Used by /demo/faith-house public demo page
+ *    - Can be reset via /api/admin/demo/faith-house/reset
+ *    - Isolated from canonical workspace to allow safe demo resets
+ * 
+ * The demo_faith_house user's client_id is set to "faith_house" (canonical)
+ * so the client dashboard shows the same data as the admin workspace view.
+ */
 const DEMO_CONFIGS: Record<string, DemoWorkspaceConfig> = {
   faith_house_demo: {
     slug: "faith_house_demo",

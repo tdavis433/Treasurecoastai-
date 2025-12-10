@@ -9291,6 +9291,20 @@ These suggestions should be relevant to what was just discussed and help guide t
   // =============================================
   // DEMO RESET ENDPOINT - Faith House Demo
   // =============================================
+  // 
+  // IMPORTANT: Faith House Workspace Architecture
+  // - "faith_house" is the CANONICAL workspace used by:
+  //   - Client login: demo_faith_house (password: demo123)
+  //   - Super-admin workspace view for "Faith House"
+  //
+  // - "faith_house_demo" is a SEPARATE demo workspace used ONLY by:
+  //   - /demo/faith-house public demo page
+  //   - This reset endpoint
+  //   - Isolated from canonical to allow safe demo resets
+  //
+  // The demo_faith_house user's client_id points to "faith_house" (canonical),
+  // so admin and client dashboards show the same data.
+  // =============================================
   
   app.post("/api/admin/demo/faith-house/reset", requireSuperAdmin, async (req, res) => {
     try {

@@ -6,6 +6,23 @@ Treasure Coast AI is an agency-first AI assistant platform designed to empower a
 ## User Preferences
 Super Admin Login: username `admin`, password `admin123`
 
+### Faith House Workspace Architecture (December 2024)
+**Canonical Workspace:** `faith_house`
+- Used by client login: `demo_faith_house` (password: `demo123`)
+- Used by super-admin when viewing "Faith House" workspace
+- Contains production-like data for demos
+- Admin and client dashboards show the SAME leads, bookings, and conversations
+
+**Demo Reset Workspace:** `faith_house_demo`
+- Used ONLY by `/demo/faith-house` public demo page
+- Can be reset via `/api/admin/demo/faith-house/reset`
+- Isolated from canonical workspace to allow safe demo resets without affecting client data
+
+**Why Two Workspaces?**
+This separation allows public demo page visitors to interact with a resettable demo environment,
+while the actual client login (`demo_faith_house`) sees persistent, production-like data that
+matches what the super-admin sees in the workspace view.
+
 ## System Architecture
 
 ### Design Philosophy
