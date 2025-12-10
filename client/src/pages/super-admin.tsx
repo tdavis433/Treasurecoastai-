@@ -9673,11 +9673,11 @@ function BillingSectionPanel({ workspaces }: { workspaces: Workspace[] }) {
                 <Layers className="h-5 w-5 text-amber-400" />
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {DEFAULT_PLANS.map(plan => {
                 const count = workspaces.filter(w => (w.plan || 'starter') === plan.id).length;
                 return (
-                  <Badge key={plan.id} className="bg-white/10 text-white/70 text-xs">
+                  <Badge key={plan.id} className="bg-white/10 text-white/70 text-xs whitespace-nowrap">
                     {plan.name}: {count}
                   </Badge>
                 );

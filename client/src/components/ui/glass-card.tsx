@@ -20,7 +20,7 @@ export function GlassCard({
   return (
     <div
       className={cn(
-        "bg-white/[0.03] border border-white/10 rounded-xl backdrop-blur-md",
+        "bg-white/[0.03] border border-white/10 rounded-xl backdrop-blur-md overflow-hidden",
         "shadow-[0px_4px_24px_rgba(0,0,0,0.5)]",
         "transition-all duration-200",
         hover && "hover:bg-white/[0.06] hover:border-white/15 cursor-pointer",
@@ -85,7 +85,7 @@ export function GlassCardContent({
   className?: string;
 }) {
   return (
-    <div className={cn("p-6 pt-0", className)}>
+    <div className={cn("p-6 pt-0 overflow-hidden", className)}>
       {children}
     </div>
   );
