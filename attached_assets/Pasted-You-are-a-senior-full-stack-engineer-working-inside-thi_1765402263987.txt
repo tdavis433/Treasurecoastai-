@@ -1,0 +1,168 @@
+You are a senior full-stack engineer working inside this Replit project for the Treasure Coast AI SaaS.
+
+IMPORTANT (do NOT redo these):
+- Multi-tenant isolation (`requireClientAuth`, `effectiveClientId`) is already implemented and documented.
+- Landing page responsiveness is already tuned.
+- Login, logout, and route protection are already working.
+- Canonical Faith House workspace (`faith_house`) and `/demo/faith-house` mapping are already correct.
+
+THIS PROMPT’S GOAL:
+Implement a proper **password reset flow** for BOTH:
+- super_admin (e.g., `admin`), and
+- client/workspace users (e.g., `demo_faith_house` and created workspace logins).
+
+We want:
+- A “Forgot password?” link.
+- Email-based or token-based reset.
+- Secure, time-limited, single-use tokens.
+- Strong password validation on reset.
+- Graceful behavior when email is not fully configured.
+
+────────────────────
+1. DATA & ARCHITECTURE – RESET TOKENS
+────────────────────
+Add a secure password reset mechanism:
+
+1) Create a PasswordResetToken model/table (or equivalent) with at least:
+   - id (uuid)
+   - userId (foreign key)
+   - tokenHash (hashed, not plain text)
+   - expiresAt (timestamp)
+   - usedAt (nullable timestamp)
+   - createdAt (timestamp)
+
+2) Security requirements:
+   - Generate a cryptographically secure random token (e.g., 32+ bytes hex).
+   - Store ONLY a hash of the token (e.g., using bcrypt or a solid hashing fn).
+   - Tokens must:
+     - Expire after a short period (e.g., 30–60 minutes).
+     - Be single-use (mark as used once consumed).
+
+3) Multi-tenant considerations:
+   - Reset is per-user, not per-workspace.
+   - No need to pass `clientId` via URL for resets—just map from userId.
+
+Document this briefly in your code and `replit.md`.
+
+────────────────────
+2. FORGOT PASSWORD REQUEST – UI & BACKEND
+────────────────────
+On the **login screen**:
+
+1) Add a small “Forgot password?” link below the password field.
+
+2) When clicked:
+   - Navigate to a `/forgot-password` page (or modal) with a form:
+     - Field: Email (or username, but email is preferred).
+   - User submits email:
+     - If email exists for a user:
+       - Generate a reset token (as above).
+       - Store token.
+       - Send the user an email with a reset link.
+     - If email does not exist:
+       - Do NOT reveal this (“email not found”) in a way that leaks who is in the system.
+       - Instead, show a generic “If this email exists, we’ve sent a reset link” message.
+
+3) Email sending:
+   - Introduce a simple email service abstraction, e.g. `emailService.sendPasswordResetEmail(to, resetUrl)`.
+   - For **production**, read config from env:
+     - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`
+     - OR whatever provider you choose (e.g., SendGrid key).
+   - For **dev/QA environments where SMTP is not configured**:
+     - Still create the token in DB.
+     - Log the reset URL to the server console and/or expose it in an **admin-only debug page** (e.g., `/super-admin/debug-reset-tokens`) showing:
+       - user email
+       - reset URL
+       - expiration
+     - This lets you QA the flow even without real email.
+
+4) UX:
+   - On form submit, show a toast:
+     - “If an account exists with that email, we’ve sent a password reset link.”
+
+────────────────────
+3. RESET PASSWORD PAGE – CONSUME TOKEN
+────────────────────
+Implement a **Reset Password** page, e.g. `/reset-password?token=...`:
+
+1) When opened with a token:
+   - Backend validates token:
+     - Find token record by hashed value.
+     - Check not expired.
+     - Check not already used.
+   - If invalid/expired:
+     - Show a friendly error page (“Link is invalid or expired. Please request a new reset.”)
+     - Do NOT reveal specific internal details.
+
+2) If valid:
+   - Show a form:
+     - New password.
+     - Confirm new password.
+
+3) Password validation:
+   - Same rules as Create Login:
+     - Minimum 8 chars.
+     - Must include uppercase, lowercase, and number (or similar).
+   - If invalid:
+     - Show inline error messages.
+
+4) On valid submission:
+   - Hash and update the user’s password.
+   - Mark the token as `usedAt = now`.
+   - Invalidate any other outstanding tokens for that user (optional but good practice).
+   - Redirect to login with a success toast:
+     - “Your password has been reset. Please sign in with your new password.”
+
+────────────────────
+4. SUPPORT BOTH ADMIN & CLIENT USERS
+────────────────────
+Ensure the password reset flow works for:
+
+- `admin` user:
+  - They should be able to request a reset via their email (or username if that’s how you identify them).
+- Client/workspace users:
+  - Any user created via “Create Login” should be able to reset via their email.
+
+Determine how you map `email → user`:
+- If the admin user does not have an email field yet:
+  - Add one in DB and set a default admin email in seed (documented in `demoSeed.ts`).
+  - Or support username in the reset form (but email is better).
+
+Make sure the flow does not break multi-tenancy:
+- Reset is user-level, and once the user logs in they’ll go to the correct dashboard based on role/workspace.
+
+────────────────────
+5. UX & EDGE CASES
+────────────────────
+Handle nicely:
+
+- Expired token:
+  - Provide a link back to “Forgot password” to request a new one.
+- Already used token:
+  - Same UX as invalid/expired.
+- Clicking the same link twice:
+  - Should not reset the password again.
+
+Add minimal tests (unit/integration if any test harness exists) for:
+- Creating reset tokens.
+- Token expiration logic.
+- Reset flow success with valid token.
+- Failure with invalid/expired token.
+
+────────────────────
+ACCEPTANCE CRITERIA
+────────────────────
+- ✅ Login screen has a working “Forgot password?” link.
+- ✅ `/forgot-password` form:
+  - Accepts email.
+  - Shows a generic success message without leaking whether the user exists.
+  - Creates a reset token and attempts to send an email (or logs it in dev).
+- ✅ `/reset-password?token=...`:
+  - Valid token → shows reset form, accepts strong new password, updates user, and invalidates the token.
+  - Invalid/expired token → shows a friendly error and does not allow reset.
+- ✅ The flow works for:
+  - `admin` user.
+  - A workspace client user created via “Create Login”.
+- ✅ Behavior is documented briefly in `replit.md`, including how to configure email and, in dev, where to see reset URLs when SMTP isn’t set.
+
+Implement all required backend + frontend pieces now.
