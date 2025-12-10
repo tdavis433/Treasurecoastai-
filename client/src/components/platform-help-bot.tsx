@@ -11,7 +11,8 @@ import {
   User,
   Loader2,
   ChevronDown,
-  Zap
+  Zap,
+  RefreshCw
 } from "lucide-react";
 
 interface Message {
@@ -99,6 +100,19 @@ export function PlatformHelpBot({ variant = 'landing', className = '' }: Platfor
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Reset conversation - clears messages, loading state, and aborts pending requests
+  const handleReset = useCallback(() => {
+    // Abort any pending request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setMessages([]);
+    setIsLoading(false);
+    setInput('');
+  }, []);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -135,6 +149,10 @@ export function PlatformHelpBot({ variant = 'landing', className = '' }: Platfor
     setInput('');
     setIsLoading(true);
 
+    // Create AbortController for this request
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       const response = await fetch('/api/platform-help/chat', {
         method: 'POST',
@@ -143,7 +161,8 @@ export function PlatformHelpBot({ variant = 'landing', className = '' }: Platfor
           message: content.trim(),
           history: messages.map(m => ({ role: m.role, content: m.content })),
           context: variant
-        })
+        }),
+        signal: controller.signal
       });
 
       if (!response.ok) throw new Error('Failed to get response');
@@ -158,7 +177,11 @@ export function PlatformHelpBot({ variant = 'landing', className = '' }: Platfor
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
+    } catch (error: any) {
+      // Don't show error message if request was aborted (reset was clicked)
+      if (error?.name === 'AbortError') {
+        return;
+      }
       const errorMessage: Message = {
         id: `error-${Date.now()}`,
         role: 'assistant',
@@ -167,6 +190,7 @@ export function PlatformHelpBot({ variant = 'landing', className = '' }: Platfor
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
+      abortControllerRef.current = null;
       setIsLoading(false);
     }
   };
@@ -238,15 +262,29 @@ export function PlatformHelpBot({ variant = 'landing', className = '' }: Platfor
                     </p>
                   </div>
                 </div>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => setIsOpen(false)}
-                  className="h-8 w-8 rounded-lg text-white/60 hover:text-white hover:bg-white/10"
-                  data-testid="button-close-help-bot"
-                >
-                  <X className="w-4 h-4" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  {messages.length > 0 && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={handleReset}
+                      className="h-8 w-8 rounded-lg text-white/60 hover:text-white hover:bg-white/10 group"
+                      title="Reset conversation"
+                      data-testid="button-reset-help-bot"
+                    >
+                      <RefreshCw className="w-4 h-4 transition-transform duration-300 group-hover:rotate-180" />
+                    </Button>
+                  )}
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => setIsOpen(false)}
+                    className="h-8 w-8 rounded-lg text-white/60 hover:text-white hover:bg-white/10"
+                    data-testid="button-close-help-bot"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </div>
 
