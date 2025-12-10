@@ -1256,6 +1256,11 @@ async function initStripe() {
     const { getStripeSync } = await import('./stripeClient');
     const stripeSync = await getStripeSync();
 
+    if (!stripeSync) {
+      console.log('Stripe: Not configured, webhook and sync skipped');
+      return;
+    }
+
     console.log('Setting up managed webhook...');
     const webhookBaseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
     const { webhook, uuid } = await stripeSync.findOrCreateManagedWebhook(
