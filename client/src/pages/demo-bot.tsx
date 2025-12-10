@@ -38,20 +38,20 @@ interface BotConfig {
   botId: string;
   clientId: string;
   name: string;
-  description: string;
-  businessProfile: {
-    businessName: string;
-    type: string;
-    location: string;
-    phone: string;
-    email: string;
-    website: string;
-    hours: Record<string, string>;
+  description?: string;
+  businessProfile?: {
+    businessName?: string;
+    type?: string;
+    location?: string;
+    phone?: string;
+    email?: string;
+    website?: string;
+    hours?: Record<string, string>;
     services?: string[];
     amenities?: string[];
   };
-  faqs: Array<{ question: string; answer: string }>;
-  isDemo: boolean;
+  faqs?: Array<{ question: string; answer: string }>;
+  isDemo?: boolean;
 }
 
 // Message interface is imported from useChatAssistant hook
@@ -141,9 +141,14 @@ function FloatingChatWidget({ botConfig }: { botConfig: BotConfig }) {
   const [greetingDismissed, setGreetingDismissed] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const colors = businessTypeColors[botConfig.businessProfile.type] || businessTypeColors.restaurant;
+  
+  // Safe fallbacks for optional businessProfile fields
+  const bp = botConfig.businessProfile || {};
+  const businessType = bp.type || 'generic';
+  const businessName = bp.businessName || botConfig.name || 'Our Business';
+  const colors = businessTypeColors[businessType] || businessTypeColors.restaurant;
 
-  const initialGreeting = `Hi! Welcome to ${botConfig.businessProfile.businessName}. I'm here to help answer your questions. What can I help you with today?`;
+  const initialGreeting = `Hi! Welcome to ${businessName}. I'm here to help answer your questions. What can I help you with today?`;
 
   const { 
     messages, 
@@ -211,10 +216,10 @@ function FloatingChatWidget({ botConfig }: { botConfig: BotConfig }) {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                  {businessTypeIcons[botConfig.businessProfile.type] || <MessageCircle className="h-5 w-5" />}
+                  {businessTypeIcons[businessType] || <MessageCircle className="h-5 w-5" />}
                 </div>
                 <div>
-                  <p className="font-semibold text-sm">{botConfig.businessProfile.businessName}</p>
+                  <p className="font-semibold text-sm">{businessName}</p>
                   <p className="text-xs text-white/80">Virtual Assistant</p>
                 </div>
               </div>
@@ -267,7 +272,7 @@ function FloatingChatWidget({ botConfig }: { botConfig: BotConfig }) {
                         ? "Schedule a Phone Call"
                         : message.bookingType === 'tour'
                           ? "Book a Tour"
-                          : (businessTypeBookingLabels[botConfig.businessProfile.type] || "Book Appointment")}
+                          : (businessTypeBookingLabels[businessType] || "Book Appointment")}
                       <ExternalLink className="h-3 w-3" />
                     </button>
                   )}
@@ -344,12 +349,12 @@ function FloatingChatWidget({ botConfig }: { botConfig: BotConfig }) {
           </button>
           <div className="flex items-start gap-3">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-r ${colors.primary}`}>
-              {businessTypeIcons[botConfig.businessProfile.type] || <MessageCircle className="h-5 w-5 text-white" />}
+              {businessTypeIcons[businessType] || <MessageCircle className="h-5 w-5 text-white" />}
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-900">Hi there!</p>
               <p className="text-xs text-gray-600 mt-1">
-                Have questions about {botConfig.businessProfile.businessName}? I'm here to help!
+                Have questions about {businessName}? I'm here to help!
               </p>
               <Button 
                 size="sm" 
@@ -439,10 +444,14 @@ export default function DemoBotPage() {
     );
   }
 
-  const bp = botConfig.businessProfile;
-  const colors = businessTypeColors[bp.type] || businessTypeColors.restaurant;
-  const tagline = businessTypeTaglines[bp.type] || "Welcome to Our Business";
-  const features = businessTypeFeatures[bp.type] || ["Quality Service", "Expert Team", "Customer First", "Best Prices"];
+  // Safe fallbacks for optional businessProfile fields
+  const bp = botConfig.businessProfile || {};
+  const businessType = bp.type || 'generic';
+  const businessName = bp.businessName || botConfig.name || 'Our Business';
+  const colors = businessTypeColors[businessType] || businessTypeColors.restaurant;
+  const tagline = businessTypeTaglines[businessType] || "Welcome to Our Business";
+  const features = businessTypeFeatures[businessType] || ["Quality Service", "Expert Team", "Customer First", "Best Prices"];
+  const hasHours = bp.hours && Object.keys(bp.hours).length > 0;
 
   return (
     <div className="min-h-screen bg-[#0A0A0F]">
@@ -450,7 +459,7 @@ export default function DemoBotPage() {
       <div className="bg-gradient-to-r from-cyan-900/30 via-[#0A0A0F] to-purple-900/30 text-white py-3 px-4 text-center text-sm border-b border-white/5 premium-blur">
         <div className="flex items-center justify-center gap-4">
           <Badge className="bg-cyan-500/10 text-cyan-400 border-cyan-500/30 neon-pulse">DEMO</Badge>
-          <span className="text-white/80">This is a demo landing page for <span className="text-cyan-400 font-medium">{bp.businessName}</span></span>
+          <span className="text-white/80">This is a demo landing page for <span className="text-cyan-400 font-medium">{businessName}</span></span>
           <Link href="/demos">
             <Button variant="ghost" size="sm" className="text-white/70 hover:text-cyan-400 transition-colors" data-testid="button-back">
               <ArrowLeft className="h-4 w-4 mr-1" />
@@ -474,13 +483,13 @@ export default function DemoBotPage() {
             <div className="flex-1 text-center md:text-left">
               <div className="inline-flex items-center gap-2 glass-card-glow rounded-full px-5 py-2.5 mb-6 border border-cyan-500/20">
                 <div className="text-cyan-400">
-                  {businessTypeIcons[bp.type] || <Building2 className="h-5 w-5" />}
+                  {businessTypeIcons[businessType] || <Building2 className="h-5 w-5" />}
                 </div>
-                <span className="text-sm font-medium capitalize text-white/90">{bp.type.replace(/_/g, ' ')}</span>
+                <span className="text-sm font-medium capitalize text-white/90">{businessType.replace(/_/g, ' ')}</span>
               </div>
               
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 slide-in-bottom" data-testid="hero-title">
-                <span className="text-glow-gradient">{bp.businessName}</span>
+                <span className="text-glow-gradient">{businessName}</span>
               </h1>
               
               <p className="text-xl md:text-2xl text-white/70 mb-8" data-testid="hero-tagline">
@@ -501,7 +510,7 @@ export default function DemoBotPage() {
             <div className="flex-1 hidden md:flex justify-center">
               <div className="w-64 h-64 glass-card-glow rounded-3xl flex items-center justify-center border border-cyan-500/20 breathe-glow">
                 <div className="w-32 h-32 text-cyan-400">
-                  {businessTypeIcons[bp.type] || <Building2 className="w-full h-full" />}
+                  {businessTypeIcons[businessType] || <Building2 className="w-full h-full" />}
                 </div>
               </div>
             </div>
@@ -620,12 +629,16 @@ export default function DemoBotPage() {
                 <div className="flex items-start gap-4 mb-4">
                   <Clock className="h-5 w-5 text-cyan-400 mt-0.5" />
                   <div className="flex-1 space-y-2">
-                    {Object.entries(bp.hours).map(([day, hours]) => (
-                      <div key={day} className="flex justify-between text-sm">
-                        <span className="text-white/60 capitalize">{day}</span>
-                        <span className="font-medium text-white">{hours}</span>
-                      </div>
-                    ))}
+                    {hasHours ? (
+                      Object.entries(bp.hours!).map(([day, hours]) => (
+                        <div key={day} className="flex justify-between text-sm">
+                          <span className="text-white/60 capitalize">{day}</span>
+                          <span className="font-medium text-white">{hours}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-white/60 text-sm">Contact us for hours of operation</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -696,11 +709,11 @@ export default function DemoBotPage() {
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              {businessTypeIcons[bp.type] || <Building2 className="h-5 w-5" />}
-              <span className="font-semibold">{bp.businessName}</span>
+              {businessTypeIcons[businessType] || <Building2 className="h-5 w-5" />}
+              <span className="font-semibold">{businessName}</span>
             </div>
             <p className="text-sm text-gray-400">
-              © 2024 {bp.businessName}. All rights reserved. | Demo powered by Treasure Coast AI
+              © 2024 {businessName}. All rights reserved. | Demo powered by Treasure Coast AI
             </p>
           </div>
         </div>

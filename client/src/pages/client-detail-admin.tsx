@@ -49,6 +49,26 @@ interface BotConfig {
   };
 }
 
+// Helper to format appointment time - prefer scheduledAt if available
+function formatAppointmentTime(apt: { preferredTime: string; scheduledAt?: string | null }): string {
+  if (apt.scheduledAt) {
+    try {
+      const date = new Date(apt.scheduledAt);
+      return date.toLocaleString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return apt.preferredTime;
+    }
+  }
+  return apt.preferredTime;
+}
+
 export default function ClientDetailAdmin() {
   const [, params] = useRoute("/super-admin/clients/:slug");
   const [, setLocation] = useLocation();
@@ -228,6 +248,7 @@ export default function ClientDetailAdmin() {
       email?: string;
       appointmentType: string;
       preferredTime: string;
+      scheduledAt?: string | null;
       status: string;
       notes?: string;
       createdAt: string;
@@ -673,7 +694,7 @@ export default function ClientDetailAdmin() {
                           </div>
                           <p className="text-xs text-white/70 mt-2">
                             <Clock className="h-3 w-3 inline mr-1" />
-                            {apt.preferredTime}
+                            {formatAppointmentTime(apt)}
                           </p>
                           {apt.notes && <p className="text-xs text-white/40 mt-1">{apt.notes}</p>}
                         </div>

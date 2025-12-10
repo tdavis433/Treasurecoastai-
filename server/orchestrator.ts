@@ -36,6 +36,7 @@ import {
 } from './automations';
 import { checkMessageLimit, incrementMessageCount, incrementAutomationCount } from './planLimits';
 import { getClientStatus } from './botConfig';
+import { addDays, addWeeks, setHours, setMinutes, startOfDay, format, getDay } from 'date-fns';
 
 function categorizeMessageTopic(content: string): string {
   const lower = content.toLowerCase();
@@ -57,9 +58,130 @@ interface ExtractedBookingInfo {
   phone?: string;
   email?: string;
   preferredTime?: string;
+  scheduledAt?: string; // ISO datetime parsed from preferredTime
   notes?: string;
   bookingType: 'tour' | 'phone_call';
   isComplete: boolean;
+}
+
+/**
+ * Parse a vague time phrase like "tomorrow afternoon" into an ISO datetime string
+ * Returns null if parsing fails, so we can fall back to the original phrase
+ */
+function parseVagueTimeToDatetime(timePhrase: string): string | null {
+  if (!timePhrase || timePhrase === 'To be confirmed') {
+    return null;
+  }
+  
+  const lower = timePhrase.toLowerCase().trim();
+  const now = new Date();
+  let baseDate: Date | null = null;
+  
+  // Helper to find next occurrence of a weekday (including today if it matches)
+  // Uses modular arithmetic to handle week wrapping correctly (esp. Sunday)
+  const getWeekdayDate = (targetDay: number, forceNextWeek: boolean = false): Date => {
+    const today = getDay(now);
+    // Calculate days until target: (target - today + 7) % 7
+    // This gives 0 if same day, 1-6 for days later this week
+    let daysUntil = (targetDay - today + 7) % 7;
+    
+    // If daysUntil is 0 (same day), check time - if we want same day, keep 0
+    // Otherwise if forceNextWeek, add 7 days
+    if (daysUntil === 0 && forceNextWeek) {
+      daysUntil = 7;
+    } else if (forceNextWeek) {
+      // "next Monday" when it's Wednesday means 12 days (this coming Monday + 7)
+      daysUntil += 7;
+    }
+    
+    return startOfDay(addDays(now, daysUntil));
+  };
+  
+  // Parse relative day references
+  if (lower.includes('today')) {
+    baseDate = startOfDay(now);
+  } else if (lower.includes('tomorrow')) {
+    baseDate = startOfDay(addDays(now, 1));
+  } else if (lower.includes('next week')) {
+    baseDate = startOfDay(addWeeks(now, 1));
+  } else if (lower.includes('this week') || lower.includes('this weekend')) {
+    // Default to Saturday for "this weekend"
+    baseDate = getWeekdayDate(6, false); // Saturday
+  } else if (lower.includes('next monday')) {
+    baseDate = getWeekdayDate(1, true);
+  } else if (lower.includes('next tuesday')) {
+    baseDate = getWeekdayDate(2, true);
+  } else if (lower.includes('next wednesday')) {
+    baseDate = getWeekdayDate(3, true);
+  } else if (lower.includes('next thursday')) {
+    baseDate = getWeekdayDate(4, true);
+  } else if (lower.includes('next friday')) {
+    baseDate = getWeekdayDate(5, true);
+  } else if (lower.includes('next saturday')) {
+    baseDate = getWeekdayDate(6, true);
+  } else if (lower.includes('next sunday')) {
+    baseDate = getWeekdayDate(0, true);
+  } else if (/\bmonday\b/.test(lower)) {
+    baseDate = getWeekdayDate(1, false);
+  } else if (/\btuesday\b/.test(lower)) {
+    baseDate = getWeekdayDate(2, false);
+  } else if (/\bwednesday\b/.test(lower)) {
+    baseDate = getWeekdayDate(3, false);
+  } else if (/\bthursday\b/.test(lower)) {
+    baseDate = getWeekdayDate(4, false);
+  } else if (/\bfriday\b/.test(lower)) {
+    baseDate = getWeekdayDate(5, false);
+  } else if (/\bsaturday\b/.test(lower)) {
+    baseDate = getWeekdayDate(6, false);
+  } else if (/\bsunday\b/.test(lower)) {
+    baseDate = getWeekdayDate(0, false);
+  }
+  
+  // If no date reference found, default to tomorrow
+  if (!baseDate) {
+    baseDate = startOfDay(addDays(now, 1));
+  }
+  
+  // Parse time of day
+  let hour = 14; // Default to 2 PM
+  
+  // First try to parse specific time like "3 PM" or "10:30am"
+  const specificTimeMatch = lower.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
+  if (specificTimeMatch) {
+    let h = parseInt(specificTimeMatch[1], 10);
+    const minutes = specificTimeMatch[2] ? parseInt(specificTimeMatch[2], 10) : 0;
+    const period = specificTimeMatch[3].toLowerCase();
+    
+    if (period === 'pm' && h !== 12) {
+      h += 12;
+    } else if (period === 'am' && h === 12) {
+      h = 0;
+    }
+    
+    baseDate = setHours(baseDate, h);
+    baseDate = setMinutes(baseDate, minutes);
+  } else {
+    // Parse general time of day
+    if (lower.includes('morning')) {
+      hour = 9;
+    } else if (lower.includes('afternoon')) {
+      hour = 14;
+    } else if (lower.includes('evening')) {
+      hour = 18;
+    } else if (lower.includes('night')) {
+      hour = 20;
+    }
+    
+    baseDate = setHours(baseDate, hour);
+    baseDate = setMinutes(baseDate, 0);
+  }
+  
+  try {
+    return baseDate.toISOString();
+  } catch (e) {
+    console.warn('Failed to parse time phrase:', timePhrase, e);
+    return null;
+  }
 }
 
 function extractBookingInfoFromConversation(
@@ -152,6 +274,13 @@ function extractBookingInfoFromConversation(
     preferredTime = 'To be confirmed';
   }
 
+  // Parse the vague time phrase into an ISO datetime
+  const parsedTime = parseVagueTimeToDatetime(preferredTime);
+  const scheduledAt = parsedTime || undefined;
+  if (scheduledAt) {
+    console.log(`Booking time parsed: "${preferredTime}" -> ${scheduledAt}`);
+  }
+
   const isComplete = !!(name && phone);
 
   return {
@@ -159,6 +288,7 @@ function extractBookingInfoFromConversation(
     phone,
     email,
     preferredTime,
+    scheduledAt,
     bookingType,
     isComplete,
   };
@@ -802,6 +932,7 @@ class ConversationOrchestrator {
             contact: bookingInfo.phone!,
             email: bookingInfo.email || null,
             preferredTime: bookingInfo.preferredTime || 'To be confirmed',
+            scheduledAt: bookingInfo.scheduledAt ? new Date(bookingInfo.scheduledAt) : null,
             appointmentType: bookingInfo.bookingType,
             notes: bookingInfo.notes || null,
             contactPreference: 'phone',

@@ -178,12 +178,33 @@ interface Appointment {
   contact: string;
   email: string | null;
   preferredTime: string;
+  scheduledAt?: string | null; // Parsed datetime from preferredTime
   appointmentType: string;
   status: string;
   createdAt: string;
   notes: string | null;
   botId?: string | null;
   sessionId?: string | null;
+}
+
+// Helper to format appointment time - prefer scheduledAt if available
+function formatAppointmentTime(apt: Appointment): string {
+  if (apt.scheduledAt) {
+    try {
+      const date = new Date(apt.scheduledAt);
+      return date.toLocaleString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return apt.preferredTime;
+    }
+  }
+  return apt.preferredTime;
 }
 
 interface Conversation {
@@ -2250,7 +2271,7 @@ export default function ClientDashboard() {
                               {getAppointmentTypeLabel(apt.appointmentType)}
                             </Badge>
                             <span className="text-xs text-white/50">
-                              Preferred: {apt.preferredTime}
+                              Preferred: {formatAppointmentTime(apt)}
                             </span>
                             {apt.sessionId && (
                               <Button
@@ -2987,7 +3008,7 @@ export default function ClientDashboard() {
                 <Clock className="h-4 w-4 text-purple-400" />
                 Preferred Time
               </h4>
-              <p className="text-white/80">{selectedAppointment?.preferredTime || 'Not specified'}</p>
+              <p className="text-white/80">{selectedAppointment ? formatAppointmentTime(selectedAppointment) : 'Not specified'}</p>
             </div>
 
             {/* Notes */}

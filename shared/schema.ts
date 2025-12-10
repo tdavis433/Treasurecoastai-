@@ -13,6 +13,7 @@ export const appointments = pgTable("appointments", {
   email: text("email"),
   contactPreference: text("contact_preference").notNull().default("phone"),
   preferredTime: text("preferred_time").notNull(),
+  scheduledAt: timestamp("scheduled_at"), // Parsed datetime from preferredTime phrase
   notes: text("notes"),
   status: text("status").notNull().default("new"),
   appointmentType: text("appointment_type").notNull().default("tour"),
