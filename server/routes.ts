@@ -3,7 +3,8 @@ import { createServer, type Server } from "http";
 import express from "express";
 import crypto from "crypto";
 import { storage, db } from "./storage";
-import { insertAppointmentSchema, insertClientSettingsSchema, adminUsers, type AdminRole, bots, botSettings, leads, appointments, clientSettings, workspaces, workspaceMemberships, botRequests, insertBotRequestSchema, chatSessions, conversationMessages, chatAnalyticsEvents, dailyAnalytics } from "@shared/schema";
+import { insertAppointmentSchema, insertClientSettingsSchema, adminUsers, type AdminRole, bots, botSettings, leads, appointments, clientSettings, workspaces, workspaceMemberships, botRequests, insertBotRequestSchema, chatSessions, conversationMessages, chatAnalyticsEvents, dailyAnalytics, passwordResetTokens } from "@shared/schema";
+import { emailService, getPendingResetTokens, clearPendingResetTokens } from "./emailService";
 import OpenAI from "openai";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -3533,6 +3534,259 @@ These suggestions should be relevant to what was just discussed and help guide t
     } catch (error) {
       console.error("Get user error:", error);
       res.status(500).json({ error: "Failed to fetch user" });
+    }
+  });
+
+  // =============================================
+  // PASSWORD RESET API ENDPOINTS
+  // =============================================
+  
+  const PASSWORD_RESET_EXPIRY_MINUTES = 60;
+  
+  // Request password reset - accepts email, creates token, sends/logs reset link
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email || typeof email !== 'string') {
+        return res.status(400).json({ error: "Email is required" });
+      }
+      
+      const normalizedEmail = email.toLowerCase().trim();
+      
+      // Find user by email (do NOT reveal if email exists)
+      const [user] = await db.select({
+        id: adminUsers.id,
+        username: adminUsers.username,
+        email: adminUsers.email,
+      }).from(adminUsers).where(eq(adminUsers.email, normalizedEmail)).limit(1);
+      
+      // Always show success message to prevent email enumeration
+      const successMessage = "If an account exists with that email, we've sent a password reset link.";
+      
+      if (!user) {
+        console.log(`[PasswordReset] No user found for email: ${normalizedEmail}`);
+        return res.json({ success: true, message: successMessage });
+      }
+      
+      // Generate cryptographically secure random token (32 bytes = 64 hex chars)
+      const plainToken = crypto.randomBytes(32).toString('hex');
+      
+      // Hash the token for storage (never store plain token)
+      const tokenHash = await bcrypt.hash(plainToken, 10);
+      
+      // Set expiration time
+      const expiresAt = new Date(Date.now() + PASSWORD_RESET_EXPIRY_MINUTES * 60 * 1000);
+      
+      // Invalidate any existing tokens for this user
+      await db.update(passwordResetTokens)
+        .set({ usedAt: new Date() })
+        .where(and(
+          eq(passwordResetTokens.userId, user.id),
+          sql`${passwordResetTokens.usedAt} IS NULL`
+        ));
+      
+      // Store the new token
+      await db.insert(passwordResetTokens).values({
+        userId: user.id,
+        tokenHash: tokenHash,
+        expiresAt: expiresAt,
+      });
+      
+      // Build reset URL
+      const baseUrl = process.env.NODE_ENV === 'production' 
+        ? `https://${req.get('host')}` 
+        : `${req.protocol}://${req.get('host')}`;
+      const resetUrl = `${baseUrl}/reset-password?token=${plainToken}`;
+      
+      // Send email (or log to console in dev mode)
+      const emailResult = await emailService.sendPasswordResetEmail(
+        normalizedEmail,
+        resetUrl,
+        user.username
+      );
+      
+      if (!emailResult.success) {
+        console.error(`[PasswordReset] Failed to send email to ${normalizedEmail}:`, emailResult.error);
+        // Still return success to prevent enumeration
+      } else {
+        console.log(`[PasswordReset] Reset email sent/logged for user: ${user.username}`);
+      }
+      
+      res.json({ success: true, message: successMessage });
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      res.status(500).json({ error: "Failed to process password reset request" });
+    }
+  });
+  
+  // Validate reset token (for frontend to check before showing form)
+  app.get("/api/auth/reset-password/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      
+      if (!token || token.length < 32) {
+        return res.status(400).json({ valid: false, error: "Invalid token format" });
+      }
+      
+      // Find all unexpired, unused tokens
+      const tokenRecords = await db.select()
+        .from(passwordResetTokens)
+        .where(and(
+          sql`${passwordResetTokens.usedAt} IS NULL`,
+          sql`${passwordResetTokens.expiresAt} > NOW()`
+        ));
+      
+      // Check each token hash (since we can't query by hash directly)
+      let validRecord = null;
+      for (const record of tokenRecords) {
+        const isMatch = await bcrypt.compare(token, record.tokenHash);
+        if (isMatch) {
+          validRecord = record;
+          break;
+        }
+      }
+      
+      if (!validRecord) {
+        return res.status(400).json({ 
+          valid: false, 
+          error: "This password reset link is invalid or has expired. Please request a new one." 
+        });
+      }
+      
+      res.json({ valid: true });
+    } catch (error) {
+      console.error("Validate reset token error:", error);
+      res.status(500).json({ valid: false, error: "Failed to validate token" });
+    }
+  });
+  
+  // Consume reset token and update password
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const { token, newPassword, confirmPassword } = req.body;
+      
+      // Validate inputs
+      if (!token || typeof token !== 'string' || token.length < 32) {
+        return res.status(400).json({ error: "Invalid token" });
+      }
+      
+      if (!newPassword || typeof newPassword !== 'string') {
+        return res.status(400).json({ error: "New password is required" });
+      }
+      
+      if (newPassword !== confirmPassword) {
+        return res.status(400).json({ error: "Passwords do not match" });
+      }
+      
+      // Password strength validation (same rules as Create Login)
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+      if (!passwordRegex.test(newPassword)) {
+        return res.status(400).json({ 
+          error: "Password must be at least 8 characters with uppercase, lowercase, and a number" 
+        });
+      }
+      
+      // Find the token
+      const tokenRecords = await db.select()
+        .from(passwordResetTokens)
+        .where(and(
+          sql`${passwordResetTokens.usedAt} IS NULL`,
+          sql`${passwordResetTokens.expiresAt} > NOW()`
+        ));
+      
+      let validRecord = null;
+      for (const record of tokenRecords) {
+        const isMatch = await bcrypt.compare(token, record.tokenHash);
+        if (isMatch) {
+          validRecord = record;
+          break;
+        }
+      }
+      
+      if (!validRecord) {
+        return res.status(400).json({ 
+          error: "This password reset link is invalid or has expired. Please request a new one." 
+        });
+      }
+      
+      // Hash new password
+      const newPasswordHash = await bcrypt.hash(newPassword, 10);
+      
+      // Update user password
+      await db.update(adminUsers)
+        .set({ 
+          passwordHash: newPasswordHash,
+          mustChangePassword: false 
+        })
+        .where(eq(adminUsers.id, validRecord.userId));
+      
+      // Mark token as used
+      await db.update(passwordResetTokens)
+        .set({ usedAt: new Date() })
+        .where(eq(passwordResetTokens.id, validRecord.id));
+      
+      // Invalidate any other outstanding tokens for this user
+      await db.update(passwordResetTokens)
+        .set({ usedAt: new Date() })
+        .where(and(
+          eq(passwordResetTokens.userId, validRecord.userId),
+          sql`${passwordResetTokens.usedAt} IS NULL`
+        ));
+      
+      console.log(`[PasswordReset] Password successfully reset for user ID: ${validRecord.userId}`);
+      
+      res.json({ 
+        success: true, 
+        message: "Your password has been reset. Please sign in with your new password." 
+      });
+    } catch (error) {
+      console.error("Reset password error:", error);
+      res.status(500).json({ error: "Failed to reset password" });
+    }
+  });
+  
+  // Debug endpoint - view pending reset tokens (super admin only, dev environment)
+  app.get("/api/auth/debug-reset-tokens", requireSuperAdmin, async (req, res) => {
+    try {
+      // Only allow in development
+      if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_DEBUG_ENDPOINTS) {
+        return res.status(403).json({ error: "Debug endpoints disabled in production" });
+      }
+      
+      const pendingTokens = getPendingResetTokens();
+      const isEmailConfigured = emailService.isEmailConfigured();
+      
+      res.json({
+        isEmailConfigured,
+        note: isEmailConfigured 
+          ? "Emails are being sent via SMTP" 
+          : "Emails are logged to console. Set SMTP_HOST, SMTP_USER, SMTP_PASS to enable email.",
+        pendingTokens: pendingTokens.map(t => ({
+          email: t.email,
+          resetUrl: t.resetUrl,
+          expiresAt: t.expiresAt.toISOString(),
+          createdAt: t.createdAt.toISOString(),
+        })),
+      });
+    } catch (error) {
+      console.error("Debug reset tokens error:", error);
+      res.status(500).json({ error: "Failed to fetch debug tokens" });
+    }
+  });
+  
+  // Clear debug tokens (super admin only, dev environment)
+  app.delete("/api/auth/debug-reset-tokens", requireSuperAdmin, async (req, res) => {
+    try {
+      if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_DEBUG_ENDPOINTS) {
+        return res.status(403).json({ error: "Debug endpoints disabled in production" });
+      }
+      
+      clearPendingResetTokens();
+      res.json({ success: true, message: "Debug tokens cleared" });
+    } catch (error) {
+      console.error("Clear debug tokens error:", error);
+      res.status(500).json({ error: "Failed to clear debug tokens" });
     }
   });
 

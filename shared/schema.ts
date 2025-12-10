@@ -219,6 +219,7 @@ export type ConversationAnalytics = typeof conversationAnalytics.$inferSelect;
 export const adminUsers = pgTable("admin_users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
+  email: text("email"), // Email for password reset and notifications
   passwordHash: text("password_hash").notNull(),
   role: text("role").notNull().default("client_admin"),
   clientId: varchar("client_id"),
@@ -2308,3 +2309,25 @@ export const insertBotRequestSchema = createInsertSchema(botRequests).omit({
 
 export type InsertBotRequest = z.infer<typeof insertBotRequestSchema>;
 export type BotRequest = typeof botRequests.$inferSelect;
+
+// Password Reset Tokens - Secure, time-limited, single-use tokens for password recovery
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(), // References adminUsers.id
+  tokenHash: text("token_hash").notNull(), // bcrypt hash of the token (never store plain token)
+  expiresAt: timestamp("expires_at").notNull(), // Token expiration time
+  usedAt: timestamp("used_at"), // When the token was consumed (null = unused)
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("password_reset_tokens_user_id_idx").on(table.userId),
+  expiresAtIdx: index("password_reset_tokens_expires_at_idx").on(table.expiresAt),
+}));
+
+export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({
+  id: true,
+  createdAt: true,
+  usedAt: true,
+});
+
+export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
