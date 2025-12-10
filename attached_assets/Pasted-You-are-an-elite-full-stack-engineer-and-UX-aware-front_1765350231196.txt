@@ -1,0 +1,75 @@
+You are an elite full-stack engineer and UX-aware front-end dev.
+
+You are working on the Treasure Coast AI platform in this Replit project.
+
+CONTEXT – ALREADY DONE (DO NOT BREAK THESE):
+
+• Phase 1:
+  – Faith House demo chatbot at /demo/faith-house can successfully capture at least one lead + booking.
+  – OpenAI rate limit errors are now handled with a friendly chat response instead of an ugly red error toast.
+
+• Phase 2:
+  – Admin and client analytics for the Faith House workspace are in sync (same leads, bookings, messages, conversations).
+  – The Create Login feature in the Faith House workspace Users tab works:
+      * API returns 201.
+      * User is created in the DB.
+      * Success toast appears.
+  – “View as Client” from the Faith House workspace works:
+      * Impersonation modifies the session correctly.
+      * Client dashboard opens and shows what the client sees.
+
+DO NOT undo or break any of that behavior.
+
+NOW FOCUS ON TWO THINGS ONLY:
+
+  1) Assistant creation wizard (super-admin) – scroll / completion UX.
+  2) Chat send vs reset UX on the public + Faith House chat widgets.
+
+────────────────────────
+OBJECTIVE 1 – FIX ASSISTANT CREATION WIZARD SCROLL / COMPLETION
+────────────────────────
+
+Current issue (from prior QA):
+
+• As super-admin:
+  – Go to Assistants / All Assistants.
+  – Click “New Assistant” (or similar).
+  – Step 1 of the wizard works.
+  – Step 2 uses a tall modal:
+      * Content extends below the viewport on a laptop.
+      * Scrolling often affects the PAGE behind the modal instead of the modal content.
+      * It is difficult or impossible to reach the “Next” / “Finish” buttons.
+  – Result: You cannot reliably complete the wizard.
+
+Required behavior:
+
+• On a typical laptop viewport:
+  – The wizard must be fully usable; you must be able to:
+      * Read all the fields.
+      * Scroll inside the modal or panel if needed.
+      * Always reach the action buttons (Next / Finish).
+  – The background page should NOT scroll while the modal is active.
+
+Your task:
+
+1. Find the component(s) that implement the assistant creation wizard UI.
+2. Fix the layout & scroll behavior so that:
+   • The modal (or panel) has a max-height tied to the viewport and scrolls internally
+     (e.g., `max-height: 100vh - somePadding` with `overflow-y: auto` on the content area).
+   • Body scroll is prevented or locked while the modal is open.
+   • On a normal laptop screen, the “Next” / “Finish” buttons are always reachable by scrolling the modal.
+
+3. Manually verify:
+   • As admin, you can complete ALL steps of the wizard.
+   • You can successfully create a brand new assistant end-to-end.
+   • No obvious visual regressions on large desktop screens.
+
+────────────────────────
+OBJECTIVE 2 – CLEAN UP CHAT SEND vs RESET UX (PUBLIC + FAITH HOUSE)
+────────────────────────
+
+Current UX problems (from prior QA):
+
+• In the public chat widget (on `/`) and in the Faith House demo chat (`/demo/faith-house`):
+  – There appear to be two arrow-like controls near the input:
+      * O*

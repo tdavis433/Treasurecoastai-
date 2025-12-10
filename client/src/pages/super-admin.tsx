@@ -3532,8 +3532,8 @@ export default function SuperAdmin() {
 
       {/* New Client Wizard Dialog */}
       <Dialog open={showNewClientWizard} onOpenChange={(open) => { if (!open) resetWizard(); }}>
-        <DialogContent className="bg-[#1a1d24] border-white/10 max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="bg-[#1a1d24] border-white/10 max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
             <DialogTitle className="text-white flex items-center gap-3">
               <div className="flex items-center gap-2">
                 {wizardStep < 5 && (
@@ -3559,6 +3559,8 @@ export default function SuperAdmin() {
             </DialogDescription>
           </DialogHeader>
 
+          {/* Scrollable Content Area */}
+          <div className="flex-1 overflow-y-auto px-6 min-h-0">
           {/* Step 1: Business Basics */}
           {wizardStep === 1 && (
             <div className="space-y-4 py-4">
@@ -3918,8 +3920,10 @@ export default function SuperAdmin() {
               )}
             </div>
           )}
+          </div>
+          {/* End Scrollable Content Area */}
 
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 px-6 py-4 border-t border-white/10 flex-shrink-0">
             {wizardStep > 1 && wizardStep < 5 && (
               <Button variant="outline" className="border-white/10 text-white" onClick={() => setWizardStep(s => s - 1)} data-testid="wizard-back">
                 Back
