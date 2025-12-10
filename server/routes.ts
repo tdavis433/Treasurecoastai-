@@ -3734,6 +3734,18 @@ These suggestions should be relevant to what was just discussed and help guide t
           sql`${passwordResetTokens.usedAt} IS NULL`
         ));
       
+      // Invalidate all existing sessions for this user (security: force re-authentication)
+      // Sessions are stored in "session" table by connect-pg-simple with userId in sess JSON
+      try {
+        await db.execute(
+          sql`DELETE FROM session WHERE sess->>'userId' = ${validRecord.userId.toString()}`
+        );
+        console.log(`[PasswordReset] Invalidated all sessions for user ID: ${validRecord.userId}`);
+      } catch (sessionError) {
+        // Non-fatal: log but continue - password was changed successfully
+        console.error(`[PasswordReset] Warning: Could not invalidate sessions for user ID: ${validRecord.userId}`, sessionError);
+      }
+      
       console.log(`[PasswordReset] Password successfully reset for user ID: ${validRecord.userId}`);
       
       res.json({ 

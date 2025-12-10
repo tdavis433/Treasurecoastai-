@@ -80,6 +80,16 @@ The platform operates on a two-surface system:
 *   **Tenant Isolation:** All lead operations require explicit clientId parameter; no fallback to "default-client"
     *   Storage layer enforces clientId in WHERE clauses for getLeadById, updateLead, deleteLead
 *   **Environment-Based Configuration:** Staff user creation uses `DEFAULT_STAFF_CLIENT_ID` env var instead of hardcoded values
+*   **Password Reset Flow:** Secure self-service password reset via email
+    *   Request reset at `/forgot-password` - enter email to receive reset link
+    *   Reset page at `/reset-password?token=<token>` - validates token and allows new password entry
+    *   Tokens are cryptographically secure (32-byte random hex), bcrypt-hashed for storage
+    *   Tokens expire after 60 minutes and are single-use only
+    *   Generic success messages prevent email enumeration attacks
+    *   Email service abstraction: SMTP in production, console logging in development
+    *   Debug endpoint `/api/auth/debug-reset-tokens` (super-admin only) shows pending reset links when SMTP not configured
+    *   **Email Configuration (Optional):** Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` for production email sending
+    *   **Test Accounts:** Admin (admin@treasurecoastai.com), Demo client (demo@faithhouse.com)
 
 ### Resilient Persistence (December 2024)
 *   **OpenAI Failure Recovery:** When OpenAI API fails (rate limit, timeout, network errors), the orchestrator:
