@@ -1,0 +1,114 @@
+You are a senior full-stack engineer working INSIDE this Replit project.
+
+This is a multi-tenant SaaS called **Treasure Coast AI** with:
+- Super admin / agency panel (multi-workspace).
+- Client dashboards per workspace.
+- Assistants/bots per workspace.
+- A Faith House demo workspace for sober-living demos.
+
+The live app is at:
+- https://treasure-coast-ai-platform--mlgrushskill.replit.app/
+
+You do NOT need to call that URL. Instead, fix the code in this Replit so that when deployed, the app behaves correctly.
+
+────────────────────
+GOAL OF THIS BLOCK
+────────────────────
+1. Understand where everything lives in the codebase.
+2. Fix **auth**, **login**, **logout**, and **route protection** for:
+   - Super admin (agency owner).
+   - Client/workspace users.
+
+FOCUS ONLY ON THESE in this block. Do not touch assistants, leads, bookings yet.
+
+────────────────────
+STEP 1 – DISCOVER STRUCTURE
+────────────────────
+Find in this repo:
+- Auth logic:
+  - Login handlers (API routes, controllers).
+  - Session/JWT handling.
+  - Middleware/guards for protected routes.
+- Routes/pages for:
+  - Super admin (e.g. `/super-admin`, `/admin`).
+  - Client dashboard (workspace-level).
+  - Public demo routes (e.g. `/demo/faith-house`).
+- Database/models for:
+  - Users (admin vs client).
+  - Workspaces/clients/tenants.
+  - Relationship: which user belongs to which workspace.
+
+Write light comments or docstrings while you discover, so future agents can see where things are.
+
+────────────────────
+STEP 2 – CLEAN LOGIN ROUTES
+────────────────────
+Current behavior from QA:
+- `/login` is used for everything.
+- `/client-login` was 404.
+- We want clear separation of roles.
+
+Implement:
+- Either:
+  - Single `/login` that:
+    - Accepts username/password.
+    - After auth, routes:
+      - Admin → super admin dashboard.
+      - Client → that client’s workspace dashboard.
+- OR:
+  - `/admin/login` → admin login.
+  - `/client/login` → client/workspace login.
+
+Key requirements:
+- `admin` / `admin123` must log into **super admin** dashboard.
+- `demo_faith_house` / `demo123` must log into **Faith House client** dashboard (NOT admin).
+
+Fix the routing code and views accordingly.
+
+────────────────────
+STEP 3 – IMPLEMENT LOGOUT
+────────────────────
+Currently there is no visible logout.
+
+Add:
+- For admin dashboard:
+  - A visible “Logout” or “Sign out” control in header or nav.
+  - Clears auth (session/JWT/cookie).
+  - Redirects to admin login screen (or neutral landing).
+
+- For client dashboard:
+  - A visible “Logout” / “Sign out”.
+  - Clears client auth.
+  - Redirects to client login or home landing.
+
+Make sure both work in practice.
+
+────────────────────
+STEP 4 – PROTECT ROUTES
+────────────────────
+Ensure route guards are correct:
+
+- Admin-only routes:
+  - `/super-admin`, admin workspace management, etc.
+  - Must require admin auth.
+  - If not authenticated → redirect to admin login.
+
+- Client-only routes:
+  - Client dashboard, client leads/bookings/conversations.
+  - Must require client auth.
+  - If not authenticated → redirect to client login.
+
+- If a client tries to hit `/super-admin`, they must be blocked or redirected.
+
+No 404s or raw JSON errors for unauthorized access; use proper redirects or error pages.
+
+────────────────────
+ACCEPTANCE CRITERIA FOR THIS BLOCK
+────────────────────
+- ✅ `admin` / `admin123` logs into super admin dashboard.
+- ✅ `demo_faith_house` / `demo123` logs into Faith House client dashboard.
+- ✅ Admin logout exists and works; after logout, `/super-admin` redirects to login.
+- ✅ Client logout exists and works; after logout, client dashboard routes redirect to client login.
+- ✅ Role-based protection: client cannot access admin routes; admin cannot “accidentally” load some wrong client page without proper routing.
+
+Make code changes now so these criteria are satisfied. When you’re done, stop. We’ll handle Faith House data and assistants in later prompts.

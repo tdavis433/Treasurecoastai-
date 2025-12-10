@@ -1,0 +1,89 @@
+You are continuing work on this Treasure Coast AI SaaS in Replit.
+
+Assume auth/login/logout and route protection are now fixed from the previous block.
+
+────────────────────
+GOAL OF THIS BLOCK
+────────────────────
+Make **Faith House** data consistent between:
+- **Client dashboard** (user: `demo_faith_house`).
+- **Admin Faith House workspace** (super admin view).
+
+We want a single canonical Faith House workspace whose:
+- Leads
+- Bookings
+- Conversations
+
+all line up between admin and client.
+
+────────────────────
+STEP 1 – FIND THE CANONICAL FAITH HOUSE WORKSPACE
+────────────────────
+Based on current code and DB models:
+
+1. Find where Workspaces/Clients are stored.
+2. Find all records that look like Faith House:
+   - `faith_house`
+   - `faith_house_live`
+   - `faith_house_demo`
+   - Any “Faith House (Demo)” seed.
+3. Find which workspace `demo_faith_house` is actually linked to in the DB.
+
+Define **one canonical Faith House workspace** object that should be used for:
+- `demo_faith_house` client login.
+- Admin’s Faith House workspace view.
+- `/demo/faith-house` public demo (if applicable).
+
+If duplicates exist:
+- Either migrate any relevant data into the canonical workspace.
+- Or mark them as deprecated and hide from normal admin lists.
+
+────────────────────
+STEP 2 – WIRE ADMIN VIEW TO THIS WORKSPACE
+────────────────────
+Fix the super admin “Clients / Workspaces” UI so that:
+
+- The Faith House card opens the **canonical Faith House workspace** route.
+- In that workspace:
+  - Overview metrics show counts of leads/bookings/conversations for that canonical workspace.
+  - Leads tab lists all leads associated with that workspace.
+  - Bookings tab lists all bookings for that workspace.
+  - Conversations tab (if present) shows the same conversations that the client sees.
+
+Ensure all these queries are filtered by the workspace’s primary key (id/slug).
+
+────────────────────
+STEP 3 – MATCH CLIENT VS ADMIN DATA
+────────────────────
+Ensure that for the canonical Faith House workspace:
+
+- The **client dashboard** for `demo_faith_house`:
+  - Shows the same counts (total leads, total bookings, conversations) as admin’s workspace overview.
+  - Leads table and bookings table show the same rows.
+
+- Changes propagate:
+  - If an admin updates a Faith House lead’s status (e.g., New → Contacted), the client view shows the same status after reload.
+  - If an admin updates booking status (e.g., Pending → Confirmed), the client view matches.
+
+Focus on **data correctness**, not styling.
+
+────────────────────
+STEP 4 – /demo/faith-house PUBLIC PAGE
+────────────────────
+Check how `/demo/faith-house` is connected:
+
+- It should use the **same assistant / workspace** as the canonical Faith House workspace OR an intentionally separate “demo safe copy”.
+- If it’s separate, make that explicit in code comments and ensure admin/client dashboards you care about point to the canonical one.
+
+If possible, make `/demo/faith-house` use the canonical Faith House assistant so conversations there also show up under that workspace’s conversations/leads.
+
+────────────────────
+ACCEPTANCE CRITERIA FOR THIS BLOCK
+────────────────────
+- ✅ There is one clearly defined canonical Faith House workspace in the code.
+- ✅ `demo_faith_house` client dashboard uses that workspace.
+- ✅ Admin Faith House workspace view uses that workspace.
+- ✅ Leads, bookings and conversations for Faith House match between admin and client.
+- ✅ Status changes made as admin are visible in client dashboard and persist.
+
+Make the code changes now. Document any intentionally separate Faith House demo workspace with comments if you must keep more than one.
