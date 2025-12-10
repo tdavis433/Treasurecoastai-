@@ -527,7 +527,6 @@ class ConversationOrchestrator {
             externalBookingUrl: null,
             externalPaymentUrl: null,
             suggestedReplies: ["When can I call you?", "What are your hours?"],
-            rateLimited: true,
           },
         };
       }
@@ -716,7 +715,7 @@ class ConversationOrchestrator {
         console.error('[Orchestrator] OpenAI rate limit exceeded - returning friendly message');
         yield { 
           type: 'done', 
-          reply: "I'm experiencing high demand right now. Please try again in a moment, or feel free to call us directly for immediate assistance.",
+          reply: "I apologize, but I'm experiencing high demand right now. Please try again in a moment, or feel free to call us directly for immediate assistance.",
           meta: {
             clientId,
             botId,
@@ -726,7 +725,6 @@ class ConversationOrchestrator {
             externalBookingUrl: null,
             externalPaymentUrl: null,
             suggestedReplies: ["When can I call you?", "What are your hours?"],
-            rateLimited: true,
           }
         };
         return;
