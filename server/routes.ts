@@ -498,27 +498,30 @@ async function ensureAdminUserExists() {
     // Create client_admin (staff) account for Faith House only if password is set via env
     const existingStaff = await storage.findAdminByUsername(staffUsername);
     
+    // Use environment variable for default client, fallback to faith_house for backward compatibility
+    const defaultStaffClientId = process.env.DEFAULT_STAFF_CLIENT_ID || "faith_house";
+    
     if (!existingStaff && staffPassword) {
-      console.log("Creating default client admin (staff) user for Faith House from environment variables...");
+      console.log(`Creating default client admin (staff) user for ${defaultStaffClientId} from environment variables...`);
       const staffPasswordHash = await bcrypt.hash(staffPassword, 10);
       
       await db.insert(adminUsers).values({
         username: staffUsername,
         passwordHash: staffPasswordHash,
         role: "client_admin",
-        clientId: "faith_house",
+        clientId: defaultStaffClientId,
       });
       
-      console.log("Default client admin (staff) user created successfully for Faith House");
+      console.log(`Default client admin (staff) user created successfully for ${defaultStaffClientId}`);
     } else if (!staffPassword && !existingStaff) {
       console.warn("WARNING: No DEFAULT_STAFF_PASSWORD set. Skipping staff user creation. Set this environment variable to create the initial staff account.");
     } else if (existingStaff && !existingStaff.clientId) {
-      // Update existing staff user to have Faith House clientId
-      console.log("Updating staff user with Faith House clientId...");
+      // Update existing staff user to have default clientId
+      console.log(`Updating staff user with ${defaultStaffClientId} clientId...`);
       await db.update(adminUsers)
-        .set({ clientId: "faith_house" })
+        .set({ clientId: defaultStaffClientId })
         .where(eq(adminUsers.username, staffUsername));
-      console.log("Staff user updated with Faith House clientId");
+      console.log(`Staff user updated with ${defaultStaffClientId} clientId`);
     }
   } catch (error) {
     console.error("Error ensuring admin user exists:", error);
@@ -538,6 +541,18 @@ function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
   }
   if (req.session.userRole !== "super_admin") {
     return res.status(403).json({ error: "Super admin access required" });
+  }
+  next();
+}
+
+// RBAC helper for destructive actions - requires admin role (super_admin or workspace_admin)
+function requireAdminRole(req: Request, res: Response, next: NextFunction) {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+  const allowedRoles = ["super_admin", "workspace_admin"];
+  if (!allowedRoles.includes(req.session.userRole as string)) {
+    return res.status(403).json({ error: "Admin access required for this action" });
   }
   next();
 }
@@ -2846,11 +2861,15 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
-  app.delete("/api/appointments/:id", requireAuth, async (req, res) => {
+  app.delete("/api/appointments/:id", requireAdminRole, async (req, res) => {
     try {
       const { id } = req.params;
       const queryClientId = req.query.clientId as string | undefined;
-      const clientId = req.session.clientId || queryClientId || "default-client";
+      const clientId = req.session.clientId || queryClientId;
+      
+      if (!clientId) {
+        return res.status(400).json({ error: "Client ID required" });
+      }
       
       await storage.deleteAppointment(clientId, id);
       res.json({ success: true });
@@ -9391,8 +9410,8 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
-  // Delete an automation workflow
-  app.delete("/api/bots/:botId/automations/:workflowId", requireAuth, async (req, res) => {
+  // Delete an automation workflow (admin only)
+  app.delete("/api/bots/:botId/automations/:workflowId", requireAdminRole, async (req, res) => {
     try {
       const { botId, workflowId } = req.params;
       
