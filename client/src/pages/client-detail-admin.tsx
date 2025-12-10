@@ -123,14 +123,18 @@ export default function ClientDetailAdmin() {
       }
       return response.json();
     },
-    onSuccess: () => {
-      toast({ title: "User Created", description: "Client login credentials have been created successfully." });
+    onSuccess: (data) => {
+      toast({ 
+        title: "Login Created", 
+        description: `Login created for ${data.user?.email || 'the user'}. They will be prompted to change their password on first login.` 
+      });
       setShowInviteUserModal(false);
       setNewUserForm({ email: '', password: '' });
+      // Invalidate the users query to refresh the list
       queryClient.invalidateQueries({ queryKey: ["/api/super-admin/workspaces", slug, "users"] });
     },
     onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: "Could not create login", description: error.message, variant: "destructive" });
     },
   });
 
@@ -775,7 +779,7 @@ export default function ClientDetailAdmin() {
                       variant="outline"
                       size="sm"
                       className="border-white/10 text-white/70 hover:bg-white/10"
-                      onClick={() => window.open(`/client/dashboard?impersonate=${workspaceData.slug}`, '_blank')}
+                      onClick={() => window.open(`/client/dashboard?clientId=${workspaceData.slug}`, '_blank')}
                     >
                       <Eye className="h-4 w-4 mr-2" />
                       View as Client
@@ -783,16 +787,12 @@ export default function ClientDetailAdmin() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border-white/10 text-white/70 hover:bg-white/10"
-                      onClick={() => {
-                        const newName = prompt('Enter new business name:', workspaceData.name);
-                        if (newName) {
-                          toast({ title: "Coming Soon", description: "Name editing will be added." });
-                        }
-                      }}
+                      className="border-white/10 text-white/40 cursor-not-allowed opacity-60"
+                      disabled
+                      title="Workspace name changes are handled by the agency"
                     >
                       <Edit2 className="h-4 w-4 mr-2" />
-                      Edit Workspace
+                      Edit Name
                     </Button>
                     <Button
                       variant="outline"

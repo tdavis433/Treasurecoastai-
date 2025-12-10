@@ -602,13 +602,30 @@ async function requireClientAuth(req: Request, res: Response, next: NextFunction
         message: "Super admins must specify clientId query parameter to view client data" 
       });
     }
-    // Validate the requested clientId exists
+    
+    // Validate the requested clientId exists - check both JSON configs AND database workspaces
+    const requestedClientId = queryValidation.data.clientId;
+    
+    // Check 1: JSON-based bot configs
     const allBots = getAllBotConfigs();
-    const clientExists = allBots.some(bot => bot.clientId === queryValidation.data.clientId);
-    if (!clientExists) {
+    const clientExistsInJson = allBots.some(bot => bot.clientId === requestedClientId);
+    
+    // Check 2: Database workspaces (for dynamically created clients like demo workspaces)
+    let clientExistsInDb = false;
+    if (!clientExistsInJson) {
+      try {
+        const workspace = await storage.getWorkspaceBySlug(requestedClientId);
+        clientExistsInDb = !!workspace;
+      } catch (error) {
+        console.error("Workspace lookup failed:", error);
+      }
+    }
+    
+    if (!clientExistsInJson && !clientExistsInDb) {
       return res.status(404).json({ error: "Client not found" });
     }
-    (req as any).effectiveClientId = queryValidation.data.clientId;
+    
+    (req as any).effectiveClientId = requestedClientId;
     next();
     return;
   }
@@ -8756,12 +8773,13 @@ These suggestions should be relevant to what was just discussed and help guide t
       // Users with clientId matching the workspace slug are members
       const workspaceUsers = await db.select({
         id: adminUsers.id,
+        email: adminUsers.username,
         username: adminUsers.username,
         role: adminUsers.role,
         createdAt: adminUsers.createdAt,
       }).from(adminUsers).where(eq(adminUsers.clientId, slug));
       
-      res.json(workspaceUsers);
+      res.json({ users: workspaceUsers });
     } catch (error) {
       console.error("Get workspace users error:", error);
       res.status(500).json({ error: "Failed to fetch workspace users" });

@@ -2132,7 +2132,7 @@ export default function SuperAdmin() {
                                       size="sm"
                                       variant="outline"
                                       className="border-white/10 text-white/85 hover:bg-white/10"
-                                      onClick={() => window.open(`/client/dashboard?impersonate=${demoWorkspace.slug}`, '_blank')}
+                                      onClick={() => window.open(`/client/dashboard?clientId=${demoWorkspace.slug}`, '_blank')}
                                       data-testid={`demo-view-as-client-${demoWorkspace.slug}`}
                                     >
                                       <Eye className="h-3 w-3 mr-1" />
@@ -2282,7 +2282,7 @@ export default function SuperAdmin() {
                                     className="text-cyan-400 hover:bg-cyan-500/10 gap-2"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      window.open(`/client/dashboard?impersonate=${workspace.slug}`, '_blank');
+                                      window.open(`/client/dashboard?clientId=${workspace.slug}`, '_blank');
                                     }}
                                     data-testid={`button-view-as-client-${workspace.slug}`}
                                   >

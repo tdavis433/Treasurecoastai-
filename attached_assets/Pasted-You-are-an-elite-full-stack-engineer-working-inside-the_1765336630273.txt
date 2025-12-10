@@ -1,0 +1,106 @@
+You are an elite full-stack engineer working inside the Treasure Coast AI repo.
+
+Your job now is to implement a set of P0 fixes based on a live UX/QA report so this platform is safe to demo to a non-technical client.
+
+DO NOT refactor everything. Make surgical, targeted changes that keep the existing architecture.
+
+────────────────────────
+P0 ISSUES TO FIX
+────────────────────────
+
+1) BROKEN USER CREATION IN WORKSPACE → USERS
+- Location: Admin → Clients → select workspace → Users tab → “Create Login”.
+- Current behavior: Submitting valid credentials closes the modal but no user appears and there is no feedback.
+- Required behavior:
+  - Hook the form up to a real backend route for creating a client user for that workspace.
+  - On success:
+    - Add the new user to the Users list immediately.
+    - Show a success toast (e.g., “Login created for [email]”).
+  - On error:
+    - Show a clear error toast (e.g., “Could not create login: [reason]”).
+  - If the backend route does not exist yet, create it under an appropriate /api/admin or /api/workspaces path with proper tenant scoping and admin-only access.
+
+2) RAW JSON LOGIN ERROR ON INVALID CREDENTIALS
+- Location: Public login page.
+- Current behavior: Wrong credentials show a toast like {"error":"Invalid credentials"}.
+- Required behavior:
+  - Replace this with a human-friendly message: “Invalid email or password. Please try again.”
+  - Ensure the UI displays a styled error message or toast, not raw JSON.
+  - Do NOT leak internal error objects to the user.
+
+3) EDIT WORKSPACE “COMING SOON” / prompt()
+- Location: Admin → Clients → select workspace → Settings / actions area.
+- Current behavior: Edit Workspace uses window.prompt and then shows a toast “Coming soon – name editing will be added.”
+- For demo readiness, choose the simplest safe path:
+  - EITHER:
+    - Hide or disable the Edit Workspace action for now, and replace with subtle text like “Name changes are currently handled by the agency.”
+  - OR:
+    - Implement a basic “Edit Workspace” modal with a form for workspace name (and maybe display name), wired to a PATCH endpoint that persists changes.
+  - DO NOT leave a non-functional control that looks broken.
+
+4) “VIEW AS CLIENT” ACTION IS BROKEN
+- Location: Admin → Clients → select workspace → “View as Client” button.
+- Current behavior: Opens an about:blank tab and returns to admin. No actual client view.
+- Required behavior (simplest acceptable version for demo):
+  - When clicking “View as Client”:
+    - Navigate the current user to the client dashboard for that workspace OR open it in a new tab.
+    - You can either:
+      - Implement a proper impersonation flow (preferred long term), or
+      - Generate the correct client dashboard URL using the workspace’s clientId/slug and navigate there.
+  - Under no circumstances should it open about:blank and do nothing.
+
+5) BLANK PAGES ON BACK/FORWARD NAVIGATION
+- General issue: Using the browser back/forward often leads to a blank page that requires a hard refresh.
+- Likely cause: client-side routing and data fetching not handling initial “loading” state correctly.
+- Required behavior:
+  - Ensure that every main page component:
+    - Always renders a fallback (skeleton/spinner + basic layout shell) while data is loading.
+    - Never renders a completely empty screen, even if data hasn’t arrived yet.
+  - Where using React Query or similar:
+    - Handle isLoading/isFetching to show something visible.
+  - Where using framework routing:
+    - Do not rely on stale in-memory state; pages must be able to mount from scratch on back/forward.
+
+6) FAITH HOUSE BOOKINGS PAGE + BOT E2E FLOW (VERIFY ONLY)
+- You do NOT need to rewrite bot logic here, but you MUST verify the following in this environment:
+  - Logging in as demo_faith_house:
+    - The Bookings/Appointments page loads and shows bookings with clear types (tour vs phone call), time, and contact.
+    - Layout is clean (no overflow or broken columns).
+  - End-to-end:
+    - Simulate a user chatting with the Faith House assistant, providing name + phone, asking to:
+      - “Book a tour”
+      - “Schedule a phone call”
+    - Confirm:
+      - A new lead appears in the Faith House Leads page with that info.
+      - Two bookings appear in Bookings page with correct types and times.
+- If anything in this flow is broken, describe precisely what fails and where so it can be fixed next.
+
+────────────────────────
+IMPLEMENTATION INSTRUCTIONS
+────────────────────────
+
+1) Identify the relevant files for:
+   - Admin Clients/Workspace UI (including Users tab, Edit Workspace, View as Client).
+   - Public login page and its auth handler.
+   - Routing structure and page components that exhibit blank pages on navigation.
+   - Faith House client dashboard (Leads, Bookings) and chat widget.
+
+2) Implement the changes described in the P0 list above:
+   - Add/repair backend routes as needed, with proper tenant scoping and admin checks.
+   - Wire up the frontend forms and buttons to those routes.
+   - Replace raw JSON error display with clean, user-friendly messages.
+   - Either hide non-functional controls or make them legitimately functional.
+
+3) Run TypeScript build and available tests.
+   - Fix any compilation errors or obvious runtime issues introduced by your changes.
+
+4) Summarize your work in a short Markdown report:
+   - Files changed for:
+     - User creation.
+     - Login error handling.
+     - Edit Workspace / View as Client.
+     - Routing/blank page fixes.
+     - Faith House Bookings / bot E2E flow verification.
+   - For each P0 item, state clearly: FIXED, PARTIALLY FIXED, or NOT FIXED (with reason).
+
+Do not just restate this plan. Actually modify the code and then report back on what you changed.
