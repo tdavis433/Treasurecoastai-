@@ -2680,8 +2680,12 @@ These suggestions should be relevant to what was just discussed and help guide t
     try {
       const { status, startDate, endDate, search, limit, offset, clientId: queryClientId } = req.query;
       
-      // Derive clientId: use session clientId for client_admin, query param for super_admin, fallback to default
-      const clientId = req.session.clientId || (queryClientId as string) || "default-client";
+      // Derive clientId: use session clientId for client_admin, query param for super_admin
+      const clientId = req.session.clientId || (queryClientId as string);
+      
+      if (!clientId) {
+        return res.status(400).json({ error: "Client ID required" });
+      }
       
       const filters: any = {};
       if (status) filters.status = status as string;
@@ -2794,7 +2798,11 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.get("/api/appointments/:id", requireAuth, async (req, res) => {
     try {
       const queryClientId = req.query.clientId as string | undefined;
-      const clientId = req.session.clientId || queryClientId || "default-client";
+      const clientId = req.session.clientId || queryClientId;
+      
+      if (!clientId) {
+        return res.status(400).json({ error: "Client ID required" });
+      }
       
       const appointment = await storage.getAppointmentById(clientId, req.params.id);
       if (!appointment) {
@@ -2827,7 +2835,11 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
       
       const queryClientId = req.query.clientId as string | undefined;
-      const clientId = req.session.clientId || queryClientId || "default-client";
+      const clientId = req.session.clientId || queryClientId;
+      
+      if (!clientId) {
+        return res.status(400).json({ error: "Client ID required" });
+      }
       
       const appointment = await storage.updateAppointment(clientId, paramsValidation.data.id, updates);
       res.json(appointment);
@@ -2851,7 +2863,11 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
       
       const queryClientId = req.query.clientId as string | undefined;
-      const clientId = req.session.clientId || queryClientId || "default-client";
+      const clientId = req.session.clientId || queryClientId;
+      
+      if (!clientId) {
+        return res.status(400).json({ error: "Client ID required" });
+      }
       
       await storage.updateAppointmentStatus(clientId, paramsValidation.data.id, bodyValidation.data.status);
       res.json({ success: true });

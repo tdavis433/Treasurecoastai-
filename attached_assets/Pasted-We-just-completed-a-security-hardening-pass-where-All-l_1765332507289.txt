@@ -1,0 +1,40 @@
+We just completed a security hardening pass where:
+
+- All lead operations now require clientId and enforce tenant scoping.
+- requireAdminRole was added for delete endpoints.
+- Workspace membership is validated by requireClientAuth + checkWorkspaceMembership.
+- Faith House hardcoding was moved behind DEFAULT_STAFF_CLIENT_ID.
+
+Now I want you to extend the SAME tenant-isolation and RBAC patterns to APPOINTMENTS and CONVERSATIONS.
+
+DO THIS:
+
+1) APPOINTMENTS – tenant scoping everywhere
+- Find all storage functions that work with appointments:
+  - e.g. getAppointmentById, updateAppointment, deleteAppointment, list appointments, updateAppointmentStatus, etc.
+- Change them so they ALWAYS take clientId (or workspaceId) as the first argument.
+- Update queries so they constrain on BOTH id and clientId, not just id.
+- Update all API route handlers and call sites to pass clientId from the authenticated session, just like we now do for leads.
+- Make sure destructive operations (like deleting appointments) still use requireAdminRole AND tenant scoping.
+
+2) CONVERSATIONS / MESSAGES – tenant scoping everywhere
+- Identify the storage and route functions for:
+  - conversations, chat sessions, messages, conversation notes, etc.
+- Apply the same pattern:
+  - require clientId/workspaceId,
+  - queries enforce clientId in WHERE clauses,
+  - no function should ever operate on just an ID without tenant scoping.
+- Ensure that any /api/client/:clientId/conversations or similar routes validate membership and tenant correctly.
+
+3) FRONTEND API CALLS – consistent client context
+- Find any frontend calls (React Query or fetch) that hit appointments/conversations/analytics endpoints WITHOUT including clientId.
+- Refactor to go through a shared API helper that always attaches the current clientId/workspaceId (from auth/session) to requests.
+- Make sure the server uses this value for scoping instead of trusting arbitrary IDs in the body.
+
+4) QUICK SANITY
+- Run TypeScript build and any tests.
+- Fix any errors caused by the new clientId parameter.
+- Then summarize:
+  - Which appointment + conversation functions now enforce tenant scoping,
+  - Which routes you updated,
+  - Which frontend calls / hooks you changed to pass clientId.
