@@ -145,9 +145,9 @@ export interface IStorage {
     limit?: number;
     offset?: number;
   }): Promise<{ leads: Lead[]; total: number }>;
-  getLeadById(id: string): Promise<Lead | undefined>;
-  updateLead(id: string, updates: Partial<Lead>): Promise<Lead>;
-  deleteLead(id: string): Promise<void>;
+  getLeadById(clientId: string, id: string): Promise<Lead | undefined>;
+  updateLead(clientId: string, id: string, updates: Partial<Lead>): Promise<Lead>;
+  deleteLead(clientId: string, id: string): Promise<void>;
   getLeadBySessionId(sessionId: string, clientId: string): Promise<Lead | undefined>;
   
   // Booking leads and analytics
@@ -901,29 +901,38 @@ export class DbStorage implements IStorage {
     return { leads: results, total };
   }
 
-  async getLeadById(id: string): Promise<Lead | undefined> {
+  async getLeadById(clientId: string, id: string): Promise<Lead | undefined> {
     const [lead] = await db
       .select()
       .from(leads)
-      .where(eq(leads.id, id))
+      .where(and(
+        eq(leads.id, id),
+        eq(leads.clientId, clientId)
+      ))
       .limit(1);
     return lead;
   }
 
-  async updateLead(id: string, updates: Partial<Lead>): Promise<Lead> {
+  async updateLead(clientId: string, id: string, updates: Partial<Lead>): Promise<Lead> {
     const [updated] = await db
       .update(leads)
       .set({
         ...updates,
         updatedAt: new Date(),
       })
-      .where(eq(leads.id, id))
+      .where(and(
+        eq(leads.id, id),
+        eq(leads.clientId, clientId)
+      ))
       .returning();
     return updated;
   }
 
-  async deleteLead(id: string): Promise<void> {
-    await db.delete(leads).where(eq(leads.id, id));
+  async deleteLead(clientId: string, id: string): Promise<void> {
+    await db.delete(leads).where(and(
+      eq(leads.id, id),
+      eq(leads.clientId, clientId)
+    ));
   }
 
   async getLeadBySessionId(sessionId: string, clientId: string): Promise<Lead | undefined> {

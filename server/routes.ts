@@ -2376,7 +2376,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           updates.metadata = { ...(existingLead.metadata || {}), ...leadMetadata };
         }
         
-        await storage.updateLead(existingLead.id, updates);
+        await storage.updateLead(clientId, existingLead.id, updates);
         console.log(`[Auto-Lead] Updated existing lead ${existingLead.id} for session ${sessionId}`);
       } else {
         // Build tags array
@@ -6339,16 +6339,11 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Get single lead by ID
   app.get("/api/client/leads/:id", requireClientAuth, async (req, res) => {
     try {
-      const lead = await storage.getLeadById(req.params.id);
+      const clientId = (req as any).effectiveClientId;
+      const lead = await storage.getLeadById(clientId, req.params.id);
       
       if (!lead) {
         return res.status(404).json({ error: "Lead not found" });
-      }
-      
-      // Verify the lead belongs to the client
-      const clientId = (req as any).effectiveClientId;
-      if (lead.clientId !== clientId) {
-        return res.status(403).json({ error: "Access denied" });
       }
       
       res.json(lead);
@@ -6426,20 +6421,15 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(400).json({ error: bodyValidation.error });
       }
       
-      const lead = await storage.getLeadById(paramsValidation.data.id);
+      const clientId = (req as any).effectiveClientId;
+      const lead = await storage.getLeadById(clientId, paramsValidation.data.id);
       
       if (!lead) {
         return res.status(404).json({ error: "Lead not found" });
       }
       
-      // Verify the lead belongs to the client
-      const clientId = (req as any).effectiveClientId;
-      if (lead.clientId !== clientId) {
-        return res.status(403).json({ error: "Access denied" });
-      }
-      
       const previousStatus = lead.status;
-      const updated = await storage.updateLead(paramsValidation.data.id, bodyValidation.data as any);
+      const updated = await storage.updateLead(clientId, paramsValidation.data.id, bodyValidation.data as any);
       
       // Fire webhook if status changed (async, non-blocking)
       if (updated && bodyValidation.data.status && bodyValidation.data.status !== previousStatus) {
@@ -6467,19 +6457,14 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(400).json({ error: paramsValidation.error });
       }
       
-      const lead = await storage.getLeadById(paramsValidation.data.id);
+      const clientId = (req as any).effectiveClientId;
+      const lead = await storage.getLeadById(clientId, paramsValidation.data.id);
       
       if (!lead) {
         return res.status(404).json({ error: "Lead not found" });
       }
       
-      // Verify the lead belongs to the client
-      const clientId = (req as any).effectiveClientId;
-      if (lead.clientId !== clientId) {
-        return res.status(403).json({ error: "Access denied" });
-      }
-      
-      await storage.deleteLead(paramsValidation.data.id);
+      await storage.deleteLead(clientId, paramsValidation.data.id);
       res.status(204).send();
     } catch (error) {
       console.error("Delete lead error:", error);
@@ -6514,22 +6499,12 @@ These suggestions should be relevant to what was just discussed and help guide t
       const validatedLeads: Array<{ id: string }> = [];
       
       for (const leadId of leadIds) {
-        const lead = await storage.getLeadById(leadId);
+        // Tenant-scoped lookup - automatically rejects leads from other tenants
+        const lead = await storage.getLeadById(clientId, leadId);
         
         if (!lead) {
           validationErrors.push(`Lead ${leadId} not found`);
           continue;
-        }
-        
-        // SECURITY: Strict client authorization check
-        if (lead.clientId !== clientId) {
-          console.error(`[Bulk-Lead] Security: Client ${clientId} attempted to access lead ${leadId} belonging to ${lead.clientId}`);
-          return res.status(403).json({ 
-            error: "Access denied: One or more leads do not belong to your account",
-            success: false,
-            successCount: 0,
-            errorCount: leadIds.length
-          });
         }
         
         validatedLeads.push({ id: leadId });
@@ -6554,12 +6529,12 @@ These suggestions should be relevant to what was just discussed and help guide t
       for (const lead of validatedLeads) {
         try {
           if (action === 'delete') {
-            await storage.deleteLead(lead.id);
+            await storage.deleteLead(clientId, lead.id);
           } else if (action === 'update_status') {
             const updates: any = {};
             if (status) updates.status = status;
             if (priority) updates.priority = priority;
-            await storage.updateLead(lead.id, updates);
+            await storage.updateLead(clientId, lead.id, updates);
           }
           
           successCount++;
@@ -6688,7 +6663,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       // Update lead status if leadId provided
       if (leadId) {
         try {
-          await storage.updateLead(leadId, {
+          await storage.updateLead(clientId, leadId, {
             bookingStatus: 'redirected',
             bookingUrlUsed: bookingUrl
           });
