@@ -6679,7 +6679,7 @@ function CreateFromTemplateModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg bg-[#1a1f2e] border-white/10 text-white">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto bg-[#1a1f2e] border-white/10 text-white">
         {step === 0 ? (
           /* Template Selection Step */
           <>

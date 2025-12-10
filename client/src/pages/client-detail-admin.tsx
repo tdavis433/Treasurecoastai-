@@ -55,7 +55,7 @@ export default function ClientDetailAdmin() {
   const { toast } = useToast();
   const slug = params?.slug;
   
-  const [activeTab, setActiveTab] = useState<'overview' | 'assistants' | 'conversations' | 'leads' | 'billing' | 'users' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'assistants' | 'conversations' | 'leads' | 'bookings' | 'billing' | 'users' | 'settings'>('overview');
   const [showCreateAssistantModal, setShowCreateAssistantModal] = useState(false);
   const [showInviteUserModal, setShowInviteUserModal] = useState(false);
   const [newAssistantForm, setNewAssistantForm] = useState({
@@ -220,6 +220,29 @@ export default function ClientDetailAdmin() {
     enabled: !!slug && activeTab === 'leads',
   });
 
+  const { data: clientAppointments, isLoading: clientAppointmentsLoading } = useQuery<{
+    appointments: Array<{
+      id: string;
+      name: string;
+      contact?: string;
+      email?: string;
+      appointmentType: string;
+      preferredTime: string;
+      status: string;
+      notes?: string;
+      createdAt: string;
+    }>;
+    total: number;
+  }>({
+    queryKey: ["/api/super-admin/workspaces", slug, "appointments"],
+    queryFn: async () => {
+      const response = await fetch(`/api/super-admin/workspaces/${slug}/appointments`, { credentials: "include" });
+      if (!response.ok) return { appointments: [], total: 0 };
+      return response.json();
+    },
+    enabled: !!slug && activeTab === 'bookings',
+  });
+
   const { data: workspaceUsers, isLoading: usersLoading } = useQuery<Array<{
     id: number;
     email: string;
@@ -307,6 +330,7 @@ export default function ClientDetailAdmin() {
     { value: 'assistants', label: 'Assistants', icon: Bot },
     { value: 'conversations', label: 'Conversations', icon: MessageSquare },
     { value: 'leads', label: 'Leads', icon: Users },
+    { value: 'bookings', label: 'Bookings', icon: Clock },
     { value: 'billing', label: 'Billing', icon: CreditCard },
     { value: 'users', label: 'Users', icon: Shield },
     { value: 'settings', label: 'Settings', icon: Settings },
@@ -615,6 +639,64 @@ export default function ClientDetailAdmin() {
                 <div className="text-center py-12">
                   <Users className="h-12 w-12 text-white/20 mx-auto mb-3" />
                   <p className="text-white/55">No leads captured yet</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Bookings Tab */}
+          {activeTab === 'bookings' && (
+            <div className="space-y-4">
+              {clientAppointmentsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="h-8 w-8 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
+                </div>
+              ) : (clientAppointments?.appointments?.length || 0) > 0 ? (
+                <div className="space-y-3">
+                  {clientAppointments?.appointments.map(apt => (
+                    <GlassCard key={apt.id} className="p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="text-white font-medium text-sm">{apt.name}</p>
+                            <Badge className={`text-xs ${
+                              apt.appointmentType === 'tour' ? 'bg-purple-500/20 text-purple-400' :
+                              apt.appointmentType === 'phone_call' ? 'bg-blue-500/20 text-blue-400' :
+                              'bg-white/10 text-white/55'
+                            }`}>
+                              {apt.appointmentType === 'phone_call' ? 'Phone Call' : apt.appointmentType.charAt(0).toUpperCase() + apt.appointmentType.slice(1)}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-white/55 mt-1">
+                            {apt.contact && <span>{apt.contact}</span>}
+                            {apt.email && <span>{apt.email}</span>}
+                          </div>
+                          <p className="text-xs text-white/70 mt-2">
+                            <Clock className="h-3 w-3 inline mr-1" />
+                            {apt.preferredTime}
+                          </p>
+                          {apt.notes && <p className="text-xs text-white/40 mt-1">{apt.notes}</p>}
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                          <Badge className={`text-xs ${
+                            apt.status === 'new' ? 'bg-cyan-500/20 text-cyan-400' :
+                            apt.status === 'contacted' ? 'bg-amber-500/20 text-amber-400' :
+                            apt.status === 'scheduled' ? 'bg-purple-500/20 text-purple-400' :
+                            apt.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                            'bg-white/10 text-white/55'
+                          }`}>
+                            {apt.status.charAt(0).toUpperCase() + apt.status.slice(1)}
+                          </Badge>
+                          <span className="text-xs text-white/40">{new Date(apt.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    </GlassCard>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Clock className="h-12 w-12 text-white/20 mx-auto mb-3" />
+                  <p className="text-white/55">No bookings yet</p>
                 </div>
               )}
             </div>

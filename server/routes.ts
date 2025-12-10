@@ -614,7 +614,7 @@ async function requireClientAuth(req: Request, res: Response, next: NextFunction
     let clientExistsInDb = false;
     if (!clientExistsInJson) {
       try {
-        const workspace = await storage.getWorkspaceBySlug(requestedClientId);
+        const workspace = await getWorkspaceBySlug(requestedClientId);
         clientExistsInDb = !!workspace;
       } catch (error) {
         console.error("Workspace lookup failed:", error);
@@ -8249,8 +8249,8 @@ These suggestions should be relevant to what was just discussed and help guide t
           email: contactEmail,
           website: websiteUrl || '',
           services: template.services,
+          personaConfig, // Store persona config inside businessProfile
         },
-        personaConfig,
         systemPrompt: buildSystemPrompt(),
         theme: {
           primaryColor: "#06b6d4",
@@ -8276,9 +8276,10 @@ These suggestions should be relevant to what was just discussed and help guide t
         businessName,
         tagline: personaConfig.assistantRole ? `Your ${personaConfig.assistantRole}` : "Welcome to our business",
         primaryEmail: contactEmail,
-        phone: contactPhone || '',
-        location: businessLocation ? `${businessLocation.city || ''}, ${businessLocation.state || ''}`.trim() : '',
-        website: websiteUrl || '',
+        primaryPhone: contactPhone || '',
+        city: businessLocation?.city || '',
+        state: businessLocation?.state || '',
+        websiteUrl: websiteUrl || '',
         status: "active",
         knowledgeBase: {
           about: `Welcome to ${businessName}.`,
@@ -8354,9 +8355,13 @@ These suggestions should be relevant to what was just discussed and help guide t
         viewAsClientUrl: `/client/dashboard?impersonate=${slug}`,
       });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("New client wizard error:", error);
-      res.status(500).json({ error: "Failed to create client" });
+      console.error("Error details:", error?.message, error?.stack);
+      res.status(500).json({ 
+        error: "Failed to create client",
+        details: error?.message || "Unknown error"
+      });
     }
   });
 
@@ -8756,6 +8761,41 @@ These suggestions should be relevant to what was just discussed and help guide t
     } catch (error) {
       console.error("Get workspace leads error:", error);
       res.status(500).json({ error: "Failed to fetch workspace leads" });
+    }
+  });
+
+  // Get workspace appointments/bookings (for admin view)
+  app.get("/api/super-admin/workspaces/:slug/appointments", requireSuperAdmin, async (req, res) => {
+    try {
+      const { slug } = req.params;
+      
+      const workspace = await getWorkspaceBySlug(slug);
+      if (!workspace) {
+        return res.status(404).json({ error: "Workspace not found" });
+      }
+      
+      // Get appointments for this workspace (using slug as clientId)
+      const appointmentsList = await storage.getAppointments(slug);
+      
+      const formattedAppointments = appointmentsList.map(apt => ({
+        id: apt.id,
+        name: apt.name || 'Unknown',
+        contact: apt.contact || null,
+        email: apt.email || null,
+        appointmentType: apt.appointmentType || 'appointment',
+        preferredTime: apt.preferredTime || 'To be confirmed',
+        status: apt.status || 'new',
+        notes: apt.notes || null,
+        createdAt: apt.createdAt?.toISOString(),
+      }));
+      
+      res.json({
+        appointments: formattedAppointments,
+        total: formattedAppointments.length,
+      });
+    } catch (error) {
+      console.error("Get workspace appointments error:", error);
+      res.status(500).json({ error: "Failed to fetch workspace appointments" });
     }
   });
 
