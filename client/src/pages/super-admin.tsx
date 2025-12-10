@@ -296,7 +296,7 @@ export default function SuperAdmin() {
         description: "You don't have permission to access this page.",
         variant: "destructive",
       });
-      setLocation("/admin/dashboard");
+      setLocation("/client/dashboard");
     }
   }, [currentUser, authLoading, setLocation, toast]);
 
