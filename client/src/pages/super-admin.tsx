@@ -7170,17 +7170,35 @@ function TestChatPanel({ clientId, botId, botName }: { clientId: string; botId: 
     } catch (error) {
       console.error('Chat error:', error);
       const latency = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Failed to get AI response';
+      const rawError = error instanceof Error ? error.message : 'Failed to get AI response';
+      
+      // Create user-friendly error messages for common issues
+      let friendlyMessage = "I'm having trouble responding right now. Please try again in a moment.";
+      let toastDescription = "Request failed";
+      
+      if (rawError.toLowerCase().includes('rate') || rawError.toLowerCase().includes('429') || rawError.toLowerCase().includes('quota')) {
+        friendlyMessage = "I'm experiencing high demand right now. Please wait a moment and try again.";
+        toastDescription = "AI service is busy - please wait and retry";
+      } else if (rawError.toLowerCase().includes('timeout') || rawError.toLowerCase().includes('timed out')) {
+        friendlyMessage = "The request took too long. Please try a shorter message or try again.";
+        toastDescription = "Request timed out";
+      } else if (rawError.toLowerCase().includes('network') || rawError.toLowerCase().includes('fetch')) {
+        friendlyMessage = "There seems to be a connection issue. Please check your internet and try again.";
+        toastDescription = "Network error";
+      } else if (rawError.toLowerCase().includes('openai') || rawError.toLowerCase().includes('api key')) {
+        friendlyMessage = "The AI service is temporarily unavailable. Our team has been notified.";
+        toastDescription = "AI service configuration issue";
+      }
       
       debugRequest.response = {
         status: debugRequest.response?.status || 500,
-        data: { error: errorMessage },
+        data: { error: rawError },
         latency,
         timestamp: new Date().toISOString(),
       };
       
-      // Add error message to chat so user sees it
-      setMessages(prev => [...prev, { role: 'assistant', content: `Sorry, I encountered an error: ${errorMessage}. Please try again.` }]);
+      // Add friendly error message to chat (raw error only shown in debug panel)
+      setMessages(prev => [...prev, { role: 'assistant', content: friendlyMessage }]);
       setDebugLogs(prev => {
         const newLogs = [...prev, debugRequest];
         setSelectedDebugIndex(newLogs.length - 1);
@@ -7189,7 +7207,7 @@ function TestChatPanel({ clientId, botId, botName }: { clientId: string; botId: 
       
       toast({
         title: "Chat Error",
-        description: `Request failed: ${errorMessage}`,
+        description: toastDescription,
         variant: "destructive"
       });
     } finally {
