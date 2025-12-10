@@ -1,0 +1,57 @@
+You already identified these tasks:
+
+- Understand how bookings are made
+- Sync bookings between client and admin
+- Fix errors in adding clients
+- Fix assistant wizard modal scrolling
+- Fix booking type and date storage
+- Add buttons to sign out
+- Check all fixes are working
+
+Now implement them with these concrete acceptance criteria:
+
+1) Booking pipeline + data sync
+- Ensure leads and bookings created by the Faith House demo chat:
+  - Are saved with the correct client/workspace id.
+  - Appear in BOTH:
+    - Faith House client dashboard (Leads, Bookings, Conversations).
+    - Super admin → Faith House workspace views.
+- Ensure both booking types (tour + phone call) are stored and rendered.
+- Store real datetime values based on user input, and show those exact times in the UI.
+
+2) Add Client wizard
+- Fix the backend API so submitting the Add Client wizard:
+  - Creates a new workspace with the supplied data.
+  - Returns success, not a 500.
+- Frontend: show a friendly error on failure, not raw JSON.
+- On success: new workspace appears in Clients list without redirecting to the public landing page.
+
+3) Assistant creation wizard
+- Make the wizard’s content area scrollable with a fixed footer for Next/Back/Finish buttons.
+- Ensure validation works and the wizard can be fully completed.
+- Creating a “QA Test Bot” for a test workspace should succeed and show in the Assistants list, and be deletable.
+
+4) Workspace Users tab
+- Fix the create-user API and frontend so that:
+  - After creating a client user, the Users list refreshes and shows the new user.
+  - Errors show a clear, human-readable message.
+
+5) View as Client
+- Implement a working “View as Client” for Faith House:
+  - Clicking it should navigate the super admin to the Faith House client dashboard (no about:blank, no 404), using existing auth and tenant scoping.
+  - If proper impersonation is not ready, remove or disable the button instead of leaving it broken.
+
+6) Logout buttons
+- Add visible Logout controls to the admin and client dashboard layouts.
+- Wire them to the existing logout route so the user is redirected to login/public and cannot access dashboards without logging in again.
+
+7) Post-fix verification
+- After changes, re-run the following manual scenarios and ensure they pass:
+  - Faith House E2E: chat → lead + tour + phone call → both dashboards show correct data.
+  - Add Client: create and delete a QA test workspace successfully.
+  - Assistant wizard: create and delete a QA test bot.
+  - Users tab: create a test user and see them listed.
+  - View as Client: works or is safely removed.
+  - Logout: visible and functional in both admin and client dashboards.
+
+Make the minimum code changes necessary to satisfy all of the above, then output a short summary of which files you touched and how each acceptance criterion is now satisfied.

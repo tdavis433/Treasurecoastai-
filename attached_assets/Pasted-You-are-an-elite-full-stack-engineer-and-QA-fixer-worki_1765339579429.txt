@@ -1,0 +1,277 @@
+You are an elite full-stack engineer and QA fixer working inside the Treasure Coast AI repo.
+
+Your job: take the latest UX/QA report (summarized below) and systematically FIX the P0 issues, then re-test the affected flows.
+
+Do NOT refactor the whole app. Make surgical, targeted changes that get this platform demo-ready.
+
+────────────────────────
+CONTEXT FROM LATEST QA
+────────────────────────
+
+From a live black-box test of:
+
+- App base URL: https://treasure-coast-ai-platform--mlgrushskill.replit.app/
+- Faith House demo: https://treasure-coast-ai-platform--mlgrushskill.replit.app/demo/faith-house
+- Logins:
+  - Super admin: admin / admin123
+  - Faith House client: demo_faith_house / demo123
+
+The QA report found these P0 issues:
+
+1) DATA / MULTI-TENANCY
+- Leads and bookings created via the Faith House demo chat:
+  - DO appear in the Faith House client dashboard (Leads + Bookings + Conversations).
+  - DO NOT appear in the super-admin / agency view for the Faith House workspace.
+- Tour bookings are not shown in the client Bookings list.
+- Phone call booking time shows “tomorrow afternoon” instead of the specific time the visitor gave.
+→ Admin views are missing the same data, and booking persistence/format is inconsistent.
+
+2) ADD CLIENT WIZARD (ADMIN)
+- “Add Client” multi-step wizard:
+  - Step 1 collects info (business name, etc.).
+  - Submitting returns a 500 error toast: “Failed to create client”.
+→ Backend route and/or payload shape is wrong; error handling is poor.
+
+3) CREATE ASSISTANT WIZARD (ADMIN)
+- “Create Assistant” / new bot wizard:
+  - Step 1 requires Client ID + Business Name.
+  - Step 2 is too tall; can’t scroll down to “Next/Finish” so you can’t complete wizard.
+→ Wizard is effectively unusable.
+
+4) WORKSPACE USERS TAB (ADMIN)
+- In Clients → Faith House → Users tab:
+  - “Create Login” modal submits, but the Users list still says “No users assigned”.
+  - No new user row appears, even with valid email/password.
+→ User creation is either failing silently or list is not refreshed.
+
+5) VIEW AS CLIENT (ADMIN IMPERSONATION)
+- “View as Client” quick action:
+  - Opens a new tab that shows about:blank and then returns to admin dashboard.
+→ No working way to impersonate or jump into client view from admin.
+
+6) LOGOUT
+- Neither admin nor client dashboards expose a visible Logout button.
+- Logging out requires manually hitting /logout.
+
+────────────────────────
+WHAT TO DO – P0 FIXES
+────────────────────────
+
+Implement the following in order:
+
+PHASE 1 – Understand Current Implementations
+--------------------------------------------
+
+1. Search the codebase for:
+   - Add client wizard:
+     - Admin Clients page, “Add Client” button, and its API call.
+   - Assistant creation wizard:
+     - New assistant/bot modal or page and its API calls.
+   - Workspace Users tab:
+     - Components responsible for listing users and creating a new login.
+   - View as Client:
+     - Any handlers/actions using a ?clientId= or ?impersonate= query param.
+   - Logout:
+     - /logout route and any UI that should call it.
+   - Data storage for:
+     - Leads
+     - Bookings / appointments
+     - Conversations
+   - Admin vs client queries for those same entities.
+
+2. Map:
+   - Which tables / collections store:
+     - Leads
+     - Appointments / bookings (including “tour” vs “phone_call” types)
+     - Conversations / chat transcripts
+   - Which functions/APIs are used by:
+     - Faith House demo chat to create leads/bookings.
+     - Client dashboard to load leads/bookings/conversations.
+     - Admin dashboard to load leads/bookings/conversations.
+
+PHASE 2 – Fix Data Sync & Booking Persistence
+---------------------------------------------
+
+Goal: Any lead/booking created by the Faith House bot must:
+
+- Be saved to the correct workspace/client.
+- Show up in:
+  - Faith House client dashboard.
+  - Super-admin view for that workspace.
+- Persist both Tour and Phone Call bookings with correct type and time.
+
+Steps:
+
+1. Locate the code path used by the Faith House demo chat to create:
+   - Leads
+   - Bookings (tour + phone call)
+2. Ensure that:
+   - Each created lead/booking has the correct client/workspace identifier (e.g. clientId or workspaceId).
+3. Locate admin-side queries for:
+   - Admin leads view for a given workspace.
+   - Admin bookings/appointments view for a given workspace.
+4. Fix those admin queries to:
+   - Filter by the same client/workspace id as the client dashboard.
+   - NOT filter out records created via the demo.
+   - Return both tour and phone call bookings.
+5. Fix booking types and time:
+   - Verify how “tour” vs “phone_call” (or similar) is stored.
+   - Fix any mapping that causes tours to be hidden or misclassified.
+   - Ensure the stored time field reflects the user’s input (date + time) instead of a vague label like “tomorrow afternoon”.
+   - Ensure client Bookings list renders the right time.
+
+After changes:
+
+- Write or update a small integration test (or manual test instructions in comments) that:
+  - Simulates booking a tour and a phone call for Faith House.
+  - Verifies that both bookings appear in both client and admin views with matching data.
+
+PHASE 3 – Fix Add Client Wizard
+-------------------------------
+
+1. Find the Add Client wizard component and its submit handler.
+2. Find the backend route it calls (likely /api/admin/clients or similar) and inspect:
+   - Expected payload shape.
+   - Validation constraints.
+3. Fix:
+   - Any mismatch in payload vs expected fields.
+   - Any missing required field.
+   - Any hard-coded assumptions causing 500 errors.
+4. Improve error handling:
+   - The frontend should:
+     - Catch non-200 responses.
+     - Parse error content.
+     - Show a friendly message (e.g., “Could not create client: [reason]”) instead of raw JSON.
+5. Confirm:
+   - Creating a test client from the wizard succeeds.
+   - No redirect to public landing page after success (unless explicitly desired).
+   - The new client appears in the Clients list.
+
+PHASE 4 – Fix Assistant Creation Wizard
+---------------------------------------
+
+1. Find the new Assistant / Create Bot wizard.
+2. Fix the modal/container layout:
+   - Ensure the content area is scrollable (e.g., via CSS height + overflow-y: auto).
+   - Ensure “Next” / “Back” / “Finish” buttons are always visible (sticky footer or fixed-position).
+3. Verify validation:
+   - Step 1: Client ID, Business Name.
+   - Step 2+: whatever else is required.
+4. Fix backend route:
+   - Same as Add Client: ensure the payload matches what the API expects.
+   - Resolve any 500s.
+5. Confirm:
+   - You can create a “QA Test Bot” for a test client.
+   - It appears in the Assistants list.
+   - You can delete it cleanly.
+
+PHASE 5 – Fix Workspace Users Tab & User Creation
+-------------------------------------------------
+
+1. Find the Workspace Users tab component.
+2. Identify:
+   - The API endpoint used for creating a new user/login.
+   - The API endpoint used to fetch the list of users.
+3. Fix user creation flow:
+   - Ensure the backend route:
+     - Validates email, password, client/workspace id.
+     - Creates the user tied to that workspace.
+   - Ensure the frontend:
+     - Shows a success toast on 200.
+     - After success, re-fetches the user list OR updates it locally to include the new user row.
+   - On error:
+     - Show a human-readable error (“Could not create login: [reason]”), not raw JSON.
+4. Confirm:
+   - Creating a test user on Faith House workspace results in that user appearing in the Users list.
+   - The user can log in and lands in the correct workspace view (if login is allowed).
+
+PHASE 6 – Fix “View as Client”
+------------------------------
+
+1. Search for “View as Client” button in admin UI.
+2. Inspect what it currently does:
+   - Which URL it opens.
+   - Whether it uses ?clientId= or ?impersonate= or something else.
+3. Implement one of these behaviors (for now, choose the simplest reliable one):
+
+Option A – Simple Redirect
+- When a super admin clicks “View as Client”:
+  - Redirect them (in the same tab) to the client dashboard for that workspace, using the workspace’s clientId/slug and existing auth.
+  - Example: /client?clientId=<workspaceId> or whatever route is used by client dashboard.
+
+Option B – Impersonation (only if existing infrastructure supports it)
+- Set a “currentClientId” in session when super admin clicks “View as Client”.
+- Redirect to client dashboard which reads that id and scopes data.
+- Ensure only super admins can impersonate.
+
+4. Confirm:
+   - Clicking “View as Client” on Faith House opens a fully functional Faith House client dashboard.
+   - No about:blank or 404.
+
+PHASE 7 – Add Logout Buttons
+----------------------------
+
+1. Locate layout components for:
+   - Admin dashboard top bar.
+   - Client dashboard top bar or sidebar.
+2. Add a visible Logout control:
+   - E.g., a profile icon with a dropdown containing “Logout”.
+   - Or a simple “Logout” button in the top-right.
+3. Hook it to the existing /logout route or logout API.
+4. Confirm:
+   - Clicking Logout redirects to login/public.
+   - Reloading admin/client URLs afterwards requires login.
+
+────────────────────────
+AFTER FIXES – RE-TEST
+────────────────────────
+
+After implementing the above, run a local dev server and manually re-test (or describe how to test) the following scenarios:
+
+1) Faith House E2E:
+   - Open the Faith House demo chat.
+   - Run a conversation where:
+     - Visitor provides name/phone/email.
+     - Books BOTH:
+       - A tour at a specific date/time.
+       - A phone call at a specific date/time.
+   - Then:
+     - Log in as Faith House client and confirm:
+       - New lead in Leads.
+       - BOTH bookings in Bookings with correct types and times.
+       - Conversation transcript in Conversations.
+     - Log in as super admin and confirm:
+       - Admin can see the same lead and bookings for Faith House workspace.
+
+2) Add Client:
+   - Use Add Client wizard to create a “QA Test Workspace”.
+   - Confirm success, no 500 error.
+   - Confirm it appears in Clients list.
+
+3) Create Assistant:
+   - For QA Test Workspace, create a “QA Test Bot”.
+   - Confirm wizard is scrollable and can be completed.
+   - Confirm the bot appears in Assistants and can be deleted.
+
+4) Users Tab:
+   - For Faith House workspace, create a “QA Test User”.
+   - Confirm user appears in Users list.
+
+5) View as Client:
+   - From Faith House workspace in admin, click “View as Client”.
+   - Confirm you land in Faith House client dashboard.
+
+6) Logout:
+   - From both admin and client dashboards, use the Logout UI element.
+   - Confirm you are taken out of the app and must log in again to access dashboards.
+
+────────────────────────
+OUTPUT FORMAT
+────────────────────────
+
+When you are done, output a short Markdown report listing:
+
+- Files changed for each P0 issue.
+- For each issue (data sync, add client, assistant wizard, users tab, View as Client, logout):
+  - Status: FIXED / PARTIALLY FIXED / NOT FIXED (and why).
+- Any remaining limitations I should know about for a live demo.
