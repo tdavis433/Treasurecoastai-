@@ -87,6 +87,34 @@ export default function ClientDetailAdmin() {
     email: '',
     password: '',
   });
+  const [userFormTouched, setUserFormTouched] = useState({ email: false, password: false });
+  const [userFormErrors, setUserFormErrors] = useState<{ email?: string; password?: string }>({});
+  
+  // Workspace editing state
+  const [showEditNameModal, setShowEditNameModal] = useState(false);
+  const [editNameValue, setEditNameValue] = useState('');
+
+  // Validation helpers for user form
+  const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const isValidPassword = (password: string) => {
+    // At least 8 chars, 1 letter, 1 number
+    return password.length >= 8 && /[a-zA-Z]/.test(password) && /[0-9]/.test(password);
+  };
+
+  const validateUserForm = () => {
+    const errors: { email?: string; password?: string } = {};
+    if (!newUserForm.email.trim()) {
+      errors.email = 'Email is required';
+    } else if (!isValidEmail(newUserForm.email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+    if (!newUserForm.password) {
+      errors.password = 'Password is required';
+    } else if (!isValidPassword(newUserForm.password)) {
+      errors.password = 'Password must be at least 8 characters with letters and numbers';
+    }
+    return errors;
+  };
 
   const businessTypes = [
     { value: 'auto_repair', label: 'Auto Repair' },
@@ -150,6 +178,8 @@ export default function ClientDetailAdmin() {
       });
       setShowInviteUserModal(false);
       setNewUserForm({ email: '', password: '' });
+      setUserFormTouched({ email: false, password: false });
+      setUserFormErrors({});
       // Invalidate the users query to refresh the list
       queryClient.invalidateQueries({ queryKey: ["/api/super-admin/workspaces", slug, "users"] });
     },
@@ -281,17 +311,22 @@ export default function ClientDetailAdmin() {
   });
 
   const updateWorkspaceMutation = useMutation({
-    mutationFn: async (data: { plan?: string; status?: string }) => {
+    mutationFn: async (data: { plan?: string; status?: string; name?: string }) => {
       const response = await apiRequest("PATCH", `/api/super-admin/workspaces/${slug}`, data);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update workspace");
+      }
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/super-admin/workspaces", slug] });
       queryClient.invalidateQueries({ queryKey: ["/api/super-admin/workspaces"] });
       toast({ title: "Updated", description: "Workspace updated successfully." });
+      setShowEditNameModal(false);
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to update workspace.", variant: "destructive" });
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message || "Failed to update workspace.", variant: "destructive" });
     },
   });
 
@@ -911,9 +946,12 @@ export default function ClientDetailAdmin() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border-white/10 text-white/40 cursor-not-allowed opacity-60"
-                      disabled
-                      title="Workspace name changes are handled by the agency"
+                      className="border-white/10 text-white/70 hover:bg-white/10"
+                      onClick={() => {
+                        setEditNameValue(workspaceData.name);
+                        setShowEditNameModal(true);
+                      }}
+                      data-testid="button-edit-workspace-name"
                     >
                       <Edit2 className="h-4 w-4 mr-2" />
                       Edit Name
@@ -1073,29 +1111,81 @@ export default function ClientDetailAdmin() {
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="user-email" className="text-white/70">Email Address</Label>
+              <Label htmlFor="user-email" className="text-white/70">Email Address *</Label>
               <Input
                 id="user-email"
                 type="email"
                 value={newUserForm.email}
-                onChange={(e) => setNewUserForm(prev => ({ ...prev, email: e.target.value }))}
+                onChange={(e) => {
+                  const email = e.target.value;
+                  setNewUserForm(prev => ({ ...prev, email }));
+                  if (userFormTouched.email) {
+                    let error: string | undefined;
+                    if (!email.trim()) {
+                      error = 'Email is required';
+                    } else if (!isValidEmail(email)) {
+                      error = 'Please enter a valid email address';
+                    }
+                    setUserFormErrors(prev => ({ ...prev, email: error }));
+                  }
+                }}
+                onBlur={() => {
+                  setUserFormTouched(prev => ({ ...prev, email: true }));
+                  let error: string | undefined;
+                  if (!newUserForm.email.trim()) {
+                    error = 'Email is required';
+                  } else if (!isValidEmail(newUserForm.email)) {
+                    error = 'Please enter a valid email address';
+                  }
+                  setUserFormErrors(prev => ({ ...prev, email: error }));
+                }}
                 placeholder="client@example.com"
-                className="bg-white/5 border-white/10 text-white"
+                className={`bg-white/5 text-white ${userFormTouched.email && userFormErrors.email ? 'border-red-500/50' : 'border-white/10'}`}
                 data-testid="input-user-email"
               />
+              {userFormTouched.email && userFormErrors.email && (
+                <p className="text-xs text-red-400">{userFormErrors.email}</p>
+              )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="user-password" className="text-white/70">Password</Label>
+              <Label htmlFor="user-password" className="text-white/70">Password *</Label>
               <Input
                 id="user-password"
                 type="password"
                 value={newUserForm.password}
-                onChange={(e) => setNewUserForm(prev => ({ ...prev, password: e.target.value }))}
-                placeholder="Min 8 chars, 1 uppercase, 1 number"
-                className="bg-white/5 border-white/10 text-white"
+                onChange={(e) => {
+                  const password = e.target.value;
+                  setNewUserForm(prev => ({ ...prev, password }));
+                  if (userFormTouched.password) {
+                    let error: string | undefined;
+                    if (!password) {
+                      error = 'Password is required';
+                    } else if (!isValidPassword(password)) {
+                      error = 'Password must be at least 8 characters with letters and numbers';
+                    }
+                    setUserFormErrors(prev => ({ ...prev, password: error }));
+                  }
+                }}
+                onBlur={() => {
+                  setUserFormTouched(prev => ({ ...prev, password: true }));
+                  let error: string | undefined;
+                  if (!newUserForm.password) {
+                    error = 'Password is required';
+                  } else if (!isValidPassword(newUserForm.password)) {
+                    error = 'Password must be at least 8 characters with letters and numbers';
+                  }
+                  setUserFormErrors(prev => ({ ...prev, password: error }));
+                }}
+                placeholder="Min 8 chars with letters and numbers"
+                className={`bg-white/5 text-white ${userFormTouched.password && userFormErrors.password ? 'border-red-500/50' : 'border-white/10'}`}
                 data-testid="input-user-password"
               />
-              <p className="text-xs text-white/40">Password must be at least 8 characters with 1 uppercase letter and 1 number</p>
+              {userFormTouched.password && userFormErrors.password && (
+                <p className="text-xs text-red-400">{userFormErrors.password}</p>
+              )}
+              {!userFormErrors.password && (
+                <p className="text-xs text-white/40">Password must be at least 8 characters with letters and numbers</p>
+              )}
             </div>
           </div>
 
@@ -1108,24 +1198,39 @@ export default function ClientDetailAdmin() {
           <DialogFooter>
             <Button 
               variant="ghost" 
-              onClick={() => setShowInviteUserModal(false)}
+              onClick={() => {
+                setShowInviteUserModal(false);
+                setNewUserForm({ email: '', password: '' });
+                setUserFormTouched({ email: false, password: false });
+                setUserFormErrors({});
+              }}
               className="text-white/70"
             >
               Cancel
             </Button>
             <Button
               onClick={() => {
-                if (!newUserForm.email || !newUserForm.password || !workspaceData?.id) {
-                  toast({ title: "Error", description: "Please fill in all fields.", variant: "destructive" });
+                // Validate all fields on submit
+                const errors = validateUserForm();
+                setUserFormErrors(errors);
+                setUserFormTouched({ email: true, password: true });
+                
+                if (Object.keys(errors).length > 0) {
+                  return; // Don't submit if there are errors
+                }
+                
+                if (!workspaceData?.id) {
+                  toast({ title: "Error", description: "Workspace not found.", variant: "destructive" });
                   return;
                 }
+                
                 createUserMutation.mutate({
                   workspaceId: workspaceData.id,
                   email: newUserForm.email,
                   password: newUserForm.password,
                 });
               }}
-              disabled={!newUserForm.email || !newUserForm.password || createUserMutation.isPending}
+              disabled={createUserMutation.isPending}
               className="bg-cyan-500 hover:bg-cyan-600 text-white"
               data-testid="button-confirm-create-user"
             >
@@ -1139,6 +1244,66 @@ export default function ClientDetailAdmin() {
                   <UserPlus className="h-4 w-4 mr-2" />
                   Create Login
                 </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Workspace Name Modal */}
+      <Dialog open={showEditNameModal} onOpenChange={setShowEditNameModal}>
+        <DialogContent className="bg-[#1a1d24] border-white/10 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <Edit2 className="h-5 w-5 text-cyan-400" />
+              Edit Workspace Name
+            </DialogTitle>
+            <DialogDescription className="text-white/55">
+              Update the business name for this workspace.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="workspace-name" className="text-white/70">Business Name *</Label>
+              <Input
+                id="workspace-name"
+                value={editNameValue}
+                onChange={(e) => setEditNameValue(e.target.value)}
+                placeholder="Enter business name"
+                className="bg-white/5 border-white/10 text-white"
+                data-testid="input-edit-workspace-name"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="ghost" 
+              onClick={() => setShowEditNameModal(false)}
+              className="text-white/70"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!editNameValue.trim()) {
+                  toast({ title: "Error", description: "Business name is required.", variant: "destructive" });
+                  return;
+                }
+                updateWorkspaceMutation.mutate({ name: editNameValue.trim() });
+              }}
+              disabled={!editNameValue.trim() || updateWorkspaceMutation.isPending}
+              className="bg-cyan-500 hover:bg-cyan-600 text-white"
+              data-testid="button-save-workspace-name"
+            >
+              {updateWorkspaceMutation.isPending ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Changes'
               )}
             </Button>
           </DialogFooter>

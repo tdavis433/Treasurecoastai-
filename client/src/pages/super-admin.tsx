@@ -10488,7 +10488,7 @@ function UsersSectionPanel({
             </Button>
             <Button
               onClick={handleInvite}
-              disabled={!inviteForm.username || !inviteForm.password || isCreating}
+              disabled={isCreating}
               className="bg-cyan-500 hover:bg-cyan-600 text-white"
               data-testid="button-confirm-invite"
             >
