@@ -1,0 +1,47 @@
+You are a senior full-stack engineer working inside this Replit project for the Treasure Coast AI SaaS.
+
+Previously, a QA session uncovered several open issues. Some features (multi‑tenant isolation, login, logout, user creation, basic wizard flow) are now working well. Do NOT modify those. Focus ONLY on the problems listed below.
+
+Current backlog of defects & missing functionality:
+
+1. **New Client Wizard sometimes closes unexpectedly**  
+   - The wizard validates required fields, but at times it collapses or closes while typing in Step 1.  
+   - Fix the modal lifecycle so it stays open on all inputs and only closes when the user intentionally cancels or finishes the wizard.  
+   - Ensure inline validation is visible and does not trigger a premature close.
+
+2. **Auto‑created assistant missing**  
+   - After finishing the New Client wizard, the Assistants tab shows “No assistants found”. A default assistant should be auto‑generated with generic persona and FAQs.  
+   - Implement automatic creation of a default assistant for every new workspace, including prefilled FAQs and a sensible persona. The admin should not need to create it manually.
+
+3. **Embed snippet missing `data-client-id` attribute**  
+   - In client settings, the embed code snippet shows only `<script>tcai('init',{ botId:'...' });</script>`, lacking `data-client-id`.  
+   - Fix the embed generator so both `data-client-id` and `data-bot-id` (or equivalent) are present.  
+   - Verify that the copied snippet works for embedding the chat widget with proper identification.
+
+4. **FAQ editor UX**  
+   - The FAQ editor uses nested scroll areas that hide the Save button, forcing awkward keyboard scrolling to reach it.  
+   - Simplify the layout so the Save/Apply button remains accessible at all times or is sticky within the FAQ panel.  
+   - Improve drag/drop or reorder controls and remove confusing red exclamation icons if they are not functional.
+
+5. **Widget design controls for clients**  
+   - Clients currently see read‑only widget appearance settings with a note to contact support.  
+   - Decide and implement one of:  
+     a. Expose basic controls to clients (color picker, corner position, welcome message) with validation.  
+     b. If design customization must remain admin‑only, hide those fields entirely or clearly label them “Admin-only” to avoid confusion.
+
+6. **Assistant test chat & lead/booking flows**  
+   - Implement or expose a way to simulate conversations with the assistant that create leads and bookings inside a workspace.  
+   - Ensure the default automations for “New Lead – Tag & Status” and “New Booking – Notification” fire on these events, and their status/tag updates appear in both client and admin dashboards.  
+   - Provide friendly error handling for any rate‑limit or API failures.
+
+7. **Cross‑workspace isolation and dashboard sync**  
+   - QA did not verify multi‑tenant isolation in dashboards or cross‑dashboard data sync after lead/booking creation.  
+   - Confirm that leads/bookings from one workspace never appear in another workspace (e.g., Faith House vs QA Onboarding).  
+   - Ensure that status changes made on admin side propagate to the client view and vice versa.
+
+General guidance:
+- Preserve existing functionality for authentication, route protection, and basic workspace creation.
+- Document any new environment variables or configurations in replit.md.
+- Write clear comments where you fix tricky behaviors so future developers understand what was changed.
+
+Please implement these fixes and enhancements now, and update any relevant UI labels to make the product more intuitive for small‑business users.
