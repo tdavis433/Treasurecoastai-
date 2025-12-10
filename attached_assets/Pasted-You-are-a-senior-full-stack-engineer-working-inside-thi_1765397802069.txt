@@ -1,0 +1,94 @@
+You are a senior full-stack engineer working inside this Replit project for the Treasure Coast AI SaaS.
+
+IMPORTANT: 
+- Previous work already improved multi-tenant isolation and landing page responsiveness. 
+- DO NOT modify `requireClientAuth`, `effectiveClientId`, or the landing page (`home.tsx`) unless absolutely necessary.
+
+THIS PROMPT’S GOAL:
+Fix and fully wire up:
+1) Admin vs client login behavior.
+2) Logout for both roles.
+3) Route protection for admin and client dashboards.
+
+CREDENTIALS (from product spec):
+- SUPER ADMIN:
+  - Username: admin
+  - Password: admin123
+- FAITH HOUSE CLIENT:
+  - Username: demo_faith_house
+  - Password: demo123
+
+────────────────────
+STEP 1 – CLARIFY LOGIN FLOWS
+────────────────────
+Find the code that handles:
+- `/login` (and/or `/admin/login`, `/client/login` if they exist).
+- Session/JWT creation and user role detection.
+- Redirect after successful login.
+
+REQUIRED BEHAVIOR:
+- `admin` / `admin123` → should land on the **super admin / agency dashboard** (multi-workspace view).
+- `demo_faith_house` / `demo123` → should land on the **Faith House client workspace dashboard**, NOT the admin area.
+
+Tasks:
+1. Make sure the login handler:
+   - Identifies user role (super_admin vs client_admin / client_user).
+   - Redirects admin to admin dashboard.
+   - Redirects client to the correct workspace client dashboard.
+
+2. If you currently have only `/login`:
+   - That is OK, but it must branch based on role.
+   - Optionally, you can add `/admin/login` and `/client/login` wrappers if clearer, but not required.
+
+3. Implement clear error handling:
+   - Wrong username/password → show a friendly error message and do NOT log the user in.
+
+────────────────────
+STEP 2 – IMPLEMENT LOGOUT FOR ADMIN AND CLIENT
+────────────────────
+Right now there is no explicit logout flow in the dashboards.
+
+Tasks:
+1. Admin dashboard:
+   - Add a visible “Logout” / “Sign out” control (header or sidebar).
+   - When clicked, it should:
+     - Clear authentication (session, cookie, or token).
+     - Redirect to the admin login (or generic `/login` if shared).
+
+2. Client dashboard:
+   - Add a visible “Logout” / “Sign out” control.
+   - When clicked:
+     - Clear client auth.
+     - Redirect to client login (or shared `/login`).
+
+Make sure both are implemented in React/Next (or your frontend stack) and wired to actual logout routes on the server.
+
+────────────────────
+STEP 3 – PROTECT ROUTES BASED ON ROLE
+────────────────────
+Use your existing auth middleware to enforce:
+
+- **Admin-only routes** (e.g., `/super-admin`, admin client/workspace management):
+  - Must require admin role.
+  - If not logged in as admin, redirect to admin login (not 404, not raw JSON).
+  
+- **Client-only routes** (client dashboards, client leads/bookings/conversations):
+  - Must require a client workspace user.
+  - If not logged in as client, redirect to client login.
+
+- A client user should NOT be able to access `/super-admin` or admin routes.
+- An admin should not accidentally land on some random client dashboard without explicit context.
+
+────────────────────
+ACCEPTANCE CRITERIA
+────────────────────
+After your changes, the following must hold:
+
+- ✅ Logging in as `admin` / `admin123` takes you to the admin/super-admin dashboard.
+- ✅ Logging in as `demo_faith_house` / `demo123` takes you to the Faith House client dashboard.
+- ✅ Wrong credentials show clear errors and do not authenticate.
+- ✅ Admin dashboard has a working “Logout” that clears auth and redirects to login.
+- ✅ Client dashboard has a working “Logout” that clears auth and redirects to login.
+- ✅ Protected routes redirect to appropriate login when you are not authenticated or do not have the right role.
+
+Make all necessary code changes to implement this behavior cleanly.
