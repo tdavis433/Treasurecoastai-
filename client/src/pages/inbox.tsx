@@ -374,7 +374,7 @@ export default function InboxPage() {
             </div>
             <div className="flex items-center gap-2 text-white/55 text-sm">
               <Clock className="h-4 w-4" />
-              {format(new Date(selectedSession.startedAt), "MMM d, yyyy h:mm a")}
+              {selectedSession.startedAt ? format(new Date(selectedSession.startedAt), "MMM d, yyyy h:mm a") : "N/A"}
             </div>
           </div>
           
@@ -492,7 +492,7 @@ export default function InboxPage() {
                             {msg.actor === "user" ? "Visitor" : "Bot"}
                           </span>
                           <span className="text-white/40 text-xs">
-                            {format(new Date(msg.createdAt), "h:mm a")}
+                            {msg.createdAt ? format(new Date(msg.createdAt), "h:mm a") : ""}
                           </span>
                         </div>
                         <p className="text-white/85 text-sm whitespace-pre-wrap">
@@ -535,7 +535,7 @@ export default function InboxPage() {
                           <User className="h-3.5 w-3.5" />
                           <span>{note.authorName}</span>
                           <span>|</span>
-                          <span>{format(new Date(note.createdAt), "MMM d, h:mm a")}</span>
+                          <span>{note.createdAt ? format(new Date(note.createdAt), "MMM d, h:mm a") : ""}</span>
                           {note.isPinned && (
                             <Pin className="h-3.5 w-3.5 text-yellow-400" />
                           )}
@@ -595,7 +595,7 @@ export default function InboxPage() {
             {selectedSession.endedAt && (
               <span className="flex items-center gap-1">
                 <CheckCircle2 className="h-4 w-4" />
-                Ended: {format(new Date(selectedSession.endedAt), "h:mm a")}
+                Ended: {selectedSession.endedAt ? format(new Date(selectedSession.endedAt), "h:mm a") : ""}
               </span>
             )}
           </div>
