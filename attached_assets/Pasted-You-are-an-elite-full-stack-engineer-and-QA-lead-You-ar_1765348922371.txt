@@ -1,0 +1,86 @@
+You are an elite full-stack engineer and QA lead.
+
+You are working on the same Treasure Coast AI platform in this Replit project.
+
+PHASE 1 SHOULD ALREADY BE DONE:
+  • Faith House demo chatbot now reliably creates leads + bookings.
+
+NOW FOCUS ON ADMIN/CLIENT SYNC AND USER MANAGEMENT:
+
+OBJECTIVE 1 – ADMIN + CLIENT MUST SEE THE SAME DATA
+
+For the FAITH HOUSE workspace:
+
+1) Log in as:
+   - Client: demo_faith_house / demo123
+   - Admin:  admin / admin123
+
+2) Verify and FIX so that:
+   - In the FAITH HOUSE CLIENT dashboard:
+       • Leads page lists all leads for Faith House.
+       • Bookings page lists all bookings for Faith House.
+       • Overview metrics match those lists.
+   - In the ADMIN PANEL:
+       • Go to Clients → open "Faith House Sober Living" workspace.
+       • Leads tab shows the SAME leads as the client sees.
+       • Bookings tab shows the SAME bookings as the client sees.
+       • Overview metrics are consistent with those lists.
+
+If admin and client are currently using different queries/sources:
+  • Unify them so both read from the same underlying leads/bookings tables
+    filtered by the correct workspaceId and a sensible date range.
+
+OBJECTIVE 2 – “CREATE LOGIN” IN WORKSPACE USERS TAB MUST WORK
+
+1) As admin:
+   - Clients → open Faith House workspace → Users tab.
+   - Click “Create Login”.
+   - Create a user:
+       Email: qa_test_user@example.com
+       Password: Testpass123
+
+2) Fix behavior so that:
+   - After a successful creation:
+       • The new user appears in the user list for that workspace.
+       • A success message or toast is visible.
+   - If creation fails (bad email, duplicate, etc.):
+       • A clear error is shown (inline or toast), not silent failure.
+
+3) Confirm that:
+   - You can log out and then log in with this new user.
+   - When logged in as qa_test_user@example.com, you land in the Faith House client dashboard only.
+
+OBJECTIVE 3 – “VIEW AS CLIENT” MUST WORK (OR FAIL GRACEFULLY)
+
+1) As admin:
+   - Clients → open Faith House workspace → Settings tab.
+   - Click “View as Client”.
+
+2) Fix behavior so that:
+   - Clicking “View as Client” opens a new tab that correctly renders
+     the Faith House client dashboard as if you were the client.
+   - No blank “Loading…” pages.
+   - If impersonation fails (e.g., bad token), show a styled error page explaining
+     the problem instead of a blank white screen.
+
+IMPLEMENTATION GUIDANCE:
+
+- Find the codepaths for:
+   • Admin workspace Leads & Bookings vs client Leads & Bookings.
+   • Workspace Users and create-login endpoint.
+   • View-as-client impersonation (token, redirect, or session logic).
+
+- Make the minimum necessary changes to:
+   • Unify data sources for admin/client views.
+   • Make user creation visible and functional.
+   • Make view-as-client reliable.
+
+When you are done:
+  • Describe exactly what you changed.
+  • Re-run this scenario:
+     – Use Faith House chat to create a brand-new lead + bookings.
+     – Confirm:
+         * Client sees lead + bookings.
+         * Admin sees lead + bookings in Faith House workspace.
+         * Create Login works and new user can log in.
+         * View as Client opens the full Faith House dashboard.
