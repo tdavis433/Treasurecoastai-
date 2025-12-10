@@ -1,0 +1,160 @@
+You are continuing work on the Treasure Coast AI SaaS in this Replit project.
+
+IMPORTANT:
+- Do NOT touch multi-tenant isolation, login/logout, or Faith House mappings (these are already correct).
+- Assistant configuration, widget embed, and error handling have been improved already; keep what’s working.
+- Billing/Stripe can remain a “Set Up Subscription” placeholder for now.
+
+THIS PROMPT’S GOAL:
+Implement **deeper automations that make onboarding a new client smoother** and make it easy to go from:
+- “New workspace created” → 
+- “Assistant configured enough” → 
+- “Widget ready to embed on their website”
+
+without a ton of manual steps.
+
+Concretely:
+1) Auto-create a default assistant when a new workspace/client is created.
+2) Pre-populate that assistant with sensible starter settings (persona + FAQs).
+3) Ensure the embed snippet is immediately usable.
+4) Provide a couple of default system automations that act on new leads/bookings.
+
+────────────────────
+1. AUTO-CREATE DEFAULT ASSISTANT FOR NEW WORKSPACE
+────────────────────
+When a new client/workspace is created via the **New Client / New Workspace wizard**:
+
+1) After successful workspace creation:
+   - Check if the workspace has any assistants/bots.
+   - If none:
+     - Automatically create a **default assistant** for this workspace.
+
+2) Default assistant properties:
+   - Name: e.g., `${BusinessName} AI Assistant` (fallback to “New Business AI Assistant” if name missing).
+   - Status: Enabled/Active by default.
+   - Default persona/system prompt:
+     - Generic but solid template, e.g.:
+       - “You are an AI assistant for [Business Name], a local service business. You answer questions, collect contact info, and encourage visitors to book a call or visit.”
+
+3) Link to workspace:
+   - Ensure the new assistant is properly linked to the workspace’s clientId/tenant id.
+
+Update `demoSeed.ts` or equivalent seed logic to document this behavior and ensure it plays nicely with Faith House (do NOT break existing seeds).
+
+────────────────────
+2. STARTER KNOWLEDGE & FAQ TEMPLATE
+────────────────────
+For the default assistant created above:
+
+1) Pre-populate **Knowledge/Business Profile** with generic placeholders:
+   - Business Name: workspace’s name.
+   - Business Type: “Local service business” (or similar generic label).
+   - Contact email: workspace’s contact email (if set).
+   - Phone: empty placeholder to be filled by client.
+
+2) Pre-populate **FAQs** with customizable templates, e.g.:
+   - “What services do you offer?”
+   - “What are your hours?”
+   - “How can I contact you?”
+   - Each answer should include placeholders like “[Your services here]” so the client knows what to edit.
+
+3) Make sure:
+   - These prefilled values appear in the assistant’s Knowledge/FAQ UI right after workspace creation.
+   - They can be easily edited and saved by admin or client.
+
+────────────────────
+3. WIDGET EMBED READY OUT-OF-THE-BOX
+────────────────────
+For the default assistant:
+
+1) Ensure that the **Channels & Widget** tab:
+   - Immediately has a valid embed snippet using:
+     - `data-client-id` = this workspace id.
+     - `data-bot-id` = this default assistant id.
+   - There should be nothing the user MUST configure before the snippet works.
+
+2) UX:
+   - In the workspace details (or somewhere obvious), surface a link/button:
+     - e.g., “Get Embed Code” that jumps directly to this assistant’s Channels & Widget tab for convenience.
+   - This is especially helpful during onboarding calls.
+
+3) Documentation:
+   - Update `replit.md` with a short “Onboarding Flow” section:
+     - Explaining that after creating a new client, there is automatically:
+       - A default assistant.
+       - Basic FAQs.
+       - A ready-to-copy widget snippet.
+
+────────────────────
+4. DEFAULT AUTOMATIONS FOR NEW LEADS & BOOKINGS
+────────────────────
+Use the existing Automations system (already present with a tab and workflow manager) to provide **sensible default automations** for each new workspace:
+
+1) On workspace creation:
+   - Create default automation workflows for that workspace, such as:
+
+   a) “New Lead – Tag & Status”
+      - Trigger: Lead created.
+      - Actions:
+        - Set lead status to “New”.
+        - Add a tag like “inbound”.
+        - Optionally, log an internal note like “Lead auto-tagged by default workflow.”
+
+   b) “New Booking – Default Status”
+      - Trigger: Booking created.
+      - Actions:
+        - Set booking status to “Pending”.
+        - Optionally, add a note “Booking created from AI assistant.”
+
+2) Notifications (lightweight):
+   - If you already have a notification/logging mechanism:
+     - Add an action that writes to a workspace-level Notification/Activity log when:
+       - A new lead is created.
+       - A new booking is created.
+   - If you *don’t* have a notification system yet:
+     - At least create an internal “Automation Log” entry per workspace so admins can see that automations fired.
+
+3) Automations UI:
+   - In the assistant/workspace Automations tab:
+     - Show these default workflows as **enabled**.
+     - Allow toggling them on/off.
+     - Make sure turning them off stops them from firing.
+
+────────────────────
+5. QA & CONSISTENCY
+────────────────────
+After implementing the above:
+
+1) Simulate creating a new workspace via the New Client wizard:
+   - Verify:
+     - Default assistant is created.
+     - Knowledge/FAQs are pre-populated.
+     - Widget embed snippet is immediately available and copyable.
+     - Default automations appear in the Automations tab as active.
+
+2) Manually create:
+   - A test lead for that workspace (via existing UI or seed/demo tools).
+   - A test booking.
+   - Confirm:
+     - Lead gets status/tag set by the default automation.
+     - Booking gets status set.
+     - Any logs/notifications you implemented show entries that these automations fired.
+
+────────────────────
+ACCEPTANCE CRITERIA
+────────────────────
+- ✅ Creating a new workspace auto-creates a default assistant linked to that workspace.
+- ✅ The default assistant has:
+  - Reasonable generic persona.
+  - Pre-populated FAQ/knowledge placeholders that are editable.
+- ✅ For that assistant:
+  - Channels & Widget tab exposes a working embed snippet with correct `data-client-id` and `data-bot-id`.
+  - A “Get Embed Code” path from workspace overview quickly gets you there.
+- ✅ Each new workspace has default automations:
+  - “New Lead – Tag & Status”
+  - “New Booking – Default Status”
+- ✅ When leads/bookings are created for that workspace:
+  - Default automations fire and update status/tags/logs as designed.
+- ✅ `replit.md` documents the onboarding flow and default automations clearly.
+
+Implement these changes now.

@@ -1,0 +1,270 @@
+You are a senior QA agent testing the LIVE Treasure Coast AI platform after a major feature update.
+
+Your mission:
+Run a single, end-to-end regression focusing on:
+- Auth & role flows (admin + client)
+- Password reset (admin + client)
+- New client onboarding (workspace + default assistant + automations)
+- Assistant configuration & widget embed
+- Multi-tenant isolation (Faith House vs QA workspaces)
+
+Do everything via the browser (no code inspection). Use the live app as a real user would.
+
+────────────────────
+0. ENVIRONMENT
+────────────────────
+Base URL:
+- https://treasure-coast-ai-platform--mlgrushskill.replit.app/
+
+Logins (do NOT change passwords for the base creds):
+- SUPER ADMIN
+  - Username: admin
+  - Password: admin123
+- FAITH HOUSE CLIENT
+  - Username: demo_faith_house
+  - Password: demo123
+
+Rules:
+- Do NOT delete or rename core Faith House workspaces or assistants.
+- Any QA data you create must be clearly labeled:
+  - Workspaces: “QA …”
+  - Assistants: “QA …”
+  - Users: emails like qa.something@example.com
+- Ignore OpenAI “busy / high demand” messages unless the UI breaks.
+
+Work style:
+- Go step by step in the sections below.
+- For each area, exercise the flow and note bugs.
+- At the end, output a PASS/PARTIAL/FAIL summary table + notes.
+
+────────────────────
+1. AUTH & ROUTE PROTECTION – SANITY CHECK
+────────────────────
+Goal: Confirm basic login/logout and role-based protection still work.
+
+Tasks:
+1) Open `/login`:
+   - Log in as `admin/admin123`.
+   - Confirm you land on the admin/super-admin dashboard.
+   - Use any logout control; confirm redirect to `/login`.
+
+2) From `/login`, log in as `demo_faith_house/demo123`:
+   - Confirm you land on the Faith House client dashboard (NOT admin).
+   - Use client logout; confirm redirect to `/login`.
+
+3) While logged out:
+   - Try navigating directly to an admin route (`/super-admin`).
+   - Try navigating to a client dashboard route.
+   - Confirm:
+     - You get redirected to login or see a proper “access denied” style UX (no raw JSON/stack trace).
+
+Record any mismatches.
+
+────────────────────
+2. PASSWORD RESET – ADMIN & CLIENT
+────────────────────
+Goal: Verify full password reset flows work for both admin and a client user.
+
+2.1 Admin password reset:
+1) On `/login`, click “Forgot password?”.
+2) Request a reset for the admin user (use whatever email/identifier is configured for `admin`).
+3) Confirm:
+   - A generic success message appears (“If this email exists…”).
+4) Locate the reset link:
+   - If email is actually sent and accessible (e.g., test mailbox), use that.
+   - If not, see if there is an admin-only debug/reset tokens page as documented (or otherwise visible).
+5) Open the reset link in the browser:
+   - Verify reset form loads.
+   - Try a weak password → expect clear validation errors.
+   - Enter a strong new password → submit.
+   - Confirm:
+     - You see success feedback.
+     - You can now log in with the new password as `admin`.
+     - The old password no longer works.
+
+2.2 Client password reset:
+1) As admin, create a QA workspace user if needed (e.g., email: `qa.reset.client@example.com`).
+2) Log out, then go to `/login` and hit “Forgot password?”.
+3) Request reset for `qa.reset.client@example.com`.
+4) Find and open their reset link (via email or debug UI).
+5) Reset their password to a strong value.
+6) Confirm:
+   - They can log in with the new password.
+   - The old password fails.
+
+Record:
+- Any broken links.
+- Any invalid/expired token UX issues.
+- Any missing validation messages.
+
+────────────────────
+3. FAITH HOUSE – ADMIN vs CLIENT DATA PARITY (REGRESSION)
+────────────────────
+Goal: Ensure password reset changes did not break canonical Faith House mapping.
+
+Tasks:
+1) Log in as `demo_faith_house`.
+   - Note metrics: total leads, bookings, conversations.
+2) Log in as `admin`.
+   - Open the Faith House workspace in `/super-admin`.
+   - Confirm:
+     - The admin view shows the same counts (leads, bookings, conversations).
+     - Leads/Bookings tables contain the same records.
+
+3) Change the status of one Faith House lead and one booking in admin:
+   - e.g., New → Contacted, Pending → Confirmed.
+   - Log back in as `demo_faith_house` and verify the same statuses appear.
+
+Record any inconsistencies.
+
+────────────────────
+4. NEW CLIENT ONBOARDING – WORKSPACE + DEFAULT ASSISTANT
+────────────────────
+Goal: Confirm the new “automatic onboarding” works.
+
+Tasks:
+1) Log in as `admin`.
+2) From super admin dashboard, create a new workspace via “New Client” wizard:
+   - Workspace name: “QA Onboarding Workspace”
+   - Contact email: qa.onboarding.workspace@example.com
+   - Fill required fields and complete wizard.
+
+3) Once created:
+   - Open “QA Onboarding Workspace” in the admin UI.
+   - Confirm:
+     - A default assistant exists (name like “QA Onboarding Workspace AI Assistant” or similar).
+     - No manual assistant creation was required.
+
+4) Open that assistant’s configuration:
+   - Check:
+     - Persona/System Prompt exists with a generic but sensible template.
+     - Knowledge/Business Profile is pre-populated with:
+       - Workspace name.
+       - Contact email (if applicable).
+     - FAQs are pre-populated with placeholder Q&A.
+
+5) Verify:
+   - Changes you make to persona or a FAQ persist after Save + page reload.
+
+Record:
+- If the default assistant was not created.
+- If knowledge/FAQ templates are missing or not editable.
+
+────────────────────
+5. WIDGET EMBED SNIPPET – READY OUT OF THE BOX
+────────────────────
+Goal: Ensure a new client can immediately get an embed code for their site.
+
+Tasks:
+1) For “QA Onboarding Workspace”’s default assistant:
+   - Go to the Channels & Widget tab (or equivalent).
+   - Confirm:
+     - A widget embed snippet is visible.
+     - It includes `data-client-id` and `data-bot-id`.
+
+2) Use the “Copy code” functionality:
+   - Confirm it copies without errors.
+
+3) (Optional) If a simple HTML preview route exists:
+   - Paste the snippet into a simple test page (if app provides this).
+   - Confirm the widget appears and opens a chat window.
+
+Record:
+- Any missing/incorrect attributes in the snippet.
+- Any breakages in the copy-embed UX.
+
+────────────────────
+6. DEFAULT AUTOMATIONS – LEADS & BOOKINGS
+────────────────────
+Goal: Verify new default automations are created and actually fire.
+
+Tasks:
+1) In “QA Onboarding Workspace”:
+   - Navigate to Automations:
+     - Confirm there are default workflows like:
+       - “New Lead – Tag & Status”
+       - “New Booking – Default Status”
+     - Ensure they appear as enabled.
+
+2) Create a test lead:
+   - Use whatever UI is available to add a lead for “QA Onboarding Workspace”.
+   - After creation, verify:
+     - Lead status is auto-set as defined (e.g., “New”).
+     - Tags are applied (e.g., “inbound”).
+     - Any log/notification entry appears if visible.
+
+3) Create a test booking:
+   - Use the UI to add a booking for “QA Onboarding Workspace”.
+   - Verify:
+     - Booking status is auto-set (e.g., “Pending”).
+     - Any automation logs/notifications appear.
+
+Record:
+- If automations didn’t show up.
+- If they show but don’t actually change lead/booking status.
+- Any errors triggered by automations.
+
+────────────────────
+7. MULTI-TENANCY – ISOLATION CHECK
+────────────────────
+Goal: Ensure the new QA onboarding workspace is properly isolated from Faith House.
+
+Tasks:
+1) As admin:
+   - In Faith House workspace:
+     - Confirm you do NOT see leads/bookings from “QA Onboarding Workspace”.
+   - In “QA Onboarding Workspace”:
+     - Confirm you do NOT see Faith House leads/bookings.
+
+2) If there is a global admin list of leads/bookings:
+   - Confirm each entry is clearly labeled by workspace.
+   - There is no “unlabeled” data that appears mixed.
+
+Record any sign of cross-tenant leakage.
+
+────────────────────
+8. QUICK RESPONSIVENESS CHECK
+────────────────────
+Goal: Make sure new UI elements didn’t break layout on smaller widths.
+
+Pages to test at ~1280px and ~414px width:
+- `/` (landing)
+- `/login`
+- `/super-admin`
+- Faith House client dashboard
+- “QA Onboarding Workspace” assistant drawer (at least Overview + Channels & Widget)
+
+At each width:
+- Confirm:
+  - No critical buttons are off-screen without scroll.
+  - Modals and drawers can be scrolled.
+  - Tables remain usable.
+
+Only note *major* layout issues that would hurt a real client demo.
+
+────────────────────
+9. FINAL OUTPUT
+────────────────────
+At the end of your run, output:
+
+1) A PASS/PARTIAL/FAIL table:
+
+   Area | Status | Notes
+   -----|--------|------
+   Auth & route protection | ... | ...
+   Password reset (admin) | ... | ...
+   Password reset (client) | ... | ...
+   Faith House parity (admin vs client) | ... | ...
+   New client onboarding (workspace + default assistant) | ... | ...
+   Assistant config & persistence | ... | ...
+   Widget embed snippet | ... | ...
+   Default automations (leads/bookings) | ... | ...
+   Multi-tenant isolation | ... | ...
+   Responsiveness (key pages) | ... | ...
+
+2) Detailed notes per area:
+   - Steps taken.
+   - Bugs found (with short codes like `BUG-PWRESET-001`).
+   - Any ambiguous or inconsistent behavior.
+
+Do NOT invent behavior; only report what you actually see in the browser.
