@@ -1,0 +1,88 @@
+You are continuing improvements to the Treasure Coast AI SaaS in this Replit project.
+
+Auth, Faith House parity, user/workspace management, and assistants should now be improved.
+
+────────────────────
+GOAL OF THIS BLOCK
+────────────────────
+1. Fix and verify **“View as Client”** flows.
+2. Confirm **multi-tenant isolation** in code.
+3. Improve **responsiveness/layout** for key flows so the demo feels polished.
+
+────────────────────
+PART A – “VIEW AS CLIENT”
+────────────────────
+1. In the super admin “Clients/Workspaces” area:
+   - For Faith House:
+     - Ensure “View as Client” opens the **canonical Faith House client dashboard** for `demo_faith_house`.
+   - For at least one QA workspace:
+     - Ensure “View as Client” opens that workspace’s client dashboard.
+
+2. Make sure:
+   - It never routes to the wrong tenant.
+   - If a workspace has no client logins yet, handle gracefully (e.g., show a message or disable the button).
+
+If some view-as-client buttons are inherently broken:
+- Hide them until their underlying flows exist.
+
+────────────────────
+PART B – MULTI-TENANCY & DATA ISOLATION (CODE-LEVEL)
+────────────────────
+1. In server/backend code:
+   - For all queries that return:
+     - Leads
+     - Bookings
+     - Conversations
+     - Assistants
+   - Ensure they are always filtered by workspace/tenant id, derived from:
+     - Authenticated user (client).
+     - Selected workspace (admin context).
+
+2. Admin dashboards:
+   - Global metrics may aggregate across workspaces, but:
+     - Per-workspace views must ONLY show that workspace’s data.
+
+Add comments wherever you enforce workspace scoping so future changes don’t break this.
+
+────────────────────
+PART C – RESPONSIVENESS & LAYOUT
+────────────────────
+Focus on these key pages:
+
+- Public landing `/`
+- `/demo/faith-house`
+- Faith House client dashboard:
+  - Overview
+  - Leads
+  - Bookings
+  - Conversations
+- Admin:
+  - Main dashboard
+  - Clients list
+  - One QA workspace overview
+  - Assistants list
+  - Assistant drawer
+
+At least ensure they are usable at:
+- ~1440px width (desktop)
+- ~1280px (small laptop)
+- ~768px (tablet portrait)
+- ~375–414px (mobile)
+
+For each:
+
+- Make sure:
+  - Critical buttons/CTAs (login, New Client, New Bot, View as Client, Save) are not cut off.
+  - Modals and drawers can be scrolled to reach actions.
+  - Tables can scroll horizontally if needed without destroying layout.
+
+Prefer simple, robust layout fixes (flexbox/grid, max-widths, overflow handling) over pixel-perfect design.
+
+────────────────────
+ACCEPTANCE CRITERIA FOR THIS BLOCK
+────────────────────
+- ✅ “View as Client” always opens the correct tenant dashboard or is disabled when not applicable.
+- ✅ Backend queries for leads/bookings/conversations/assistants are all workspace-scoped.
+- ✅ On a typical laptop and a phone-sized viewport, the core flows (log in, navigate dashboards, open New Client wizard, create login, open assistant drawer) are usable without permanent off-screen actions.
+
+After this block, the app should be in **demo-ready shape** for a non-technical sober-living landlord.
