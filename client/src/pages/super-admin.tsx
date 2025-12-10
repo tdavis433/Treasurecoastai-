@@ -3308,7 +3308,7 @@ export default function SuperAdmin() {
                 <div className="space-y-1">
                   <label className="text-xs text-white/55 uppercase tracking-wide">Login Email</label>
                   <div className="flex items-center gap-2">
-                    <code className="flex-1 text-cyan-400 bg-black/30 px-3 py-2 rounded text-sm font-mono">
+                    <code className="flex-1 text-cyan-400 bg-black/30 px-3 py-2 rounded text-sm font-mono truncate overflow-hidden min-w-0">
                       {generatedCredentials.email}
                     </code>
                     <Button
@@ -3328,7 +3328,7 @@ export default function SuperAdmin() {
                 <div className="space-y-1">
                   <label className="text-xs text-white/55 uppercase tracking-wide">Temporary Password</label>
                   <div className="flex items-center gap-2">
-                    <code className="flex-1 text-cyan-400 bg-black/30 px-3 py-2 rounded text-sm font-mono">
+                    <code className="flex-1 text-cyan-400 bg-black/30 px-3 py-2 rounded text-sm font-mono truncate overflow-hidden min-w-0">
                       {generatedCredentials.temporaryPassword}
                     </code>
                     <Button
@@ -3348,7 +3348,7 @@ export default function SuperAdmin() {
                 <div className="space-y-1">
                   <label className="text-xs text-white/55 uppercase tracking-wide">Dashboard URL</label>
                   <div className="flex items-center gap-2">
-                    <code className="flex-1 text-cyan-400 bg-black/30 px-3 py-2 rounded text-sm font-mono truncate">
+                    <code className="flex-1 text-cyan-400 bg-black/30 px-3 py-2 rounded text-sm font-mono truncate overflow-hidden min-w-0">
                       {window.location.origin}{generatedCredentials.dashboardUrl}
                     </code>
                     <Button
@@ -3860,32 +3860,26 @@ export default function SuperAdmin() {
                 <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
                   <h4 className="text-white font-medium">Client Login Credentials</h4>
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/50 text-sm">Email:</span>
-                      <div className="flex items-center gap-2">
-                        <code className="text-cyan-400 text-sm">{wizardResult.clientCredentials.email}</code>
-                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { navigator.clipboard.writeText(wizardResult.clientCredentials!.email); toast({ title: "Copied" }); }}>
-                          <Copy className="h-3 w-3" />
-                        </Button>
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white/50 text-sm flex-shrink-0 w-20">Email:</span>
+                      <code className="text-cyan-400 text-sm truncate flex-1 min-w-0">{wizardResult.clientCredentials.email}</code>
+                      <Button size="icon" variant="ghost" className="h-6 w-6 flex-shrink-0" onClick={() => { navigator.clipboard.writeText(wizardResult.clientCredentials!.email); toast({ title: "Copied" }); }}>
+                        <Copy className="h-3 w-3" />
+                      </Button>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/50 text-sm">Password:</span>
-                      <div className="flex items-center gap-2">
-                        <code className="text-cyan-400 text-sm">{wizardResult.clientCredentials.temporaryPassword}</code>
-                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { navigator.clipboard.writeText(wizardResult.clientCredentials!.temporaryPassword); toast({ title: "Copied" }); }}>
-                          <Copy className="h-3 w-3" />
-                        </Button>
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white/50 text-sm flex-shrink-0 w-20">Password:</span>
+                      <code className="text-cyan-400 text-sm truncate flex-1 min-w-0">{wizardResult.clientCredentials.temporaryPassword}</code>
+                      <Button size="icon" variant="ghost" className="h-6 w-6 flex-shrink-0" onClick={() => { navigator.clipboard.writeText(wizardResult.clientCredentials!.temporaryPassword); toast({ title: "Copied" }); }}>
+                        <Copy className="h-3 w-3" />
+                      </Button>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/50 text-sm">Dashboard:</span>
-                      <div className="flex items-center gap-2">
-                        <code className="text-cyan-400 text-sm truncate max-w-[200px]">{window.location.origin}{wizardResult.clientCredentials.dashboardUrl}</code>
-                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}${wizardResult.clientCredentials!.dashboardUrl}`); toast({ title: "Copied" }); }}>
-                          <Copy className="h-3 w-3" />
-                        </Button>
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white/50 text-sm flex-shrink-0 w-20">Dashboard:</span>
+                      <code className="text-cyan-400 text-sm truncate flex-1 min-w-0">{window.location.origin}{wizardResult.clientCredentials.dashboardUrl}</code>
+                      <Button size="icon" variant="ghost" className="h-6 w-6 flex-shrink-0" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}${wizardResult.clientCredentials!.dashboardUrl}`); toast({ title: "Copied" }); }}>
+                        <Copy className="h-3 w-3" />
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -3893,14 +3887,14 @@ export default function SuperAdmin() {
               
               {wizardResult.widgetEmbedCode && (
                 <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <h4 className="text-white font-medium">Widget Embed Code</h4>
-                    <Button size="sm" variant="outline" className="border-white/20" onClick={() => { navigator.clipboard.writeText(wizardResult.widgetEmbedCode!); toast({ title: "Embed code copied" }); }}>
+                    <Button size="sm" variant="outline" className="border-white/20 flex-shrink-0" onClick={() => { navigator.clipboard.writeText(wizardResult.widgetEmbedCode!); toast({ title: "Embed code copied" }); }}>
                       <Copy className="h-3 w-3 mr-2" />
                       Copy
                     </Button>
                   </div>
-                  <pre className="bg-black/30 rounded p-3 text-xs text-cyan-400 overflow-x-auto">{wizardResult.widgetEmbedCode}</pre>
+                  <pre className="bg-black/30 rounded p-3 text-xs text-cyan-400 overflow-x-auto whitespace-pre-wrap break-all">{wizardResult.widgetEmbedCode}</pre>
                 </div>
               )}
               
