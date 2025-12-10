@@ -498,15 +498,10 @@ export default function ClientDashboard() {
 
   const handleCopyWidgetCode = () => {
     const botId = profile?.botId || stats?.botId || '';
+    const clientId = profile?.clientId || stats?.clientId || urlClientId || '';
+    // Use simple script tag format with data attributes for proper widget identification
     const embedCode = `<!-- Treasure Coast AI Widget -->
-<script>
-  (function(w,d,s,o,f,js,fjs){
-    w['TCAIWidget']=o;w[o]=w[o]||function(){(w[o].q=w[o].q||[]).push(arguments)};
-    js=d.createElement(s),fjs=d.getElementsByTagName(s)[0];
-    js.id=o;js.src=f;js.async=1;fjs.parentNode.insertBefore(js,fjs);
-  }(window,document,'script','tcai','${window.location.origin}/widget/embed.js'));
-  tcai('init', { botId: '${botId}' });
-</script>`;
+<script src="${window.location.origin}/widget/embed.js" data-client-id="${clientId}" data-bot-id="${botId}"></script>`;
     
     navigator.clipboard.writeText(embedCode);
     setCopied(true);
