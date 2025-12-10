@@ -310,6 +310,27 @@ export default function ClientDetailAdmin() {
     },
   });
 
+  const resetDemoMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/admin/demo/faith-house/reset");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to reset demo data");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Demo Reset", description: "Faith House demo data has been reset successfully." });
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/workspaces", slug] });
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/workspaces", slug, "leads"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/workspaces", slug, "conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/workspaces", slug, "appointments"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
@@ -910,6 +931,24 @@ export default function ClientDetailAdmin() {
                       <Trash2 className="h-4 w-4 mr-2" />
                       Delete Workspace
                     </Button>
+                    {/* Reset Demo Data - Only for faith_house_demo workspace */}
+                    {workspaceData.isDemo && workspaceData.slug === 'faith_house_demo' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+                        disabled={resetDemoMutation.isPending}
+                        onClick={() => {
+                          if (confirm("This will reset all conversations, leads, bookings, and analytics for the Faith House DEMO workspace. Live data is NOT affected. Continue?")) {
+                            resetDemoMutation.mutate();
+                          }
+                        }}
+                        data-testid="button-reset-demo-data"
+                      >
+                        <RefreshCw className={`h-4 w-4 mr-2 ${resetDemoMutation.isPending ? 'animate-spin' : ''}`} />
+                        {resetDemoMutation.isPending ? 'Resetting...' : 'Reset Demo Data'}
+                      </Button>
+                    )}
                   </div>
                 </GlassCardContent>
               </GlassCard>
