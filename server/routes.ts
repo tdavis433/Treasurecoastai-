@@ -699,7 +699,7 @@ function isWithinOperatingHours(settings: any): boolean {
   return currentTime >= openTime && currentTime <= closeTime;
 }
 
-async function getSystemPrompt(language: string = "en", clientId: string = "default-client") {
+async function getSystemPrompt(language: string = "en", clientId: string) {
   const settings = await storage.getSettings(clientId);
   if (!settings) {
     return getDefaultSystemPrompt(language);
@@ -956,7 +956,7 @@ function categorizeMessage(message: string, role: string): string | null {
   return "other";
 }
 
-async function generateConversationSummary(sessionId: string, clientId: string = "default-client"): Promise<string> {
+async function generateConversationSummary(sessionId: string, clientId: string): Promise<string> {
   try {
     const analytics = await storage.getAnalytics(clientId);
     const sessionMessages = analytics
@@ -1627,8 +1627,11 @@ Always be positive and solution-oriented. If someone wants to get started, direc
       }
       const { messages, sessionId, language, clientId: bodyClientId, botId: bodyBotId } = validation.data;
       
-      // Use clientId from body if provided, otherwise use default for backwards compatibility
-      const effectiveClientId = bodyClientId || "default-client";
+      // clientId is required for tenant isolation
+      if (!bodyClientId) {
+        return res.status(400).json({ error: "Client ID required" });
+      }
+      const effectiveClientId = bodyClientId;
 
       if (sessionId && messages.length > 0) {
         const lastUserMessage = messages[messages.length - 1];
@@ -2562,8 +2565,11 @@ These suggestions should be relevant to what was just discussed and help guide t
       const { sessionId, conversationHistory, clientId: bodyClientId, ...appointmentData } = req.body;
       const validatedData = insertAppointmentSchema.parse(appointmentData);
       
-      // Use clientId from body if provided, otherwise use default for backwards compatibility
-      const effectiveClientId = bodyClientId || "default-client";
+      // clientId is required for tenant isolation
+      if (!bodyClientId) {
+        return res.status(400).json({ error: "Client ID required" });
+      }
+      const effectiveClientId = bodyClientId;
       
       let conversationSummary = "No conversation history available.";
       
@@ -2897,7 +2903,13 @@ These suggestions should be relevant to what was just discussed and help guide t
 
   app.get("/api/settings", requireSuperAdmin, async (req, res) => {
     try {
-      const settings = await storage.getSettings("default-client");
+      const clientId = (req.query.clientId as string) || req.session.clientId;
+      
+      if (!clientId) {
+        return res.status(400).json({ error: "Client ID required" });
+      }
+      
+      const settings = await storage.getSettings(clientId);
       res.json(settings);
     } catch (error) {
       console.error("Get settings error:", error);
@@ -2907,8 +2919,15 @@ These suggestions should be relevant to what was just discussed and help guide t
 
   app.patch("/api/settings", requireSuperAdmin, async (req, res) => {
     try {
-      const validatedData = insertClientSettingsSchema.partial().parse(req.body);
-      const settings = await storage.updateSettings("default-client", validatedData);
+      const { clientId: bodyClientId, ...settingsData } = req.body;
+      const clientId = bodyClientId || req.session.clientId;
+      
+      if (!clientId) {
+        return res.status(400).json({ error: "Client ID required" });
+      }
+      
+      const validatedData = insertClientSettingsSchema.partial().parse(settingsData);
+      const settings = await storage.updateSettings(clientId, validatedData);
       res.json(settings);
     } catch (error) {
       console.error("Update settings error:", error);
@@ -2918,7 +2937,13 @@ These suggestions should be relevant to what was just discussed and help guide t
 
   app.get("/api/analytics", requireAuth, async (req, res) => {
     try {
-      const analytics = await storage.getAnalytics("default-client");
+      const clientId = (req.query.clientId as string) || req.session.clientId;
+      
+      if (!clientId) {
+        return res.status(400).json({ error: "Client ID required" });
+      }
+      
+      const analytics = await storage.getAnalytics(clientId);
       res.json(analytics);
     } catch (error) {
       console.error("Get analytics error:", error);
@@ -2934,11 +2959,17 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(400).json({ error: queryValidation.error });
       }
       
-      const { startDate, endDate } = queryValidation.data;
+      const { startDate, endDate, clientId: queryClientId } = queryValidation.data as any;
+      const clientId = queryClientId || req.session.clientId;
+      
+      if (!clientId) {
+        return res.status(400).json({ error: "Client ID required" });
+      }
+      
       const start = startDate ? new Date(startDate) : undefined;
       const end = endDate ? new Date(endDate) : undefined;
       
-      const summary = await storage.getAnalyticsSummary("default-client", start, end);
+      const summary = await storage.getAnalyticsSummary(clientId, start, end);
       res.json(summary);
     } catch (error) {
       console.error("Get analytics summary error:", error);
@@ -2954,11 +2985,17 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(400).json({ error: queryValidation.error });
       }
       
-      const { startDate, endDate } = queryValidation.data;
+      const { startDate, endDate, clientId: queryClientId } = queryValidation.data as any;
+      const clientId = queryClientId || req.session.clientId;
+      
+      if (!clientId) {
+        return res.status(400).json({ error: "Client ID required" });
+      }
+      
       const start = startDate ? new Date(startDate) : undefined;
       const end = endDate ? new Date(endDate) : undefined;
       
-      const summary = await storage.getAnalyticsSummary(start, end);
+      const summary = await storage.getAnalyticsSummary(clientId, start, end);
       
       // Build CSV content
       const headers = ['Date', 'Conversations', 'Appointments'];
@@ -2989,7 +3026,14 @@ These suggestions should be relevant to what was just discussed and help guide t
 
   app.post("/api/test-notification", requireSuperAdmin, async (req, res) => {
     try {
-      const settings = await storage.getSettings();
+      const { clientId: bodyClientId } = req.body;
+      const clientId = bodyClientId || req.session.clientId;
+      
+      if (!clientId) {
+        return res.status(400).json({ error: "Client ID required" });
+      }
+      
+      const settings = await storage.getSettings(clientId);
       
       if (!settings) {
         return res.status(400).json({ error: "Settings not found" });

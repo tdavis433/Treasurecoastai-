@@ -753,7 +753,7 @@ class ConversationOrchestrator {
           }
           
           if (Object.keys(updates).length > 0) {
-            await storage.updateLead(existingLead.id, updates);
+            await storage.updateLead(clientId, existingLead.id, updates);
           }
         } else {
           const priority = determinePriority(showBooking, contactInfo);
