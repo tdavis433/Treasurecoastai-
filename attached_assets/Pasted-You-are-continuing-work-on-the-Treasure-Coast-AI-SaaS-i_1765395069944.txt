@@ -1,0 +1,112 @@
+You are continuing work on the Treasure Coast AI SaaS in this Replit project.
+
+Auth, Faith House parity, and user/workspace management should now be improved.
+
+────────────────────
+GOAL OF THIS BLOCK
+────────────────────
+Make assistant configuration usable and robust:
+
+1. Assistant side drawer UX & scrolling.
+2. Core tabs (Persona, Hours, FAQs, Knowledge, etc.) save properly.
+3. Test Chat UI is stable (ignoring OpenAI rate limits).
+4. Widget/embed code is easy to find and copy.
+
+Use a dedicated QA assistant:
+- For example: “QA Test Assistant – Deep Config”.
+- Create it if it doesn’t exist yet.
+
+────────────────────
+STEP 1 – ASSISTANT DRAWER UX & SCROLL
+────────────────────
+- Ensure assistant detail view (drawer/panel) can scroll naturally:
+  - Mouse wheel/trackpad scroll works.
+  - No tiny, hidden scrollbars that make content unreachable.
+- On common laptop width:
+  - All important sections and the Save/Apply button(s) should be reachable.
+
+If there’s nested scrolling:
+- Consider simplifying: one scrollable container rather than multiple nested ones.
+
+────────────────────
+STEP 2 – TABS & PERSISTENCE
+────────────────────
+For the QA assistant:
+
+Make sure the following tabs behave correctly:
+
+1. **Overview / Business Profile**
+   - Change display name/description to include "QA".
+   - Save.
+   - Reload the assistant → confirm changes persisted.
+
+2. **Persona / System Prompt**
+   - Add a harmless QA marker line in the prompt.
+   - Save.
+   - Reload → confirm the prompt shows the same text.
+
+3. **Hours**
+   - Change at least one day’s hours.
+   - Save + reload → confirm persistence.
+
+4. **FAQs**
+   - Add a FAQ:
+     - Q: “Is this a QA test?”
+     - A: “Yes, this is just a QA test.”
+   - Save + reload → FAQ still there.
+
+5. **Website Intelligence / Knowledge**
+   - If implemented:
+     - Add a dummy URL (e.g., https://example.com) or a QA doc.
+     - Save + reload → confirm it persists.
+   - If NOT implemented:
+     - Hide or clearly mark as “coming soon” so it’s not misleading.
+
+6. **Automations / Notifications / Security / Appointments**
+   - If active in UI:
+     - Make basic toggles/fields save and persist.
+   - If not really implemented yet:
+     - Hide/disable them or label as “coming soon” to avoid broken UX.
+
+────────────────────
+STEP 3 – TEST CHAT
+────────────────────
+In the assistant’s “Test Chat” tab:
+
+- Ensure:
+  - There is a clear text input and send button.
+  - Messages show up in the chat area.
+  - On send, show a loading state/spinner.
+  - If OpenAI is rate-limited:
+    - Show a friendly “busy/high demand” message.
+    - Do NOT show stack traces or raw error JSON.
+
+We care about **UI robustness**, not perfect AI content.
+
+────────────────────
+STEP 4 – WIDGET / EMBED CODE
+────────────────────
+Make sure there is a clear way to get embed code:
+
+- For this QA assistant, in a “Channels & Widget” or similar tab:
+
+Implement or verify:
+
+- A code snippet that a developer can copy and paste to embed this assistant on their site.
+- It should include:
+  - `<script>` tag(s) with real assistant/workspace identifiers.
+  - Any minimal container markup if needed.
+- Provide a “Copy” button to copy the snippet to clipboard.
+- No unresolved placeholders like "YOUR_ID_HERE" unless clearly meant to be replaced.
+
+────────────────────
+ACCEPTANCE CRITERIA FOR THIS BLOCK
+────────────────────
+- ✅ Assistant drawer scrolls and is usable on normal laptop screens.
+- ✅ Overview, Persona, Hours, FAQs and Knowledge (if enabled) all save and persist changes.
+- ✅ Test Chat:
+  - Shows messages and loading.
+  - Handles errors gracefully with friendly text only.
+- ✅ Widget/embed code is discoverable, copyable, and references correct IDs.
+
+Make the changes now for a clean assistant configuration experience.
