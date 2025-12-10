@@ -6,7 +6,7 @@ Treasure Coast AI is an agency-first AI assistant platform designed to empower a
 ## User Preferences
 Super Admin Login: username `admin`, password `admin123`
 
-### Faith House Workspace Architecture (December 2024)
+### Faith House Workspace Architecture
 **Canonical Workspace:** `faith_house`
 - Used by client login: `demo_faith_house` (password: `demo123`)
 - Used by super-admin when viewing "Faith House" workspace
@@ -17,11 +17,6 @@ Super Admin Login: username `admin`, password `admin123`
 - Used ONLY by `/demo/faith-house` public demo page
 - Can be reset via `/api/admin/demo/faith-house/reset`
 - Isolated from canonical workspace to allow safe demo resets without affecting client data
-
-**Why Two Workspaces?**
-This separation allows public demo page visitors to interact with a resettable demo environment,
-while the actual client login (`demo_faith_house`) sees persistent, production-like data that
-matches what the super-admin sees in the workspace view.
 
 ## System Architecture
 
@@ -42,9 +37,10 @@ The platform operates on a two-surface system:
 *   **Client Analytics:** Provides view-only access to conversation history, lead management, and booking overviews.
 *   **Super Admin Dashboard:** Centralized hub for platform management, client/assistant management, template galleries, global knowledge, API key management, billing, system logs, and user roles.
 *   **Assistant Editor (Bot Builder):** Tools for defining AI persona, knowledge management, automation setup, channel customization, and a testing sandbox.
-*   **AI-Driven In-Chat Booking Collection:** AI can collect booking information (name, phone, email, time, notes) directly within conversations and automatically create appointment records.
+*   **AI-Driven In-Chat Booking Collection:** AI can collect booking information directly within conversations and automatically create appointment records.
 *   **Demo & Live Tenant Separation:** Provides distinct environments for demo and live instances with dedicated workspaces and bots.
 *   **Integration Panel:** Generates customizable widget embed code for easy integration into client websites.
+*   **Automated Client Onboarding:** New client wizard provides complete out-of-the-box setup including workspace creation, client user account, default AI assistant (with industry-specific prompts and persona), FAQ templates, default automations, widget embed code, and client settings.
 
 ### Core Architecture Principle
 "ONE BRAIN ONE BEHAVIOR": All chat entry points are routed through a single Unified Conversation Orchestrator to ensure consistent AI behavior across the platform.
@@ -57,110 +53,11 @@ The platform operates on a two-surface system:
 *   **Payments:** Stripe integration.
 *   **Authentication:** Admin and client accounts (clients have view-only access).
 *   **API Endpoints:** Structured for core chat interactions, widget configuration, and protected routes.
-*   **Security:** Rate limiting, HMAC-signed widget tokens, per-bot security settings (e.g., `requireWidgetToken`, `allowedDomains`), domain validation, Helmet for secure HTTP headers and CSP, account lockout, and strong password policies.
-*   **Key Architecture Components:** Unified Conversation Orchestrator, Enhanced Bot Config Cache, Multi-Tenant Data Isolation, Session Data Tracking, and Daily Analytics.
-
-### Security Features (December 2024)
-*   **Account Lockout:** Locks accounts after 5 failed login attempts for 15 minutes
-    *   Environment variables: `LOGIN_MAX_ATTEMPTS` (default: 5), `LOGIN_LOCKOUT_MINUTES` (default: 15), `LOGIN_WINDOW_MINUTES` (default: 15)
-    *   Successful login clears failed attempt counter
-    *   **Limitations:** In-memory tracking resets on server restart; keyed by username only (not IP)
-*   **Password Policy:** Strong password requirements for new passwords
-    *   Minimum 8 characters, at least one uppercase, lowercase, number, and special character
-*   **Rate Limiting:** Configurable limits for login (10/15min), chat (30/min), and general API (100/15min)
-*   **CORS Allow-list:** Widget endpoints can be restricted via `WIDGET_ALLOWED_ORIGINS` environment variable
-    *   Format: Comma-separated list of allowed domains (e.g., `https://client1.com,https://client2.com`)
-    *   Localhost origins auto-allowed in development
-    *   **Note:** Changes require server restart to take effect
-*   **Session Security:** httpOnly cookies, secure flag in production, 7-day max age
-*   **Helmet Headers:** CSP, X-Frame-Options, XSS protection, and other security headers enabled
-*   **RBAC for Destructive Actions:** Middleware `requireAdminRole` restricts delete operations to super_admin and workspace_admin roles
-    *   Applied to: appointment deletion, automation workflow deletion
-    *   Other destructive endpoints use `requireSuperAdmin` for higher privilege
-*   **Tenant Isolation:** All lead operations require explicit clientId parameter; no fallback to "default-client"
-    *   Storage layer enforces clientId in WHERE clauses for getLeadById, updateLead, deleteLead
-*   **Environment-Based Configuration:** Staff user creation uses `DEFAULT_STAFF_CLIENT_ID` env var instead of hardcoded values
-*   **Password Reset Flow:** Secure self-service password reset via email
-    *   Request reset at `/forgot-password` - enter email to receive reset link
-    *   Reset page at `/reset-password?token=<token>` - validates token and allows new password entry
-    *   Tokens are cryptographically secure (32-byte random hex), bcrypt-hashed for storage
-    *   Tokens expire after 60 minutes and are single-use only
-    *   Generic success messages prevent email enumeration attacks
-    *   Email service abstraction: SMTP in production, console logging in development
-    *   Debug endpoint `/api/auth/debug-reset-tokens` (super-admin only) shows pending reset links when SMTP not configured
-    *   **Email Configuration (Optional):** Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` for production email sending
-    *   **Test Accounts:** Admin (admin@treasurecoastai.com), Demo client (demo@faithhouse.com)
-
-### Resilient Persistence (December 2024)
-*   **OpenAI Failure Recovery:** When OpenAI API fails (rate limit, timeout, network errors), the orchestrator:
-    *   Extracts contact info (name, phone, email) from all conversation messages
-    *   Saves leads automatically if phone or email is found
-    *   Creates "pending confirmation" bookings if booking intent + name + phone are detected
-    *   Returns context-aware friendly messages confirming what data was saved
-*   **No Data Loss:** User contact information is preserved even during AI service outages
-*   **Implementation:** `extractContactAndBookingFromMessages()` function in `server/orchestrator.ts`
-*   **Booking Schema:** `preferredTime` stores raw time phrase, `scheduledAt` stores parsed ISO datetime
-
-### Form Validation (December 2024)
-*   **New Client Wizard (Step 1):** Inline validation for business name and contact email fields
-    *   Validates on blur and when clicking Next
-    *   Shows red error text below invalid fields
-    *   Email format validation with regex
-    *   Errors clear as user corrects input
-*   **Create Client Login Form:** Inline validation for email format and password strength
-    *   Email must be valid format
-    *   Password requires 8+ characters with uppercase, lowercase, and number
-    *   Touched field tracking prevents showing errors before user interaction
-*   **UI Refresh Optimization:** Client login list refreshes immediately after creation via await on refetch
-
-### UX Improvements (December 2024)
-*   **Chat Widget Reset Button:** Now positioned in header next to close button with rotation animation on hover
-*   **Widget Error Recovery:** Added amber-themed error UI with recoverable state handling for API failures
-*   **Inbox Session Filtering:** Sessions with 0 messages are now hidden from the conversations list
-*   **Conversation Snippets:** Session items display meaningful previews from AI summary, user intent, topics, or default fallbacks
-*   **Message Count Display:** Shows formatted "{count} msgs" for clearer conversation sizing
-*   **Widget Header Actions:** Container groups reset and close buttons with consistent styling
-*   **Test Chat Error Handling:** User-friendly error messages for common issues:
-    *   Rate limit/429 errors → "I'm experiencing high demand right now"
-    *   Timeout errors → "The request took too long"
-    *   Network errors → "There seems to be a connection issue"
-    *   OpenAI/API errors → "The AI service is temporarily unavailable"
-    *   Raw error details preserved in debug panel for developers
-
-### Workspace Management (December 2024)
-*   **Edit Workspace Name:** Super-admin can edit workspace names via Settings tab → Edit Name button
-    *   Modal with validation (non-empty name required)
-    *   Immediate UI refresh after save via cache invalidation
-*   **Workspace Users List Fix:** Fixed API response handling so newly created users appear immediately
-    *   Users query now handles both array and object response formats
-    *   Cache invalidation correctly refreshes user list after creation
-*   **Create Client Login Validation:** Enhanced form validation with inline errors
-    *   Email format validation with visual feedback
-    *   Password strength requirements (8+ chars with letters and numbers)
-    *   Touched field tracking for better UX
-    *   Submit button enabled to trigger validation on click
-*   **View as Client UX:** Button disabled with tooltip when workspace has no client logins
-    *   Workspace list now shows user count for each workspace
-    *   Clear guidance on creating login credentials when none exist
-
-### Multi-Tenant Architecture Documentation (December 2024)
-*   **Backend Documentation:** Comprehensive JSDoc comments added to `requireClientAuth` middleware
-    *   Documents how `effectiveClientId` is derived for client_admin vs super_admin users
-    *   Security warnings about never trusting clientId from request body/params
-    *   Pattern guidance for scoping all storage queries by clientId
-*   **Tenant Isolation Verification:** All client routes confirmed to use effectiveClientId
-    *   Leads, bookings, conversations, appointments properly scoped at storage layer
-    *   Storage methods enforce clientId in WHERE clauses
-
-### Mobile Responsiveness (December 2024)
-*   **Landing Page (home.tsx):** Enhanced for mobile viewports
-    *   Navigation: Responsive padding/spacing, "Login" (mobile) / "Client Login" (desktop), "Start" (mobile) / "Get Started" (desktop)
-    *   Hero: Responsive typography scaling (text-4xl → text-7xl), full-width buttons on mobile
-    *   Stats: Responsive gap and text sizing for small screens
-    *   Accessibility: aria-label on nav CTA for screen readers
-*   **Dashboards:** Client and admin dashboards already use responsive grids
-    *   Grid patterns: grid-cols-1 md:grid-cols-2 lg:grid-cols-4 throughout
-    *   Sidebar uses Shadcn responsive sidebar with trigger
+*   **Security:** Rate limiting, HMAC-signed widget tokens, per-bot security settings, domain validation, Helmet for secure HTTP headers and CSP, account lockout, and strong password policies. Includes secure password reset flow.
+*   **Key Architecture Components:** Unified Conversation Orchestrator, Enhanced Bot Config Cache, Multi-Tenant Data Isolation, Session Data Tracking, Daily Analytics.
+*   **Resilient Persistence:** When OpenAI API fails, the orchestrator extracts contact info and saves leads/bookings to prevent data loss.
+*   **Form Validation:** Inline validation for critical forms (e.g., new client wizard, client login creation).
+*   **Mobile Responsiveness:** Enhanced for mobile viewports across landing pages and dashboards.
 
 ## External Dependencies
 *   **OpenAI GPT-4:** Used for the core AI engine and conversational analysis.

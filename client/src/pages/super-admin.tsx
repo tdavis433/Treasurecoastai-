@@ -6261,34 +6261,23 @@ function AnalyticsPanel({ clientId }: { clientId: string }) {
 // Automations Panel - Quick access to bot automations
 function AutomationsPanel({ botId, clientId }: { botId: string; clientId: string }) {
   const [, setLocation] = useLocation();
-  
-  // Get the bot's database ID first
-  const { data: botData } = useQuery<{ id: number }>({
-    queryKey: ["/api/bots", botId],
-    queryFn: async () => {
-      const response = await fetch(`/api/bots/${botId}`, { credentials: "include" });
-      if (!response.ok) throw new Error("Bot not found");
-      return response.json();
-    },
-  });
 
-  // Fetch automations for this bot
+  // Fetch automations for this bot using the string botId
   const { data: automations, isLoading } = useQuery<Array<{
-    id: number;
+    id: string;
     name: string;
-    isEnabled: boolean;
+    status: string;
     triggerType: string;
     runCount: number;
     lastRunAt?: string;
   }>>({
-    queryKey: ["/api/automations", botData?.id],
+    queryKey: ["/api/bots", botId, "automations"],
     queryFn: async () => {
-      if (!botData?.id) return [];
-      const response = await fetch(`/api/automations?botId=${botData.id}`, { credentials: "include" });
+      const response = await fetch(`/api/bots/${botId}/automations`, { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch automations");
       return response.json();
     },
-    enabled: !!botData?.id,
+    enabled: !!botId,
   });
 
   const getTriggerLabel = (type: string) => {
@@ -6328,23 +6317,26 @@ function AutomationsPanel({ botId, clientId }: { botId: string; clientId: string
         <GlassCardContent>
           {automations && automations.length > 0 ? (
             <div className="space-y-3">
-              {automations.map((automation) => (
-                <div key={automation.id} className="flex items-center justify-between p-3 border border-white/10 rounded-lg bg-white/5">
-                  <div className="flex items-center gap-3">
-                    <div className={`h-2 w-2 rounded-full ${automation.isEnabled ? 'bg-green-400' : 'bg-white/30'}`} />
-                    <div>
-                      <p className="font-medium text-white">{automation.name}</p>
-                      <div className="flex items-center gap-2 text-xs text-white/55">
-                        <Badge className="text-xs bg-white/10 text-white/70 border-white/20">{getTriggerLabel(automation.triggerType)}</Badge>
-                        <span>{automation.runCount} runs</span>
+              {automations.map((automation) => {
+                const isActive = automation.status === 'active';
+                return (
+                  <div key={automation.id} className="flex items-center justify-between p-3 border border-white/10 rounded-lg bg-white/5">
+                    <div className="flex items-center gap-3">
+                      <div className={`h-2 w-2 rounded-full ${isActive ? 'bg-green-400' : 'bg-white/30'}`} />
+                      <div>
+                        <p className="font-medium text-white">{automation.name}</p>
+                        <div className="flex items-center gap-2 text-xs text-white/55">
+                          <Badge className="text-xs bg-white/10 text-white/70 border-white/20">{getTriggerLabel(automation.triggerType)}</Badge>
+                          <span>{automation.runCount || 0} runs</span>
+                        </div>
                       </div>
                     </div>
+                    <Badge className={isActive ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-white/10 text-white/50 border-white/20'}>
+                      {isActive ? 'Active' : 'Paused'}
+                    </Badge>
                   </div>
-                  <Badge className={automation.isEnabled ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-white/10 text-white/50 border-white/20'}>
-                    {automation.isEnabled ? 'Active' : 'Paused'}
-                  </Badge>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-8">

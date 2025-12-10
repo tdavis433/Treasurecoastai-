@@ -29,6 +29,7 @@ import {
 } from './botConfig';
 import { 
   processAutomations, 
+  triggerWorkflowByEvent,
   extractContactInfo,
   AutomationContext,
   BotAutomationConfig,
@@ -436,6 +437,7 @@ export interface OrchestratorMeta {
   automation?: boolean;
   ruleId?: string;
   leadCaptured?: boolean;
+  bookingSaved?: boolean;  // When booking was saved during resilient persistence
   contactInfo?: { name?: string; email?: string; phone?: string };
 }
 
@@ -803,6 +805,7 @@ class ConversationOrchestrator {
           externalPaymentUrl: paymentUrl,
           suggestedReplies: [],
           leadCaptured: postProcessResult.leadCaptured,
+          bookingSaved: postProcessResult.bookingSaved || false,
           contactInfo: postProcessResult.contactInfo,
         },
       };
@@ -831,14 +834,15 @@ class ConversationOrchestrator {
         let savedBooking = false;
         
         try {
-          const extracted = extractContactAndBookingFromMessages(messages, lastUserMessage?.content || '');
+          const lastMsg = messages[messages.length - 1];
+          const extracted = extractContactAndBookingFromMessages(messages, lastMsg?.content || '');
           
           // Save lead if we have contact info
           if (extracted.phone || extracted.email) {
             const existingLead = await storage.getLeadBySessionId(sessionId, clientId);
             
             if (!existingLead) {
-              await storage.createLead({
+              const newLead = await storage.createLead({
                 clientId,
                 botId,
                 sessionId,
@@ -851,6 +855,17 @@ class ConversationOrchestrator {
                 notes: 'Lead captured during AI service interruption - needs follow-up',
               });
               savedLead = true;
+              
+              // Trigger lead_captured automations
+              triggerWorkflowByEvent(botId, 'lead_captured', {
+                clientId,
+                sessionId,
+                leadId: newLead.id,
+                name: extracted.name,
+                email: extracted.email,
+                phone: extracted.phone,
+              }).catch(err => console.error('[Automation] Error triggering lead_captured:', err));
+              
               console.log('[Orchestrator] Resilient lead saved despite OpenAI error:', {
                 clientId, sessionId, hasPhone: !!extracted.phone, hasEmail: !!extracted.email
               });
@@ -862,7 +877,7 @@ class ConversationOrchestrator {
             const existingAppointment = await storage.getAppointmentBySessionId(sessionId, clientId);
             
             if (!existingAppointment) {
-              await storage.createAppointment(clientId, {
+              const newAppointment = await storage.createAppointment(clientId, {
                 name: extracted.name,
                 contact: extracted.phone,
                 email: extracted.email || null,
@@ -875,6 +890,17 @@ class ConversationOrchestrator {
                 sessionId,
               });
               savedBooking = true;
+              
+              // Trigger appointment_booked automations
+              triggerWorkflowByEvent(botId, 'appointment_booked', {
+                clientId,
+                sessionId,
+                appointmentId: newAppointment.id,
+                name: extracted.name,
+                phone: extracted.phone,
+                appointmentType: extracted.bookingType || 'tour',
+              }).catch(err => console.error('[Automation] Error triggering appointment_booked:', err));
+              
               console.log('[Orchestrator] Resilient booking saved despite OpenAI error:', {
                 clientId, sessionId, bookingType: extracted.bookingType, name: extracted.name
               });
@@ -1043,6 +1069,7 @@ class ConversationOrchestrator {
     showBooking: boolean;
     bookingType?: 'tour' | 'call' | 'appointment';
     leadCaptured: boolean;
+    bookingSaved?: boolean;
     contactInfo?: { name?: string; email?: string; phone?: string };
   }> {
     // Topic categorization
@@ -1125,7 +1152,7 @@ class ConversationOrchestrator {
           }
         } else {
           const priority = determinePriority(showBooking, contactInfo);
-          await storage.createLead({
+          const newLead = await storage.createLead({
             clientId,
             botId,
             sessionId: sessionData.sessionId,
@@ -1136,6 +1163,16 @@ class ConversationOrchestrator {
             priority,
             source: 'chat',
           });
+          
+          // Trigger lead_captured automations
+          triggerWorkflowByEvent(botId, 'lead_captured', {
+            clientId,
+            sessionId: sessionData.sessionId,
+            leadId: newLead.id,
+            name: contactInfo.name,
+            email: contactInfo.email,
+            phone: contactInfo.phone,
+          }).catch(err => console.error('[Automation] Error triggering lead_captured:', err));
         }
       } catch (error) {
         console.error('[Orchestrator] Error capturing lead:', error);
@@ -1145,6 +1182,7 @@ class ConversationOrchestrator {
     // AI-driven booking creation: When AI confirms it has "noted" the booking request
     // with complete info (name + phone required), create an appointment record
     const bookingInfo = extractBookingInfoFromConversation(messages, reply, userMessage);
+    let bookingSaved = false;
     
     if (bookingInfo && bookingInfo.isComplete) {
       try {
@@ -1165,7 +1203,7 @@ class ConversationOrchestrator {
             hasEmail: !!bookingInfo.email,
           });
           
-          await storage.createAppointment(clientId, {
+          const newAppointment = await storage.createAppointment(clientId, {
             name: bookingInfo.name!,
             contact: bookingInfo.phone!,
             email: bookingInfo.email || null,
@@ -1178,6 +1216,17 @@ class ConversationOrchestrator {
             sessionId: sessionData.sessionId,
           });
           
+          // Trigger appointment_booked automations
+          triggerWorkflowByEvent(botId, 'appointment_booked', {
+            clientId,
+            sessionId: sessionData.sessionId,
+            appointmentId: newAppointment.id,
+            name: bookingInfo.name,
+            phone: bookingInfo.phone,
+            appointmentType: bookingInfo.bookingType,
+          }).catch(err => console.error('[Automation] Error triggering appointment_booked:', err));
+          
+          bookingSaved = true;
           console.log(`[Orchestrator] Booking created successfully: ${bookingInfo.bookingType} for ${bookingInfo.name}`, {
             clientId,
             botId,
@@ -1209,7 +1258,7 @@ class ConversationOrchestrator {
       }
     }
 
-    return { showBooking, bookingType, leadCaptured, contactInfo: leadCaptured ? contactInfo : undefined };
+    return { showBooking, bookingType, leadCaptured, bookingSaved, contactInfo: leadCaptured ? contactInfo : undefined };
   }
 
   /**

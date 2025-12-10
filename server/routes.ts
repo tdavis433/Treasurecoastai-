@@ -47,6 +47,7 @@ import {
 import { logConversation as logConversationToFile, getConversationLogs, getLogStats } from "./conversationLogger";
 import { 
   processAutomations, 
+  triggerWorkflowByEvent,
   type BotAutomationConfig, 
   type AutomationContext,
   type AutomationResult
@@ -2722,6 +2723,16 @@ These suggestions should be relevant to what was just discussed and help guide t
         ...validatedData,
         conversationSummary
       } as any);
+      
+      // Trigger appointment_booked automations (async, non-blocking)
+      const appointmentBotId = validatedData.botId || `${effectiveClientId}_assistant`;
+      triggerWorkflowByEvent(appointmentBotId, 'appointment_booked', {
+        clientId: effectiveClientId,
+        appointmentId: appointment.id,
+        name: appointment.name,
+        phone: appointment.contact,
+        appointmentType: appointment.appointmentType,
+      }).catch(err => console.error('[Automation] Error triggering appointment_booked:', err));
       
       const settings = await storage.getSettings(effectiveClientId);
       
@@ -6867,6 +6878,15 @@ These suggestions should be relevant to what was just discussed and help guide t
       const currentMonth = new Date().toISOString().slice(0, 7);
       await storage.incrementMonthlyUsage(clientId, currentMonth, 'leads');
       
+      // Trigger lead_captured automations (async, non-blocking)
+      triggerWorkflowByEvent(botId, 'lead_captured', {
+        clientId,
+        leadId: lead.id,
+        name: lead.name,
+        email: lead.email,
+        phone: lead.phone,
+      }).catch(err => console.error('[Automation] Error triggering lead_captured:', err));
+      
       // Fire webhook for new lead (async, non-blocking)
       sendLeadCreatedWebhook(clientId, {
         id: lead.id,
@@ -8688,7 +8708,67 @@ These suggestions should be relevant to what was just discussed and help guide t
         },
       });
 
-      // 11. Log this action
+      // 11. Create default automation workflows for leads and bookings
+      const defaultAutomations = [
+        {
+          botId,
+          name: "New Lead – Tag & Status",
+          description: "Automatically tags new leads with 'inbound' and sets status tracking",
+          triggerType: "lead_captured",
+          triggerConfig: { eventType: "lead_captured" },
+          conditions: [],
+          actions: [
+            {
+              id: "action_1",
+              type: "tag_session" as const,
+              order: 1,
+              config: { tags: ["inbound", "new-lead"] }
+            }
+          ],
+          status: "active",
+          priority: 10,
+          throttleSeconds: 0,
+          maxExecutionsPerSession: 1,
+        },
+        {
+          botId,
+          name: "New Booking – Notification",
+          description: "Automatically tags new bookings and notifies staff",
+          triggerType: "appointment_booked",
+          triggerConfig: { eventType: "appointment_booked" },
+          conditions: [],
+          actions: [
+            {
+              id: "action_1",
+              type: "tag_session" as const,
+              order: 1,
+              config: { tags: ["booking", "appointment"] }
+            },
+            {
+              id: "action_2",
+              type: "notify_staff" as const,
+              order: 2,
+              config: { message: `New booking received for ${businessName}` }
+            }
+          ],
+          status: "active",
+          priority: 10,
+          throttleSeconds: 0,
+          maxExecutionsPerSession: 1,
+        }
+      ];
+
+      let automationsCreated = 0;
+      for (const automation of defaultAutomations) {
+        try {
+          await storage.createAutomationWorkflow(automation as any);
+          automationsCreated++;
+        } catch (err) {
+          console.warn(`Failed to create default automation "${automation.name}":`, err);
+        }
+      }
+
+      // 12. Log this action
       await storage.createSystemLog({
         level: 'info',
         source: 'super-admin',
@@ -8701,10 +8781,11 @@ These suggestions should be relevant to what was just discussed and help guide t
           botId,
           personaConfigured: !!(assistantName || assistantRole || toneDescription),
           faqCount: mergedFaqs.length,
+          automationsCreated,
         },
       });
 
-      // 12. Generate widget embed code
+      // 13. Generate widget embed code
       const baseUrl = req.protocol + '://' + req.get('host');
       const widgetEmbedCode = `<script>
 !function(w,d,s,id,f){if(d.getElementById(id))return;
@@ -8714,7 +8795,7 @@ These suggestions should be relevant to what was just discussed and help guide t
 }(window,document,'script','tcai-widget','${baseUrl}/widget/embed.js');
 </script>`;
 
-      // 13. Return success response with all relevant info
+      // 14. Return success response with all relevant info
       res.status(201).json({
         success: true,
         workspace: {
@@ -8728,6 +8809,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           name: personaConfig.assistantName,
           type: template.botType,
           faqCount: mergedFaqs.length,
+          automationsCreated,
         },
         clientCredentials: {
           email: contactEmail,
