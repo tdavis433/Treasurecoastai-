@@ -86,6 +86,14 @@ The platform operates on a two-surface system:
     *   Touched field tracking prevents showing errors before user interaction
 *   **UI Refresh Optimization:** Client login list refreshes immediately after creation via await on refetch
 
+### UX Improvements (December 2024)
+*   **Chat Widget Reset Button:** Now positioned in header next to close button with rotation animation on hover
+*   **Widget Error Recovery:** Added amber-themed error UI with recoverable state handling for API failures
+*   **Inbox Session Filtering:** Sessions with 0 messages are now hidden from the conversations list
+*   **Conversation Snippets:** Session items display meaningful previews from AI summary, user intent, topics, or default fallbacks
+*   **Message Count Display:** Shows formatted "{count} msgs" for clearer conversation sizing
+*   **Widget Header Actions:** Container groups reset and close buttons with consistent styling
+
 ## External Dependencies
 *   **OpenAI GPT-4:** Used for the core AI engine and conversational analysis.
 *   **Neon (PostgreSQL):** Provides managed PostgreSQL database hosting.
