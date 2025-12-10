@@ -1,0 +1,138 @@
+You are continuing work on the Treasure Coast AI platform.
+
+Assume:
+  • Faith House and QA workspaces work end-to-end.
+  • Chat flows, dashboards, user management, and builder UX are solid.
+
+Goal of this phase:
+  Hard production polish: validation, performance, integrations clarity, mobile responsiveness, stability, and security.
+
+Do NOT:
+  • Introduce new major features.
+  • Change core flows unless fixing real bugs.
+
+────────────────────────
+TASK GROUP 1 – FORM VALIDATION & ERROR HANDLING
+────────────────────────
+
+Targets:
+  • New Client wizard.
+  • Create Login (workspace Users tab).
+  • Assistant config forms.
+  • Client Settings.
+  • Integrations/env key forms (if editable in UI).
+
+Requirements:
+  • Every required field has:
+       – Clear inline error messages for invalid/missing values.
+       – No raw JSON errors anywhere.
+  • Backend errors:
+       – Surface as readable toasts or banners (e.g. “Email already in use”, “Password too short”).
+       – Do NOT leave forms in permanent loading state.
+  • Required vs optional fields:
+       – Required fields marked visually.
+       – Optional ones clearly implied or documented.
+
+────────────────────────
+TASK GROUP 2 – LIST PERFORMANCE & PAGINATION
+────────────────────────
+
+Targets:
+  • Leads tables.
+  • Conversations tables.
+  • Bookings tables.
+
+Tasks:
+  • Identify any queries loading large numbers of records (e.g. 1000+).
+  • Introduce sensible:
+       – Pagination (e.g., 25–50 per page), OR
+       – Infinite scroll with server-side limits.
+  • Add loading spinners/skeletons while fetching pages.
+  • Ensure filters/search (if present) work correctly with pagination.
+
+Goal:
+  The app should feel fast and stable even when there are many leads and conversations.
+
+────────────────────────
+TASK GROUP 3 – INTEGRATIONS UX (OpenAI, Stripe, etc.)
+────────────────────────
+
+Tasks:
+
+1) Integrations page clarity:
+   - Make it clear:
+       • Which services are configured purely via environment variables.
+       • Which can be edited in UI (if any).
+   - For env-based keys (OpenAI, Stripe, etc.):
+       • Consider showing a simple “Configured via environment” badge.
+       • Optionally show last 4 characters of a key for admin reassurance.
+
+2) Stripe / billing:
+   - Ensure lack of Stripe credentials:
+       • Does NOT cause runtime errors.
+       • Does NOT show broken “Upgrade/Pay” flows to end users.
+   - Hide or disable billing buttons when Stripe is not configured.
+
+3) Error handling:
+   - Any failure to call external APIs (Stripe, email, SMS) should:
+       • Be logged server-side.
+       • Show a user-friendly error (or silently fall back) in the UI.
+
+────────────────────────
+TASK GROUP 4 – MOBILE RESPONSIVENESS & SMALL-SCREEN BEHAVIOR
+────────────────────────
+
+Tasks:
+
+1) Test key pages at narrow widths (~375–414px):
+   - Landing page.
+   - /demo/faith-house.
+   - Faith House client dashboard.
+   - Basic admin views where possible.
+
+2) Fix:
+   - Any text/cards overflowing horizontally.
+   - Charts that become unusable (consider stacking or hiding non-essential parts).
+   - Modals that cannot be scrolled on small screens.
+
+3) Chat widget on mobile:
+   - Ensure:
+       • Open/close controls are tappable.
+       • Send + reset are visible and not cut off.
+       • Full-chat view works (consider full-screen on mobile if necessary).
+
+────────────────────────
+TASK GROUP 5 – STABILITY & SECURITY REVIEW
+────────────────────────
+
+1) Stability checks:
+   - Do a brief stress-style test:
+       • Rapidly send several messages in chat.
+       • Quickly switch between dashboard tabs.
+   - Watch for:
+       • Crashes.
+       • Unhandled promise rejections.
+       • Any obvious race conditions.
+
+2) Security / role enforcement:
+   - Review server routes that:
+       • Accept clientId/workspaceId in parameters.
+   - Ensure:
+       • Each such route validates the logged-in user’s membership/role.
+       • Admin-only actions (delete workspace, global settings, etc.) require proper roles.
+   - Confirm:
+       • Default credentials are not hard-coded for production (or at least clearly documented as dev-only).
+       • Secrets (OpenAI, DB, etc.) are env-based.
+
+────────────────────────
+DELIVERABLE FOR THIS PHASE
+────────────────────────
+
+Summarize:
+  • Validation & error handling improvements (what forms now show better messaging).
+  • Pagination/performance changes on lists.
+  • Integrations UX decisions (what’s visible / hidden / env-based).
+  • Mobile responsiveness fixes.
+  • Any security/role enforcement updates.
+
+Mark any items that remain intentionally “future roadmap” rather than blocking issues.

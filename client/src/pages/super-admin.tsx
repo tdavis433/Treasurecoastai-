@@ -10037,6 +10037,11 @@ function UsersSectionPanel({
     role: 'client_owner',
     clientId: '',
   });
+  const [inviteErrors, setInviteErrors] = useState<{ username?: string; password?: string; email?: string }>({});
+  const [inviteTouched, setInviteTouched] = useState<{ username?: boolean; password?: boolean; email?: boolean }>({});
+  
+  const isValidInviteEmail = (email: string) => !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const isValidPassword = (pw: string) => pw.length >= 8 && /[A-Z]/.test(pw) && /[a-z]/.test(pw) && /[0-9]/.test(pw);
 
   const filteredUsers = users?.filter(user => {
     const matchesRole = roleFilter === 'all' || user.role === roleFilter;
@@ -10051,10 +10056,25 @@ function UsersSectionPanel({
   };
 
   const handleInvite = () => {
-    if (!inviteForm.username || !inviteForm.password) {
-      toast({ title: 'Error', description: 'Username and password are required', variant: 'destructive' });
+    const errors: typeof inviteErrors = {};
+    if (!inviteForm.username.trim()) {
+      errors.username = 'Username is required';
+    }
+    if (!inviteForm.password) {
+      errors.password = 'Password is required';
+    } else if (!isValidPassword(inviteForm.password)) {
+      errors.password = 'Password must be 8+ characters with uppercase, lowercase, and number';
+    }
+    if (inviteForm.email && !isValidInviteEmail(inviteForm.email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+    
+    if (Object.keys(errors).length > 0) {
+      setInviteErrors(errors);
+      setInviteTouched({ username: true, password: true, email: !!inviteForm.email });
       return;
     }
+    
     onCreateUser({
       username: inviteForm.username,
       password: inviteForm.password,
@@ -10064,6 +10084,8 @@ function UsersSectionPanel({
     });
     setShowInviteModal(false);
     setInviteForm({ email: '', username: '', password: '', role: 'client_owner', clientId: '' });
+    setInviteErrors({});
+    setInviteTouched({});
   };
 
   const usersByRole = {
@@ -10333,22 +10355,52 @@ function UsersSectionPanel({
                 <input
                   type="text"
                   value={inviteForm.username}
-                  onChange={(e) => setInviteForm(f => ({ ...f, username: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-cyan-400/50"
+                  onChange={(e) => {
+                    setInviteForm(f => ({ ...f, username: e.target.value }));
+                    if (inviteTouched.username) {
+                      setInviteErrors(prev => ({ ...prev, username: e.target.value.trim() ? undefined : 'Username is required' }));
+                    }
+                  }}
+                  onBlur={() => {
+                    setInviteTouched(prev => ({ ...prev, username: true }));
+                    if (!inviteForm.username.trim()) {
+                      setInviteErrors(prev => ({ ...prev, username: 'Username is required' }));
+                    }
+                  }}
+                  className={`w-full px-3 py-2 rounded-lg bg-white/5 border text-white text-sm focus:outline-none focus:border-cyan-400/50 ${inviteTouched.username && inviteErrors.username ? 'border-red-500/50' : 'border-white/10'}`}
                   placeholder="Enter username"
                   data-testid="input-invite-username"
                 />
+                {inviteTouched.username && inviteErrors.username && (
+                  <p className="text-xs text-red-400">{inviteErrors.username}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <label className="text-sm text-white/85">Email (optional)</label>
                 <input
                   type="email"
                   value={inviteForm.email}
-                  onChange={(e) => setInviteForm(f => ({ ...f, email: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-cyan-400/50"
+                  onChange={(e) => {
+                    setInviteForm(f => ({ ...f, email: e.target.value }));
+                    if (inviteTouched.email) {
+                      setInviteErrors(prev => ({ ...prev, email: isValidInviteEmail(e.target.value) ? undefined : 'Please enter a valid email address' }));
+                    }
+                  }}
+                  onBlur={() => {
+                    setInviteTouched(prev => ({ ...prev, email: true }));
+                    if (inviteForm.email && !isValidInviteEmail(inviteForm.email)) {
+                      setInviteErrors(prev => ({ ...prev, email: 'Please enter a valid email address' }));
+                    } else {
+                      setInviteErrors(prev => ({ ...prev, email: undefined }));
+                    }
+                  }}
+                  className={`w-full px-3 py-2 rounded-lg bg-white/5 border text-white text-sm focus:outline-none focus:border-cyan-400/50 ${inviteTouched.email && inviteErrors.email ? 'border-red-500/50' : 'border-white/10'}`}
                   placeholder="user@example.com"
                   data-testid="input-invite-email"
                 />
+                {inviteTouched.email && inviteErrors.email && (
+                  <p className="text-xs text-red-400">{inviteErrors.email}</p>
+                )}
               </div>
             </div>
             <div className="space-y-2">
@@ -10356,11 +10408,34 @@ function UsersSectionPanel({
               <input
                 type="password"
                 value={inviteForm.password}
-                onChange={(e) => setInviteForm(f => ({ ...f, password: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-cyan-400/50"
+                onChange={(e) => {
+                  setInviteForm(f => ({ ...f, password: e.target.value }));
+                  if (inviteTouched.password) {
+                    if (!e.target.value) {
+                      setInviteErrors(prev => ({ ...prev, password: 'Password is required' }));
+                    } else if (!isValidPassword(e.target.value)) {
+                      setInviteErrors(prev => ({ ...prev, password: 'Password must be 8+ characters with uppercase, lowercase, and number' }));
+                    } else {
+                      setInviteErrors(prev => ({ ...prev, password: undefined }));
+                    }
+                  }
+                }}
+                onBlur={() => {
+                  setInviteTouched(prev => ({ ...prev, password: true }));
+                  if (!inviteForm.password) {
+                    setInviteErrors(prev => ({ ...prev, password: 'Password is required' }));
+                  } else if (!isValidPassword(inviteForm.password)) {
+                    setInviteErrors(prev => ({ ...prev, password: 'Password must be 8+ characters with uppercase, lowercase, and number' }));
+                  }
+                }}
+                className={`w-full px-3 py-2 rounded-lg bg-white/5 border text-white text-sm focus:outline-none focus:border-cyan-400/50 ${inviteTouched.password && inviteErrors.password ? 'border-red-500/50' : 'border-white/10'}`}
                 placeholder="Set a temporary password"
                 data-testid="input-invite-password"
               />
+              {inviteTouched.password && inviteErrors.password && (
+                <p className="text-xs text-red-400">{inviteErrors.password}</p>
+              )}
+              <p className="text-xs text-white/40">Password must be 8+ characters with uppercase, lowercase, and number</p>
             </div>
             <div className="space-y-2">
               <label className="text-sm text-white/85">Role</label>

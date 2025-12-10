@@ -59,6 +59,7 @@ import {
   ChevronDown,
   ChevronUp,
   ChevronRight,
+  ChevronLeft,
   CheckCircle2,
   PhoneCall,
   User,
@@ -325,6 +326,8 @@ export default function ClientDashboard() {
   const [updatingBookingId, setUpdatingBookingId] = useState<string | null>(null);
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [leadsPage, setLeadsPage] = useState(1);
+  const LEADS_PER_PAGE = 25;
 
   const { data: currentUser, isLoading: authLoading } = useQuery<AuthUser>({
     queryKey: ["/api/auth/me"],
@@ -359,6 +362,11 @@ export default function ClientDashboard() {
       setLocation("/super-admin");
     }
   }, [authLoading, currentUser, urlClientId, setLocation, toast]);
+
+  // Reset leads page when search query changes
+  useEffect(() => {
+    setLeadsPage(1);
+  }, [searchQuery]);
 
   // Helper to append clientId to API URLs for super_admin users
   const appendClientId = (url: string) => {
@@ -427,9 +435,12 @@ export default function ClientDashboard() {
     leads: any[];
     total: number;
   }>({
-    queryKey: ["/api/client/leads", urlClientId],
+    queryKey: ["/api/client/leads", urlClientId, leadsPage, searchQuery],
     queryFn: async () => {
-      const response = await fetch(appendClientId("/api/client/leads"), { credentials: "include" });
+      const offset = (leadsPage - 1) * LEADS_PER_PAGE;
+      const searchParam = searchQuery ? `&search=${encodeURIComponent(searchQuery)}` : '';
+      const url = appendClientId(`/api/client/leads?limit=${LEADS_PER_PAGE}&offset=${offset}${searchParam}`);
+      const response = await fetch(url, { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch leads");
       return response.json();
     },
@@ -636,7 +647,8 @@ export default function ClientDashboard() {
       });
       
       if (response.ok) {
-        queryClient.invalidateQueries({ queryKey: ["/api/client/leads", urlClientId] });
+        // Use prefix matching to invalidate all pages of leads (exact: false for partial key match)
+        queryClient.invalidateQueries({ queryKey: ["/api/client/leads"], exact: false });
         queryClient.invalidateQueries({ queryKey: ["/api/client/stats", statsRange, urlClientId] });
         toast({ title: "Status updated", description: `Lead status changed to ${newStatus}.` });
       } else {
@@ -1788,15 +1800,8 @@ export default function ClientDashboard() {
   };
 
   const renderLeadsSection = () => {
-    const filteredLeads = leadsData?.leads?.filter((lead: any) => {
-      if (!searchQuery) return true;
-      const query = searchQuery.toLowerCase();
-      return (
-        lead.name?.toLowerCase().includes(query) ||
-        lead.email?.toLowerCase().includes(query) ||
-        lead.phone?.includes(query)
-      );
-    }) || [];
+    // Server-side filtering is now used via searchQuery parameter in API call
+    const filteredLeads = leadsData?.leads || [];
 
     const exportLeadsToCSV = () => {
       if (!filteredLeads || filteredLeads.length === 0) {
@@ -1913,6 +1918,7 @@ export default function ClientDashboard() {
                 ))}
               </div>
             ) : filteredLeads.length > 0 ? (
+              <>
               <ScrollArea className="h-[500px]">
                 <div className="space-y-3">
                   {filteredLeads.map((lead: any, idx: number) => {
@@ -2020,6 +2026,42 @@ export default function ClientDashboard() {
                   })}
                 </div>
               </ScrollArea>
+              {/* Pagination Controls */}
+              {(leadsData?.total || 0) > LEADS_PER_PAGE && (
+                <div className="flex items-center justify-between px-4 py-3 border-t border-white/10 mt-2">
+                  <p className="text-sm text-white/50">
+                    Showing {((leadsPage - 1) * LEADS_PER_PAGE) + 1} - {Math.min(leadsPage * LEADS_PER_PAGE, leadsData?.total || 0)} of {leadsData?.total || 0}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setLeadsPage(p => Math.max(1, p - 1))}
+                      disabled={leadsPage <= 1}
+                      className="border-white/10 text-white/70 hover:text-white disabled:opacity-30"
+                      data-testid="button-leads-prev"
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      Previous
+                    </Button>
+                    <span className="text-sm text-white/60 px-2">
+                      Page {leadsPage} of {Math.ceil((leadsData?.total || 0) / LEADS_PER_PAGE)}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setLeadsPage(p => p + 1)}
+                      disabled={leadsPage >= Math.ceil((leadsData?.total || 0) / LEADS_PER_PAGE)}
+                      className="border-white/10 text-white/70 hover:text-white disabled:opacity-30"
+                      data-testid="button-leads-next"
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+              </>
             ) : (
               <div className="text-center py-12 text-white/40">
                 <Users className="h-16 w-16 mx-auto mb-4 opacity-50" />
