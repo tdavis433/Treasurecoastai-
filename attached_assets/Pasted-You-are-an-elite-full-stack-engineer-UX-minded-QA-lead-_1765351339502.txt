@@ -1,0 +1,218 @@
+You are an elite full-stack engineer, UX-minded QA lead, and SaaS product finisher.
+
+You are working on the Treasure Coast AI platform in this Replit project.
+
+LIVE INSTANCE (for reference):
+  https://treasure-coast-ai-platform--mlgrushskill.replit.app/
+
+ACCOUNTS:
+  • Super Admin:       admin / admin123
+  • Faith House Client: demo_faith_house / demo123
+
+────────────────────────
+CONTEXT – DO NOT BREAK THESE
+────────────────────────
+
+Previous phases have already fixed and verified:
+
+• Faith House demo chatbot at /demo/faith-house:
+  – Can capture at least one lead + booking.
+  – Handles OpenAI rate limits with a friendly chat message instead of a red error toast.
+
+• Admin ⇄ Client data parity for Faith House:
+  – Admin analytics and client analytics match:
+      * same leads, bookings, messages, conversations.
+  – Leads and bookings lists show the same data on both sides.
+
+• Create Login (workspace Users tab):
+  – API returns 201.
+  – User is created in the database.
+  – Success toast appears.
+
+• View as Client:
+  – Impersonation works and opens the client dashboard correctly.
+
+• Assistant Creation Wizard:
+  – Modal scroll is fixed: header fixed, content scrolls, footer buttons visible.
+  – Wizard can be completed on laptop-size screens.
+
+• Chat widget controls:
+  – Reset (↻) is in header.
+  – Send (✈) is the only button next to the input.
+  – sendCount=1 confirmed; only one send control near the textbox.
+
+Your mission now is a **Phase 4 polish & verification pass**:
+  • Lock in the demo-critical booking flows.
+  • Improve validation & feedback on key forms.
+  • Fix any remaining UI refresh weirdness.
+  • Run a final end-to-end test and confirm everything is ready.
+
+DO NOT remove or weaken any of the working behavior above.
+
+────────────────────────
+OBJECTIVE 1 – GUARANTEE BOTH BOOKING TYPES WORK (TOUR + PHONE CALL)
+────────────────────────
+
+The Faith House demo needs to clearly support:
+  • “Book a tour”
+  • “Schedule a phone call”
+
+Your tasks:
+
+1) From /demo/faith-house, run two separate conversations:
+
+   Scenario A: TOUR
+   • Use a visitor like:
+       Name:  "QA Tour Visitor"
+       Phone: "555-333-4444"
+       Email: "qa.tour@example.com"
+   • Ask realistic questions, then say:
+       "I’d like to book a tour tomorrow at 3 PM."
+
+   Scenario B: PHONE CALL
+   • Use:
+       Name:  "QA Call Visitor"
+       Phone: "555-444-5555"
+       Email: "qa.call@example.com"
+   • Ask realistic questions, then say:
+       "I’d like to schedule a phone call on Saturday at 10 AM."
+
+2) Fix backend + assistant logic if needed so that:
+
+   • For Scenario A:
+     – A booking is created for the Faith House workspace with a type clearly representing a TOUR.
+   • For Scenario B:
+     – A booking is created with a type clearly representing a PHONE CALL.
+
+3) Confirm in both dashboards:
+
+   • As demo_faith_house (client):
+     – Leads page shows both QA Tour Visitor + QA Call Visitor with correct contact details.
+     – Bookings page shows:
+         * One booking clearly labeled Tour (or equivalent).
+         * One booking clearly labeled Phone Call.
+         * Reasonable datetime formatting (human-readable, not raw ISO).
+
+   • As admin (admin):
+     – In the Faith House workspace → Bookings tab:
+         * The same two bookings appear with the same types and times.
+     – Overview/analytics update appropriately (counts reflect the new bookings).
+
+If type is not yet stored or displayed:
+  • Add a simple bookingType/type field or equivalent mapping and show it in the Bookings tables for both admin and client views.
+
+────────────────────────
+OBJECTIVE 2 – IMPROVE FORM VALIDATION & ERROR FEEDBACK (KEY FLOWS)
+────────────────────────
+
+Focus ONLY on the most important forms for the demo:
+
+  1) New Client / Workspace creation wizard (super admin)
+  2) Create Login in Workspace Users tab
+  3) Client Settings (Faith House client – contact info, notification email, etc.)
+
+Your tasks:
+
+1) For each of these forms, ensure:
+
+   • Required fields:
+     – Show clear, per-field messages when missing (e.g., “Business name is required”).
+   • Invalid inputs:
+     – Bad email → “Please enter a valid email address.”
+   • Backend errors:
+     – If API returns a 4xx/5xx (e.g., duplicate email), show a styled error banner or toast with a human-readable message.
+   • Success:
+     – Show a consistent success toast or banner (“Client created”, “Login created”, “Settings saved”).
+
+2) Test each form:
+
+   • Submit with missing required fields → confirm visible inline errors.
+   • Submit with obviously invalid email/phone → confirm visible inline errors.
+   • Submit with valid data → confirm success message + persisted changes.
+
+Keep the styling consistent with current dark neon/glass theme.
+
+────────────────────────
+OBJECTIVE 3 – FIX ANY REMAINING UI REFRESH WEIRDNESS (CREATE LOGIN)
+────────────────────────
+
+Minor issue noted earlier:
+  • After creating a workspace user via Create Login, the user list has a slight refresh delay (user is created in DB, but UI feels “slow” to show it).
+
+Your tasks:
+
+1) For Workspace Users tab:
+
+   • After a successful Create Login response:
+     – Either optimistically add the new user to the UI list immediately, OR
+     – Trigger an immediate refetch of the Users list and update state.
+
+2) Verify:
+
+   • Create a new user (e.g., qa_refresh_test@example.com).
+   • Confirm:
+     – Success toast still appears.
+     – The new user appears in the list almost instantly with no obvious lag.
+
+────────────────────────
+OBJECTIVE 4 – FINAL REGRESSION & DEMO CHECK
+────────────────────────
+
+Run this full demo scenario as a final check:
+
+1) Public & Faith House Demo:
+   • Open `/` and ensure the landing page + public chat look clean.
+   • Open `/demo/faith-house` and:
+     – Ask “What is Faith House sober living and how does it work?”
+     – Ask about beds, rules, cost.
+     – Then walk through:
+         * Booking a tour (Scenario A).
+         * Scheduling a phone call (Scenario B).
+
+2) Faith House Client (demo_faith_house / demo123):
+   • Check Overview metrics (leads, bookings) look sensible.
+   • Leads:
+     – Confirm both QA Tour Visitor and QA Call Visitor are present.
+   • Bookings:
+     – Confirm two bookings exist:
+         * One clearly marked Tour with correct time.
+         * One clearly marked Phone Call with correct time.
+   • Conversations:
+     – Confirm transcripts for those visitors are present and readable.
+   • Optionally tweak a safe setting and confirm validation + success message work.
+
+3) Super Admin (admin / admin123):
+   • Check Command Center loads.
+   • Go to Clients → open Faith House workspace:
+     – Leads tab: shows both new leads.
+     – Bookings tab: shows both new bookings with correct types.
+     – Analytics updated.
+   • Workspace Users:
+     – Create a test login and confirm it appears immediately in the list.
+   • View as Client:
+     – Confirm it still opens the Faith House client dashboard correctly.
+
+If anything breaks from earlier phases, FIX it while preserving all newly added polish.
+
+────────────────────────
+DONE CRITERIA
+────────────────────────
+
+You are done when:
+
+1) Both booking flows (Tour + Phone Call) have been verified:
+   • Correctly created via chat.
+   • Correctly typed/labeled.
+   • Visible and consistent in BOTH client and admin dashboards.
+
+2) Key forms:
+   • Show clear inline errors for bad/missing inputs.
+   • Show clear success feedback on valid submissions.
+   • Handle backend failures gracefully.
+
+3) Create Login:
+   • Shows the newly created user in the UI immediately after success.
+
+4) Full final demo flow (chat → lead → bookings → client dash → admin dash → view-as-client) works end-to-end without confusing or broken UI.
+
+Then stop and summarize what you changed.

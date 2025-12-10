@@ -64,6 +64,18 @@ The platform operates on a two-surface system:
     *   Storage layer enforces clientId in WHERE clauses for getLeadById, updateLead, deleteLead
 *   **Environment-Based Configuration:** Staff user creation uses `DEFAULT_STAFF_CLIENT_ID` env var instead of hardcoded values
 
+### Form Validation (December 2024)
+*   **New Client Wizard (Step 1):** Inline validation for business name and contact email fields
+    *   Validates on blur and when clicking Next
+    *   Shows red error text below invalid fields
+    *   Email format validation with regex
+    *   Errors clear as user corrects input
+*   **Create Client Login Form:** Inline validation for email format and password strength
+    *   Email must be valid format
+    *   Password requires 8+ characters with uppercase, lowercase, and number
+    *   Touched field tracking prevents showing errors before user interaction
+*   **UI Refresh Optimization:** Client login list refreshes immediately after creation via await on refetch
+
 ## External Dependencies
 *   **OpenAI GPT-4:** Used for the core AI engine and conversational analysis.
 *   **Neon (PostgreSQL):** Provides managed PostgreSQL database hosting.

@@ -231,6 +231,36 @@ export default function SuperAdmin() {
     // Step 3: FAQs
     faqs: [] as Array<{ question: string; answer: string }>,
   });
+  const [wizardErrors, setWizardErrors] = useState<{ businessName?: string; contactEmail?: string }>({});
+  const [wizardTouched, setWizardTouched] = useState<{ businessName?: boolean; contactEmail?: boolean }>({});
+
+  // Wizard validation helper
+  const isValidWizardEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const validateWizardStep1 = () => {
+    const errors: { businessName?: string; contactEmail?: string } = {};
+    if (!wizardData.businessName.trim()) {
+      errors.businessName = 'Business name is required';
+    }
+    if (!wizardData.contactEmail.trim()) {
+      errors.contactEmail = 'Contact email is required';
+    } else if (!isValidWizardEmail(wizardData.contactEmail)) {
+      errors.contactEmail = 'Please enter a valid email address';
+    }
+    return errors;
+  };
+
+  const handleWizardNext = () => {
+    if (wizardStep === 1) {
+      const errors = validateWizardStep1();
+      setWizardErrors(errors);
+      setWizardTouched({ businessName: true, contactEmail: true });
+      if (Object.keys(errors).length === 0) {
+        setWizardStep(s => s + 1);
+      }
+    } else {
+      setWizardStep(s => s + 1);
+    }
+  };
   const [wizardResult, setWizardResult] = useState<{
     success: boolean;
     workspace?: { slug: string; name: string };
@@ -768,6 +798,8 @@ export default function SuperAdmin() {
       uniqueSellingPoints: [],
       faqs: [],
     });
+    setWizardErrors({});
+    setWizardTouched({});
     setWizardResult(null);
     setShowNewClientWizard(false);
   };
@@ -3573,11 +3605,23 @@ export default function SuperAdmin() {
                       const name = e.target.value;
                       const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
                       setWizardData(d => ({ ...d, businessName: name, slug }));
+                      if (wizardTouched.businessName) {
+                        setWizardErrors(prev => ({ ...prev, businessName: name.trim() ? undefined : 'Business name is required' }));
+                      }
                     }}
-                    className="bg-white/5 border-white/10 text-white"
+                    onBlur={() => {
+                      setWizardTouched(prev => ({ ...prev, businessName: true }));
+                      if (!wizardData.businessName.trim()) {
+                        setWizardErrors(prev => ({ ...prev, businessName: 'Business name is required' }));
+                      }
+                    }}
+                    className={`bg-white/5 text-white ${wizardTouched.businessName && wizardErrors.businessName ? 'border-red-500/50' : 'border-white/10'}`}
                     placeholder="e.g. Faith House Sober Living"
                     data-testid="wizard-input-business-name"
                   />
+                  {wizardTouched.businessName && wizardErrors.businessName && (
+                    <p className="text-xs text-red-400">{wizardErrors.businessName}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label className="text-white/85">Industry *</Label>
@@ -3635,11 +3679,36 @@ export default function SuperAdmin() {
                   <Input
                     type="email"
                     value={wizardData.contactEmail}
-                    onChange={(e) => setWizardData(d => ({ ...d, contactEmail: e.target.value }))}
-                    className="bg-white/5 border-white/10 text-white"
+                    onChange={(e) => {
+                      const email = e.target.value;
+                      setWizardData(d => ({ ...d, contactEmail: email }));
+                      if (wizardTouched.contactEmail) {
+                        let emailError: string | undefined;
+                        if (!email.trim()) {
+                          emailError = 'Contact email is required';
+                        } else if (!isValidWizardEmail(email)) {
+                          emailError = 'Please enter a valid email address';
+                        }
+                        setWizardErrors(prev => ({ ...prev, contactEmail: emailError }));
+                      }
+                    }}
+                    onBlur={() => {
+                      setWizardTouched(prev => ({ ...prev, contactEmail: true }));
+                      let emailError: string | undefined;
+                      if (!wizardData.contactEmail.trim()) {
+                        emailError = 'Contact email is required';
+                      } else if (!isValidWizardEmail(wizardData.contactEmail)) {
+                        emailError = 'Please enter a valid email address';
+                      }
+                      setWizardErrors(prev => ({ ...prev, contactEmail: emailError }));
+                    }}
+                    className={`bg-white/5 text-white ${wizardTouched.contactEmail && wizardErrors.contactEmail ? 'border-red-500/50' : 'border-white/10'}`}
                     placeholder="client@business.com"
                     data-testid="wizard-input-email"
                   />
+                  {wizardTouched.contactEmail && wizardErrors.contactEmail && (
+                    <p className="text-xs text-red-400">{wizardErrors.contactEmail}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label className="text-white/85">Contact Phone</Label>
@@ -3932,8 +4001,7 @@ export default function SuperAdmin() {
             {wizardStep < 4 && (
               <Button
                 className="bg-cyan-500 hover:bg-cyan-600 text-white"
-                onClick={() => setWizardStep(s => s + 1)}
-                disabled={wizardStep === 1 && (!wizardData.businessName || !wizardData.slug || !wizardData.contactEmail)}
+                onClick={handleWizardNext}
                 data-testid="wizard-next"
               >
                 Next
@@ -10459,6 +10527,44 @@ function ClientLoginsSectionPanel({ workspaces }: ClientLoginsSectionPanelProps)
     name: '',
     workspaceId: '',
   });
+  const [formErrors, setFormErrors] = useState<{ email?: string; password?: string; workspaceId?: string }>({});
+  const [formTouched, setFormTouched] = useState<{ email?: boolean; password?: boolean; workspaceId?: boolean }>({});
+
+  // Validation helpers
+  const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const isValidPassword = (password: string) => {
+    return password.length >= 8 && 
+      /[A-Z]/.test(password) && 
+      /[a-z]/.test(password) && 
+      /[0-9]/.test(password);
+  };
+
+  const validateCreateForm = () => {
+    const errors: { email?: string; password?: string; workspaceId?: string } = {};
+    if (!createForm.workspaceId) {
+      errors.workspaceId = 'Please select a client';
+    }
+    if (!createForm.email) {
+      errors.email = 'Email is required';
+    } else if (!isValidEmail(createForm.email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+    if (!createForm.password) {
+      errors.password = 'Password is required';
+    } else if (!isValidPassword(createForm.password)) {
+      errors.password = 'Password must be 8+ chars with uppercase, lowercase, and number';
+    }
+    return errors;
+  };
+
+  const handleCreateSubmit = () => {
+    const errors = validateCreateForm();
+    setFormErrors(errors);
+    setFormTouched({ email: true, password: true, workspaceId: true });
+    if (Object.keys(errors).length === 0) {
+      createUserMutation.mutate(createForm);
+    }
+  };
 
   // Fetch client users for selected workspace - use Promise.all for parallel fetching
   const { data: clientUsers, isLoading, refetch } = useQuery<ClientUser[]>({
@@ -10485,8 +10591,9 @@ function ClientLoginsSectionPanel({ workspaces }: ClientLoginsSectionPanelProps)
     enabled: workspaces.length > 0,
   });
 
-  const invalidateClientLogins = () => {
-    queryClient.invalidateQueries({ queryKey: ['/api/super-admin/client-logins'] });
+  const invalidateClientLogins = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['/api/super-admin/client-logins'] });
+    await refetch();
   };
 
   const createUserMutation = useMutation({
@@ -10502,6 +10609,8 @@ function ClientLoginsSectionPanel({ workspaces }: ClientLoginsSectionPanelProps)
       toast({ title: "Client Login Created", description: "The client can now log in with their temporary password." });
       setShowCreateModal(false);
       setCreateForm({ email: '', password: '', name: '', workspaceId: '' });
+      setFormErrors({});
+      setFormTouched({});
       invalidateClientLogins();
     },
     onError: (error: Error) => {
@@ -10818,12 +10927,18 @@ function ClientLoginsSectionPanel({ workspaces }: ClientLoginsSectionPanelProps)
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="text-white/80">Client / Workspace</Label>
+              <Label className="text-white/80">Client / Workspace *</Label>
               <Select
                 value={createForm.workspaceId}
-                onValueChange={(v) => setCreateForm({ ...createForm, workspaceId: v })}
+                onValueChange={(v) => {
+                  setCreateForm({ ...createForm, workspaceId: v });
+                  if (formTouched.workspaceId) setFormErrors(prev => ({ ...prev, workspaceId: undefined }));
+                }}
               >
-                <SelectTrigger className="bg-white/5 border-white/10 text-white" data-testid="select-create-workspace">
+                <SelectTrigger 
+                  className={`bg-white/5 text-white ${formTouched.workspaceId && formErrors.workspaceId ? 'border-red-500/50' : 'border-white/10'}`} 
+                  data-testid="select-create-workspace"
+                >
                   <SelectValue placeholder="Select a client" />
                 </SelectTrigger>
                 <SelectContent className="bg-[#1a1d24] border-white/10">
@@ -10834,18 +10949,36 @@ function ClientLoginsSectionPanel({ workspaces }: ClientLoginsSectionPanelProps)
                   ))}
                 </SelectContent>
               </Select>
+              {formTouched.workspaceId && formErrors.workspaceId && (
+                <p className="text-xs text-red-400">{formErrors.workspaceId}</p>
+              )}
             </div>
             <div className="space-y-2">
-              <Label className="text-white/80">Email Address</Label>
+              <Label className="text-white/80">Email Address *</Label>
               <Input
                 type="email"
                 placeholder="client@example.com"
                 value={createForm.email}
-                onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
-                className="bg-white/5 border-white/10 text-white"
+                onChange={(e) => {
+                  setCreateForm({ ...createForm, email: e.target.value });
+                  if (formTouched.email && e.target.value) {
+                    const errors = validateCreateForm();
+                    setFormErrors(prev => ({ ...prev, email: errors.email }));
+                  }
+                }}
+                onBlur={() => {
+                  setFormTouched(prev => ({ ...prev, email: true }));
+                  const errors = validateCreateForm();
+                  setFormErrors(prev => ({ ...prev, email: errors.email }));
+                }}
+                className={`bg-white/5 text-white ${formTouched.email && formErrors.email ? 'border-red-500/50' : 'border-white/10'}`}
                 data-testid="input-create-email"
               />
-              <p className="text-xs text-white/40">This will be used as their login username.</p>
+              {formTouched.email && formErrors.email ? (
+                <p className="text-xs text-red-400">{formErrors.email}</p>
+              ) : (
+                <p className="text-xs text-white/40">This will be used as their login username.</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label className="text-white/80">Name (Optional)</Label>
@@ -10858,39 +10991,62 @@ function ClientLoginsSectionPanel({ workspaces }: ClientLoginsSectionPanelProps)
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-white/80">Temporary Password</Label>
+              <Label className="text-white/80">Temporary Password *</Label>
               <div className="flex gap-2">
                 <Input
                   value={createForm.password}
-                  onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-                  className="bg-white/5 border-white/10 text-white font-mono"
+                  onChange={(e) => {
+                    setCreateForm({ ...createForm, password: e.target.value });
+                    if (formTouched.password && e.target.value) {
+                      const errors = validateCreateForm();
+                      setFormErrors(prev => ({ ...prev, password: errors.password }));
+                    }
+                  }}
+                  onBlur={() => {
+                    setFormTouched(prev => ({ ...prev, password: true }));
+                    const errors = validateCreateForm();
+                    setFormErrors(prev => ({ ...prev, password: errors.password }));
+                  }}
+                  className={`bg-white/5 text-white font-mono ${formTouched.password && formErrors.password ? 'border-red-500/50' : 'border-white/10'}`}
                   data-testid="input-create-password"
                 />
                 <Button
                   type="button"
                   variant="outline"
                   size="icon"
-                  onClick={() => setCreateForm({ ...createForm, password: generatePassword() })}
+                  onClick={() => {
+                    const newPassword = generatePassword();
+                    setCreateForm({ ...createForm, password: newPassword });
+                    setFormErrors(prev => ({ ...prev, password: undefined }));
+                  }}
                   className="border-white/10 text-white/70 hover:text-white hover:bg-white/10"
                   data-testid="button-generate-password"
                 >
                   <RefreshCw className="h-4 w-4" />
                 </Button>
               </div>
-              <p className="text-xs text-white/40">Must be 8+ chars with uppercase, lowercase, and number. Client will change on first login.</p>
+              {formTouched.password && formErrors.password ? (
+                <p className="text-xs text-red-400">{formErrors.password}</p>
+              ) : (
+                <p className="text-xs text-white/40">Must be 8+ chars with uppercase, lowercase, and number. Client will change on first login.</p>
+              )}
             </div>
           </div>
           <DialogFooter>
             <Button
               variant="ghost"
-              onClick={() => setShowCreateModal(false)}
+              onClick={() => {
+                setShowCreateModal(false);
+                setFormErrors({});
+                setFormTouched({});
+              }}
               className="text-white/70 hover:text-white hover:bg-white/10"
             >
               Cancel
             </Button>
             <Button
-              onClick={() => createUserMutation.mutate(createForm)}
-              disabled={!createForm.email || !createForm.password || !createForm.workspaceId || createUserMutation.isPending}
+              onClick={handleCreateSubmit}
+              disabled={createUserMutation.isPending}
               className="bg-cyan-500 hover:bg-cyan-600 text-white"
               data-testid="button-confirm-create-login"
             >
