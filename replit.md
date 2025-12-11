@@ -168,3 +168,76 @@ New clients receive two default automation workflows:
 - Default types: Tour/Visit, Phone Call, General Appointment
 - AI automatically detects which type the customer needs based on conversation context
 - Custom appointment types can be added via Knowledge Base section
+
+## Production Configuration
+
+### Required Environment Variables
+
+**Core Application:**
+- `DATABASE_URL` - PostgreSQL connection string (Neon)
+- `SESSION_SECRET` - Secret key for session encryption (generate with `openssl rand -hex 32`)
+- `NODE_ENV` - Set to `production` for production deployment
+
+**AI Integration:**
+- `OPENAI_API_KEY` - OpenAI API key for GPT-4 conversations and analysis
+
+**Widget Security:**
+- `WIDGET_TOKEN_SECRET` - Secret for HMAC-signing widget embed tokens (generate with `openssl rand -hex 32`)
+
+**Admin Credentials:**
+- `DEFAULT_ADMIN_PASSWORD` - Override the default admin password at startup
+
+**Email/SMTP (for password reset):**
+- `SMTP_HOST` - SMTP server hostname (e.g., `smtp.sendgrid.net`)
+- `SMTP_PORT` - SMTP port (typically `587` for TLS)
+- `SMTP_USER` - SMTP username/email
+- `SMTP_PASS` - SMTP password or API key
+- `SMTP_FROM` - From address for emails (e.g., `noreply@yourdomain.com`)
+
+**Stripe (optional, for billing):**
+- Stripe integration is auto-configured via Replit connector
+- App functions without Stripe - billing features are simply disabled
+
+### CORS Configuration
+
+**Allowed Widget Origins:**
+- Set `ALLOWED_WIDGET_ORIGINS` environment variable with comma-separated domains
+- Example: `https://client1.com,https://client2.com`
+- In development, all origins are allowed for testing
+- In production, only listed origins can embed the chat widget
+
+### Enabling Password Reset in Production
+
+1. Configure SMTP environment variables (see above)
+2. Set `SMTP_FROM` to a verified sending address
+3. Test by triggering a password reset
+4. Emails will be sent via the configured SMTP provider
+
+**Development Mode:** Emails are logged to console instead of being sent
+
+### Changing the Default Admin Password
+
+**Method 1: Environment Variable (Recommended)**
+- Set `DEFAULT_ADMIN_PASSWORD` environment variable
+- Restart the application
+- Password is updated on startup
+
+**Method 2: Manual Database Update**
+- Connect to the database
+- Update the `admin_users` table for username `admin`
+- Hash the password using bcrypt before storing
+
+### Security Best Practices
+
+1. **Secrets:** All sensitive values should be stored in Replit Secrets, not in code
+2. **Widget Tokens:** Use HMAC-signed tokens for widget embeds in production
+3. **Rate Limiting:** Configured automatically - 100 requests/15min (API), 10 requests/15min (auth)
+4. **Session Security:** Sessions are encrypted with `SESSION_SECRET`
+5. **Helmet:** HTTP security headers are enabled by default
+6. **Account Lockout:** 5 failed login attempts triggers 15-minute lockout
+
+### Production Logging
+
+- Verbose chat message logging is disabled in production (`NODE_ENV=production`)
+- Error logging remains active for troubleshooting
+- Password reset email logging is disabled in production to protect privacy
