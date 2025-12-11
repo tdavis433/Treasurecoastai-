@@ -2559,23 +2559,43 @@ These suggestions should be relevant to what was just discussed and help guide t
   // DEMO BOT ENDPOINTS
   // =============================================
 
-  // Get all demo bots
-  app.get("/api/demos", (req, res) => {
+  // Get all demo bots - fetches from database workspaces with is_demo=true
+  app.get("/api/demos", async (req, res) => {
     try {
-      const demoBots = getDemoBots();
-      const faithHouseBot = getBotConfig("faith_house", "faith_house_main");
+      // Fetch demo workspaces from database
+      const demoWorkspaces = await db.select().from(workspaces).where(eq(workspaces.isDemo, true));
       
-      const allBots = faithHouseBot ? [faithHouseBot, ...demoBots] : demoBots;
+      // For each demo workspace, get its primary bot
+      const demoBotPromises = demoWorkspaces.map(async (workspace) => {
+        const [primaryBot] = await db.select().from(bots).where(eq(bots.workspaceId, workspace.id)).limit(1);
+        if (!primaryBot) return null;
+        
+        // Get bot settings for additional info
+        const [settings] = await db.select().from(botSettings).where(eq(botSettings.botId, primaryBot.botId)).limit(1);
+        
+        // Map special demo routes for known workspaces
+        let demoRoute = `/demo/${primaryBot.botId}`;
+        if (workspace.slug === 'faith_house_demo') {
+          demoRoute = '/demo/faith-house';
+        } else if (workspace.slug === 'demo_paws_suds_grooming_demo') {
+          demoRoute = '/demo/paws-suds';
+        }
+        
+        return {
+          botId: primaryBot.botId,
+          clientId: workspace.slug,
+          workspaceId: workspace.id,
+          name: primaryBot.name,
+          description: primaryBot.description || `AI Assistant for ${workspace.name}`,
+          businessType: primaryBot.botType || 'general',
+          businessName: workspace.name,
+          isDemo: true,
+          demoRoute,
+        };
+      });
       
-      const botList = allBots.map(bot => ({
-        botId: bot.botId,
-        clientId: bot.clientId,
-        name: bot.name,
-        description: bot.description,
-        businessType: bot.businessProfile.type,
-        businessName: bot.businessProfile.businessName,
-        isDemo: bot.metadata?.isDemo ?? (bot.clientId === 'demo')
-      }));
+      const botResults = await Promise.all(demoBotPromises);
+      const botList = botResults.filter(Boolean);
       
       res.json({ bots: botList });
     } catch (error) {
@@ -9914,6 +9934,198 @@ These suggestions should be relevant to what was just discussed and help guide t
       });
     } catch (error) {
       console.error("Get demo status error:", error);
+      res.status(500).json({ error: "Failed to get demo status" });
+    }
+  });
+
+  // =============================================
+  // PAWS & SUDS DEMO RESET ENDPOINT
+  // =============================================
+  
+  app.post("/api/admin/demo/paws-suds/reset", requireSuperAdmin, async (req, res) => {
+    try {
+      const DEMO_CLIENT_ID = "demo_paws_suds_grooming_demo";
+      const DEMO_BOT_ID = "demo_paws_suds_grooming_demo_assistant";
+      
+      // CRITICAL SAFETY CHECK: Verify target is actually a demo workspace
+      const [workspace] = await db.select()
+        .from(workspaces)
+        .where(eq(workspaces.slug, DEMO_CLIENT_ID))
+        .limit(1);
+      
+      if (!workspace) {
+        console.error(`[DEMO RESET] Workspace not found: ${DEMO_CLIENT_ID}`);
+        return res.status(404).json({ error: "Demo workspace not found" });
+      }
+      
+      if (!workspace.isDemo) {
+        console.error(`[DEMO RESET] SAFETY ABORT: Attempted reset on non-demo workspace: ${DEMO_CLIENT_ID}`);
+        return res.status(403).json({ 
+          error: "Cannot reset non-demo workspace",
+          message: "This is a safety feature to prevent accidental data loss on live workspaces."
+        });
+      }
+      
+      console.log(`[DEMO RESET] Starting reset for demo workspace: ${DEMO_CLIENT_ID}`);
+      
+      // Delete demo data
+      const deletedAppointments = await db.delete(appointments)
+        .where(eq(appointments.clientId, DEMO_CLIENT_ID))
+        .returning();
+      
+      const deletedLeads = await db.delete(leads)
+        .where(eq(leads.clientId, DEMO_CLIENT_ID))
+        .returning();
+      
+      const demoSessions = await db.select({ sessionId: chatSessions.sessionId })
+        .from(chatSessions)
+        .where(eq(chatSessions.clientId, DEMO_CLIENT_ID));
+      
+      let deletedMessages = 0;
+      for (const session of demoSessions) {
+        const deleted = await db.delete(conversationMessages)
+          .where(eq(conversationMessages.sessionId, session.sessionId))
+          .returning();
+        deletedMessages += deleted.length;
+      }
+      
+      const deletedAnalyticsEvents = await db.delete(chatAnalyticsEvents)
+        .where(eq(chatAnalyticsEvents.clientId, DEMO_CLIENT_ID))
+        .returning();
+      
+      const deletedSessions = await db.delete(chatSessions)
+        .where(eq(chatSessions.clientId, DEMO_CLIENT_ID))
+        .returning();
+      
+      const deletedDailyAnalytics = await db.delete(dailyAnalytics)
+        .where(eq(dailyAnalytics.clientId, DEMO_CLIENT_ID))
+        .returning();
+      
+      console.log(`[DEMO RESET] Deleted: ${deletedAppointments.length} appointments, ${deletedLeads.length} leads, ${deletedMessages} messages, ${deletedSessions.length} sessions`);
+      
+      // Re-seed demo data for Paws & Suds
+      const now = new Date();
+      const seededData = { leads: 0, appointments: 0, sessions: 0 };
+      
+      // Create sample leads
+      const sampleLeads = [
+        { name: "Sarah W.", phone: "(772) 555-2345", email: "sarah.w@example.com", source: "chat", notes: "Golden Retriever needs de-shedding treatment" },
+        { name: "Jennifer L.", phone: "(561) 555-6789", email: "jennifer.l@example.com", source: "chat", notes: "New puppy owner, interested in first grooming" },
+        { name: "Amanda C.", phone: "(772) 555-0123", email: "amanda.c@example.com", source: "chat", notes: "Regular customer, cat grooming inquiry" },
+      ];
+      
+      for (const lead of sampleLeads) {
+        await db.insert(leads).values({
+          clientId: DEMO_CLIENT_ID,
+          botId: DEMO_BOT_ID,
+          name: lead.name,
+          phone: lead.phone,
+          email: lead.email,
+          source: lead.source,
+          status: "new",
+          notes: lead.notes,
+          capturedAt: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000),
+        });
+        seededData.leads++;
+      }
+      
+      // Create sample appointments
+      const sampleAppointments = [
+        { name: "Sarah W.", contact: "(772) 555-2345", email: "sarah.w@example.com", type: "deshedding", time: "Saturday at 11:00 AM", notes: "Golden Retriever - heavy shedder" },
+        { name: "Mike B.", contact: "(772) 555-7890", email: "mike.b@example.com", type: "full-grooming", time: "Friday at 9:00 AM", notes: "Standard Poodle - regular client" },
+      ];
+      
+      for (const apt of sampleAppointments) {
+        await db.insert(appointments).values({
+          clientId: DEMO_CLIENT_ID,
+          botId: DEMO_BOT_ID,
+          name: apt.name,
+          contact: apt.contact,
+          email: apt.email,
+          appointmentType: apt.type,
+          preferredTime: apt.time,
+          status: "new",
+          notes: apt.notes,
+        });
+        seededData.appointments++;
+      }
+      
+      await storage.createSystemLog({
+        level: 'info',
+        source: 'demo-reset',
+        message: `Demo data reset for Paws & Suds (${DEMO_CLIENT_ID})`,
+        workspaceId: workspace.id,
+        details: {
+          deleted: {
+            appointments: deletedAppointments.length,
+            leads: deletedLeads.length,
+            messages: deletedMessages,
+            sessions: deletedSessions.length,
+          },
+          seeded: seededData,
+          resetBy: req.session.userId,
+        },
+      });
+      
+      res.json({
+        success: true,
+        message: "Paws & Suds demo data has been reset successfully",
+        deleted: {
+          appointments: deletedAppointments.length,
+          leads: deletedLeads.length,
+          messages: deletedMessages,
+          sessions: deletedSessions.length,
+        },
+        seeded: seededData,
+      });
+    } catch (error) {
+      console.error("[DEMO RESET] Error resetting Paws & Suds demo data:", error);
+      res.status(500).json({ error: "Failed to reset demo data" });
+    }
+  });
+  
+  // Get Paws & Suds demo status endpoint
+  app.get("/api/admin/demo/paws-suds/status", requireSuperAdmin, async (req, res) => {
+    try {
+      const DEMO_CLIENT_ID = "demo_paws_suds_grooming_demo";
+      
+      const [workspace] = await db.select()
+        .from(workspaces)
+        .where(eq(workspaces.slug, DEMO_CLIENT_ID))
+        .limit(1);
+      
+      if (!workspace) {
+        return res.status(404).json({ error: "Demo workspace not found" });
+      }
+      
+      const [leadsCount] = await db.select({ count: sql<number>`count(*)` })
+        .from(leads)
+        .where(eq(leads.clientId, DEMO_CLIENT_ID));
+      
+      const [appointmentsCount] = await db.select({ count: sql<number>`count(*)` })
+        .from(appointments)
+        .where(eq(appointments.clientId, DEMO_CLIENT_ID));
+      
+      const [sessionsCount] = await db.select({ count: sql<number>`count(*)` })
+        .from(chatSessions)
+        .where(eq(chatSessions.clientId, DEMO_CLIENT_ID));
+      
+      res.json({
+        workspace: {
+          id: workspace.id,
+          name: workspace.name,
+          slug: workspace.slug,
+          isDemo: workspace.isDemo,
+          status: workspace.status,
+        },
+        data: {
+          leads: Number(leadsCount?.count || 0),
+          appointments: Number(appointmentsCount?.count || 0),
+          sessions: Number(sessionsCount?.count || 0),
+        },
+      });
+    } catch (error) {
+      console.error("Get Paws & Suds demo status error:", error);
       res.status(500).json({ error: "Failed to get demo status" });
     }
   });

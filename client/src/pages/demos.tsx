@@ -28,11 +28,13 @@ import {
 interface DemoBot {
   botId: string;
   clientId: string;
+  workspaceId?: string;
   name: string;
   description: string;
   businessType: string;
   businessName: string;
   isDemo: boolean;
+  demoRoute?: string;
 }
 
 const businessTypeIcons: Record<string, React.ReactNode> = {
@@ -45,6 +47,8 @@ const businessTypeIcons: Record<string, React.ReactNode> = {
   med_spa: <Syringe className="h-6 w-6" />,
   tattoo: <Palette className="h-6 w-6" />,
   real_estate: <Key className="h-6 w-6" />,
+  pet_grooming: <Heart className="h-6 w-6" />,
+  general: <Building2 className="h-6 w-6" />,
 };
 
 const businessTypeColors: Record<string, { bg: string; text: string; border: string }> = {
@@ -57,6 +61,8 @@ const businessTypeColors: Record<string, { bg: string; text: string; border: str
   med_spa: { bg: "bg-pink-500/20", text: "text-pink-400", border: "border-pink-500/30" },
   tattoo: { bg: "bg-indigo-500/20", text: "text-indigo-400", border: "border-indigo-500/30" },
   real_estate: { bg: "bg-amber-500/20", text: "text-amber-400", border: "border-amber-500/30" },
+  pet_grooming: { bg: "bg-cyan-500/20", text: "text-cyan-400", border: "border-cyan-500/30" },
+  general: { bg: "bg-gray-500/20", text: "text-gray-400", border: "border-gray-500/30" },
 };
 
 const businessTypeLabels: Record<string, string> = {
@@ -69,6 +75,8 @@ const businessTypeLabels: Record<string, string> = {
   med_spa: "Med Spa",
   tattoo: "Tattoo Studio",
   real_estate: "Real Estate",
+  pet_grooming: "Pet Grooming",
+  general: "Local Business",
 };
 
 export default function DemosPage() {
@@ -237,7 +245,7 @@ export default function DemosPage() {
                     </GlassCardDescription>
                   </GlassCardHeader>
                   <GlassCardContent>
-                    <Link href={`/demo/${bot.botId}`}>
+                    <Link href={bot.demoRoute || `/demo/${bot.botId}`}>
                       <Button 
                         className="w-full gap-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white" 
                         data-testid={`button-try-demo-${bot.botId}`}

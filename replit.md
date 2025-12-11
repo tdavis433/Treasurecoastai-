@@ -6,18 +6,6 @@ Treasure Coast AI is an agency-first AI assistant platform designed to empower a
 ## User Preferences
 Super Admin Login: username `admin`, password `admin123`
 
-### Faith House Workspace Architecture
-**Canonical Workspace:** `faith_house`
-- Used by client login: `demo_faith_house` (password: `demo123`)
-- Used by super-admin when viewing "Faith House" workspace
-- Contains production-like data for demos
-- Admin and client dashboards show the SAME leads, bookings, and conversations
-
-**Demo Reset Workspace:** `faith_house_demo`
-- Used ONLY by `/demo/faith-house` public demo page
-- Can be reset via `/api/admin/demo/faith-house/reset`
-- Isolated from canonical workspace to allow safe demo resets without affecting client data
-
 ## System Architecture
 
 ### Design Philosophy
@@ -29,18 +17,18 @@ The platform operates on a two-surface system:
 2.  **Client Dashboard:** A simplified, view-only analytics portal for clients to monitor conversations, leads, and bookings.
 
 ### Key Features
-*   **Website Scraper:** AI-powered tool for extracting and structuring business information (admin-only).
+*   **Website Scraper:** AI-powered tool for extracting and structuring business information.
 *   **AI Engine (GPT-4 Powered):** Handles conversational AI, dynamic context building, lead/booking intent detection, and incorporates a safety layer.
-*   **AI Conversation Analysis:** Asynchronously analyzes conversations for summaries, user intent, sentiment, lead quality, and booking intent using GPT-4o-mini.
+*   **AI Conversation Analysis:** Asynchronously analyzes conversations for summaries, user intent, sentiment, lead quality, and booking intent.
 *   **Needs Review / Flagged Conversations System:** AI automatically flags critical conversations for admin review.
-*   **Chat Widget:** Customizable, glassmorphism-designed, mobile-responsive widget with neon accents and a visual editor for appearance.
+*   **Chat Widget:** Customizable, glassmorphism-designed, mobile-responsive widget with neon accents and a visual editor.
 *   **Client Analytics:** Provides view-only access to conversation history, lead management, and booking overviews.
 *   **Super Admin Dashboard:** Centralized hub for platform management, client/assistant management, template galleries, global knowledge, API key management, billing, system logs, and user roles.
 *   **Assistant Editor (Bot Builder):** Tools for defining AI persona, knowledge management, automation setup, channel customization, and a testing sandbox.
 *   **AI-Driven In-Chat Booking Collection:** AI can collect booking information directly within conversations and automatically create appointment records.
 *   **Demo & Live Tenant Separation:** Provides distinct environments for demo and live instances with dedicated workspaces and bots.
-*   **Integration Panel:** Generates customizable widget embed code for easy integration into client websites.
-*   **Automated Client Onboarding:** New client wizard provides complete out-of-the-box setup including workspace creation, client user account, default AI assistant (with industry-specific prompts and persona), FAQ templates, default automations, widget embed code, and client settings.
+*   **Integration Panel:** Generates customizable widget embed code for easy integration.
+*   **Automated Client Onboarding:** New client wizard provides complete out-of-the-box setup including workspace creation, client user account, default AI assistant, FAQ templates, default automations, widget embed code, and client settings.
 
 ### Core Architecture Principle
 "ONE BRAIN ONE BEHAVIOR": All chat entry points are routed through a single Unified Conversation Orchestrator to ensure consistent AI behavior across the platform.
@@ -56,7 +44,7 @@ The platform operates on a two-surface system:
 *   **Security:** Rate limiting, HMAC-signed widget tokens, per-bot security settings, domain validation, Helmet for secure HTTP headers and CSP, account lockout, and strong password policies. Includes secure password reset flow.
 *   **Key Architecture Components:** Unified Conversation Orchestrator, Enhanced Bot Config Cache, Multi-Tenant Data Isolation, Session Data Tracking, Daily Analytics.
 *   **Resilient Persistence:** When OpenAI API fails, the orchestrator extracts contact info and saves leads/bookings to prevent data loss.
-*   **Form Validation:** Inline validation for critical forms (e.g., new client wizard, client login creation).
+*   **Form Validation:** Inline validation for critical forms.
 *   **Mobile Responsiveness:** Enhanced for mobile viewports across landing pages and dashboards.
 
 ## External Dependencies
@@ -64,183 +52,3 @@ The platform operates on a two-surface system:
 *   **Neon (PostgreSQL):** Provides managed PostgreSQL database hosting.
 *   **Drizzle ORM:** Utilized as the Object-Relational Mapper for database interactions.
 *   **Stripe:** Integrated for payment processing functionalities.
-
-## QA & Testing Documentation
-
-### Widget Settings
-- Widget greeting/welcome message is stored as `welcomeMessage` in the backend
-- Frontend uses `greeting` internally and maps to `welcomeMessage` when saving
-- Color, position, and greeting settings persist across page reloads
-
-### Test Chat (Sandbox)
-- Located in admin bot dashboard under "Test Chat" tab
-- Enter key sends message, Shift+Enter for new line
-- Shows debug console with API request/response data
-
-### Multi-Tenant Isolation QA Checklist
-1. Login as `demo_faith_house` - should see only Faith House leads/bookings
-2. Login as admin and view Faith House workspace - same leads/bookings as client
-3. Create test lead in QA workspace - should NOT appear in Faith House
-4. All API endpoints filter by `clientId` from authenticated session
-5. Leads table uses `client_id` column for isolation
-6. Appointments table uses `client_id` column for isolation
-
-### Admin/Client Dashboard Parity
-- Leads created via chat appear in both client and admin dashboards
-- Booking status changes sync between admin and client views
-- Both dashboards use same API endpoints scoped by clientId
-
-### Widget Embed Testing
-- Dev route: `/dev/embed-test` (super-admin only)
-- Allows testing widget embed for any workspace/bot
-- Shows live preview in iframe with actual widget
-- Useful for verifying colors, position, and greeting text
-
-**How the Preview Works:**
-- The preview iframe loads the widget embed script (`/widget/embed.js`)
-- Widget settings are fetched via `/api/widget/full-config/:clientId/:botId`
-- The widget applies configured colors, position, and greeting from the bot's widget settings
-- Changes to widget settings in the bot editor are reflected in the preview after refresh
-
-**Technical Note:**
-The embed script supports two configuration methods:
-1. Token-based: Uses HMAC-signed token for production (more secure)
-2. ClientId/BotId-based: Used by `/dev/embed-test` for testing (fetches config from API)
-
-**Testing Checklist:**
-1. Select a workspace and bot from the dropdowns
-2. Verify the widget bubble appears with correct primary color
-3. Click the bubble to open the chat window
-4. Verify the greeting message matches the bot's configured greeting
-5. Verify the position (bottom-left or bottom-right) matches configuration
-
-### Default Automations
-New clients receive two default automation workflows:
-1. "New Lead – Tag & Status" (trigger: `lead_captured`)
-2. "New Booking – Notification" (trigger: `appointment_booked`)
-
-### Lead Detail Modal (Admin)
-- Admin client detail page (`/super-admin/clients/:slug`) has clickable lead rows
-- Clicking a lead opens a detail Dialog showing:
-  - Lead name and capture date
-  - Status badge (new/contacted/qualified/converted)
-  - Contact information (email, phone)
-  - Tags section with purple badges (if tags exist)
-  - Activity timeline (lead capture event, status changes)
-  - Notes section (if notes exist)
-- Lead rows have hover effect and `data-testid="lead-row-{id}"`
-- Dialog has `data-testid="dialog-lead-detail"`
-
-### Password Reset Flow
-- `/forgot-password` - Email input form, always shows success message (prevents email enumeration)
-- `/reset-password?token=xxx` - Validates token, shows error for invalid/expired tokens
-- In development: reset link is logged to console (check server logs)
-- Tokens expire after 60 minutes
-
-**Manual Verification Steps (Development):**
-1. Navigate to `/forgot-password`
-2. Enter a valid user email and submit
-3. Check server console logs for the reset link (not actually emailed in dev)
-4. Copy the token from the logged URL
-5. Navigate to `/reset-password?token=YOUR_TOKEN`
-6. Enter a new password and submit
-7. Verify successful password update and redirect to login
-
-**Error Scenarios:**
-- Invalid token: Shows "Invalid or expired token" error
-- Expired token (>60 min): Shows same error as invalid token
-- Missing token: Redirects to forgot-password page
-
-### Client Inbox
-- Client conversation transcript view at `/client/inbox`
-- Left panel: session list with snippets, message counts, topics
-- Right panel: full message thread with user/assistant styling
-- Messages fetched from `/api/client/inbox/sessions/:sessionId`
-
-### Booking Data Extraction
-- Contact info (name, phone, email) is extracted ONLY from user messages to prevent data crossover
-- Falls back to AI's structured summary (e.g., "Name: X, Phone: Y") if not found in user messages
-- Time preferences are extracted from user messages first, then AI summary
-- This prevents booking records from showing wrong visitor details from system prompts or AI responses
-
-### Appointment Types
-- Located in Booking & Links panel of bot editor
-- Default types: Tour/Visit, Phone Call, General Appointment
-- AI automatically detects which type the customer needs based on conversation context
-- Custom appointment types can be added via Knowledge Base section
-
-## Production Configuration
-
-### Required Environment Variables
-
-**Core Application:**
-- `DATABASE_URL` - PostgreSQL connection string (Neon)
-- `SESSION_SECRET` - Secret key for session encryption (generate with `openssl rand -hex 32`)
-- `NODE_ENV` - Set to `production` for production deployment
-
-**AI Integration:**
-- `OPENAI_API_KEY` - OpenAI API key for GPT-4 conversations and analysis
-
-**Widget Security:**
-- `WIDGET_TOKEN_SECRET` - Secret for HMAC-signing widget embed tokens (generate with `openssl rand -hex 32`)
-
-**Admin Credentials:**
-- `DEFAULT_ADMIN_PASSWORD` - Override the default admin password at startup
-
-**Email/SMTP (for password reset):**
-- `SMTP_HOST` - SMTP server hostname (e.g., `smtp.sendgrid.net`)
-- `SMTP_PORT` - SMTP port (typically `587` for TLS)
-- `SMTP_USER` - SMTP username/email
-- `SMTP_PASS` - SMTP password or API key
-- `SMTP_FROM` - From address for emails (e.g., `noreply@yourdomain.com`)
-
-**Stripe (optional, for billing):**
-- Stripe integration is auto-configured via Replit connector
-- App functions without Stripe - billing features are simply disabled
-
-### CORS Configuration
-
-**Allowed Widget Origins:**
-- Set `ALLOWED_WIDGET_ORIGINS` environment variable with comma-separated domains
-- Example: `https://client1.com,https://client2.com`
-- In development, all origins are allowed for testing
-- In production, only listed origins can embed the chat widget
-
-### Enabling Password Reset in Production
-
-1. Configure SMTP environment variables (see above)
-2. Set `SMTP_FROM` to a verified sending address
-3. Test by triggering a password reset
-4. Emails will be sent via the configured SMTP provider
-
-**Development Mode:** Emails are logged to console instead of being sent
-
-### Changing the Default Admin Password
-
-**Method 1: Environment Variable (Recommended)**
-- Set `DEFAULT_ADMIN_PASSWORD` environment variable
-- Restart the application
-- Password is updated on startup
-
-**Method 2: Manual Database Update**
-- Connect to the database
-- Update the `admin_users` table for username `admin`
-- Hash the password using bcrypt before storing
-
-### Security Best Practices
-
-1. **Secrets:** All sensitive values should be stored in Replit Secrets, not in code
-2. **Widget Tokens:** Use HMAC-signed tokens for widget embeds in production
-3. **Rate Limiting:** Configured automatically - 100 requests/15min (API), 10 requests/15min (auth)
-4. **Session Security:** Sessions are encrypted with `SESSION_SECRET`
-5. **Helmet:** HTTP security headers are enabled by default
-6. **Account Lockout:** 5 failed login attempts triggers 15-minute lockout
-7. **Default Credentials:** Change the default admin password (admin/admin123) before going live with real clients. A warning banner appears in the super-admin dashboard when using default credentials in production.
-8. **Dev-Only Routes:** The `/dev/embed-test` page is for internal use only and requires super_admin authentication
-
-### Production Logging
-
-- Verbose chat message logging is disabled in production (`NODE_ENV=production`)
-- No chat transcript content is logged in production
-- Password reset URLs and email content are not logged in production
-- Error logging remains active for troubleshooting

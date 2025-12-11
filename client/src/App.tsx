@@ -26,6 +26,7 @@ import NotFound from "@/pages/not-found";
 import DemosPage from "@/pages/demos";
 import DemoBotPage from "@/pages/demo-bot";
 import DemoFaithHouse from "@/pages/demo-faith-house";
+import DemoPawsSuds from "@/pages/demo-paws-suds";
 import DevEmbedTest from "@/pages/dev-embed-test";
 import { useEffect } from "react";
 
@@ -61,6 +62,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/demos" component={DemosPage} />
       <Route path="/demo/faith-house" component={DemoFaithHouse} />
+      <Route path="/demo/paws-suds" component={DemoPawsSuds} />
       <Route path="/demo/:botId" component={DemoBotPage} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
