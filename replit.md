@@ -21,7 +21,7 @@ The platform operates on a two-surface system:
 *   **AI Engine (GPT-4 Powered):** Handles conversational AI, dynamic context building, lead/booking intent detection, and incorporates a safety layer.
 *   **AI Conversation Analysis:** Asynchronously analyzes conversations for summaries, user intent, sentiment, lead quality, and booking intent.
 *   **Needs Review / Flagged Conversations System:** AI automatically flags critical conversations for admin review.
-*   **Chat Widget:** Customizable, glassmorphism-designed, mobile-responsive widget with neon accents and a visual editor.
+*   **Chat Widget:** Fully themeable, glassmorphism-designed, mobile-responsive widget with dynamic color theming (CSS variables), business-type-specific icons, and a visual editor. Widget colors automatically match demo page branding via `--tcai-primary`, `--tcai-primary-rgb`, and `--tcai-primary-hover` CSS variables.
 *   **Client Analytics:** Provides view-only access to conversation history, lead management, and booking overviews.
 *   **Super Admin Dashboard:** Centralized hub for platform management, client/assistant management, template galleries, global knowledge, API key management, billing, system logs, and user roles.
 *   **Assistant Editor (Bot Builder):** Tools for defining AI persona, knowledge management, automation setup, channel customization, and a testing sandbox.

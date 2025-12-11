@@ -13,6 +13,7 @@
     notificationSoundEnabled: false,
     businessName: 'Chat Assistant',
     businessSubtitle: 'Online',
+    businessType: 'general',
     quickActions: []
   };
   
@@ -35,7 +36,9 @@
       primaryColor: params.get('primaryColor') || '#2563eb',
       greeting: params.get('greeting') || 'Hi! How can I help you today?',
       theme: params.get('theme') || 'dark',
-      token: params.get('token') || ''
+      token: params.get('token') || '',
+      businessType: params.get('businessType') || 'general',
+      businessName: params.get('businessName') || 'Chat Assistant'
     };
   }
   
@@ -219,11 +222,29 @@
     ].join('\n');
   }
   
+  function getBusinessIcon() {
+    var type = config.businessType || 'general';
+    var icons = {
+      auto_shop: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"></path><circle cx="7" cy="17" r="2"></circle><path d="M9 17h6"></path><circle cx="17" cy="17" r="2"></circle></svg>',
+      barber_salon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"></circle><path d="M8.12 8.12 12 12"></path><path d="M20 4 8.12 15.88"></path><circle cx="6" cy="18" r="3"></circle><path d="M14.8 14.8 20 20"></path></svg>',
+      gym_fitness: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5a3.5 3.5 0 1 0 7 0 3.5 3.5 0 1 0-7 0"></path><path d="M14 17h4"></path><path d="M18 13v8"></path><path d="M6 13v8"></path><path d="M6 17h4"></path><path d="m11 21 5-10 5 10"></path><path d="m3 21 5-10 5 10"></path></svg>',
+      home_services: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>',
+      med_spa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5.2 6.2 1.4 1.4"></path><path d="M2 13h2"></path><path d="M20 13h2"></path><path d="m17.4 7.6 1.4-1.4"></path><path d="M22 17H2"></path><path d="M22 21H2"></path><path d="M16 13a4 4 0 0 0-8 0"></path><path d="M12 5V2.5"></path></svg>',
+      real_estate: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21 10-8.5-8.5a2.12 2.12 0 0 0-3 0L1 10"></path><path d="M21 10v11a1 1 0 0 1-1 1h-5.5a1 1 0 0 1-1-1v-4a1 1 0 0 0-1-1h-1a1 1 0 0 0-1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V10"></path></svg>',
+      restaurant: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path><path d="M7 2v20"></path><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"></path></svg>',
+      tattoo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a1 1 0 0 1 1 1v8a1 1 0 0 1-2 0V3a1 1 0 0 1 1-1Z"></path><path d="M21 12a1 1 0 0 1-1 1h-8a1 1 0 0 1 0-2h8a1 1 0 0 1 1 1Z"></path><path d="M12 21a1 1 0 0 1-1-1v-8a1 1 0 0 1 2 0v8a1 1 0 0 1-1 1Z"></path><path d="M3 12a1 1 0 0 1 1-1h8a1 1 0 0 1 0 2H4a1 1 0 0 1-1-1Z"></path></svg>',
+      sober_living: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>',
+      pet_grooming: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="4" r="2"></circle><circle cx="18" cy="8" r="2"></circle><circle cx="20" cy="16" r="2"></circle><path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"></path></svg>',
+      general: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>'
+    };
+    return icons[type] || icons.general;
+  }
+  
   function getAvatarHtml() {
     if (config.avatarUrl) {
       return '<div class="tcai-avatar"><img src="' + escapeHtml(config.avatarUrl) + '" alt="' + escapeHtml(config.businessName) + '" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;"></div>';
     }
-    return '<div class="tcai-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5l9-7 9 7"></path><path d="M19 9.5v10a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-10"></path><path d="M12 14v4"></path><path d="M10 16h4"></path></svg></div>';
+    return '<div class="tcai-avatar">' + getBusinessIcon() + '</div>';
   }
   
   function getFooterHtml() {
@@ -447,6 +468,10 @@
     var r = parseInt(config.primaryColor.slice(1, 3), 16);
     var g = parseInt(config.primaryColor.slice(3, 5), 16);
     var b = parseInt(config.primaryColor.slice(5, 7), 16);
+    
+    // Set RGB values for rgba() usage in CSS
+    document.documentElement.style.setProperty('--tcai-primary-rgb', r + ', ' + g + ', ' + b);
+    
     var hoverColor = '#' + [r, g, b].map(function(c) {
       return Math.max(0, c - 30).toString(16).padStart(2, '0');
     }).join('');
@@ -552,6 +577,9 @@
           if (data.config.businessSubtitle) {
             config.businessSubtitle = data.config.businessSubtitle;
           }
+          if (data.config.businessType) {
+            config.businessType = data.config.businessType;
+          }
           
           if (data.config.quickActions && Array.isArray(data.config.quickActions)) {
             config.quickActions = data.config.quickActions;
@@ -571,8 +599,10 @@
           
           var headerTitle = document.querySelector('.tcai-header-text h1');
           var headerSubtitle = document.querySelector('.tcai-header-text p');
+          var headerAvatar = document.querySelector('.tcai-avatar');
           if (headerTitle) headerTitle.textContent = config.businessName;
           if (headerSubtitle) headerSubtitle.textContent = config.businessSubtitle;
+          if (headerAvatar) headerAvatar.innerHTML = config.avatarUrl ? '<img src="' + escapeHtml(config.avatarUrl) + '" alt="' + escapeHtml(config.businessName) + '" style="width: 100%; height: 100%; border-radius: 12px; object-fit: cover;">' : getBusinessIcon();
         }
         break;
       case 'TCAI_OPEN':
@@ -596,6 +626,8 @@
     config.primaryColor = sanitizeColor(urlParams.primaryColor);
     config.greeting = urlParams.greeting;
     config.theme = urlParams.theme;
+    config.businessType = urlParams.businessType;
+    config.businessName = urlParams.businessName;
     config.apiUrl = getApiUrl();
     
     applyTheme();

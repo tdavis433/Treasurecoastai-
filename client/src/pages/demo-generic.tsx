@@ -296,6 +296,7 @@ export default function DemoGenericPage({ workspaceSlug, botId }: DemoPageProps)
     script.setAttribute('data-primary-color', accentColor);
     script.setAttribute('data-theme', 'dark');
     script.setAttribute('data-business-name', businessName);
+    script.setAttribute('data-business-type', businessType);
     script.setAttribute('data-show-greeting-popup', 'true');
     script.setAttribute('data-greeting-title', `Chat with ${businessName}`);
     script.setAttribute('data-greeting-message', 'Hi! How can I help you today?');

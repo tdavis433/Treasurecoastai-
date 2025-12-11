@@ -45,7 +45,8 @@
       greetingMessage: currentScript.getAttribute('data-greeting-message') || '',
       greetingDelay: parseInt(currentScript.getAttribute('data-greeting-delay') || '3', 10),
       businessName: currentScript.getAttribute('data-business-name') || '',
-      businessSubtitle: currentScript.getAttribute('data-business-subtitle') || ''
+      businessSubtitle: currentScript.getAttribute('data-business-subtitle') || '',
+      businessType: currentScript.getAttribute('data-business-type') || 'general'
     };
   }
   
@@ -423,7 +424,9 @@
       botId: config.botId,
       primaryColor: (fullConfig && fullConfig.widgetSettings && fullConfig.widgetSettings.primaryColor) || config.primaryColor,
       greeting: (fullConfig && fullConfig.widgetSettings && fullConfig.widgetSettings.greeting) || config.greeting,
-      theme: resolvedTheme
+      theme: resolvedTheme,
+      businessType: config.businessType || 'general',
+      businessName: config.businessName || 'Chat Assistant'
     });
     
     if (config.token) {
@@ -448,6 +451,9 @@
       }
       if (config.businessSubtitle) {
         iframeConfig.businessSubtitle = config.businessSubtitle;
+      }
+      if (config.businessType) {
+        iframeConfig.businessType = config.businessType;
       }
       
       iframe.contentWindow.postMessage({
