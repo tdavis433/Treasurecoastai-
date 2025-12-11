@@ -331,12 +331,12 @@ export default function Home() {
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
           >
-            <span className="text-white/50 text-sm font-medium uppercase tracking-wider">Designed for</span>
+            <span className="text-white/50 text-sm font-medium uppercase tracking-wider">Built for</span>
             <div className="flex flex-wrap items-center justify-center gap-3">
               {[
-                { icon: HomeIcon, label: "Sober Living Homes" },
-                { icon: Building2, label: "Property Managers" },
-                { icon: Wrench, label: "Local Service Businesses" }
+                { icon: Building2, label: "Small Businesses" },
+                { icon: Wrench, label: "Service Providers" },
+                { icon: Users, label: "Local Operators" }
               ].map((item, i) => (
                 <div 
                   key={i} 
@@ -356,7 +356,7 @@ export default function Home() {
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            Tested with real operators on the Treasure Coast
+            Trusted by businesses across all industries
           </motion.p>
         </div>
       </section>
