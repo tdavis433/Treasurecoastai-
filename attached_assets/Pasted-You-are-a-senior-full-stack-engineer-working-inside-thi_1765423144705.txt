@@ -1,0 +1,179 @@
+You are a senior full-stack engineer working inside this Replit project for the Treasure Coast AI SaaS.
+
+Context:
+- We’ve already fixed and verified:
+  - Multi-tenant isolation by client_id.
+  - New client wizard.
+  - Auto-assistant creation for new workspaces.
+  - Widget design persistence (color, position, greeting).
+  - Lead/booking creation via Test Chat.
+  - Assistant configuration drawer + embed snippet.
+  - Client/admin dashboards for Faith House and QA workspaces in previous passes.
+
+From the most recent QA agent regression run, we have:
+
+1) One likely real UX bug:
+   - BUG-REG-001: In the **admin** “Leads” tab for a workspace, the lead rows are not clickable, so the lead detail modal/drawer never opens. This blocks seeing tags and activity logs from the admin UI.
+
+2) Several things that are probably fine but were only “PARTIAL / NOT TESTED” from the agent’s perspective:
+   - Client conversation transcript view.
+   - /dev/embed-test dev embed page.
+   - Password reset UX (requires console reset URL).
+   - Admin vs client parity after new leads/bookings.
+   - Multi-tenant isolation sanity checks for QA vs Faith House.
+
+Please do the following.
+
+────────────────────────
+1. FIX BUG-REG-001 (ADMIN LEADS ROW CLICK)
+────────────────────────
+
+Goal: In the **super-admin → workspace → Leads** view, each lead row should be clickable and open a lead detail view that shows tags and the activity log.
+
+Requirements:
+
+- In the admin “Leads” table (for a specific workspace):
+  - Make the entire row (or at least the lead name cell) clickable.
+  - On click, open the existing lead detail drawer/modal that:
+    - Shows full lead details (name, email, phone, created date, status).
+    - Shows the tags section (e.g., purple tag badges).
+    - Shows the Activity section (capture event + status changes).
+  - Apply UX polish:
+    - Row hover state (e.g., subtle background change).
+    - `cursor: pointer` so it’s obviously clickable.
+
+- Do NOT change the underlying lead data model or automation logic.
+  - Tags and activity logs are already being written by automations; this is purely a UI/interaction issue.
+
+- Acceptance criteria:
+  1) As super-admin, open any workspace → Leads.
+  2) Click a lead row.
+  3) A detail view opens, showing:
+     - Lead fields.
+     - Tags badges (if present).
+     - Activity timeline.
+  4) Close the detail view and repeat for another lead.
+
+────────────────────────
+2. VERIFY CLIENT CONVERSATION TRANSCRIPT VIEW
+────────────────────────
+
+Goal: Ensure clients can actually open and read full transcripts, not just a snippet.
+
+- As a **client user** for a QA workspace:
+  - Sign in as a known client user (e.g., an existing QA client or demo_faith_house).
+  - Go to Conversations / Inbox.
+  - Click a conversation row.
+
+- Confirm:
+  - Full transcript is visible, not just a one-line summary.
+  - Collapsible / expandable history works (if implemented).
+  - No weird overflow or cut-off text.
+
+Only change code if:
+  - Clicking a conversation row does nothing.
+  - Transcript renders incorrectly.
+
+If changes are needed, keep them minimal and scoped to:
+  - Making the conversation list item clickable.
+  - Opening an existing transcript component / drawer / modal.
+
+────────────────────────
+3. VERIFY /DEV/EMBED-TEST PAGE
+────────────────────────
+
+Goal: Ensure the dev embed test tooling is actually usable for us when integrating with client websites.
+
+- As super-admin:
+  - Navigate to `/dev/embed-test`.
+  - Use the UI to:
+    - Select a workspace (e.g., a QA workspace).
+    - Select an assistant for that workspace.
+
+- Confirm:
+  - The generated embed snippet includes BOTH:
+    - A workspace identifier (e.g., `data-client-id`).
+    - A bot identifier (e.g., `data-bot-id`).
+  - The copy-to-clipboard button works (no error toast).
+  - The live iframe preview:
+    - Loads the widget.
+    - Respects the assistant’s widget settings (color + position + greeting), as much as possible.
+
+If the iframe preview fails due to CSP or environment constraints:
+  - DO NOT hack around with insecure settings.
+  - Just make sure:
+    - The snippet is correct.
+    - Any error state in the preview is shown cleanly.
+  - Document limitations in `replit.md`.
+
+────────────────────────
+4. PASSWORD RESET UX – DEV CHECK
+────────────────────────
+
+Goal: Make sure the implemented password reset flow is sound, even if email is dev-only.
+
+- Use an existing QA user (e.g., a QA client account) and:
+  - Go to the login page → click “Forgot password?”
+  - Request a reset for that user’s email.
+
+- In **development**:
+  - Confirm the reset link is logged to the server console as intended.
+  - Use that reset URL:
+    - Set a new password.
+    - Verify:
+      - Old password no longer works.
+      - New password works.
+      - The token is single-use (reusing the URL fails gracefully).
+
+If needed:
+  - Improve the dev error/confirmation messages on the frontend, but do not expose whether a given email exists (avoid email enumeration).
+  - Ensure this behavior is clearly documented in `replit.md` (how to test in dev, what env vars needed in prod).
+
+────────────────────────
+5. ADMIN VS CLIENT PARITY & MULTI-TENANT SANITY CHECK
+────────────────────────
+
+Goal: Double-check “real world” parity and isolation around leads/bookings.
+
+- Create or use an existing QA workspace and assistant.
+- Via Test Chat:
+  - Create at least one new lead and one booking (e.g., “QA Regression Visitor”).
+
+- As client:
+  - Note leads & bookings count and key details (name, status).
+
+- As super-admin:
+  - Open the same workspace:
+    - Confirm counts match.
+    - Confirm the same lead & booking appear with identical details.
+
+- Multi-tenant check:
+  - Ensure that this QA lead/booking does NOT show up in the Faith House workspace in admin view.
+  - Log in as `demo_faith_house` and confirm the QA data does not appear in Faith House client view.
+
+If you find any discrepancies (e.g., lead count mismatch, cross-tenant leakage), fix the underlying scoping or aggregation logic, keeping the existing `client_id` scoping pattern intact.
+
+────────────────────────
+6. DOCUMENTATION UPDATE
+────────────────────────
+
+After implementing the above:
+
+- Update `replit.md` with a short appendix:
+  - “Admin Lead Detail UX”
+    - Explain that admin can click a lead row to open the detail view (tags + activity).
+  - “How to test /dev/embed-test”
+  - “How to test password reset in dev (console-only link)”
+  - “Admin/client parity & multi-tenant QA checklist” (bullet points of what we just asked you to do).
+
+Please keep changes tight and focused:
+- Do NOT modify Faith House core seed data or credentials.
+- Do NOT change working flows unless you find a clear bug.
+- Favor small, well-structured components and clear event handlers for row clicks and modals.
+
+When you’re done, the app should be ready for real small-business demos:
+- New client onboarding flow works end-to-end.
+- Assistant can capture leads & bookings.
+- Admin and client can both inspect those leads.
+- Dashboards are in sync.
+- Widget is ready to embed with a tested snippet.
