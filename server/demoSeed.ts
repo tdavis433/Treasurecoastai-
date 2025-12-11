@@ -309,6 +309,350 @@ const DEMO_CONFIGS: Record<string, DemoWorkspaceConfig> = {
       },
     ],
   },
+
+  // Paws & Suds Pet Grooming Demo
+  demo_paws_suds_grooming_demo: {
+    slug: "demo_paws_suds_grooming_demo",
+    name: "Paws & Suds Pet Grooming (Demo)",
+    botType: "pet_grooming",
+    botName: "Paws & Suds Assistant",
+    botDescription: "AI assistant for Paws & Suds pet grooming salon",
+    businessProfile: {
+      businessName: "Paws & Suds Pet Grooming",
+      type: "Pet Grooming Salon",
+      location: "Stuart, FL",
+      phone: "(772) 555-PAWS",
+      email: "woof@pawsandsuds.demo",
+      services: ["Full Grooming", "Bath & Brush", "Nail Trimming", "De-shedding", "Puppy Intro"],
+    },
+    systemPrompt: "You are the Paws & Suds Assistant, helping pet owners book grooming appointments.",
+    theme: { primaryColor: "#06B6D4", welcomeMessage: "Welcome to Paws & Suds! How can I help with your pet's grooming needs?" },
+    sampleLeads: [
+      { name: "Sarah Williams", phone: "(772) 555-4001", email: "sarah.w@email.com", status: "new", daysAgo: 1 },
+      { name: "Jennifer Lopez", phone: "(772) 555-4002", status: "contacted", daysAgo: 3 },
+      { name: "Amanda Chen", phone: "(772) 555-4003", email: "amanda.c@email.com", status: "qualified", daysAgo: 5 },
+      { name: "Mike Brown", phone: "(772) 555-4004", status: "converted", daysAgo: 8 },
+      { name: "Lisa Martinez", phone: "(772) 555-4005", email: "lisa.m@email.com", status: "new", daysAgo: 2 },
+    ],
+    sampleBookings: [
+      { name: "Sarah Williams", contact: "(772) 555-4001", appointmentType: "deshedding", preferredTime: "Saturday 11am", status: "new", daysAgo: 1 },
+      { name: "Mike Brown", contact: "(772) 555-4004", appointmentType: "full-grooming", preferredTime: "Friday 9am", status: "confirmed", daysAgo: 3 },
+      { name: "Jennifer Lopez", contact: "(772) 555-4002", appointmentType: "puppy-intro", preferredTime: "Tuesday 2pm", status: "new", daysAgo: 2 },
+    ],
+    sampleConversations: [
+      { daysAgo: 1, appointmentRequested: true, messages: [
+        { role: 'user', content: "Hi! My Golden Retriever needs a deshedding treatment." },
+        { role: 'bot', content: "Hello! We'd love to help with your Golden's shedding. Our deshedding treatment includes a thorough brushout, special shampoo, and blow-dry. When would you like to come in?" },
+        { role: 'user', content: "Saturday morning would be great. I'm Sarah, 772-555-4001" },
+      ]},
+      { daysAgo: 4, messages: [
+        { role: 'user', content: "Do you groom cats too?" },
+        { role: 'bot', content: "Yes! We have experienced cat groomers. We offer bath and brush, nail trims, and lion cuts for long-haired cats. Would you like to schedule an appointment?" },
+      ]},
+    ],
+  },
+
+  // Coastal Breeze Restaurant Demo
+  demo_coastal_breeze: {
+    slug: "demo_coastal_breeze",
+    name: "Coastal Breeze Restaurant (Demo)",
+    botType: "restaurant",
+    botName: "Coastal Breeze Host",
+    botDescription: "AI host for Coastal Breeze Restaurant",
+    businessProfile: {
+      businessName: "Coastal Breeze Restaurant",
+      type: "Fine Dining Restaurant",
+      location: "Jensen Beach, FL",
+      phone: "(772) 555-DINE",
+      email: "reservations@coastalbreeze.demo",
+      services: ["Fine Dining", "Private Events", "Catering", "Wine Selection"],
+    },
+    systemPrompt: "You are the Coastal Breeze Host, helping guests with reservations and event inquiries.",
+    theme: { primaryColor: "#F59E0B", welcomeMessage: "Welcome to Coastal Breeze! May I help you with a reservation?" },
+    sampleLeads: [
+      { name: "Robert Smith", phone: "(772) 555-5001", email: "robert.s@email.com", status: "new", daysAgo: 1 },
+      { name: "Emily Davis", phone: "(772) 555-5002", status: "contacted", daysAgo: 2 },
+      { name: "Mark Johnson", phone: "(772) 555-5003", email: "mark.j@email.com", status: "qualified", daysAgo: 4 },
+    ],
+    sampleBookings: [
+      { name: "Robert Smith", contact: "(772) 555-5001", appointmentType: "reservation", preferredTime: "Saturday 7pm", status: "confirmed", daysAgo: 1 },
+      { name: "Emily Davis", contact: "(772) 555-5002", appointmentType: "private_event", preferredTime: "Next month", status: "new", daysAgo: 2 },
+    ],
+    sampleConversations: [
+      { daysAgo: 1, appointmentRequested: true, messages: [
+        { role: 'user', content: "I'd like to make a reservation for our anniversary dinner." },
+        { role: 'bot', content: "How wonderful! Congratulations on your anniversary. What date and time works best, and for how many guests?" },
+        { role: 'user', content: "Saturday at 7pm, table for 2. I'm Robert, 772-555-5001" },
+      ]},
+    ],
+  },
+
+  // Coastline Auto Care Demo
+  demo_coastline_auto: {
+    slug: "demo_coastline_auto",
+    name: "Coastline Auto Care (Demo)",
+    botType: "auto_shop",
+    botName: "Coastline Auto Assistant",
+    botDescription: "AI assistant for Coastline Auto Care",
+    businessProfile: {
+      businessName: "Coastline Auto Care",
+      type: "Auto Repair Shop",
+      location: "Fort Pierce, FL",
+      phone: "(772) 555-AUTO",
+      email: "service@coastlineauto.demo",
+      services: ["Oil Changes", "Brake Service", "Tire Service", "AC Repair", "Diagnostics"],
+    },
+    systemPrompt: "You are the Coastline Auto Assistant, helping customers schedule auto service appointments.",
+    theme: { primaryColor: "#3B82F6", welcomeMessage: "Welcome to Coastline Auto Care! How can we help with your vehicle today?" },
+    sampleLeads: [
+      { name: "Tom Harris", phone: "(772) 555-6001", email: "tom.h@email.com", status: "new", daysAgo: 1 },
+      { name: "Kevin Lee", phone: "(772) 555-6002", status: "contacted", daysAgo: 3 },
+      { name: "Chris Martin", phone: "(772) 555-6003", email: "chris.m@email.com", status: "qualified", daysAgo: 5 },
+    ],
+    sampleBookings: [
+      { name: "Tom Harris", contact: "(772) 555-6001", appointmentType: "brake_inspection", preferredTime: "Tomorrow 10am", status: "new", daysAgo: 1 },
+      { name: "Kevin Lee", contact: "(772) 555-6002", appointmentType: "oil_change", preferredTime: "This week", status: "confirmed", daysAgo: 2 },
+    ],
+    sampleConversations: [
+      { daysAgo: 1, appointmentRequested: true, messages: [
+        { role: 'user', content: "My car is making a grinding noise when I brake." },
+        { role: 'bot', content: "That could indicate worn brake pads. We should inspect them right away. When can you bring your vehicle in?" },
+        { role: 'user', content: "Tomorrow morning? I'm Tom, 772-555-6001" },
+      ]},
+    ],
+  },
+
+  // Fade Factory Barbershop Demo
+  demo_fade_factory: {
+    slug: "demo_fade_factory",
+    name: "Fade Factory Barbershop (Demo)",
+    botType: "barber",
+    botName: "Fade Factory Assistant",
+    botDescription: "AI assistant for Fade Factory Barbershop",
+    businessProfile: {
+      businessName: "Fade Factory Barbershop",
+      type: "Barbershop",
+      location: "Port St. Lucie, FL",
+      phone: "(772) 555-FADE",
+      email: "cuts@fadefactory.demo",
+      services: ["Haircuts", "Fades", "Beard Trims", "Hot Towel Shave", "Kids Cuts"],
+    },
+    systemPrompt: "You are the Fade Factory Assistant, booking appointments for our barbershop.",
+    theme: { primaryColor: "#8B5CF6", welcomeMessage: "Welcome to Fade Factory! Ready for a fresh cut?" },
+    sampleLeads: [
+      { name: "Jason Miller", phone: "(772) 555-7001", status: "new", daysAgo: 1 },
+      { name: "Derek Williams", phone: "(772) 555-7002", email: "derek.w@email.com", status: "contacted", daysAgo: 2 },
+    ],
+    sampleBookings: [
+      { name: "Jason Miller", contact: "(772) 555-7001", appointmentType: "haircut", preferredTime: "Today 3pm", status: "confirmed", daysAgo: 0 },
+      { name: "Derek Williams", contact: "(772) 555-7002", appointmentType: "beard_trim", preferredTime: "Saturday", status: "new", daysAgo: 1 },
+    ],
+    sampleConversations: [
+      { daysAgo: 0, appointmentRequested: true, messages: [
+        { role: 'user', content: "Hey, can I get a fade today?" },
+        { role: 'bot', content: "Hey! We'd love to get you in for a fresh fade. What time works best?" },
+        { role: 'user', content: "3pm? I'm Jason, 772-555-7001" },
+      ]},
+    ],
+  },
+
+  // Ink & Soul Tattoo Demo
+  demo_ink_soul: {
+    slug: "demo_ink_soul",
+    name: "Ink & Soul Tattoo (Demo)",
+    botType: "tattoo_studio",
+    botName: "Ink & Soul Guide",
+    botDescription: "AI guide for Ink & Soul Tattoo Studio",
+    businessProfile: {
+      businessName: "Ink & Soul Tattoo",
+      type: "Tattoo Studio",
+      location: "Vero Beach, FL",
+      phone: "(772) 555-TATT",
+      email: "ink@inkandsoul.demo",
+      services: ["Custom Tattoos", "Cover-ups", "Touch-ups", "Consultations"],
+    },
+    systemPrompt: "You are the Ink & Soul Guide, helping clients book consultations and tattoo appointments.",
+    theme: { primaryColor: "#EC4899", welcomeMessage: "Welcome to Ink & Soul! Ready to create something beautiful?" },
+    sampleLeads: [
+      { name: "Alex Rivera", phone: "(772) 555-8001", email: "alex.r@email.com", status: "new", daysAgo: 1 },
+      { name: "Sam Taylor", phone: "(772) 555-8002", status: "contacted", daysAgo: 3 },
+    ],
+    sampleBookings: [
+      { name: "Alex Rivera", contact: "(772) 555-8001", appointmentType: "consultation", preferredTime: "This week", status: "new", daysAgo: 1 },
+    ],
+    sampleConversations: [
+      { daysAgo: 1, appointmentRequested: true, messages: [
+        { role: 'user', content: "I want to get a custom sleeve design." },
+        { role: 'bot', content: "Awesome! Custom sleeves are our specialty. Let's start with a consultation. When can you come in?" },
+        { role: 'user', content: "This week sometime. I'm Alex, 772-555-8001" },
+      ]},
+    ],
+  },
+
+  // Iron Coast Fitness Demo
+  demo_iron_coast_fitness: {
+    slug: "demo_iron_coast_fitness",
+    name: "Iron Coast Fitness (Demo)",
+    botType: "gym",
+    botName: "Iron Coast Fitness Assistant",
+    botDescription: "AI assistant for Iron Coast Fitness",
+    businessProfile: {
+      businessName: "Iron Coast Fitness",
+      type: "Fitness Center",
+      location: "Stuart, FL",
+      phone: "(772) 555-FIT1",
+      email: "join@ironcoast.demo",
+      services: ["24/7 Access", "Personal Training", "Group Classes", "Recovery Suite"],
+    },
+    systemPrompt: "You are the Iron Coast Fitness Assistant, helping people learn about memberships and classes.",
+    theme: { primaryColor: "#EF4444", welcomeMessage: "Welcome to Iron Coast Fitness! Ready to get started?" },
+    sampleLeads: [
+      { name: "Michelle Brown", phone: "(772) 555-9001", email: "michelle.b@email.com", status: "new", daysAgo: 1 },
+      { name: "David Garcia", phone: "(772) 555-9002", status: "contacted", daysAgo: 2 },
+    ],
+    sampleBookings: [
+      { name: "Michelle Brown", contact: "(772) 555-9001", appointmentType: "tour", preferredTime: "Tomorrow 5pm", status: "new", daysAgo: 1 },
+    ],
+    sampleConversations: [
+      { daysAgo: 1, appointmentRequested: true, messages: [
+        { role: 'user', content: "What are your membership options?" },
+        { role: 'bot', content: "We have Basic ($29/mo), Premium ($49/mo with classes), and Elite ($79/mo all-inclusive). Want to tour our facility?" },
+        { role: 'user', content: "Yes! I'm Michelle, 772-555-9001" },
+      ]},
+    ],
+  },
+
+  // New Horizons Recovery House Demo
+  demo_new_horizons: {
+    slug: "demo_new_horizons",
+    name: "New Horizons Recovery House (Demo)",
+    botType: "sober_living",
+    botName: "New Horizons Guide",
+    botDescription: "AI guide for New Horizons Women's Recovery House",
+    businessProfile: {
+      businessName: "New Horizons Recovery House",
+      type: "Women's Sober Living",
+      location: "Palm City, FL",
+      phone: "(772) 555-HOPE",
+      email: "info@newhorizons.demo",
+      services: ["Women's Sober Living", "Peer Support", "Life Skills Training", "Job Assistance"],
+    },
+    systemPrompt: "You are the New Horizons Guide, helping women find structured sober living support.",
+    theme: { primaryColor: "#10B981", welcomeMessage: "Welcome to New Horizons. We're here to support your recovery journey." },
+    sampleLeads: [
+      { name: "Jennifer Adams", phone: "(772) 555-1101", email: "jen.a@email.com", status: "new", daysAgo: 1 },
+      { name: "Rachel Green", phone: "(772) 555-1102", status: "contacted", daysAgo: 3 },
+    ],
+    sampleBookings: [
+      { name: "Jennifer Adams", contact: "(772) 555-1101", appointmentType: "tour", preferredTime: "This week", status: "new", daysAgo: 1 },
+    ],
+    sampleConversations: [
+      { daysAgo: 1, appointmentRequested: true, messages: [
+        { role: 'user', content: "I'm looking for a women's sober living facility." },
+        { role: 'bot', content: "Welcome! New Horizons is a supportive women's recovery community. Would you like to schedule a tour?" },
+        { role: 'user', content: "Yes please. I'm Jennifer, 772-555-1101" },
+      ]},
+    ],
+  },
+
+  // Premier Properties Real Estate Demo
+  demo_premier_properties: {
+    slug: "demo_premier_properties",
+    name: "Premier Properties Real Estate (Demo)",
+    botType: "real_estate",
+    botName: "Premier Properties Concierge",
+    botDescription: "AI concierge for Premier Properties Real Estate",
+    businessProfile: {
+      businessName: "Premier Properties",
+      type: "Real Estate Agency",
+      location: "Treasure Coast, FL",
+      phone: "(772) 555-HOME",
+      email: "info@premierproperties.demo",
+      services: ["Buyer Representation", "Seller Services", "Property Showings", "Home Valuations"],
+    },
+    systemPrompt: "You are the Premier Properties Concierge, helping buyers and sellers with real estate needs.",
+    theme: { primaryColor: "#0EA5E9", welcomeMessage: "Welcome to Premier Properties! How can I help with your real estate needs?" },
+    sampleLeads: [
+      { name: "John Thompson", phone: "(772) 555-1201", email: "john.t@email.com", status: "new", daysAgo: 1 },
+      { name: "Linda Wilson", phone: "(772) 555-1202", status: "contacted", daysAgo: 2 },
+    ],
+    sampleBookings: [
+      { name: "John Thompson", contact: "(772) 555-1201", appointmentType: "property_showing", preferredTime: "Saturday 10am", status: "new", daysAgo: 1 },
+    ],
+    sampleConversations: [
+      { daysAgo: 1, appointmentRequested: true, messages: [
+        { role: 'user', content: "I'm looking for a 3BR home around $450K." },
+        { role: 'bot', content: "Great! We have several beautiful homes in that range. Would you like to schedule some showings?" },
+        { role: 'user', content: "Yes, this Saturday. I'm John, 772-555-1201" },
+      ]},
+    ],
+  },
+
+  // Radiance Med Spa Demo
+  demo_radiance_medspa: {
+    slug: "demo_radiance_medspa",
+    name: "Radiance Med Spa (Demo)",
+    botType: "med_spa",
+    botName: "Radiance Med Spa Concierge",
+    botDescription: "AI concierge for Radiance Med Spa",
+    businessProfile: {
+      businessName: "Radiance Med Spa",
+      type: "Medical Spa",
+      location: "Jupiter, FL",
+      phone: "(772) 555-GLOW",
+      email: "beauty@radiancemedspa.demo",
+      services: ["Botox", "Fillers", "Facials", "Laser Treatments", "Body Contouring"],
+    },
+    systemPrompt: "You are the Radiance Med Spa Concierge, helping clients with aesthetic treatment consultations.",
+    theme: { primaryColor: "#A855F7", welcomeMessage: "Welcome to Radiance Med Spa! Ready to glow?" },
+    sampleLeads: [
+      { name: "Victoria Chen", phone: "(772) 555-1301", email: "vic.c@email.com", status: "new", daysAgo: 1 },
+      { name: "Ashley Moore", phone: "(772) 555-1302", status: "contacted", daysAgo: 2 },
+    ],
+    sampleBookings: [
+      { name: "Victoria Chen", contact: "(772) 555-1301", appointmentType: "consultation", preferredTime: "This week", status: "new", daysAgo: 1 },
+    ],
+    sampleConversations: [
+      { daysAgo: 1, appointmentRequested: true, messages: [
+        { role: 'user', content: "I'm interested in Botox for my forehead lines." },
+        { role: 'bot', content: "Great choice! We'd love to schedule a consultation to discuss your goals. When works for you?" },
+        { role: 'user', content: "This week. I'm Victoria, 772-555-1301" },
+      ]},
+    ],
+  },
+
+  // TC Pro Handyman Demo
+  demo_tc_handyman: {
+    slug: "demo_tc_handyman",
+    name: "TC Pro Handyman (Demo)",
+    botType: "home_services",
+    botName: "TC Pro Handyman Assistant",
+    botDescription: "AI assistant for TC Pro Handyman services",
+    businessProfile: {
+      businessName: "TC Pro Handyman",
+      type: "Handyman Services",
+      location: "Treasure Coast, FL",
+      phone: "(772) 555-FIXX",
+      email: "help@tcprohandyman.demo",
+      services: ["Repairs", "Painting", "Plumbing", "Electrical", "General Maintenance"],
+    },
+    systemPrompt: "You are the TC Pro Handyman Assistant, helping homeowners schedule service appointments.",
+    theme: { primaryColor: "#F97316", welcomeMessage: "Welcome to TC Pro Handyman! What can we help fix today?" },
+    sampleLeads: [
+      { name: "Frank Miller", phone: "(772) 555-1401", email: "frank.m@email.com", status: "new", daysAgo: 1 },
+      { name: "Nancy Davis", phone: "(772) 555-1402", status: "contacted", daysAgo: 3 },
+    ],
+    sampleBookings: [
+      { name: "Frank Miller", contact: "(772) 555-1401", appointmentType: "estimate", preferredTime: "Tomorrow", status: "new", daysAgo: 1 },
+    ],
+    sampleConversations: [
+      { daysAgo: 1, appointmentRequested: true, messages: [
+        { role: 'user', content: "I need an estimate for painting 3 rooms." },
+        { role: 'bot', content: "We'd be happy to provide a free estimate! When can we come take a look?" },
+        { role: 'user', content: "Tomorrow works. I'm Frank, 772-555-1401" },
+      ]},
+    ],
+  },
 };
 
 function getDateDaysAgo(daysAgo: number): Date {
