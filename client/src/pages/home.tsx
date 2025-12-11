@@ -298,7 +298,7 @@ export default function Home() {
               { value: "3x", label: "More Leads" },
               { value: "50%", label: "Time Saved" },
               { value: "10+", label: "Industries" },
-              { value: "5 min", label: "Setup Time" }
+              { value: "Zero", label: "Staff Needed" }
             ].map((stat, i) => (
               <div key={i} className="text-center">
                 <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary mb-1" data-testid={`stat-value-${i}`}>{stat.value}</div>
