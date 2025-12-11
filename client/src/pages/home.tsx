@@ -252,9 +252,9 @@ export default function Home() {
               <span className="text-sm text-white/80">Powered by GPT-4</span>
             </div>
 
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 sm:mb-6 tracking-tight leading-tight" data-testid="text-hero-title">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 sm:mb-6 tracking-tight leading-normal" data-testid="text-hero-title">
               AI Assistants that
-              <span className="text-gradient-cyan-purple block mt-2">work for your business 24/7.</span>
+              <span className="text-gradient-cyan-purple block mt-2 pb-2">work for your business 24/7.</span>
             </h1>
 
             <p className="text-lg sm:text-xl md:text-2xl text-white/70 max-w-3xl mx-auto mb-8 sm:mb-10 leading-relaxed">
