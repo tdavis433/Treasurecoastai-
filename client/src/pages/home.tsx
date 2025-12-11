@@ -447,7 +447,7 @@ export default function Home() {
               <span className="text-gradient-cyan-purple block mt-2">Built for local businesses.</span>
             </h2>
             <p className="text-lg sm:text-xl text-white/60 max-w-2xl mx-auto">
-              Generic chat widgets don't understand your business. We built Treasure Coast AI specifically for landlords, property managers, and local service businesses.
+              Generic chat widgets don't understand your business. Treasure Coast AI is built to actually convert visitors into customers.
             </p>
           </motion.div>
 
