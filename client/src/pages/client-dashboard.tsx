@@ -755,6 +755,7 @@ export default function ClientDashboard() {
   const businessName = profile?.businessInfo?.name || stats?.businessName || "Your Business";
   const businessType = profile?.businessInfo?.type || stats?.businessType || "business";
   const botId = profile?.botId || stats?.botId || '';
+  const clientId = profile?.clientId || stats?.clientId || urlClientId || '';
 
   // Use rangeStats when a specific range is selected, otherwise use all-time stats
   const useRangeStats = statsRange !== 'all' && stats?.rangeStats;
