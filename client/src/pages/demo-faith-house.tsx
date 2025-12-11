@@ -263,7 +263,7 @@ export default function DemoFaithHouse() {
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 relative z-10">
         <div className="text-center space-y-8">
           <div 
-            className="relative p-8 rounded-2xl mx-auto max-w-3xl"
+            className="relative p-8 rounded-2xl mx-auto max-w-3xl overflow-visible"
             style={{
               background: 'rgba(0, 0, 0, 0.25)',
               backdropFilter: 'blur(12px)',
@@ -285,12 +285,13 @@ export default function DemoFaithHouse() {
                 Treasure Coast AI - Live Demo
               </Badge>
               
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-snug">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold" style={{ lineHeight: 1.2 }}>
                 <span 
-                  className="block text-transparent bg-clip-text"
+                  className="block text-transparent bg-clip-text pb-1"
                   style={{
                     backgroundImage: 'linear-gradient(135deg, #00E5CC 0%, #00D4BD 25%, #5EEAD4 50%, #A78BFA 75%, #C4B5FD 100%)',
-                    filter: 'drop-shadow(0 0 30px rgba(0, 229, 204, 0.3))'
+                    filter: 'drop-shadow(0 0 30px rgba(0, 229, 204, 0.3))',
+                    WebkitBackgroundClip: 'text'
                   }}
                 >
                   Faith House Sober Living
