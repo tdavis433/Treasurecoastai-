@@ -1,0 +1,55 @@
+You are working inside the Treasure Coast AI SaaS project on Replit.
+
+Context:
+- Multiple QA and regression passes are now green.
+- Recent changes fixed:
+  - Admin inbox message display.
+  - Duplicate workspace/email UX.
+  - Appointment Types discoverability.
+  - Booking data extraction (user messages first).
+  - Widget embed preview on /dev/embed-test.
+  - Production logging (no chat content or reset URLs).
+  - Production configuration docs (env vars, SMTP, CORS, secrets, changing admin password).
+
+From a product perspective, the app is ready for real small-business demos and onboarding. I do NOT want new features or new flows — only tiny security / production safety tweaks if they are missing.
+
+Please:
+
+1) Protect dev-only surfaces in production
+   - Ensure `/dev/embed-test` and any other “dev / internal tooling” routes:
+     - Require super_admin auth.
+     - Are NOT accessible to unauthenticated users.
+   - If they are already protected, do nothing.
+
+2) Default admin credentials safety
+   - Confirm there is a clear, simple path to change the default admin password (admin/admin123) in production.
+   - If it’s not already enforced in code, add a **non-blocking** but visible warning for super_admin when:
+     - The current admin username/password are still the defaults AND
+     - `NODE_ENV === 'production'` (or equivalent).
+   - The warning can be a small banner in the super-admin dashboard reminding to change the default password.
+   - Do NOT block login; just warn.
+
+3) Final pass: no sensitive data in logs
+   - Double-check we are not logging:
+     - Full chat transcripts.
+     - Password reset tokens.
+     - Raw access tokens or secrets.
+   - In production:
+     - It’s OK to log high-level errors, but not PII-heavy payloads.
+   - Only adjust logging where clearly necessary.
+
+4) Docs touch-up (replit.md)
+   - In the Production Configuration / Security section, add a short note:
+     - That `/dev/embed-test` is for internal use only and requires super_admin.
+     - That default admin credentials must be changed before going live with real clients.
+     - That no chat content is logged in production.
+
+Important:
+- Do NOT change any core product flows.
+- Do NOT rename existing workspaces (Faith House, QA workspaces).
+- Do NOT add onboarding wizards or new screens.
+
+When you’re done, please summarize:
+- Whether `/dev/embed-test` and similar routes were already protected or what you changed.
+- Any logging adjustments you had to make.
+- Any security-related notes you added to `replit.md`.
