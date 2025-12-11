@@ -527,7 +527,10 @@ function logConversationToFile(data: {
   userMessage: string;
   botReply: string;
 }): void {
-  console.log(`[CHAT] ${data.clientId}/${data.botId} | ${data.sessionId} | User: ${data.userMessage.slice(0, 50)}... | Bot: ${data.botReply.slice(0, 50)}...`);
+  // Only log message snippets in development to avoid exposing user data in production
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`[CHAT] ${data.clientId}/${data.botId} | ${data.sessionId} | User: ${data.userMessage.slice(0, 50)}... | Bot: ${data.botReply.slice(0, 50)}...`);
+  }
 }
 
 function getBotCrisisResponse(config: BotConfig): string {

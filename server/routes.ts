@@ -3576,7 +3576,10 @@ These suggestions should be relevant to what was just discussed and help guide t
       const successMessage = "If an account exists with that email, we've sent a password reset link.";
       
       if (!user) {
-        console.log(`[PasswordReset] No user found for email: ${normalizedEmail}`);
+        // Log without exposing full email in production
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`[PasswordReset] No user found for email: ${normalizedEmail}`);
+        }
         return res.json({ success: true, message: successMessage });
       }
       
@@ -3618,9 +3621,9 @@ These suggestions should be relevant to what was just discussed and help guide t
       );
       
       if (!emailResult.success) {
-        console.error(`[PasswordReset] Failed to send email to ${normalizedEmail}:`, emailResult.error);
+        console.error(`[PasswordReset] Failed to send reset email:`, emailResult.error);
         // Still return success to prevent enumeration
-      } else {
+      } else if (process.env.NODE_ENV !== 'production') {
         console.log(`[PasswordReset] Reset email sent/logged for user: ${user.username}`);
       }
       
