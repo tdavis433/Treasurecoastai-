@@ -11,7 +11,7 @@ import {
   Bot, Users, Settings, BarChart3, MessageSquare, 
   Eye, Edit2, Trash2, Clock, CreditCard, Building2,
   ChevronLeft, UserPlus, Shield, Plus, RefreshCw,
-  TestTube2, ExternalLink
+  TestTube2, ExternalLink, Tag, Zap, Mail, Phone, Calendar, User
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -93,6 +93,9 @@ export default function ClientDetailAdmin() {
   // Workspace editing state
   const [showEditNameModal, setShowEditNameModal] = useState(false);
   const [editNameValue, setEditNameValue] = useState('');
+  
+  // Lead detail modal state
+  const [selectedLead, setSelectedLead] = useState<any | null>(null);
 
   // Validation helpers for user form
   const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -688,15 +691,31 @@ export default function ClientDetailAdmin() {
               ) : (clientLeads?.leads?.length || 0) > 0 ? (
                 <div className="space-y-3">
                   {clientLeads?.leads.map(lead => (
-                    <GlassCard key={lead.id} className="p-4">
+                    <GlassCard 
+                      key={lead.id} 
+                      className="p-4 cursor-pointer hover:bg-white/10 hover:border-cyan-500/30 transition-colors"
+                      onClick={() => setSelectedLead(lead)}
+                      data-testid={`lead-row-${lead.id}`}
+                    >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <p className="text-white font-medium text-sm">{lead.name}</p>
                           <div className="flex items-center gap-3 text-xs text-white/55 mt-1">
-                            {lead.email && <span>{lead.email}</span>}
-                            {lead.phone && <span>{lead.phone}</span>}
+                            {lead.email && <span><Mail className="h-3 w-3 inline mr-1" />{lead.email}</span>}
+                            {lead.phone && <span><Phone className="h-3 w-3 inline mr-1" />{lead.phone}</span>}
                           </div>
-                          {lead.context && <p className="text-xs text-white/40 mt-2">{lead.context}</p>}
+                          {lead.tags && lead.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {lead.tags.slice(0, 3).map((tag: string, idx: number) => (
+                                <Badge key={idx} className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs">
+                                  {tag}
+                                </Badge>
+                              ))}
+                              {lead.tags.length > 3 && (
+                                <Badge className="bg-white/10 text-white/50 text-xs">+{lead.tags.length - 3}</Badge>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <div className="flex flex-col items-end gap-2">
                           <Badge className={`text-xs ${
@@ -1306,6 +1325,150 @@ export default function ClientDetailAdmin() {
               ) : (
                 'Save Changes'
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Lead Detail Modal */}
+      <Dialog open={!!selectedLead} onOpenChange={(open) => !open && setSelectedLead(null)}>
+        <DialogContent className="bg-[#1a1d24] border-white/10 max-w-lg" data-testid="dialog-lead-detail">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-full bg-gradient-to-br from-cyan-500/30 to-purple-500/30 flex items-center justify-center">
+                <User className="h-6 w-6 text-cyan-400" />
+              </div>
+              <div>
+                <DialogTitle className="text-white">{selectedLead?.name || 'Unknown Lead'}</DialogTitle>
+                <DialogDescription className="text-white/55">
+                  Captured on {selectedLead?.createdAt ? new Date(selectedLead.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Unknown date'}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Status */}
+            <div className="flex items-center justify-between">
+              <span className="text-white/55 text-sm">Status</span>
+              <Badge className={`text-xs ${
+                selectedLead?.status === 'new' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' :
+                selectedLead?.status === 'contacted' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
+                selectedLead?.status === 'qualified' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                selectedLead?.status === 'converted' ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' :
+                'bg-white/10 text-white/55'
+              }`}>
+                {selectedLead?.status ? selectedLead.status.charAt(0).toUpperCase() + selectedLead.status.slice(1) : 'Unknown'}
+              </Badge>
+            </div>
+
+            {/* Contact Information */}
+            <GlassCard>
+              <GlassCardHeader className="pb-2">
+                <GlassCardTitle className="text-sm flex items-center gap-2">
+                  <User className="h-4 w-4 text-cyan-400" />
+                  Contact Information
+                </GlassCardTitle>
+              </GlassCardHeader>
+              <GlassCardContent className="space-y-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <Mail className="h-4 w-4 text-white/40" />
+                  <span className="text-white/80">{selectedLead?.email || 'No email provided'}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Phone className="h-4 w-4 text-white/40" />
+                  <span className="text-white/80">{selectedLead?.phone || 'No phone provided'}</span>
+                </div>
+              </GlassCardContent>
+            </GlassCard>
+
+            {/* Tags Section */}
+            {selectedLead?.tags && selectedLead.tags.length > 0 && (
+              <GlassCard>
+                <GlassCardHeader className="pb-2">
+                  <GlassCardTitle className="text-sm flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-purple-400" />
+                    Tags
+                  </GlassCardTitle>
+                </GlassCardHeader>
+                <GlassCardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedLead.tags.map((tag: string, idx: number) => (
+                      <Badge key={idx} className="bg-purple-500/20 text-purple-400 border-purple-500/30">
+                        <Tag className="h-3 w-3 mr-1" />
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                </GlassCardContent>
+              </GlassCard>
+            )}
+
+            {/* Activity Section */}
+            <GlassCard>
+              <GlassCardHeader className="pb-2">
+                <GlassCardTitle className="text-sm flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-amber-400" />
+                  Activity
+                </GlassCardTitle>
+              </GlassCardHeader>
+              <GlassCardContent>
+                <div className="space-y-3">
+                  {/* Lead Capture Event */}
+                  <div className="flex items-start gap-3">
+                    <div className="h-6 w-6 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <Users className="h-3 w-3 text-cyan-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-white/80">Lead captured</p>
+                      <p className="text-xs text-white/40">
+                        {selectedLead?.createdAt ? new Date(selectedLead.createdAt).toLocaleString('en-US', { 
+                          month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true 
+                        }) : ''}
+                      </p>
+                    </div>
+                  </div>
+                  {/* Status Change Events */}
+                  {selectedLead?.status && selectedLead.status !== 'new' && (
+                    <div className="flex items-start gap-3">
+                      <div className="h-6 w-6 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <Zap className="h-3 w-3 text-amber-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-white/80">Status changed to "{selectedLead.status}"</p>
+                        <p className="text-xs text-white/40">
+                          {selectedLead?.updatedAt ? new Date(selectedLead.updatedAt).toLocaleString('en-US', { 
+                            month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true 
+                          }) : 'Recently'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </GlassCardContent>
+            </GlassCard>
+
+            {/* Notes if present */}
+            {selectedLead?.notes && (
+              <GlassCard>
+                <GlassCardHeader className="pb-2">
+                  <GlassCardTitle className="text-sm">Notes</GlassCardTitle>
+                </GlassCardHeader>
+                <GlassCardContent>
+                  <p className="text-sm text-white/70">{selectedLead.notes}</p>
+                </GlassCardContent>
+              </GlassCard>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="ghost" 
+              onClick={() => setSelectedLead(null)}
+              className="text-white/70"
+              data-testid="button-close-lead-detail"
+            >
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
