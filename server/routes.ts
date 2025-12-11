@@ -9756,7 +9756,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       let deletedMessages = 0;
       for (const session of demoSessions) {
         const deleted = await db.delete(conversationMessages)
-          .where(eq(conversationMessages.sessionId, session.sessionId))
+          .where(eq(conversationMessages.conversationId, session.sessionId))
           .returning();
         deletedMessages += deleted.length;
       }
@@ -9984,7 +9984,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       let deletedMessages = 0;
       for (const session of demoSessions) {
         const deleted = await db.delete(conversationMessages)
-          .where(eq(conversationMessages.sessionId, session.sessionId))
+          .where(eq(conversationMessages.conversationId, session.sessionId))
           .returning();
         deletedMessages += deleted.length;
       }
