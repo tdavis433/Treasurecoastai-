@@ -253,8 +253,8 @@ export default function Home() {
             </div>
 
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 sm:mb-6 tracking-tight leading-tight" data-testid="text-hero-title">
-              Turn website visitors into
-              <span className="text-gradient-cyan-purple block mt-2">paying customers — automatically.</span>
+              AI Assistants that
+              <span className="text-gradient-cyan-purple block mt-2">work for your business 24/7.</span>
             </h1>
 
             <p className="text-lg sm:text-xl md:text-2xl text-white/70 max-w-3xl mx-auto mb-8 sm:mb-10 leading-relaxed">
