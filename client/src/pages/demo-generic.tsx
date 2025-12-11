@@ -273,29 +273,53 @@ export default function DemoGenericPage({ workspaceSlug, botId }: DemoPageProps)
   const businessType = botData?.businessProfile?.type || 'general';
   const config = businessTypeConfigs[businessType] || businessTypeConfigs.sober_living;
   const accentColor = config.accentColor || '#00E5CC';
+  const businessName = botData?.businessProfile?.businessName || botData?.name || 'AI Assistant';
 
   useEffect(() => {
-    if (!botId) return;
+    if (!botId || !accentColor || isLoading) return;
 
     const existingWidget = document.getElementById('tc-ai-widget-script');
     if (existingWidget) existingWidget.remove();
+    
+    const existingContainer = document.getElementById('tcai-bubble');
+    if (existingContainer) existingContainer.remove();
+    
+    const existingIframe = document.getElementById('tcai-iframe');
+    if (existingIframe) existingIframe.remove();
 
     const script = document.createElement('script');
     script.id = 'tc-ai-widget-script';
-    script.src = '/widget/chat-widget.js';
+    script.src = '/widget/embed.js';
     script.async = true;
     script.setAttribute('data-bot-id', botId);
     script.setAttribute('data-client-id', workspaceSlug);
-    script.setAttribute('data-demo-mode', 'true');
+    script.setAttribute('data-primary-color', accentColor);
+    script.setAttribute('data-theme', 'dark');
+    script.setAttribute('data-business-name', businessName);
+    script.setAttribute('data-show-greeting-popup', 'true');
+    script.setAttribute('data-greeting-title', `Chat with ${businessName}`);
+    script.setAttribute('data-greeting-message', 'Hi! How can I help you today?');
+    script.setAttribute('data-greeting-delay', '2');
     document.body.appendChild(script);
 
     return () => {
       const widget = document.getElementById('tc-ai-widget-script');
       if (widget) widget.remove();
-      const container = document.getElementById('treasure-coast-ai-widget');
-      if (container) container.remove();
+      const bubble = document.getElementById('tcai-bubble');
+      if (bubble) bubble.remove();
+      const iframe = document.getElementById('tcai-iframe');
+      if (iframe) iframe.remove();
+      const popup = document.getElementById('tcai-greeting-popup');
+      if (popup) popup.remove();
+      if ((window as any).TreasureCoastAI) {
+        (window as any).TreasureCoastAI.initialized = false;
+      }
     };
-  }, [botId, workspaceSlug]);
+  }, [botId, workspaceSlug, accentColor, businessName]);
+
+  const description = botData?.description || 'AI-powered customer assistant';
+  const features = config.features || [];
+  const services = botData?.businessProfile?.services || [];
 
   if (isLoading) {
     return (
@@ -304,12 +328,6 @@ export default function DemoGenericPage({ workspaceSlug, botId }: DemoPageProps)
       </div>
     );
   }
-
-  const businessName = botData?.businessProfile?.businessName || botData?.name || 'Demo Business';
-  const description = botData?.description || 'AI-powered customer assistant';
-  const features = config.features || [];
-  const services = botData?.businessProfile?.services || [];
-  const highlights = botData?.businessProfile?.highlights || [];
 
   return (
     <div className="min-h-screen bg-[#0B0E13] text-white overflow-x-hidden">
