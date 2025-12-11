@@ -462,7 +462,7 @@ export default function Home() {
               {
                 icon: Clock,
                 title: "24/7 front desk for your website",
-                description: "Never miss another late-night tour request or consultation inquiry. Your AI is always ready to help."
+                description: "Never miss another inquiry, even at 2am. Your AI assistant is always ready to engage and convert."
               },
               {
                 icon: Target,
