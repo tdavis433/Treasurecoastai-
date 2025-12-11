@@ -289,15 +289,16 @@ export default function Home() {
 
           {/* Stats */}
           <motion.div 
-            className="grid grid-cols-3 gap-4 sm:gap-8 mt-16 sm:mt-20 max-w-2xl mx-auto px-4"
+            className="grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-8 mt-16 sm:mt-20 max-w-3xl mx-auto px-4"
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.3 }}
           >
             {[
-              { value: "10x", label: "Faster Responses" },
-              { value: "85%", label: "More Leads Captured" },
-              { value: "0", label: "Missed Conversations" }
+              { value: "24/7", label: "Never Sleeps" },
+              { value: "3s", label: "Avg. Response" },
+              { value: "∞", label: "Conversations" },
+              { value: "$0", label: "Per Hour Wages" }
             ].map((stat, i) => (
               <div key={i} className="text-center">
                 <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary mb-1" data-testid={`stat-value-${i}`}>{stat.value}</div>
