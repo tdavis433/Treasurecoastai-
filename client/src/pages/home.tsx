@@ -295,10 +295,10 @@ export default function Home() {
             transition={{ duration: 0.8, delay: 0.3 }}
           >
             {[
-              { value: "500+", label: "Businesses Powered" },
-              { value: "1M+", label: "Conversations Handled" },
-              { value: "98%", label: "Customer Satisfaction" },
-              { value: "24/7", label: "Always Online" }
+              { value: "24/7", label: "Always Online" },
+              { value: "<3s", label: "Response Time" },
+              { value: "100%", label: "Leads Captured" },
+              { value: "Zero", label: "Missed Messages" }
             ].map((stat, i) => (
               <div key={i} className="text-center">
                 <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary mb-1" data-testid={`stat-value-${i}`}>{stat.value}</div>
