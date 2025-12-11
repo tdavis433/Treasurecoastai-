@@ -258,8 +258,8 @@ export default function Home() {
             </h1>
 
             <p className="text-lg sm:text-xl md:text-2xl text-white/70 max-w-3xl mx-auto mb-8 sm:mb-10 leading-relaxed">
-              Treasure Coast AI gives <strong className="text-white">your business</strong> a 24/7 AI front desk. 
-              Answer questions, capture leads, and book real appointments — without adding staff.
+              Your AI-powered front desk that <strong className="text-white">never sleeps</strong>. 
+              Engage every visitor, capture every lead, and book appointments around the clock.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
