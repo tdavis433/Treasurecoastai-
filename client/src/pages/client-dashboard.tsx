@@ -66,6 +66,8 @@ import {
   Loader2,
   Palette,
   ExternalLink,
+  Tag,
+  Zap,
 } from "lucide-react";
 import {
   Select,
@@ -1970,6 +1972,21 @@ export default function ClientDashboard() {
                                   </span>
                                 )}
                               </div>
+                              {/* Display tags if present */}
+                              {lead.tags && lead.tags.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {lead.tags.map((tag: string, tagIdx: number) => (
+                                    <Badge 
+                                      key={tagIdx}
+                                      variant="outline" 
+                                      className="text-xs py-0 px-1.5 bg-purple-500/10 text-purple-400 border-purple-500/30"
+                                      data-testid={`badge-tag-${lead.id}-${tagIdx}`}
+                                    >
+                                      {tag}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
@@ -2917,6 +2934,50 @@ export default function ClientDashboard() {
                 <p className="text-white/70">{selectedLead.notes}</p>
               </div>
             )}
+
+            {/* Tags */}
+            {selectedLead?.tags && selectedLead.tags.length > 0 && (
+              <div className="bg-white/5 rounded-lg p-4 space-y-2">
+                <h4 className="text-sm font-medium text-white/70 uppercase tracking-wide flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-purple-400" />
+                  Tags
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {selectedLead.tags.map((tag: string, idx: number) => (
+                    <Badge 
+                      key={idx}
+                      variant="outline" 
+                      className="bg-purple-500/10 text-purple-400 border-purple-500/30"
+                    >
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Automation Activity */}
+            <div className="bg-white/5 rounded-lg p-4 space-y-2">
+              <h4 className="text-sm font-medium text-white/70 uppercase tracking-wide flex items-center gap-2">
+                <Zap className="h-4 w-4 text-amber-400" />
+                Activity
+              </h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2 text-white/60">
+                  <div className="h-2 w-2 rounded-full bg-green-400" />
+                  <span>Lead captured via chat widget</span>
+                  <span className="text-white/40 text-xs ml-auto">
+                    {selectedLead?.createdAt ? format(new Date(selectedLead.createdAt), "h:mm a") : ''}
+                  </span>
+                </div>
+                {selectedLead?.status !== 'new' && (
+                  <div className="flex items-center gap-2 text-white/60">
+                    <div className="h-2 w-2 rounded-full bg-blue-400" />
+                    <span>Status changed to {selectedLead?.status}</span>
+                  </div>
+                )}
+              </div>
+            </div>
 
             {/* Actions */}
             <div className="flex gap-3 pt-2">

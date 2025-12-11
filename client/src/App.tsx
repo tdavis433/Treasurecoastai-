@@ -26,6 +26,7 @@ import NotFound from "@/pages/not-found";
 import DemosPage from "@/pages/demos";
 import DemoBotPage from "@/pages/demo-bot";
 import DemoFaithHouse from "@/pages/demo-faith-house";
+import DevEmbedTest from "@/pages/dev-embed-test";
 import { useEffect } from "react";
 
 function PasswordChangeGuard({ children }: { children: React.ReactNode }) {
@@ -82,6 +83,7 @@ function Router() {
       <Route path="/client/inbox" component={InboxPage} />
       <Route path="/super-admin/clients/:slug" component={ClientDetailAdmin} />
       <Route path="/super-admin" component={SuperAdmin} />
+      <Route path="/dev/embed-test" component={DevEmbedTest} />
       <Route component={NotFound} />
     </Switch>
   );

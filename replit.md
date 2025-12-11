@@ -64,3 +64,39 @@ The platform operates on a two-surface system:
 *   **Neon (PostgreSQL):** Provides managed PostgreSQL database hosting.
 *   **Drizzle ORM:** Utilized as the Object-Relational Mapper for database interactions.
 *   **Stripe:** Integrated for payment processing functionalities.
+
+## QA & Testing Documentation
+
+### Widget Settings
+- Widget greeting/welcome message is stored as `welcomeMessage` in the backend
+- Frontend uses `greeting` internally and maps to `welcomeMessage` when saving
+- Color, position, and greeting settings persist across page reloads
+
+### Test Chat (Sandbox)
+- Located in admin bot dashboard under "Test Chat" tab
+- Enter key sends message, Shift+Enter for new line
+- Shows debug console with API request/response data
+
+### Multi-Tenant Isolation QA Checklist
+1. Login as `demo_faith_house` - should see only Faith House leads/bookings
+2. Login as admin and view Faith House workspace - same leads/bookings as client
+3. Create test lead in QA workspace - should NOT appear in Faith House
+4. All API endpoints filter by `clientId` from authenticated session
+5. Leads table uses `client_id` column for isolation
+6. Appointments table uses `client_id` column for isolation
+
+### Admin/Client Dashboard Parity
+- Leads created via chat appear in both client and admin dashboards
+- Booking status changes sync between admin and client views
+- Both dashboards use same API endpoints scoped by clientId
+
+### Widget Embed Testing
+- Dev route: `/dev/embed-test` (super-admin only)
+- Allows testing widget embed for any workspace/bot
+- Shows live preview in iframe with actual widget
+- Useful for verifying colors, position, and greeting text
+
+### Default Automations
+New clients receive two default automation workflows:
+1. "New Lead – Tag & Status" (trigger: `lead_captured`)
+2. "New Booking – Notification" (trigger: `appointment_booked`)

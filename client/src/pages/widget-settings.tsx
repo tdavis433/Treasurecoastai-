@@ -274,21 +274,27 @@ export default function WidgetSettingsPage() {
 
   useEffect(() => {
     if (data?.settings) {
-      const { id, botId: _, theme, ...rest } = data.settings as any;
+      const { id, botId: _, theme, welcomeMessage, placeholderText, ...rest } = data.settings as any;
       setSettings({ 
         ...defaultSettings, 
         ...rest,
         themeMode: theme || defaultSettings.themeMode,
+        // Map backend field names to frontend field names
+        greeting: welcomeMessage || defaultSettings.greeting,
+        placeholder: placeholderText || defaultSettings.placeholder,
       });
     }
   }, [data]);
 
   const saveMutation = useMutation({
     mutationFn: (settingsData: Omit<WidgetSettings, 'id' | 'botId'>) => {
-      const { themeMode, ...rest } = settingsData;
+      const { themeMode, greeting, placeholder, ...rest } = settingsData;
       const apiData = {
         ...rest,
         theme: themeMode,
+        // Map frontend field names to backend field names
+        welcomeMessage: greeting,
+        placeholderText: placeholder,
       };
       return apiRequest('PUT', `/api/bots/${botId}/widget-settings`, apiData);
     },
