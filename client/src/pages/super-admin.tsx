@@ -875,19 +875,31 @@ export default function SuperAdmin() {
     },
   });
 
+  // State for tracking which demo is being reset
+  const [resettingDemoSlug, setResettingDemoSlug] = useState<string | null>(null);
+  
   const resetDemoMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/admin/demo/faith-house/reset");
+    mutationFn: async (demoSlug: string) => {
+      // Map workspace slug to demo endpoint slug
+      let endpointSlug = 'faith-house';
+      if (demoSlug === 'faith_house_demo') {
+        endpointSlug = 'faith-house';
+      } else if (demoSlug === 'demo_paws_suds_grooming_demo') {
+        endpointSlug = 'paws-suds';
+      }
+      const response = await apiRequest("POST", `/api/admin/demo/${endpointSlug}/reset`);
       return response.json();
     },
     onSuccess: async (data) => {
       await queryClient.refetchQueries({ queryKey: ["/api/super-admin/workspaces"] });
+      setResettingDemoSlug(null);
       toast({ 
         title: "Demo Reset Complete", 
-        description: `Faith House demo data has been reset. ${data.stats?.leads || 0} leads, ${data.stats?.appointments || 0} appointments, ${data.stats?.sessions || 0} sessions seeded.`
+        description: `Demo data has been reset. ${data.stats?.leads || 0} leads, ${data.stats?.appointments || 0} appointments, ${data.stats?.sessions || 0} sessions seeded.`
       });
     },
     onError: (error: any) => {
+      setResettingDemoSlug(null);
       toast({ 
         title: "Reset Failed", 
         description: error.message || "Failed to reset demo data.", 
@@ -2246,15 +2258,16 @@ export default function SuperAdmin() {
                                       size="sm"
                                       variant="outline"
                                       className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
-                                      disabled={resetDemoMutation.isPending}
+                                      disabled={resetDemoMutation.isPending && resettingDemoSlug === demoWorkspace.slug}
                                       onClick={() => {
                                         if (confirm(`Reset all conversations, leads, bookings, and analytics for ${demoWorkspace.name}? This cannot be undone.`)) {
-                                          resetDemoMutation.mutate();
+                                          setResettingDemoSlug(demoWorkspace.slug);
+                                          resetDemoMutation.mutate(demoWorkspace.slug);
                                         }
                                       }}
                                       data-testid={`demo-reset-${demoWorkspace.slug}`}
                                     >
-                                      <RefreshCw className={`h-3 w-3 mr-1 ${resetDemoMutation.isPending ? 'animate-spin' : ''}`} />
+                                      <RefreshCw className={`h-3 w-3 mr-1 ${resetDemoMutation.isPending && resettingDemoSlug === demoWorkspace.slug ? 'animate-spin' : ''}`} />
                                       Reset Data
                                     </Button>
                                   </div>
@@ -2419,26 +2432,27 @@ export default function SuperAdmin() {
                                     Integration
                                   </DropdownMenuItem>
                                   {/* Demo Reset Option - Only for demo workspaces */}
-                                  {workspace.isDemo && workspace.slug === 'faith_house_demo' && (
+                                  {workspace.isDemo && (workspace.slug === 'faith_house_demo' || workspace.slug === 'demo_paws_suds_grooming_demo') && (
                                     <>
                                       <DropdownMenuSeparator className="bg-white/10" />
                                       <DropdownMenuItem 
                                         className="text-amber-400 hover:bg-amber-500/10 gap-2"
-                                        disabled={resetDemoMutation.isPending}
+                                        disabled={resetDemoMutation.isPending && resettingDemoSlug === workspace.slug}
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          if (confirm("This will reset conversations, leads, bookings, and analytics for the Faith House DEMO tenant only. Live data is NOT affected. Continue?")) {
-                                            resetDemoMutation.mutate();
+                                          if (confirm(`This will reset conversations, leads, bookings, and analytics for ${workspace.name} DEMO tenant only. Live data is NOT affected. Continue?`)) {
+                                            setResettingDemoSlug(workspace.slug);
+                                            resetDemoMutation.mutate(workspace.slug);
                                           }
                                         }}
-                                        data-testid="button-reset-demo-data"
+                                        data-testid={`button-reset-demo-${workspace.slug}`}
                                       >
-                                        {resetDemoMutation.isPending ? (
+                                        {resetDemoMutation.isPending && resettingDemoSlug === workspace.slug ? (
                                           <Loader2 className="h-4 w-4 animate-spin" />
                                         ) : (
                                           <RefreshCw className="h-4 w-4" />
                                         )}
-                                        {resetDemoMutation.isPending ? 'Resetting...' : 'Reset Demo Data'}
+                                        {resetDemoMutation.isPending && resettingDemoSlug === workspace.slug ? 'Resetting...' : 'Reset Demo Data'}
                                       </DropdownMenuItem>
                                     </>
                                   )}
