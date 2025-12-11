@@ -90,6 +90,22 @@
     }
   }
   
+  async function fetchFullConfigByClientBot(clientId, botId, apiUrl) {
+    if (!clientId || !botId) return null;
+    
+    try {
+      var response = await fetch(apiUrl + '/api/widget/full-config/' + clientId + '/' + botId);
+      if (!response.ok) {
+        console.warn('Failed to fetch widget config by clientId/botId:', response.status);
+        return null;
+      }
+      return await response.json();
+    } catch (error) {
+      console.warn('Error fetching widget config by clientId/botId:', error);
+      return null;
+    }
+  }
+  
   function getResolvedTheme(themeMode) {
     if (themeMode === 'auto') {
       return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -602,8 +618,10 @@
     var fullConfig = null;
     if (config.token) {
       fullConfig = await fetchFullConfig(config.token, config.apiUrl);
-      window.TreasureCoastAI.fullConfig = fullConfig;
+    } else if (config.clientId && config.botId) {
+      fullConfig = await fetchFullConfigByClientBot(config.clientId, config.botId, config.apiUrl);
     }
+    window.TreasureCoastAI.fullConfig = fullConfig;
     
     var bubble = createBubble(config, fullConfig);
     var iframe = createIframe(config, fullConfig);

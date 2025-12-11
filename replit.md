@@ -96,6 +96,24 @@ The platform operates on a two-surface system:
 - Shows live preview in iframe with actual widget
 - Useful for verifying colors, position, and greeting text
 
+**How the Preview Works:**
+- The preview iframe loads the widget embed script (`/widget/embed.js`)
+- Widget settings are fetched via `/api/widget/full-config/:clientId/:botId`
+- The widget applies configured colors, position, and greeting from the bot's widget settings
+- Changes to widget settings in the bot editor are reflected in the preview after refresh
+
+**Technical Note:**
+The embed script supports two configuration methods:
+1. Token-based: Uses HMAC-signed token for production (more secure)
+2. ClientId/BotId-based: Used by `/dev/embed-test` for testing (fetches config from API)
+
+**Testing Checklist:**
+1. Select a workspace and bot from the dropdowns
+2. Verify the widget bubble appears with correct primary color
+3. Click the bubble to open the chat window
+4. Verify the greeting message matches the bot's configured greeting
+5. Verify the position (bottom-left or bottom-right) matches configuration
+
 ### Default Automations
 New clients receive two default automation workflows:
 1. "New Lead – Tag & Status" (trigger: `lead_captured`)
@@ -118,6 +136,20 @@ New clients receive two default automation workflows:
 - `/reset-password?token=xxx` - Validates token, shows error for invalid/expired tokens
 - In development: reset link is logged to console (check server logs)
 - Tokens expire after 60 minutes
+
+**Manual Verification Steps (Development):**
+1. Navigate to `/forgot-password`
+2. Enter a valid user email and submit
+3. Check server console logs for the reset link (not actually emailed in dev)
+4. Copy the token from the logged URL
+5. Navigate to `/reset-password?token=YOUR_TOKEN`
+6. Enter a new password and submit
+7. Verify successful password update and redirect to login
+
+**Error Scenarios:**
+- Invalid token: Shows "Invalid or expired token" error
+- Expired token (>60 min): Shows same error as invalid token
+- Missing token: Redirects to forgot-password page
 
 ### Client Inbox
 - Client conversation transcript view at `/client/inbox`
