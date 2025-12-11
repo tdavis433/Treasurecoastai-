@@ -1,0 +1,121 @@
+You are working inside the Treasure Coast AI SaaS project.
+
+Goal:
+The landing page is already strong (new hero, stats, 9 sections, dark SaaS design, 11 demo workspaces). I do NOT want a full redesign.
+
+I want you to add a few **high-impact, low-risk polish items** to make the marketing story clearer and more compelling for small business owners and landlords:
+
+1) A “Who this is for” strip under the hero  
+2) A small “Done-for-you setup” callout  
+3) Sharper niche-focused copy in the demo showroom section  
+4) A “What you get when you sign up” mini-package list  
+5) One light tech flex line about GPT-4, framed as “you don’t touch prompts”
+
+Do not change routing, auth, or demo logic. Only adjust the home/landing page content and structure slightly within the existing visual style.
+
+────────────────────
+1. “WHO THIS IS FOR” STRIP (UNDER HERO)
+────────────────────
+
+In the landing page file (current home page, likely `client/src/pages/home.tsx`), immediately under the hero section, add a slim section that clearly states the target audiences.
+
+Content (you can adjust exact formatting, but keep the wording close):
+
+- Title line:
+  - “Built for local operators who actually need results”
+
+- Substrip (badges or inline list) like:
+  - “Sober living homes · Property managers · Home services · Gyms · Restaurants · Med spas”
+
+Use the existing styling system (badges / subtle pill chips) to match the current design.
+
+────────────────────
+2. “DONE-FOR-YOU SETUP” CALLOUT
+────────────────────
+
+Add a small, visually distinct callout box near either:
+
+- The “How it works” section, or  
+- The feature grid section.
+
+Content suggestion:
+
+- Title: “Done-for-you setup”
+- Body: “We configure your assistant, knowledge base, and booking flows for you — so you never have to touch prompts, flows, or settings screens.”
+
+Make it a small glassmorphism card that fits the existing dark/neon aesthetic.
+
+────────────────────
+3. DEMO SHOWROOM – NICHE-SPECIFIC COPY
+────────────────────
+
+In the existing demo showroom section (where you show cards linking to demo workspaces like Faith House, Paws & Suds, Radiance Med Spa, etc.):
+
+- Update the section title and subtitle to something like:
+
+  - Title: “See Treasure Coast AI working for businesses like yours”
+  - Subtitle: “Each demo is a fully configured assistant with real lead and booking flows for that niche.”
+
+- For each demo card, add a 1–2 line **niche-specific description**. For example:
+
+  - Faith House Recovery:
+    - “AI assistant for sober living: answers intake questions, explains program rules, and books tours or intake calls.”
+
+  - Paws & Suds Grooming:
+    - “AI receptionist for grooming studios: handles pricing questions, availability, and fills your grooming calendar.”
+
+  - Radiance Med Spa:
+    - “AI coordinator for med spas: explains treatments, sets expectations, and books consultations.”
+
+  - Premier Properties:
+    - “AI leasing assistant: responds to showing requests, qualifies renters, and schedules property tours.”
+
+  - Etc., following the same pattern for all 11 demo workspaces.
+
+Ensure all cards remain visually consistent and responsive.
+
+────────────────────
+4. “WHAT YOU GET” MINI-PACKAGE SECTION
+────────────────────
+
+Before the final CTA (near the bottom), add a concise section titled something like:
+
+- “What you get with Treasure Coast AI”
+
+List 4–6 bullet points, e.g.:
+
+- “One fully configured AI assistant tailored to your business”
+- “Website chat widget with your branding, colors, and logo”
+- “Client dashboard to view leads, bookings, and conversations”
+- “Agency control panel so we can fine-tune everything for you”
+- “Ongoing updates to FAQs and flows as your business changes”
+
+Make this a simple, clean list using the existing typography and card styling.
+
+────────────────────
+5. LIGHT TECH FLEX LINE (GPT-4) WITHOUT OVERPOWERING THE BENEFITS
+────────────────────
+
+Somewhere appropriate (feature grid, comparison section, or near the “Why Treasure Coast AI” copy):
+
+- Add a short line that highlights the technology without making the page feel like it’s only about GPT-4.
+
+Suggested copy:
+
+- “Powered by GPT-4 and tuned specifically for local businesses — but you never have to touch a prompt.”
+
+You can treat this as a small badge, subtext line in the comparison section, or a small one-liner under a feature like “Smarter AI under the hood”.
+
+────────────────────
+6. VISUAL INTEGRATION & CHECKS
+────────────────────
+
+- Keep the overall **dark luxury + neon-glass** aesthetic.
+- Use existing spacing, typography, and Framer Motion patterns where possible to avoid jarring new patterns.
+- Verify responsiveness at key breakpoints (desktop, tablet, mobile) to ensure:
+  - The new strip, callout, and section don’t create horizontal scrolling or cramped layouts.
+  - New text doesn’t overflow or clip on small screens.
+
+Do not modify routes, auth, or the demo workspaces. These changes should strictly improve the marketing clarity and perceived value of the landing page.
+
+When you’re done, summarize which sections you modified and confirm that all existing CTAs (login, demos, contact) still work as before.
