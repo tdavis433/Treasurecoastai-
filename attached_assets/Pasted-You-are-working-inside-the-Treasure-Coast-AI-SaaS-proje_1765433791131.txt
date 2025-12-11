@@ -1,0 +1,264 @@
+You are working inside the Treasure Coast AI SaaS project on Replit.
+
+Goal:
+I want the platform to be **demo-perfect** for live sales calls. That means:
+
+- A clean, curated set of demo workspaces/pages and assistants.
+- All demo pages and assistants share a **uniform look & feel** (colors, theme, style).
+- Demo assistants are jam-packed with realistic knowledge and ready to book tours/appointments/consults.
+- Demo dashboards look “alive” with seeded leads, bookings, and conversations.
+- There is a **safe, separate Faith House “live” demo** I can actually hand to my landlord after showing him the system.
+
+Please do NOT add any new “self-serve client onboarding wizard” or change the core pricing/login flows. This work is ONLY about the demos, seed data, styling, and cleanup.
+
+────────────────────
+1. DEMO ARCHITECTURE – FAITH HOUSE & MAIN DEMO PAGE
+────────────────────
+
+Current known structure (from earlier work):
+- There is a canonical Faith House workspace (e.g. `faith_house`) used by the `demo_faith_house` client login.
+- There is a separate Faith House demo workspace (e.g. `faith_house_demo`) used by `/demo/faith-house`.
+
+I want the following architecture:
+
+1) **Main demo index page** (the “See what we can do” / lead-gen demo page)
+   - This is currently something like `/demos` (or whatever route is already being used from the main landing page).
+   - Add the **Faith House demo** ( `/demo/faith-house` ) to this main demo page, alongside any other demo cards.
+   - Each demo card should:
+     - Show the business name.
+     - Show a short 1–2 line description of what the business is (e.g. “Faith House – sober living facility”).
+     - Have a clear button like “Open Demo” that links to that demo page.
+
+2) **Faith House demo vs Faith House live**
+   - Keep **two separate workspaces** for Faith House:
+     - `faith_house_demo` → used ONLY for `/demo/faith-house`. This can be reset and reseeded as needed.
+     - `faith_house` (or similar) → canonical “live demo” workspace used by the `demo_faith_house` client login.
+   - Requirements:
+     - Do NOT merge demo and live workspaces.
+     - Do NOT delete the canonical `faith_house` workspace or the `demo_faith_house` client login.
+     - `/demo/faith-house` should be hooked to the **demo** workspace, not the canonical one.
+   - The Faith House **demo** page (`/demo/faith-house`) should match the same look & feel as the other demo pages (see sections below).
+
+────────────────────
+2. UNIFORM LOOK & FEEL FOR ALL DEMO PAGES & ASSISTANTS
+────────────────────
+
+I want all demo experiences to feel visually consistent, like one polished product:
+
+- The `/demo/faith-house` page is the reference design:
+  - Use its color palette, typography, and layout as the **design baseline** for:
+    - The main `/demos` index (cards, layout).
+    - Any other individual demo pages (if they exist).
+
+Specific requirements:
+
+1) **Visual theming**
+   - All demo pages (including `/demo/faith-house`) should share:
+     - The same primary accent color.
+     - Consistent spacing, card styles, and typography scale.
+   - If individual businesses have unique branding inside the widget (e.g. widget color), that’s fine—but the *page chrome* should feel uniform.
+
+2) **Demo assistant widget styling**
+   - For every demo assistant used on public demo pages:
+     - Use a consistent, polished default widget style:
+       - Same base font.
+       - Similar chat bubble style.
+       - Header layout (title, subtitle, avatar).
+     - Each assistant can have:
+       - Business-specific name (e.g. “Faith House AI Assistant”, “Paws & Suds AI Assistant”).
+       - Business-appropriate color variant (e.g., different but complementary color shades), but keep the overall widget style consistent.
+
+Make sure:
+- Any previous inconsistent or placeholder theming for demo assistants is updated to this unified look.
+
+────────────────────
+3. DEMO ASSISTANTS – KNOWLEDGE BASE & CONFIG “JAM-PACKED”
+────────────────────
+
+I want the main demo assistants to feel **deep and realistic** for their specific demo business.
+
+For every primary demo workspace (including `faith_house_demo` and any other demo business you keep):
+
+1) **Persona & system prompt**
+   - Set a rich, business-specific persona like:
+     - “You are a friendly, knowledgeable AI assistant for [Business Name], a [business type]. You help visitors with [key goals: pricing, availability, booking tours/appointments, answering common questions].”
+   - Include:
+     - Tone (friendly, clear, reassuring).
+     - Target audience (e.g. sober living residents, pet parents, etc.).
+     - Main objectives (convert to booked tours/appointments, qualify leads, etc.).
+
+2) **Knowledge Base / FAQs**
+   - For each demo assistant, fill the Knowledge/FAQ sections with **realistic, high-density content** about that fictional business:
+     - Who they help.
+     - Services offered.
+     - Pricing ranges or examples.
+     - Location & neighborhood.
+     - Rules/policies (e.g., curfew, visitors, pets).
+     - Common objections/concerns and good responses.
+   - At minimum:
+     - 8–15 well-written FAQs per demo.
+     - 3–5 longer-form knowledge base entries (about, program details, process, etc.).
+   - Make sure:
+     - The knowledge is consistent with the demo page copy.
+     - There are no placeholder texts like “Lorem ipsum” or “TODO”.
+
+3) **Hours & appointment types**
+   - For each demo business:
+     - Configure hours (e.g., Mon–Fri 9am–6pm, Sat 10am–4pm).
+     - Configure appointment types in the Booking & Links / Appointment Types section to match what that business would realistically offer, e.g.:
+       - For Faith House:
+         - “Facility Tour”
+         - “Phone Consultation”
+         - “Intake Screening Call”
+       - For another demo (e.g., pet grooming):
+         - “Full Grooming Appointment”
+         - “Bath & Brush”
+         - “New Client Consultation”
+     - Ensure the AI assistant is able to suggest/use these appointment types in conversation.
+
+4) **Automations**
+   - Confirm default automations for:
+     - “New Lead – Tag & Status”
+     - “New Booking – Notification” (or equivalent)
+   - Are **enabled** and configured for each demo workspace so that:
+     - Leads get tags like “inbound”, “demo-visitor”, etc.
+     - Bookings get appropriate default statuses.
+
+────────────────────
+4. DEMO DASHBOARDS – RESET & SEED LIKE IT’S LIVE
+────────────────────
+
+I want each main demo workspace’s dashboards to look like they’re actively being used.
+
+For each primary demo workspace (including `faith_house_demo` and any others you keep):
+
+1) **Reset current demo data**
+   - In the dev/demo database:
+     - Clear out old demo junk that is confusing, inconsistent, or from prior QA runs.
+   - Specifically:
+     - Remove old leads/bookings/conversations that don’t match the new personas/knowledge.
+     - Remove QA test visitors (e.g. names starting with “QA ”, emails like `qa.*@example.com`) from demo workspaces.
+
+2) **Seed realistic demo data**
+   - Seed each demo workspace with:
+     - Leads:
+       - 10–30 demo leads with realistic names, emails, phones, statuses (New, Contacted, Tour Scheduled, etc.).
+       - Appropriate tags (e.g. “tour-request”, “call-request”, “high-intent”).
+     - Bookings:
+       - Several recent/future bookings:
+         - Mix of tours, phone calls, consults—whatever fits the business.
+         - Different statuses (Pending, Confirmed, Completed, No-Show).
+     - Conversations:
+       - Seed transcripts where:
+         - Visitors ask typical questions.
+         - The assistant answers using the new knowledge base.
+         - Some end in a booking, some just info-only.
+   - Make sure:
+     - Dates look plausible (recent days/weeks; some upcoming appointments).
+     - Data aligns with the demo’s hours and appointment types.
+
+3) **Metrics**
+   - Ensure that the Overview dashboard for each demo workspace shows:
+     - Non-zero counts for:
+       - Leads
+       - Bookings
+       - Conversations
+     - Charts that have some shape (not all empty).
+
+Implementation detail:
+- It’s fine to do this via a demo seed script (e.g. `demoSeed.ts`) and/or one-off seeding for the dev/demo environment.
+- Just don’t dirty the canonical Faith House live workspace with fake demo-only data; keep that workspace’s data realistic and separated as needed.
+
+────────────────────
+5. CLEAN UP OLD QA / NON-DEMO WORKSPACES & ASSISTANTS
+────────────────────
+
+I want the environment to be clean and focused on **real demos + real clients**, not past QA clutter.
+
+Please:
+
+1) Remove QA-labeled/demo-only junk
+   - In the seed scripts and the current dev/demo database, remove:
+     - Workspaces starting with `QA ` (e.g., “QA Regression Workspace”, “QA Onboarding Workspace”, etc.).
+     - Assistants starting with `QA ` or “QA …”.
+     - Client users whose emails look like `qa.*@example.com` or `qa.*+*@example.com`.
+   - DO NOT delete:
+     - The canonical Faith House workspace (`faith_house`).
+     - The Faith House demo workspace (`faith_house_demo`).
+     - Any new, non-QA workspaces I create going forward.
+
+2) Keep only:
+   - The main demo workspaces/pages.
+   - Their demo assistants.
+   - The Faith House canonical workspace for the `demo_faith_house` client.
+   - Any actual production tenants (if present) untouched.
+
+If you need to preserve QA examples for future internal use, keep them as code comments or in documentation, not live in the visible app.
+
+────────────────────
+6. FAITH HOUSE “LIVE DEMO” COPY FOR LANDLORD
+────────────────────
+
+I need a Faith House workspace that I can actually give to my landlord as a **live example** after showing off the demos.
+
+Current structure:
+- `faith_house` (canonical) used by the `demo_faith_house` client login.
+- `faith_house_demo` used by `/demo/faith-house` for resettable public demo.
+
+Requirements:
+
+1) Confirm & polish canonical Faith House workspace (`faith_house`)
+   - Ensure:
+     - Persona, FAQs, knowledge, hours, appointment types are all **realistic** for Faith House.
+     - Its dashboard shows sane but not over-the-top data (less “salesy-seed” than pure demos).
+   - This is the workspace I will eventually connect to real Faith House operations, so keep it:
+     - Clean.
+     - Less obviously “fake demo data”.
+
+2) Demo Faith House page (`/demo/faith-house`)
+   - This one can be more “showy”:
+     - Heavier seed data.
+     - Very polished knowledge & FAQs.
+   - Make sure the page:
+     - Clearly explains this is a demo.
+     - Matches the unified demo styling.
+
+3) Do NOT link `/demo/faith-house` directly to the canonical `faith_house` workspace.
+   - Keep the architecture:
+     - `/demo/faith-house` → `faith_house_demo` (resettable).
+     - `demo_faith_house` login → `faith_house` (canonical “live demo” tenant).
+
+────────────────────
+7. FINAL VERIFICATION & NOTES
+────────────────────
+
+After implementing all of the above:
+
+1) Please run a manual check for each main demo:
+   - Open `/demos`.
+   - Open each demo page (including `/demo/faith-house`).
+   - Confirm:
+     - Styling is consistent.
+     - The assistant widget appears with correct color/position/greeting.
+     - The assistant can answer detailed questions about the business.
+     - It can schedule an appropriate appointment type via chat.
+
+2) For each demo workspace:
+   - Check:
+     - Overview dashboard → non-zero, plausible metrics.
+     - Leads → seeded leads look consistent with the business.
+     - Bookings → seeded bookings have correct appointment types and statuses.
+     - Inbox → seeded conversations look realistic.
+
+3) For Faith House:
+   - Confirm:
+     - `demo_faith_house` client login still works and views the canonical `faith_house` workspace.
+     - `/demo/faith-house` still works and is wired to `faith_house_demo`.
+
+If any of these steps require assumptions, please document them in `replit.md` under a “Demo Configuration” section so I know exactly:
+
+- Which workspaces are considered “main demos”.
+- Which workspaces are safe to reset.
+- Which workspace is the canonical Faith House “live demo” I can hand to my landlord.
+
+Again: do NOT build any client-facing onboarding wizard. I will always be the one configuring and managing these demos from the super-admin side.
