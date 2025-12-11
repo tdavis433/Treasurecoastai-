@@ -110,7 +110,7 @@ export default function Home() {
     {
       name: "Faith House",
       type: "Sober Living Home",
-      description: "See how an AI assistant answers questions about recovery housing, captures inquiries, and books facility tours 24/7.",
+      description: "AI assistant for recovery housing: answers intake questions, explains program rules, and books facility tours or intake calls.",
       icon: Heart,
       color: "from-cyan-500 to-teal-500",
       href: "/demo/faith-house"
@@ -118,7 +118,7 @@ export default function Home() {
     {
       name: "Paws & Suds",
       type: "Pet Grooming",
-      description: "Watch the AI handle grooming inquiries, explain services, and schedule appointments for furry clients.",
+      description: "AI receptionist for grooming studios: handles pricing questions, checks availability, and fills your grooming calendar automatically.",
       icon: Heart,
       color: "from-cyan-400 to-blue-500",
       href: "/demo/paws-suds"
@@ -126,7 +126,7 @@ export default function Home() {
     {
       name: "Coastal Breeze Grill",
       type: "Restaurant",
-      description: "Experience how a restaurant AI handles reservations, menu questions, and special event inquiries.",
+      description: "AI host for restaurants: answers menu questions, handles reservation requests, and books private events or large parties.",
       icon: Utensils,
       color: "from-amber-500 to-orange-500",
       href: "/demo/restaurant"
@@ -134,7 +134,7 @@ export default function Home() {
     {
       name: "Fade Factory",
       type: "Barbershop",
-      description: "See a barber AI book appointments, explain services, and handle walk-in wait time questions.",
+      description: "AI scheduler for barbershops: books appointments, explains service options, and manages walk-in wait time questions.",
       icon: Scissors,
       color: "from-purple-500 to-pink-500",
       href: "/demo/barbershop"
@@ -142,7 +142,7 @@ export default function Home() {
     {
       name: "Iron Coast Fitness",
       type: "Gym & Fitness",
-      description: "Watch a fitness AI handle membership inquiries, class schedules, and trial booking requests.",
+      description: "AI sales rep for gyms: handles membership inquiries, explains class schedules, and books trial sessions or facility tours.",
       icon: Dumbbell,
       color: "from-green-500 to-emerald-500",
       href: "/demo/fitness"
@@ -150,7 +150,7 @@ export default function Home() {
     {
       name: "Radiance Med Spa",
       type: "Medical Spa",
-      description: "See how a med spa AI explains treatments, pricing, and books consultations professionally.",
+      description: "AI coordinator for med spas: explains treatments, sets expectations on pricing, and books consultations professionally.",
       icon: Syringe,
       color: "from-pink-500 to-rose-500",
       href: "/demo/med-spa"
@@ -421,6 +421,30 @@ export default function Home() {
               </motion.div>
             ))}
           </div>
+
+          {/* Done-for-you setup callout */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="mt-16 max-w-2xl mx-auto"
+          >
+            <div className="glass-card p-6 md:p-8 border-primary/20 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-2xl" />
+              <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center flex-shrink-0">
+                  <UserCheck className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-white mb-1">Done-for-you setup</h4>
+                  <p className="text-white/60 text-sm leading-relaxed">
+                    We configure your assistant, knowledge base, and booking flows for you — so you never have to touch prompts, flows, or settings screens.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </section>
 
@@ -604,9 +628,13 @@ export default function Home() {
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4" data-testid="text-comparison-title">
               Why Treasure Coast AI <span className="text-primary">beats generic chatbots</span>
             </h2>
-            <p className="text-lg sm:text-xl text-white/60 max-w-2xl mx-auto">
+            <p className="text-lg sm:text-xl text-white/60 max-w-2xl mx-auto mb-4">
               Purpose-built for real local businesses, not developers
             </p>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20">
+              <Bot className="w-4 h-4 text-primary" />
+              <span className="text-sm text-white/70">Powered by GPT-4 — but you never have to touch a prompt</span>
+            </div>
           </motion.div>
 
           <div className="space-y-6">
@@ -845,7 +873,61 @@ export default function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════════════
-          9. FINAL CTA SECTION
+          9. WHAT YOU GET SECTION
+      ═══════════════════════════════════════════════════════════════════════════ */}
+      <section className="py-24 sm:py-32 px-6 bg-[#080A0E] relative">
+        <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `radial-gradient(ellipse 50% 40% at 50% 50%, rgba(0, 229, 204, 0.03) 0%, transparent 60%)`
+          }}
+        />
+        <div className="max-w-4xl mx-auto relative z-10">
+          <motion.div 
+            className="text-center mb-12"
+            {...fadeInUp}
+            viewport={{ once: true }}
+            whileInView="animate"
+            initial="initial"
+          >
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4" data-testid="text-whatyouget-title">
+              What you get with <span className="text-primary">Treasure Coast AI</span>
+            </h2>
+            <p className="text-lg sm:text-xl text-white/60">
+              Everything you need to start converting visitors into customers
+            </p>
+          </motion.div>
+
+          <motion.div 
+            className="glass-card p-8 md:p-10"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="grid md:grid-cols-2 gap-4">
+              {[
+                { icon: Bot, text: "One fully configured AI assistant tailored to your business" },
+                { icon: Palette, text: "Website chat widget with your branding, colors, and logo" },
+                { icon: LayoutDashboard, text: "Client dashboard to view leads, bookings, and conversations" },
+                { icon: Settings, text: "Agency control panel so we can fine-tune everything for you" },
+                { icon: FileText, text: "Ongoing updates to FAQs and flows as your business changes" },
+                { icon: Headphones, text: "Support from our team when you need adjustments" }
+              ].map((item, i) => (
+                <div key={i} className="flex items-start gap-3 p-4 rounded-lg bg-white/[0.02] border border-white/[0.06]">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <item.icon className="w-4 h-4 text-primary" />
+                  </div>
+                  <span className="text-white/80 text-sm leading-relaxed pt-1">{item.text}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════════════
+          10. FINAL CTA SECTION
       ═══════════════════════════════════════════════════════════════════════════ */}
       <section className="py-24 sm:py-32 px-6 bg-[#0B0E13]">
         <div className="max-w-5xl mx-auto">
