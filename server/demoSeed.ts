@@ -686,6 +686,52 @@ async function getOrCreateDemoUser(): Promise<string> {
   return newUser.id;
 }
 
+// Demo client login configurations - each demo has unique credentials
+export const DEMO_CLIENT_LOGINS: Record<string, { username: string; password: string; businessName: string }> = {
+  faith_house_demo: { username: "faithhouse", password: "demo123", businessName: "Faith House Recovery" },
+  demo_paws_suds_grooming_demo: { username: "pawssuds", password: "demo123", businessName: "Paws & Suds Grooming" },
+  demo_coastal_breeze: { username: "coastalbreeze", password: "demo123", businessName: "Coastal Breeze Grill" },
+  demo_coastline_auto: { username: "coastlineauto", password: "demo123", businessName: "Coastline Auto Care" },
+  demo_fade_factory: { username: "fadefactory", password: "demo123", businessName: "Fade Factory Barbershop" },
+  demo_ink_soul: { username: "inksoul", password: "demo123", businessName: "Ink & Soul Tattoo" },
+  demo_iron_coast_fitness: { username: "ironcoast", password: "demo123", businessName: "Iron Coast Fitness" },
+  demo_new_horizons: { username: "newhorizons", password: "demo123", businessName: "New Horizons Recovery" },
+  demo_premier_properties: { username: "premier", password: "demo123", businessName: "Premier Properties" },
+  demo_radiance_medspa: { username: "radiance", password: "demo123", businessName: "Radiance Med Spa" },
+  demo_tc_handyman: { username: "tchandyman", password: "demo123", businessName: "TC Pro Handyman" },
+};
+
+async function getOrCreateDemoClientUser(slug: string): Promise<string> {
+  const loginConfig = DEMO_CLIENT_LOGINS[slug];
+  if (!loginConfig) {
+    // Fall back to the shared demo_admin user
+    return getOrCreateDemoUser();
+  }
+
+  const [existing] = await db
+    .select()
+    .from(adminUsers)
+    .where(eq(adminUsers.username, loginConfig.username))
+    .limit(1);
+
+  if (existing) {
+    return existing.id;
+  }
+
+  const hashedPassword = await bcrypt.hash(loginConfig.password, 10);
+  const [newUser] = await db
+    .insert(adminUsers)
+    .values({
+      username: loginConfig.username,
+      passwordHash: hashedPassword,
+      role: "client_admin",
+      mustChangePassword: false,
+    })
+    .returning();
+
+  return newUser.id;
+}
+
 async function clearDemoWorkspaceData(clientId: string): Promise<void> {
   await db.delete(appointments).where(eq(appointments.clientId, clientId));
   await db.delete(leads).where(eq(leads.clientId, clientId));
@@ -808,7 +854,8 @@ export async function seedDemoWorkspace(slug: string): Promise<{
     throw new Error(`No demo configuration found for slug: ${slug}`);
   }
 
-  const demoUserId = await getOrCreateDemoUser();
+  // Create individual client user for this demo workspace
+  const demoUserId = await getOrCreateDemoClientUser(slug);
 
   let [existingWorkspace] = await db
     .select()
