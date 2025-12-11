@@ -176,15 +176,26 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen bg-background overflow-hidden">
+    <div className="min-h-screen bg-[#0B0E13] overflow-hidden">
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center hero-mesh">
+      <section className="relative min-h-screen flex items-center justify-center">
+        {/* Ambient background matching demo pages */}
+        <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `
+              radial-gradient(ellipse 80% 50% at 50% 0%, rgba(0, 229, 204, 0.08) 0%, transparent 50%),
+              radial-gradient(ellipse 60% 40% at 80% 20%, rgba(168, 85, 247, 0.05) 0%, transparent 40%),
+              radial-gradient(ellipse 60% 40% at 20% 80%, rgba(0, 229, 204, 0.04) 0%, transparent 40%)
+            `
+          }}
+        />
         {/* Gradient orbs */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-secondary/15 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-500/8 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
         
         {/* Navigation */}
-        <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-black/40 backdrop-blur-xl">
+        <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] bg-[#050608]/80 backdrop-blur-2xl">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2">
             <div className="flex items-center flex-shrink-0" data-testid="text-logo">
               <TreasureCoastLogo size="md" />
@@ -292,8 +303,13 @@ export default function Home() {
       </section>
 
       {/* Features Section */}
-      <section className="py-32 px-6 relative">
-        <div className="absolute inset-0 gradient-radial-glow opacity-50" />
+      <section className="py-32 px-6 relative bg-[#0B0E13]">
+        <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `radial-gradient(ellipse 50% 30% at 50% 50%, rgba(0, 229, 204, 0.05) 0%, transparent 70%)`
+          }}
+        />
         <div className="max-w-7xl mx-auto relative z-10">
           <motion.div 
             className="text-center mb-20"
@@ -368,7 +384,13 @@ export default function Home() {
       </section>
 
       {/* How It Works */}
-      <section className="py-32 px-6 bg-gradient-to-b from-transparent via-primary/5 to-transparent">
+      <section className="py-32 px-6 bg-[#0B0E13] relative">
+        <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `linear-gradient(180deg, transparent 0%, rgba(0, 229, 204, 0.03) 50%, transparent 100%)`
+          }}
+        />
         <div className="max-w-7xl mx-auto">
           <motion.div 
             className="text-center mb-20"
@@ -424,8 +446,13 @@ export default function Home() {
       </section>
 
       {/* Pricing Section */}
-      <section className="py-32 px-6 relative" id="pricing">
-        <div className="absolute inset-0 gradient-radial-glow opacity-30" />
+      <section className="py-32 px-6 relative bg-[#0B0E13]" id="pricing">
+        <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `radial-gradient(ellipse 60% 40% at 50% 30%, rgba(168, 85, 247, 0.04) 0%, transparent 60%)`
+          }}
+        />
         <div className="max-w-7xl mx-auto relative z-10">
           <motion.div 
             className="text-center mb-16"
@@ -491,7 +518,7 @@ export default function Home() {
       </section>
 
       {/* Testimonials Section */}
-      <section className="py-32 px-6">
+      <section className="py-32 px-6 bg-[#0B0E13]">
         <div className="max-w-7xl mx-auto">
           <motion.div 
             className="text-center mb-16"
@@ -536,7 +563,13 @@ export default function Home() {
       </section>
 
       {/* FAQ Section */}
-      <section className="py-32 px-6 bg-gradient-to-b from-transparent via-primary/5 to-transparent" id="faq">
+      <section className="py-32 px-6 bg-[#0B0E13] relative" id="faq">
+        <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `linear-gradient(180deg, transparent 0%, rgba(0, 229, 204, 0.02) 50%, transparent 100%)`
+          }}
+        />
         <div className="max-w-3xl mx-auto">
           <motion.div 
             className="text-center mb-16"
@@ -588,7 +621,7 @@ export default function Home() {
       </section>
 
       {/* Contact Form Section */}
-      <section className="py-32 px-6" id="contact-form">
+      <section className="py-32 px-6 bg-[#0B0E13]" id="contact-form">
         <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -701,7 +734,7 @@ export default function Home() {
       </section>
 
       {/* Social Proof CTA */}
-      <section className="py-32 px-6">
+      <section className="py-32 px-6 bg-[#0B0E13]">
         <div className="max-w-7xl mx-auto">
           <motion.div 
             className="glass-card p-12 md:p-20 text-center relative overflow-hidden"
@@ -755,7 +788,7 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-6 border-t border-white/5" data-testid="footer">
+      <footer className="py-12 px-6 border-t border-white/[0.06] bg-[#050608]" data-testid="footer">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div data-testid="footer-logo">
             <TreasureCoastLogo size="sm" />

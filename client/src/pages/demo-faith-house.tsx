@@ -9,12 +9,14 @@ import {
   BarChart3,
   Sparkles,
   ArrowRight, 
+  ArrowLeft,
   TestTube2,
   ExternalLink,
   CheckCircle2,
   Zap,
   ClipboardList
 } from "lucide-react";
+import { Link } from "wouter";
 
 function ParticleField() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -228,37 +230,24 @@ export default function DemoFaithHouse() {
       <ParticleField />
       <div id="faith-house-demo-widget" data-testid="faith-house-demo-widget" />
       
-      <header className="border-b border-white/[0.06] bg-[#050608]/80 backdrop-blur-2xl sticky top-0 z-50 relative">
-        <div 
-          className="absolute bottom-0 left-0 right-0 h-[1px]"
-          style={{
-            background: 'linear-gradient(90deg, transparent, rgba(0, 229, 204, 0.15), transparent)'
-          }}
-        />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <TreasureCoastLogo variant="full" size="md" />
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-black/60 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2">
+          <Link href="/demos">
+            <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" data-testid="link-back-demos">
+              <ArrowLeft className="h-4 w-4 text-white/70" />
+              <span className="text-white/70 text-sm">All Demos</span>
             </div>
-            
-            <div className="flex items-center gap-3">
-              <Badge 
-                className="bg-amber-500/15 text-amber-400 border-amber-400/30 shadow-[0_0_15px_rgba(245,158,11,0.15)]"
-                data-testid="badge-demo-header"
-              >
-                <TestTube2 className="h-3 w-3 mr-1" />
-                LIVE DEMO
-              </Badge>
-              <Button variant="outline" size="sm" className="border-white/15 text-white/60 hover:text-white hover:bg-white/[0.06] hover:border-white/25" asChild>
-                <a href="/login" className="flex items-center gap-2">
-                  Staff Login
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              </Button>
-            </div>
+          </Link>
+          <div className="flex items-center" data-testid="text-logo">
+            <TreasureCoastLogo size="md" />
           </div>
+          <Link href="/login">
+            <Button variant="outline" className="border-white/20 text-white hover:bg-white/10" data-testid="button-login">
+              Client Login
+            </Button>
+          </Link>
         </div>
-      </header>
+      </nav>
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 relative z-10">
         <div className="text-center space-y-8">
