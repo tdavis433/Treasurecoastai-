@@ -100,3 +100,27 @@ The platform operates on a two-surface system:
 New clients receive two default automation workflows:
 1. "New Lead – Tag & Status" (trigger: `lead_captured`)
 2. "New Booking – Notification" (trigger: `appointment_booked`)
+
+### Lead Detail Modal (Admin)
+- Admin client detail page (`/super-admin/clients/:slug`) has clickable lead rows
+- Clicking a lead opens a detail Dialog showing:
+  - Lead name and capture date
+  - Status badge (new/contacted/qualified/converted)
+  - Contact information (email, phone)
+  - Tags section with purple badges (if tags exist)
+  - Activity timeline (lead capture event, status changes)
+  - Notes section (if notes exist)
+- Lead rows have hover effect and `data-testid="lead-row-{id}"`
+- Dialog has `data-testid="dialog-lead-detail"`
+
+### Password Reset Flow
+- `/forgot-password` - Email input form, always shows success message (prevents email enumeration)
+- `/reset-password?token=xxx` - Validates token, shows error for invalid/expired tokens
+- In development: reset link is logged to console (check server logs)
+- Tokens expire after 60 minutes
+
+### Client Inbox
+- Client conversation transcript view at `/client/inbox`
+- Left panel: session list with snippets, message counts, topics
+- Right panel: full message thread with user/assistant styling
+- Messages fetched from `/api/client/inbox/sessions/:sessionId`

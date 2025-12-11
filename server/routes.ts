@@ -9219,6 +9219,9 @@ These suggestions should be relevant to what was just discussed and help guide t
         context: lead.context || null,
         status: lead.status || 'new',
         createdAt: lead.createdAt?.toISOString(),
+        updatedAt: lead.updatedAt?.toISOString() || null,
+        tags: lead.tags || [],
+        notes: lead.notes || null,
       }));
       
       res.json({
