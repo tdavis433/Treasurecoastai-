@@ -235,9 +235,12 @@ New clients receive two default automation workflows:
 4. **Session Security:** Sessions are encrypted with `SESSION_SECRET`
 5. **Helmet:** HTTP security headers are enabled by default
 6. **Account Lockout:** 5 failed login attempts triggers 15-minute lockout
+7. **Default Credentials:** Change the default admin password (admin/admin123) before going live with real clients. A warning banner appears in the super-admin dashboard when using default credentials in production.
+8. **Dev-Only Routes:** The `/dev/embed-test` page is for internal use only and requires super_admin authentication
 
 ### Production Logging
 
 - Verbose chat message logging is disabled in production (`NODE_ENV=production`)
+- No chat transcript content is logged in production
+- Password reset URLs and email content are not logged in production
 - Error logging remains active for troubleshooting
-- Password reset email logging is disabled in production to protect privacy

@@ -3548,6 +3548,37 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
+  // Security check endpoint - warns if using default admin credentials in production
+  app.get("/api/auth/security-check", requireAuth, async (req, res) => {
+    try {
+      const user = await db.select({
+        id: adminUsers.id,
+        username: adminUsers.username,
+        role: adminUsers.role,
+        passwordHash: adminUsers.passwordHash,
+      }).from(adminUsers).where(eq(adminUsers.id, req.session.userId!)).limit(1);
+      
+      if (!user[0] || user[0].role !== 'super_admin') {
+        return res.json({ showDefaultCredentialsWarning: false });
+      }
+      
+      // Check if using default username 'admin' and default password 'admin123'
+      const isDefaultUsername = user[0].username === 'admin';
+      const isDefaultPassword = await bcrypt.compare('admin123', user[0].passwordHash);
+      const isProduction = process.env.NODE_ENV === 'production';
+      
+      res.json({
+        showDefaultCredentialsWarning: isProduction && isDefaultUsername && isDefaultPassword,
+        isProduction,
+        isDefaultUsername,
+        isDefaultPassword,
+      });
+    } catch (error) {
+      console.error("Security check error:", error);
+      res.json({ showDefaultCredentialsWarning: false });
+    }
+  });
+
   // =============================================
   // PASSWORD RESET API ENDPOINTS
   // =============================================

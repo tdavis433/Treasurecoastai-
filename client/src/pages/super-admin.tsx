@@ -287,6 +287,18 @@ export default function SuperAdmin() {
     retry: false,
   });
 
+  // Security check for default credentials warning
+  const { data: securityCheck } = useQuery<{
+    showDefaultCredentialsWarning: boolean;
+    isProduction: boolean;
+    isDefaultUsername: boolean;
+    isDefaultPassword: boolean;
+  }>({
+    queryKey: ["/api/auth/security-check"],
+    enabled: currentUser?.role === "super_admin",
+  });
+  const [dismissedSecurityWarning, setDismissedSecurityWarning] = useState(false);
+
   useEffect(() => {
     if (!authLoading && !currentUser) {
       setLocation("/login");
@@ -1010,6 +1022,32 @@ export default function SuperAdmin() {
           </Button>
         </div>
       </header>
+
+      {/* Production Security Warning Banner */}
+      {securityCheck?.showDefaultCredentialsWarning && !dismissedSecurityWarning && (
+        <div className="bg-amber-500/10 border-b border-amber-500/30 px-6 py-3 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="h-5 w-5 text-amber-400" />
+            <div>
+              <span className="text-amber-300 font-medium">Security Warning:</span>
+              <span className="text-amber-200/80 ml-2">
+                You are using default admin credentials in production. Please change your password immediately.
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-amber-500/30 text-amber-300 hover:bg-amber-500/20"
+              onClick={() => setDismissedSecurityWarning(true)}
+              data-testid="button-dismiss-security-warning"
+            >
+              Dismiss
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Left Sidebar - Bot Navigation */}

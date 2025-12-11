@@ -92,22 +92,26 @@ class EmailService {
 
   async sendEmail(message: EmailMessage): Promise<{ success: boolean; error?: string }> {
     if (!this.isConfigured || !this.transporter) {
-      // Log email to console in dev mode
-      console.log('\n' + '='.repeat(60));
-      console.log('[EmailService] DEV MODE - Email would be sent:');
-      console.log('='.repeat(60));
-      console.log(`To: ${message.to}`);
-      console.log(`Subject: ${message.subject}`);
-      console.log('-'.repeat(60));
-      if (message.text) {
-        console.log('Text Body:');
-        console.log(message.text);
+      // Only log email content in development mode to protect sensitive data in production
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('\n' + '='.repeat(60));
+        console.log('[EmailService] DEV MODE - Email would be sent:');
+        console.log('='.repeat(60));
+        console.log(`To: ${message.to}`);
+        console.log(`Subject: ${message.subject}`);
+        console.log('-'.repeat(60));
+        if (message.text) {
+          console.log('Text Body:');
+          console.log(message.text);
+        }
+        if (message.html) {
+          console.log('HTML Body:');
+          console.log(message.html);
+        }
+        console.log('='.repeat(60) + '\n');
+      } else {
+        console.warn('[EmailService] SMTP not configured in production - email not sent');
       }
-      if (message.html) {
-        console.log('HTML Body:');
-        console.log(message.html);
-      }
-      console.log('='.repeat(60) + '\n');
       
       return { success: true };
     }
