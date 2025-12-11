@@ -1,0 +1,164 @@
+You are a senior full-stack engineer working inside this Replit project for the Treasure Coast AI platform.
+
+A focused QA pass was just completed covering:
+- Widget customization (colors, position, greeting)
+- Lead & booking creation via assistant chat
+- Client dashboard after leads/bookings
+- Admin dashboard parity (partially)
+- Multi-tenant isolation (not yet verified in this pass)
+- Embed snippet
+
+Many core things are working: assistant chat DOES create leads and bookings, automations seem to set booking/lead status, widget colors/position persist, and dashboards update for the client. DO NOT break those.
+
+Your job now is to fix the remaining issues and polish behavior based on the QA findings below.
+
+────────────────────
+1. Widget Greeting Not Persisting (BUG-FOLLOWUP-001)
+────────────────────
+
+Observed behavior:
+- In the assistant → Widget / Behavior (or equivalent) tab:
+  - Changing the welcome/greeting text (e.g., “Welcome to Paws & Suds! How can I help you today?”) appears to save.
+  - After clicking “Save Changes” and reloading/navigating away and back, the greeting resets to the default “Hi! How can I help you today?”.
+- Color and position changes DO persist correctly.
+
+Required fix:
+- Locate where widget greeting/intro text is stored (DB column or config JSON) and ensure:
+  - The field is correctly bound in the form.
+  - The save handler includes this field in the payload.
+  - The value is returned and hydrated on page load.
+- Make sure the greeting:
+  - Persists across full page reloads.
+  - Is reflected both in widget preview and in the actual widget configuration used by the embed.
+- Add a small regression check (unit or integration) around this field if possible.
+
+────────────────────
+2. Chat “Test Sandbox” UX – Sending Messages
+────────────────────
+
+Observed behavior:
+- In the assistant “Test Chat” / sandbox:
+  - Messages can be sent via a small green arrow button.
+  - Pressing Enter does NOT reliably send the message.
+  - It’s easy to mis-click or think the message sent when it didn’t.
+- This led to confusion and multiple attempts to send messages.
+
+Required fix:
+- Improve the Test Chat input UX:
+  - Support **Enter to send** by default.
+  - Support **Shift+Enter** for a new line (if multi-line is desired).
+  - Keep the send button but make the click target reasonably large / forgiving.
+- Ensure the send pipeline:
+  - Validates non-empty input.
+  - Prevents double-sends.
+  - Correctly appends the user message to the visible transcript before or after API call (optimistic UI).
+- Avoid changing any error handling (rate limit, OpenAI errors) that is already working.
+
+────────────────────
+3. Lead / Booking Automations – Tags & Logs (BUG-FOLLOWUP-003)
+────────────────────
+
+Observed behavior:
+- After a Test Chat conversation:
+  - A lead is created for “QA Followup Visitor” with correct name/email/phone.
+  - A booking is created with correct type & time.
+  - Lead status shows “New” and booking status looks correct (“Pending” etc.).
+- However:
+  - Expected tags like “inbound” are not visible anywhere on the lead.
+  - There is no obvious log or UI indicator showing that the default automations (“New Lead – Tag & Status”, “New Booking – Notification”) ran.
+
+Required fix:
+- Verify backend automations:
+  - Confirm that default automation workflow(s) are actually attaching tags and/or updating custom fields.
+  - If tags are being added in the DB, expose them in the Leads UI (chip/badge).
+  - If tags are NOT implemented, either:
+    - Implement basic tagging (“inbound”, “booking_request”), OR
+    - Update the automation definition/copy so it doesn’t promise tags that don’t exist.
+- Add a lightweight Activity/Log indicator:
+  - Could be a simple “Automation events” section in the lead/booking detail drawer (e.g., “New Lead – Tag & Status ran at 2025-12-10 14:32”).
+  - This doesn’t need to be fancy, but there should be some surface that proves to a client that automations fired.
+
+────────────────────
+4. Client Conversations – Full Transcript Access (BUG-FOLLOWUP-002)
+────────────────────
+
+Observed behavior:
+- In the client dashboard:
+  - The **Conversations** list shows entries, including the QA follow-up conversation.
+  - Clicking the conversation did NOT clearly open a full transcript view (either no navigation or an incomplete modal).
+- In admin view, the conversation/modal behavior may differ, but the client should still be able to read their own transcripts.
+
+Required fix:
+- For the **client** role:
+  - Ensure clicking on a conversation row opens a full transcript view:
+    - In a side drawer or page.
+    - Showing full message history (assistant + visitor).
+  - The UX should be consistent with how admin can view conversations (if different, it should still be clearly readable).
+- Make sure access is scoped by workspace (no cross-tenant leakage).
+
+────────────────────
+5. Admin Dashboard Parity After Lead/Booking Creation
+────────────────────
+
+Observed behavior:
+- In this QA pass, only the client side was checked after creating a lead & booking via chat.
+- It was NOT verified that:
+  - The same lead & booking appear in the super-admin → specific workspace view.
+  - Status changes made by admin propagate to the client view.
+
+Required work:
+- Implement or confirm server and UI behavior so that:
+  - Leads and bookings created by assistant chat are visible in both:
+    - Client dashboard (scoped by workspace).
+    - Super-admin → that workspace’s detail (Leads/Bookings tabs).
+  - Status updates (e.g., marking a booking “Confirmed”) made by admin reflect in the client view, and vice versa.
+- Add tests or at least manual QA notes in the repo (e.g., replit.md) documenting this parity.
+
+────────────────────
+6. Multi-Tenant Isolation (FH vs QA) – Verification & Guard Rails
+────────────────────
+
+Observed behavior:
+- This QA run did NOT have time to re-verify that:
+  - Leads/bookings from the QA workspace never appear in Faith House.
+  - Faith House data never appears in QA workspace views.
+- The previous development work *should* have fixed this, but it needs re-validation.
+
+Required work:
+- Double-check:
+  - Faith House workspace (canonical) shows only FH leads/bookings.
+  - QA Onboarding / QA Followup workspaces show only their own data.
+  - The `demo_faith_house` client never sees QA data and vice versa.
+- If any cross-tenant leakage is found, fix at the API layer:
+  - Ensure all list/detail endpoints for leads, bookings, conversations, etc. are scoped by `clientId` derived from the authenticated session / effectiveClientId pattern.
+- Add a short “Multi-tenant QA checklist” section to replit.md documenting how to manually verify isolation.
+
+────────────────────
+7. Embed Snippet – Light Verification
+────────────────────
+
+Observed behavior:
+- The embed snippet now appears to include both `data-client-id` and `data-bot-id`, and the Copy button works.
+- QA was not able to embed this into a real HTML page because of environment constraints.
+
+Required work:
+- Do a quick local/manual check:
+  - Spin up a barebones HTML page in this repo (or a dev-only route) that includes the embed snippet for a test workspace.
+  - Confirm the widget appears with:
+    - Correct color scheme.
+    - Correct position (e.g., bottom-left).
+    - Greeting text once BUG-FOLLOWUP-001 is fixed.
+- This can be behind a dev-only path (like `/dev/embed-test`) and documented in replit.md, so future QA or devs can easily verify embed behavior.
+
+────────────────────
+General guidelines
+────────────────────
+
+- Do NOT change working core behaviors: login, logout, multi-tenant auth, and basic “assistant chat creates leads and bookings” flow.
+- Prefer minimal, targeted changes with clear comments explaining why the fix was necessary.
+- Update replit.md to:
+  - Document widget greeting behavior.
+  - Document how to test Test Chat, automations, and embed preview.
+  - Add a short checklist for multi-tenant isolation and admin/client parity QA.
+
+Please implement these fixes and adjustments now so the platform is truly demo-ready for a small business owner who wants to onboard, customize their assistant, and trust the data in both client and admin dashboards.
