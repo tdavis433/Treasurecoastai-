@@ -1,0 +1,245 @@
+You are working inside the Treasure Coast AI SaaS project on Replit.
+
+Goal:
+I want the **landing page (home.tsx)** to feel like a polished, high-converting SaaS front page that blows away generic chatbot tools. It should:
+
+- Clearly explain who Treasure Coast AI is for.
+- Make the product feel **specialized & superior** for local landlords and small businesses.
+- Show clear “before/after” value (lost leads → booked tours & calls).
+- Point people strongly toward:
+  - Booking a live demo.
+  - Trying the interactive demos (/demos, /demo/faith-house).
+- Look visually modern, clean, and premium.
+
+Do NOT change:
+- Core routes: `/`, `/login`, `/client-login`, `/demos`, `/demo/faith-house`.
+- Auth flows or dashboard layouts.
+
+Focus on:
+- Copywriting (headlines, subheads, bullets, FAQs).
+- Section structure.
+- Visual hierarchy and wow factor.
+
+────────────────────
+1. HERO SECTION – SHARPER POSITIONING & STRONGER CTAs
+────────────────────
+
+Rewrite the hero to be much more specific and compelling.
+
+Requirements:
+
+- Headline (example, feel free to refine wording but keep the idea):
+  - “Turn website visitors into booked tours & calls — automatically.”
+
+- Subheadline:
+  - Explain in 1–2 sentences that Treasure Coast AI:
+    - Gives **local landlords and small businesses** a 24/7 AI front desk.
+    - Answers questions, captures leads, and books real appointments without adding staff.
+
+- Primary CTA button:
+  - Label: “Book a Live Demo”
+  - Scrolls to or opens a contact/demo section, or links to a route if one exists (you choose what fits the current app best).
+  - High visual priority.
+
+- Secondary CTA button:
+  - Label: “See Interactive Demo”
+  - Links to `/demos` (or to `/demo/faith-house` if there’s only one main demo).
+  - Slightly less visually loud than primary CTA.
+
+- Keep existing responsive improvements (button stacking, full-width CTAs on mobile, etc.), but update text and hierarchy.
+
+────────────────────
+2. SOCIAL PROOF / “WHO IT’S FOR” STRIP
+────────────────────
+
+Directly under the hero, add a narrow section that builds trust and clarifies who this is built for.
+
+Examples (adapt to JSX with Tailwind):
+
+- A line like:
+  - “Designed for: Sober living homes · Property managers · Local service businesses”
+
+- Optionally, add a subtle “Used and tested with real operators in [region]” line (keep the wording honest and non-fake).
+
+You can include icon chips or simple badges for each audience segment.
+
+────────────────────
+3. “HOW IT WORKS” – SIMPLE 3-STEP SECTION
+────────────────────
+
+Add a section titled something like:
+
+- “How Treasure Coast AI Works”
+
+Use a 3-step layout (cards or horizontal steps):
+
+1. **Add the widget to your site**
+   - “Drop a single script on your website or landing page.”
+
+2. **AI chats and books 24/7**
+   - “Visitors get instant answers and can book tours, calls, or appointments in a natural conversation.”
+
+3. **You manage everything in one dashboard**
+   - “See every conversation, lead, and booking. Update statuses, add notes, and let us tweak the assistant for you.”
+
+Use icons for each step (widget, chat bubbles, dashboard).
+
+────────────────────
+4. FEATURE GRID – FOCUSED ON THEIR PAIN POINTS
+────────────────────
+
+Add a feature section highlighting why Treasure Coast AI is better than generic chatbots.
+
+Title ideas:
+- “Not just another chatbot”
+- “Built for local businesses, not developers”
+
+Include 6–8 feature cards like:
+
+- **24/7 front desk for your website**
+  - “Never miss another late-night tour request or consultation inquiry.”
+
+- **Leads → pipeline → bookings**
+  - “Every conversation turns into a tracked lead or appointment in your dashboard.”
+
+- **Tours, calls, consults, or any appointment type**
+  - “Configure appointment types that match your business: facility tours, phone calls, grooming sessions, consults, and more.”
+
+- **Client dashboard plus agency view**
+  - “Your clients get a simple dashboard. You get an agency command center to manage every workspace and assistant.”
+
+- **Deep assistant configuration**
+  - “Persona, FAQs, hours, booking logic, and widget branding — all controllable from the editor.”
+
+- **Easy website embed**
+  - “Drop one script tag or use the /dev/embed-test page to generate a live preview snippet.”
+
+You can reuse existing icon components or simple SVGs to make the grid look polished.
+
+────────────────────
+5. DEMO SHOWROOM SECTION
+────────────────────
+
+Show off the templates/demos.
+
+Add a section like:
+
+- Title: “See it working for businesses like yours”
+- Subtitle: “Each demo shows a fully configured AI assistant with real lead and booking flows.”
+
+Layout:
+- Cards for each main template demo the app supports (at minimum):
+  - Faith House (Sober Living)
+  - Another local business demo (e.g., Pet Grooming, Med Spa, etc., matching the existing templates in the codebase).
+
+Each card should have:
+- Business name: e.g., “Faith House – Sober Living Demo”
+- 1–2 line description of the fictional business and what the AI does.
+- “Open Demo” button linking to:
+  - `/demo/faith-house`
+  - `/demo/...` routes for other templates if they exist.
+
+Make the cards visually clickable and consistent with the rest of the design.
+
+────────────────────
+6. “WHY TREASURE COAST AI” VS GENERIC TOOLS
+────────────────────
+
+Add a comparison-style section that clearly articulates why this platform is superior to generic GPT chat widgets.
+
+Title ideas:
+- “Why Treasure Coast AI beats generic chatbots”
+- “Purpose-built for real local businesses”
+
+Suggested bullets (rephrase in marketing copy):
+
+- **Purpose-built for tours & appointments**
+  - Others: Generic Q&A.
+  - Treasure Coast AI: Specifically built to drive bookings, tours, consultations, and phone calls.
+
+- **End-to-end pipeline, not just chat**
+  - Others: No tracking of leads.
+  - Treasure Coast AI: Leads, bookings, and conversations all show up in dashboards for both admin and clients.
+
+- **Agency & multi-tenant friendly**
+  - Others: One-off installs.
+  - Treasure Coast AI: Multi-tenant architecture built so an agency can manage many landlords/clients.
+
+- **Done-for-you configuration**
+  - Others: Expect you to be a prompt engineer.
+  - Treasure Coast AI: You (the agency owner) set up personas, FAQs, and flows so your clients don’t have to touch anything.
+
+Avoid naming competitors directly; just use “generic chatbots” or “DIY AI tools”.
+
+────────────────────
+7. FAQ SECTION – ANSWER REAL OWNER OBJECTIONS
+────────────────────
+
+Add an FAQ near the bottom with 6–8 questions.
+
+Suggested questions and answers (you can rephrase, but keep the intent):
+
+- “Do I need to be technical to use this?”
+  - Answer: No, the agency (me) configures everything; clients just log in to see leads and bookings.
+
+- “Who writes all the questions and answers?”
+  - Answer: The assistant comes pre-loaded with a deep knowledge base for the demo, and we customize it for each client’s business.
+
+- “Will this replace my staff?”
+  - Answer: It’s designed to handle repetitive questions and after-hours inquiries, so your team can focus on higher-value tasks.
+
+- “Can I see and review every conversation?”
+  - Answer: Yes, every message is stored in the client dashboard and in your agency view.
+
+- “What happens if the AI doesn’t know the answer?”
+  - Answer: It can gracefully say it’s unsure and capture contact details for a follow-up instead of hallucinating.
+
+- “How hard is it to add to my website?”
+  - Answer: Usually just one script tag. If they don’t have a web person, you (the agency owner) can handle it for them.
+
+- “What about my data?”
+  - Answer: Brief, honest statement about privacy and not logging full chats in production (match current behavior).
+
+────────────────────
+8. FINAL CTA SECTION
+────────────────────
+
+End the page with a strong, clean section.
+
+Example:
+
+- Headline:
+  - “Ready to stop losing leads after hours?”
+- Subtext:
+  - “Let an AI front desk greet every visitor, answer their questions, and book their next step — while you focus on running the business.”
+- Buttons:
+  - Primary: “Book a Live Demo”
+  - Secondary: “Watch the Faith House Demo”
+
+Match the hero CTAs for consistency.
+
+────────────────────
+9. VISUAL & INTERACTION POLISH
+────────────────────
+
+Design & UX polish for `home.tsx`:
+
+- Keep the **existing responsive layout** improvements (hero, buttons, stats).
+- Add light **animations** where appropriate (e.g., fade-in or slide-up on scroll for sections, subtle hover states on cards).
+- Ensure:
+  - No horizontal scrolling at common breakpoints (1440, 1280, 1024, 768, 414).
+  - CTAs remain visible and obvious on mobile.
+  - Section spacing is generous enough to feel premium but not bloated.
+
+────────────────────
+10. IMPLEMENTATION NOTES
+────────────────────
+
+- Implement all of this in the existing `client/src/pages/home.tsx` (or equivalent home page component).
+- Reuse existing Tailwind & component patterns (cards, buttons, sections).
+- Don’t break any existing navigation links or auth routes.
+- Keep stats or claims that can’t be proven as **generic or clearly “example”**, so I can later plug in real numbers.
+
+When you’re done, please:
+- Summarize which sections you added/rewrote.
+- Confirm all CTAs still point to the correct routes (`/login`, `/client-login`, `/demos`, `/demo/faith-house`).

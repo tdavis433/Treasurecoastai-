@@ -16,6 +16,7 @@ import {
   Shield, 
   ArrowRight,
   Check,
+  X,
   Users,
   TrendingUp,
   Mail,
@@ -23,7 +24,28 @@ import {
   Star,
   ChevronDown,
   ChevronUp,
-  Send
+  Send,
+  Calendar,
+  Code,
+  Building2,
+  Home as HomeIcon,
+  Heart,
+  Scissors,
+  Car,
+  Dumbbell,
+  Utensils,
+  Palette,
+  Syringe,
+  Wrench,
+  Clock,
+  LayoutDashboard,
+  Bot,
+  Settings,
+  UserCheck,
+  Target,
+  Headphones,
+  FileText,
+  Lock
 } from "lucide-react";
 
 const fadeInUp = {
@@ -84,102 +106,99 @@ export default function Home() {
     }
   };
 
-  const pricingPlans = [
+  const demos = [
     {
-      name: "Starter",
-      price: "$297",
-      period: "/month",
-      description: "Perfect for small businesses just getting started",
-      features: [
-        "1 AI Assistant",
-        "Up to 500 conversations/month",
-        "Lead capture & notifications",
-        "Simple dashboard access",
-        "Email support"
-      ],
-      popular: false
+      name: "Faith House",
+      type: "Sober Living Home",
+      description: "See how an AI assistant answers questions about recovery housing, captures inquiries, and books facility tours 24/7.",
+      icon: Heart,
+      color: "from-cyan-500 to-teal-500",
+      href: "/demo/faith-house"
     },
     {
-      name: "Professional",
-      price: "$497",
-      period: "/month",
-      description: "For growing businesses that need more power",
-      features: [
-        "1 AI Assistant",
-        "Unlimited conversations",
-        "Advanced lead management",
-        "Appointment booking",
-        "Priority support",
-        "Custom training"
-      ],
-      popular: true
+      name: "Paws & Suds",
+      type: "Pet Grooming",
+      description: "Watch the AI handle grooming inquiries, explain services, and schedule appointments for furry clients.",
+      icon: Heart,
+      color: "from-cyan-400 to-blue-500",
+      href: "/demo/paws-suds"
     },
     {
-      name: "Enterprise",
-      price: "Custom",
-      period: "",
-      description: "For multi-location or high-volume businesses",
-      features: [
-        "Multiple AI Assistants",
-        "Unlimited everything",
-        "White-label options",
-        "Dedicated account manager",
-        "Custom integrations",
-        "SLA guarantees"
-      ],
-      popular: false
-    }
-  ];
-
-  const testimonials = [
-    {
-      quote: "Our lead capture went up 300% in the first month. The AI handles questions I never had time to answer.",
-      author: "Maria Santos",
-      role: "Owner, Sunny Day Salon",
-      rating: 5
+      name: "Coastal Breeze Grill",
+      type: "Restaurant",
+      description: "Experience how a restaurant AI handles reservations, menu questions, and special event inquiries.",
+      icon: Utensils,
+      color: "from-amber-500 to-orange-500",
+      href: "/demo/restaurant"
     },
     {
-      quote: "I was skeptical about AI, but this thing actually sounds like a real person. My customers love it.",
-      author: "James Thompson",
-      role: "Manager, Thompson Auto Repair",
-      rating: 5
+      name: "Fade Factory",
+      type: "Barbershop",
+      description: "See a barber AI book appointments, explain services, and handle walk-in wait time questions.",
+      icon: Scissors,
+      color: "from-purple-500 to-pink-500",
+      href: "/demo/barbershop"
     },
     {
-      quote: "The dashboard makes it so easy to see all my leads. Best investment I've made for my business this year.",
-      author: "Lisa Chen",
-      role: "Founder, Zen Wellness Studio",
-      rating: 5
+      name: "Iron Coast Fitness",
+      type: "Gym & Fitness",
+      description: "Watch a fitness AI handle membership inquiries, class schedules, and trial booking requests.",
+      icon: Dumbbell,
+      color: "from-green-500 to-emerald-500",
+      href: "/demo/fitness"
+    },
+    {
+      name: "Radiance Med Spa",
+      type: "Medical Spa",
+      description: "See how a med spa AI explains treatments, pricing, and books consultations professionally.",
+      icon: Syringe,
+      color: "from-pink-500 to-rose-500",
+      href: "/demo/med-spa"
     }
   ];
 
   const faqs = [
     {
-      question: "How long does it take to set up my AI assistant?",
-      answer: "Most businesses are up and running within 48-72 hours. We handle all the configuration, training, and deployment for you."
+      question: "Do I need to be technical to use this?",
+      answer: "Not at all. We (the agency) configure everything for you. Your clients just log in to see their leads and bookings — no prompt engineering or tech skills required."
     },
     {
-      question: "Do I need any technical skills?",
-      answer: "None at all! We build and manage everything for you. You just share your business info and check your dashboard for results."
+      question: "Who writes all the questions and answers?",
+      answer: "We do. Each assistant comes pre-loaded with a deep knowledge base tailored to the business type. We then customize it with your client's specific services, hours, pricing, and FAQs."
     },
     {
-      question: "What if the AI can't answer a question?",
-      answer: "Your AI is trained on your specific business info. For complex questions, it gracefully offers to have a team member follow up."
+      question: "Will this replace my staff?",
+      answer: "It's designed to complement your team, not replace them. The AI handles repetitive questions and after-hours inquiries, so your team can focus on higher-value work during business hours."
     },
     {
-      question: "Can I make changes to my bot after it's set up?",
-      answer: "Absolutely! Our team is always available to update your AI's knowledge, personality, or behavior. Just reach out and we'll handle it."
+      question: "Can I see and review every conversation?",
+      answer: "Yes. Every message is stored and visible in both your agency dashboard and each client's simplified dashboard. You can review conversations, track leads, and monitor booking activity."
     },
     {
-      question: "How do customers access the AI assistant?",
-      answer: "We provide a sleek chat widget that you embed on your website. It takes just one line of code, and we can help you install it."
+      question: "What happens if the AI doesn't know the answer?",
+      answer: "The AI gracefully acknowledges when it's unsure and offers to capture the visitor's contact info so a team member can follow up. No hallucinating fake answers."
+    },
+    {
+      question: "How hard is it to add to my website?",
+      answer: "Usually just one script tag. We provide the embed code, and if needed, we can handle the installation ourselves. Most sites are live within minutes."
+    },
+    {
+      question: "What about my data and privacy?",
+      answer: "All conversations are securely stored and only accessible by authorized users. We don't sell or share your data. Your business information stays private and protected."
+    },
+    {
+      question: "How fast can I get started?",
+      answer: "Most businesses are up and running within 48-72 hours. We handle all the configuration, training, and deployment — you just share your business info."
     }
   ];
 
   return (
     <div className="min-h-screen bg-[#0B0E13] overflow-hidden">
-      {/* Hero Section */}
+      {/* ═══════════════════════════════════════════════════════════════════════════
+          1. HERO SECTION - Sharper Positioning & Stronger CTAs
+      ═══════════════════════════════════════════════════════════════════════════ */}
       <section className="relative min-h-screen flex items-center justify-center">
-        {/* Ambient background matching demo pages */}
+        {/* Ambient background */}
         <div 
           className="absolute inset-0 pointer-events-none"
           style={{
@@ -211,11 +230,11 @@ export default function Home() {
                 className="btn-gradient-primary rounded-xl px-3 sm:px-6 text-sm sm:text-base glow-cyan" 
                 data-testid="button-get-started-nav"
                 onClick={() => document.getElementById('contact-form')?.scrollIntoView({ behavior: 'smooth' })}
-                aria-label="Get Started"
+                aria-label="Book a Live Demo"
               >
-                <MessageSquare className="w-4 h-4 mr-1 sm:mr-2" />
-                <span className="sm:hidden">Start</span>
-                <span className="hidden sm:inline">Get Started</span>
+                <Calendar className="w-4 h-4 mr-1 sm:mr-2" />
+                <span className="sm:hidden">Demo</span>
+                <span className="hidden sm:inline">Book Demo</span>
               </Button>
             </div>
           </div>
@@ -233,27 +252,25 @@ export default function Home() {
               <span className="text-sm text-white/80">Powered by GPT-4</span>
             </div>
 
-            <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold text-white mb-4 sm:mb-6 tracking-tight" data-testid="text-hero-title">
-              AI Assistants That
-              <span className="text-gradient-cyan-purple block mt-2">Work 24/7 For You</span>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 sm:mb-6 tracking-tight leading-tight" data-testid="text-hero-title">
+              Turn website visitors into
+              <span className="text-gradient-cyan-purple block mt-2">booked tours & calls — automatically.</span>
             </h1>
 
             <p className="text-lg sm:text-xl md:text-2xl text-white/70 max-w-3xl mx-auto mb-8 sm:mb-10 leading-relaxed">
-              We build and manage custom AI assistants for local businesses. 
-              Capture leads, book appointments, and delight customers around the clock — 
-              while you focus on running your business.
+              Treasure Coast AI gives <strong className="text-white">local landlords and small businesses</strong> a 24/7 AI front desk. 
+              Answer questions, capture leads, and book real appointments — without adding staff.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
               <Button 
                 size="lg" 
                 className="btn-gradient-primary rounded-xl px-6 sm:px-8 py-5 sm:py-6 text-base sm:text-lg group glow-cyan-strong w-full sm:w-auto"
-                data-testid="button-get-started-hero"
+                data-testid="button-book-demo-hero"
                 onClick={() => document.getElementById('contact-form')?.scrollIntoView({ behavior: 'smooth' })}
               >
-                <MessageSquare className="w-5 h-5 mr-2" />
-                <span className="hidden sm:inline">Get Started — We Build It For You</span>
-                <span className="sm:hidden">Get Started</span>
+                <Calendar className="w-5 h-5 mr-2" />
+                Book a Live Demo
                 <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
               <Link href="/demos" className="w-full sm:w-auto">
@@ -264,7 +281,7 @@ export default function Home() {
                   data-testid="button-view-demos"
                 >
                   <Sparkles className="w-5 h-5 mr-2 text-primary" />
-                  See What We Can Do
+                  See Interactive Demo
                 </Button>
               </Link>
             </div>
@@ -278,9 +295,9 @@ export default function Home() {
             transition={{ duration: 0.8, delay: 0.3 }}
           >
             {[
-              { value: "24/7", label: "Availability" },
-              { value: "10x", label: "More Leads" },
-              { value: "95%", label: "Response Rate" }
+              { value: "24/7", label: "Always Available" },
+              { value: "< 3s", label: "Response Time" },
+              { value: "100%", label: "Lead Capture" }
             ].map((stat, i) => (
               <div key={i} className="text-center">
                 <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary mb-1" data-testid={`stat-value-${i}`}>{stat.value}</div>
@@ -302,8 +319,124 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-32 px-6 relative bg-[#0B0E13]">
+      {/* ═══════════════════════════════════════════════════════════════════════════
+          2. SOCIAL PROOF / "WHO IT'S FOR" STRIP
+      ═══════════════════════════════════════════════════════════════════════════ */}
+      <section className="py-8 px-6 bg-[#080A0E] border-y border-white/[0.04]">
+        <div className="max-w-5xl mx-auto">
+          <motion.div 
+            className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-12"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
+            <span className="text-white/50 text-sm font-medium uppercase tracking-wider">Designed for</span>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              {[
+                { icon: HomeIcon, label: "Sober Living Homes" },
+                { icon: Building2, label: "Property Managers" },
+                { icon: Wrench, label: "Local Service Businesses" }
+              ].map((item, i) => (
+                <div 
+                  key={i} 
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.08]"
+                  data-testid={`badge-audience-${i}`}
+                >
+                  <item.icon className="w-4 h-4 text-primary" />
+                  <span className="text-white/70 text-sm">{item.label}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+          <motion.p 
+            className="text-center text-white/40 text-sm mt-4"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            Tested with real operators on the Treasure Coast
+          </motion.p>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════════════
+          3. "HOW IT WORKS" - Simple 3-Step Section
+      ═══════════════════════════════════════════════════════════════════════════ */}
+      <section className="py-24 sm:py-32 px-6 bg-[#0B0E13] relative">
+        <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `linear-gradient(180deg, transparent 0%, rgba(0, 229, 204, 0.03) 50%, transparent 100%)`
+          }}
+        />
+        <div className="max-w-7xl mx-auto relative z-10">
+          <motion.div 
+            className="text-center mb-16"
+            {...fadeInUp}
+            viewport={{ once: true }}
+            whileInView="animate"
+            initial="initial"
+          >
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4" data-testid="text-howitworks-title">
+              How Treasure Coast AI <span className="text-primary">Works</span>
+            </h2>
+            <p className="text-lg sm:text-xl text-white/60 max-w-2xl mx-auto">
+              Get your 24/7 AI front desk up and running in three simple steps
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                step: "01",
+                icon: Code,
+                title: "Add the widget to your site",
+                description: "Drop a single script on your website or landing page. That's it — no complex integrations required."
+              },
+              {
+                step: "02",
+                icon: MessageSquare,
+                title: "AI chats and books 24/7",
+                description: "Visitors get instant answers and can book tours, calls, or appointments in a natural conversation."
+              },
+              {
+                step: "03",
+                icon: LayoutDashboard,
+                title: "You manage everything in one dashboard",
+                description: "See every conversation, lead, and booking. Update statuses, add notes, and we'll tweak the assistant for you."
+              }
+            ].map((item, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: i * 0.15 }}
+                className="glass-card p-8 text-center relative group"
+                data-testid={`card-step-${i}`}
+              >
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                  <span className="bg-gradient-to-r from-primary to-secondary px-4 py-1 rounded-full text-sm font-bold text-black">
+                    Step {item.step}
+                  </span>
+                </div>
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mx-auto mt-4 mb-6 group-hover:glow-cyan transition-all duration-300">
+                  <item.icon className="w-8 h-8 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold text-white mb-3">{item.title}</h3>
+                <p className="text-white/60 leading-relaxed">{item.description}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════════════
+          4. FEATURE GRID - Focused on Their Pain Points
+      ═══════════════════════════════════════════════════════════════════════════ */}
+      <section className="py-24 sm:py-32 px-6 relative bg-[#0B0E13]">
         <div 
           className="absolute inset-0 pointer-events-none"
           style={{
@@ -312,18 +445,18 @@ export default function Home() {
         />
         <div className="max-w-7xl mx-auto relative z-10">
           <motion.div 
-            className="text-center mb-20"
+            className="text-center mb-16"
             {...fadeInUp}
             viewport={{ once: true }}
             whileInView="animate"
             initial="initial"
           >
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4" data-testid="text-features-title">
-              Everything Your Business Needs
-              <span className="text-gradient-cyan-purple"> To Win</span>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4" data-testid="text-features-title">
+              Not just another chatbot.
+              <span className="text-gradient-cyan-purple block mt-2">Built for local businesses.</span>
             </h2>
-            <p className="text-xl text-white/60 max-w-2xl mx-auto">
-              We handle the tech. You get a powerful AI assistant that captures leads, books appointments, and answers questions 24/7.
+            <p className="text-lg sm:text-xl text-white/60 max-w-2xl mx-auto">
+              Generic chat widgets don't understand your business. We built Treasure Coast AI specifically for landlords, property managers, and local service businesses.
             </p>
           </motion.div>
 
@@ -336,34 +469,34 @@ export default function Home() {
           >
             {[
               {
-                icon: Globe,
-                title: "We Learn Your Business",
-                description: "We scrape your website and learn your services, pricing, FAQs, and more — so your bot knows everything."
+                icon: Clock,
+                title: "24/7 front desk for your website",
+                description: "Never miss another late-night tour request or consultation inquiry. Your AI is always ready to help."
               },
               {
-                icon: Sparkles,
-                title: "GPT-4 Powered",
-                description: "World-class AI that handles any question brilliantly. Your customers won't believe it's a bot."
+                icon: Target,
+                title: "Leads → pipeline → bookings",
+                description: "Every conversation turns into a tracked lead or appointment in your dashboard. No leads slip through the cracks."
               },
               {
-                icon: MessageSquare,
-                title: "Lead Capture",
-                description: "Your bot automatically captures names, emails, and phone numbers from every interested visitor."
+                icon: Calendar,
+                title: "Tours, calls, consults — any appointment type",
+                description: "Configure appointment types that match your business: facility tours, phone calls, grooming sessions, consults, and more."
               },
               {
-                icon: BarChart3,
-                title: "Simple Dashboard",
-                description: "See every conversation, lead, and booking in your clean, easy-to-use client dashboard."
+                icon: Users,
+                title: "Client dashboard + agency view",
+                description: "Your clients get a simple dashboard. You get an agency command center to manage every workspace and assistant."
               },
               {
-                icon: Zap,
-                title: "We Handle Everything",
-                description: "We build, deploy, and manage your AI assistant. You just focus on your business."
+                icon: Settings,
+                title: "Deep assistant configuration",
+                description: "Persona, FAQs, hours, booking logic, and widget branding — all controllable from the editor. We handle it for you."
               },
               {
-                icon: Shield,
-                title: "Always On Support",
-                description: "Need changes? We're here for you. Your AI assistant is fully managed by our team."
+                icon: Code,
+                title: "Easy website embed",
+                description: "Drop one script tag and you're live. We provide the code and can even install it for you if needed."
               }
             ].map((feature, i) => (
               <motion.div
@@ -383,70 +516,10 @@ export default function Home() {
         </div>
       </section>
 
-      {/* How It Works */}
-      <section className="py-32 px-6 bg-[#0B0E13] relative">
-        <div 
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: `linear-gradient(180deg, transparent 0%, rgba(0, 229, 204, 0.03) 50%, transparent 100%)`
-          }}
-        />
-        <div className="max-w-7xl mx-auto">
-          <motion.div 
-            className="text-center mb-20"
-            {...fadeInUp}
-            viewport={{ once: true }}
-            whileInView="animate"
-            initial="initial"
-          >
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4" data-testid="text-howitworks-title">
-              Your AI Assistant, <span className="text-primary">Managed For You</span>
-            </h2>
-            <p className="text-xl text-white/60 max-w-2xl mx-auto">
-              Here's how we get your business a 24/7 AI assistant
-            </p>
-          </motion.div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                step: "01",
-                title: "Share Your Business Info",
-                description: "Tell us about your services, hours, and FAQs. We'll learn everything about your business."
-              },
-              {
-                step: "02",
-                title: "We Build Your Bot",
-                description: "Our team configures your custom AI assistant with the perfect personality and knowledge."
-              },
-              {
-                step: "03",
-                title: "You See Results",
-                description: "Log into your dashboard to see conversations, leads, and bookings — all handled for you."
-              }
-            ].map((item, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.15 }}
-                className="relative"
-                data-testid={`card-step-${i}`}
-              >
-                <div className="text-8xl font-bold text-white/5 absolute -top-4 left-0">{item.step}</div>
-                <div className="relative pt-12 pl-4">
-                  <h3 className="text-2xl font-semibold text-white mb-4">{item.title}</h3>
-                  <p className="text-white/60 leading-relaxed">{item.description}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Section */}
-      <section className="py-32 px-6 relative bg-[#0B0E13]" id="pricing">
+      {/* ═══════════════════════════════════════════════════════════════════════════
+          5. DEMO SHOWROOM SECTION
+      ═══════════════════════════════════════════════════════════════════════════ */}
+      <section className="py-24 sm:py-32 px-6 bg-[#080A0E] relative">
         <div 
           className="absolute inset-0 pointer-events-none"
           style={{
@@ -461,116 +534,75 @@ export default function Home() {
             whileInView="animate"
             initial="initial"
           >
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4" data-testid="text-pricing-title">
-              Simple, <span className="text-primary">Transparent Pricing</span>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4" data-testid="text-demos-title">
+              See it working for <span className="text-primary">businesses like yours</span>
             </h2>
-            <p className="text-xl text-white/60 max-w-2xl mx-auto">
-              Everything you need to capture more leads and grow your business
+            <p className="text-lg sm:text-xl text-white/60 max-w-2xl mx-auto">
+              Each demo shows a fully configured AI assistant with real lead capture and booking flows.
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {pricingPlans.map((plan, i) => (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {demos.map((demo, i) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: i * 0.1 }}
-                className={`glass-card p-8 relative ${plan.popular ? 'border-primary/50 glow-cyan' : ''}`}
-                data-testid={`card-pricing-${i}`}
               >
-                {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-gradient-to-r from-primary to-secondary px-4 py-1 rounded-full text-sm font-medium text-black">
-                      Most Popular
-                    </span>
-                  </div>
-                )}
-                <div className="text-center mb-8">
-                  <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
-                  <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-4xl font-bold text-primary">{plan.price}</span>
-                    <span className="text-white/60">{plan.period}</span>
-                  </div>
-                  <p className="text-white/50 mt-2 text-sm">{plan.description}</p>
-                </div>
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map((feature, j) => (
-                    <li key={j} className="flex items-center gap-3 text-white/80">
-                      <Check className="w-5 h-5 text-primary flex-shrink-0" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Link href="/demos">
-                  <Button 
-                    className={`w-full rounded-xl py-6 ${plan.popular ? 'btn-gradient-primary glow-cyan' : 'bg-white/10 hover:bg-white/20 text-white'}`}
-                    data-testid={`button-pricing-${i}`}
+                <Link href={demo.href}>
+                  <div 
+                    className="glass-card p-6 h-full cursor-pointer group hover:border-primary/30 transition-all duration-300"
+                    data-testid={`card-demo-${i}`}
                   >
-                    Get Started
-                  </Button>
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${demo.color} flex items-center justify-center mb-4`}>
+                      <demo.icon className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="mb-4">
+                      <h3 className="text-xl font-semibold text-white group-hover:text-primary transition-colors">{demo.name}</h3>
+                      <p className="text-primary/80 text-sm">{demo.type}</p>
+                    </div>
+                    <p className="text-white/60 text-sm leading-relaxed mb-4">{demo.description}</p>
+                    <div className="flex items-center text-primary text-sm font-medium group-hover:gap-3 transition-all">
+                      <span>Open Demo</span>
+                      <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
                 </Link>
               </motion.div>
             ))}
           </div>
-        </div>
-      </section>
 
-      {/* Testimonials Section */}
-      <section className="py-32 px-6 bg-[#0B0E13]">
-        <div className="max-w-7xl mx-auto">
           <motion.div 
-            className="text-center mb-16"
-            {...fadeInUp}
+            className="text-center mt-12"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            whileInView="animate"
-            initial="initial"
+            transition={{ duration: 0.5, delay: 0.3 }}
           >
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4" data-testid="text-testimonials-title">
-              Loved by <span className="text-primary">Local Businesses</span>
-            </h2>
-            <p className="text-xl text-white/60 max-w-2xl mx-auto">
-              See what our clients have to say about their AI assistants
-            </p>
+            <Link href="/demos">
+              <Button variant="outline" className="rounded-xl px-8 py-6 text-lg border-white/20 text-white hover:bg-white/10 hover:border-primary/50">
+                <Sparkles className="w-5 h-5 mr-2 text-primary" />
+                View All Demos
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+            </Link>
           </motion.div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-                className="glass-card p-8"
-                data-testid={`card-testimonial-${i}`}
-              >
-                <div className="flex gap-1 mb-4">
-                  {[...Array(testimonial.rating)].map((_, j) => (
-                    <Star key={j} className="w-5 h-5 fill-primary text-primary" />
-                  ))}
-                </div>
-                <p className="text-white/80 text-lg mb-6 leading-relaxed">"{testimonial.quote}"</p>
-                <div>
-                  <p className="text-white font-semibold">{testimonial.author}</p>
-                  <p className="text-white/50 text-sm">{testimonial.role}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
         </div>
       </section>
 
-      {/* FAQ Section */}
-      <section className="py-32 px-6 bg-[#0B0E13] relative" id="faq">
+      {/* ═══════════════════════════════════════════════════════════════════════════
+          6. "WHY TREASURE COAST AI" VS GENERIC TOOLS
+      ═══════════════════════════════════════════════════════════════════════════ */}
+      <section className="py-24 sm:py-32 px-6 bg-[#0B0E13] relative">
         <div 
           className="absolute inset-0 pointer-events-none"
           style={{
             background: `linear-gradient(180deg, transparent 0%, rgba(0, 229, 204, 0.02) 50%, transparent 100%)`
           }}
         />
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-5xl mx-auto relative z-10">
           <motion.div 
             className="text-center mb-16"
             {...fadeInUp}
@@ -578,11 +610,92 @@ export default function Home() {
             whileInView="animate"
             initial="initial"
           >
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4" data-testid="text-faq-title">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4" data-testid="text-comparison-title">
+              Why Treasure Coast AI <span className="text-primary">beats generic chatbots</span>
+            </h2>
+            <p className="text-lg sm:text-xl text-white/60 max-w-2xl mx-auto">
+              Purpose-built for real local businesses, not developers
+            </p>
+          </motion.div>
+
+          <div className="space-y-6">
+            {[
+              {
+                feature: "Purpose-built for tours & appointments",
+                generic: "Generic Q&A with no booking capability",
+                ours: "Specifically built to drive bookings, tours, consultations, and phone calls"
+              },
+              {
+                feature: "End-to-end pipeline, not just chat",
+                generic: "No tracking of leads or follow-up",
+                ours: "Leads, bookings, and conversations all show up in dashboards for both admin and clients"
+              },
+              {
+                feature: "Agency & multi-tenant friendly",
+                generic: "One-off installs with no central management",
+                ours: "Multi-tenant architecture so an agency can manage many landlords/clients from one place"
+              },
+              {
+                feature: "Done-for-you configuration",
+                generic: "Expect you to be a prompt engineer",
+                ours: "We set up personas, FAQs, and flows so your clients don't have to touch anything"
+              }
+            ].map((item, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: i * 0.1 }}
+                className="glass-card p-6"
+                data-testid={`comparison-row-${i}`}
+              >
+                <h4 className="text-lg font-semibold text-white mb-4">{item.feature}</h4>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="flex items-start gap-3 p-4 rounded-lg bg-red-500/5 border border-red-500/20">
+                    <X className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <span className="text-white/40 text-xs uppercase tracking-wider">Generic chatbots</span>
+                      <p className="text-white/60 mt-1">{item.generic}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-4 rounded-lg bg-primary/5 border border-primary/20">
+                    <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                    <div>
+                      <span className="text-primary/80 text-xs uppercase tracking-wider">Treasure Coast AI</span>
+                      <p className="text-white/80 mt-1">{item.ours}</p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════════════
+          7. FAQ SECTION - Answer Real Owner Objections
+      ═══════════════════════════════════════════════════════════════════════════ */}
+      <section className="py-24 sm:py-32 px-6 bg-[#0B0E13] relative" id="faq">
+        <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `radial-gradient(ellipse 50% 40% at 50% 50%, rgba(168, 85, 247, 0.03) 0%, transparent 60%)`
+          }}
+        />
+        <div className="max-w-3xl mx-auto relative z-10">
+          <motion.div 
+            className="text-center mb-16"
+            {...fadeInUp}
+            viewport={{ once: true }}
+            whileInView="animate"
+            initial="initial"
+          >
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4" data-testid="text-faq-title">
               Frequently Asked <span className="text-primary">Questions</span>
             </h2>
-            <p className="text-xl text-white/60">
-              Got questions? We've got answers.
+            <p className="text-lg sm:text-xl text-white/60">
+              Everything you need to know about getting started
             </p>
           </motion.div>
 
@@ -602,7 +715,7 @@ export default function Home() {
                   className="w-full p-6 flex items-center justify-between text-left hover:bg-white/5 transition-colors"
                   data-testid={`button-faq-${i}`}
                 >
-                  <span className="text-white font-medium text-lg">{faq.question}</span>
+                  <span className="text-white font-medium text-lg pr-4">{faq.question}</span>
                   {openFaq === i ? (
                     <ChevronUp className="w-5 h-5 text-primary flex-shrink-0" />
                   ) : (
@@ -610,9 +723,14 @@ export default function Home() {
                   )}
                 </button>
                 {openFaq === i && (
-                  <div className="px-6 pb-6">
+                  <motion.div 
+                    className="px-6 pb-6"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    transition={{ duration: 0.2 }}
+                  >
                     <p className="text-white/70 leading-relaxed">{faq.answer}</p>
-                  </div>
+                  </motion.div>
                 )}
               </motion.div>
             ))}
@@ -620,8 +738,10 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Contact Form Section */}
-      <section className="py-32 px-6 bg-[#0B0E13]" id="contact-form">
+      {/* ═══════════════════════════════════════════════════════════════════════════
+          8. CONTACT FORM / BOOK A DEMO SECTION
+      ═══════════════════════════════════════════════════════════════════════════ */}
+      <section className="py-24 sm:py-32 px-6 bg-[#0B0E13]" id="contact-form">
         <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -636,10 +756,10 @@ export default function Home() {
             <div className="relative z-10">
               <div className="text-center mb-10">
                 <h2 className="text-3xl md:text-4xl font-bold text-white mb-4" data-testid="text-contact-title">
-                  Ready to Get Started?
+                  Book a Live Demo
                 </h2>
                 <p className="text-white/60 text-lg">
-                  Tell us about your business and we'll build your AI assistant
+                  See exactly how Treasure Coast AI works for your business — we'll walk you through everything.
                 </p>
               </div>
 
@@ -685,7 +805,7 @@ export default function Home() {
                   <Textarea
                     value={contactForm.message}
                     onChange={(e) => setContactForm(prev => ({ ...prev, message: e.target.value }))}
-                    placeholder="What type of business do you run? What do you need help with?"
+                    placeholder="What type of business do you run? What do you want the AI to help with?"
                     rows={4}
                     required
                     className="bg-white/5 border-white/10 text-white placeholder:text-white/40 resize-none"
@@ -703,8 +823,8 @@ export default function Home() {
                     <>Processing...</>
                   ) : (
                     <>
-                      <Send className="w-5 h-5 mr-2" />
-                      Request Your AI Assistant
+                      <Calendar className="w-5 h-5 mr-2" />
+                      Book My Demo
                     </>
                   )}
                 </Button>
@@ -733,9 +853,11 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Social Proof CTA */}
-      <section className="py-32 px-6 bg-[#0B0E13]">
-        <div className="max-w-7xl mx-auto">
+      {/* ═══════════════════════════════════════════════════════════════════════════
+          9. FINAL CTA SECTION
+      ═══════════════════════════════════════════════════════════════════════════ */}
+      <section className="py-24 sm:py-32 px-6 bg-[#0B0E13]">
+        <div className="max-w-5xl mx-auto">
           <motion.div 
             className="glass-card p-12 md:p-20 text-center relative overflow-hidden"
             initial={{ opacity: 0, scale: 0.95 }}
@@ -748,40 +870,36 @@ export default function Home() {
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/10 rounded-full blur-3xl" />
             
             <div className="relative z-10">
-              <div className="flex items-center justify-center gap-4 mb-8">
-                <Users className="w-8 h-8 text-primary" />
-                <span className="text-lg text-white/60">Trusted by businesses worldwide</span>
-              </div>
-              
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-8" data-testid="text-cta-title">
-                Ready to 10x Your Business Results?
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-6" data-testid="text-cta-title">
+                Ready to stop losing leads after hours?
               </h2>
+              <p className="text-lg sm:text-xl text-white/60 max-w-2xl mx-auto mb-10">
+                Let an AI front desk greet every visitor, answer their questions, and book their next step — while you focus on running the business.
+              </p>
 
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-12">
-                {[
-                  "Fully managed",
-                  "GPT-4 powered",
-                  "Simple dashboard",
-                  "Ongoing support"
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <Check className="w-5 h-5 text-primary" />
-                    <span className="text-white/80">{item}</span>
-                  </div>
-                ))}
-              </div>
-
-              <Link href="/demos">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Button 
                   size="lg" 
-                  className="btn-gradient-secondary rounded-xl px-10 py-6 text-lg group glow-purple-strong"
-                  data-testid="button-start-free-trial"
+                  className="btn-gradient-primary rounded-xl px-8 py-6 text-lg group glow-cyan-strong w-full sm:w-auto"
+                  data-testid="button-final-demo"
+                  onClick={() => document.getElementById('contact-form')?.scrollIntoView({ behavior: 'smooth' })}
                 >
-                  <MessageSquare className="w-5 h-5 mr-2" />
-                  Get Your AI Assistant Built
-                  <TrendingUp className="w-5 h-5 ml-2 group-hover:translate-y-[-2px] transition-transform" />
+                  <Calendar className="w-5 h-5 mr-2" />
+                  Book a Live Demo
+                  <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
                 </Button>
-              </Link>
+                <Link href="/demo/faith-house" className="w-full sm:w-auto">
+                  <Button 
+                    size="lg" 
+                    variant="outline" 
+                    className="rounded-xl px-8 py-6 text-lg border-white/20 text-white hover:bg-white/10 hover:border-primary/50 transition-all duration-300 w-full"
+                    data-testid="button-final-watch-demo"
+                  >
+                    <Sparkles className="w-5 h-5 mr-2 text-primary" />
+                    Watch the Faith House Demo
+                  </Button>
+                </Link>
+              </div>
             </div>
           </motion.div>
         </div>
