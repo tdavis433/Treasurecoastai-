@@ -1,0 +1,82 @@
+You are working inside the Treasure Coast AI SaaS codebase on Replit.
+
+Context:
+- Multiple QA passes have been completed.
+- Recent work fixed:
+  - Duplicate slug/email validation (with inline errors).
+  - Appointment Types discoverability in the Booking & Links panel.
+  - Booking data extraction to use user messages only (data integrity).
+  - Widget embed preview on /dev/embed-test.
+  - Multi-tenant isolation and admin/client parity.
+  - Client inbox transcripts.
+  - Documentation for booking extraction, appointment types, and password reset testing.
+
+At this point, the app is functionally ready to demo and onboard real clients. I do NOT want any new features, wizards, or major UX changes. I only want a light **production hardening & cleanup** pass.
+
+Please do the following:
+
+1) Run tests & basic smoke checks
+- Run the full test suite (unit/integration/Playwright if configured).
+- Make sure:
+  - All tests pass.
+  - There are no obvious console errors in the main flows:
+    - Landing page (/)
+    - Admin login (/login → /super-admin)
+    - Client login (/login → /client/dashboard for a demo client)
+    - A workspace dashboard (overview, leads, bookings)
+    - /dev/embed-test
+- Only change code if a real bug / flake is exposed.
+
+2) Remove or guard any dev-only logging
+- Scan for noisy dev-only `console.log` / debug logging that could:
+  - Spam the browser console for real users.
+  - Leak internal details to client-side logs.
+- Keep important error logging on the server, but:
+  - Avoid logging sensitive data (emails, phone numbers, full message text).
+  - Wrap any particularly verbose logging in a `NODE_ENV !== 'production'` or similar guard if needed.
+
+3) Copy & UX micro-polish (only where safe)
+- Without changing flows or adding features, clean up obvious rough edges in text:
+  - Ensure button/label copy is consistent (“Client login” vs “Login”, “Workspace” vs “Client”).
+  - Confirm error messages for:
+    - Duplicate workspace name.
+    - Duplicate email.
+    - Invalid login.
+    are short, friendly, and non-technical.
+- Do NOT rename core entities like “Faith House” or the main demo workspaces.
+- Do NOT introduce any new steps or screens.
+
+4) Production config & docs touch-up (code + replit.md)
+- In code and/or `replit.md`, make sure the following are clearly documented for production:
+  - Required env vars:
+    - OpenAI keys.
+    - SMTP/email provider for password reset.
+    - Allowed frontend origin(s) / CORS.
+    - Any secret keys for widget token signing.
+  - How to:
+    - Enable password reset in production with real SMTP.
+    - Configure the base URL / domain for the app.
+    - Safely change the default admin password.
+
+- If there are any obvious “TODO” comments that would affect production security (e.g. “TODO: remove this hard-coded secret”, “TODO: relax CORS”), clean those up or document them properly.
+
+5) Final sanity checklist (no code changes unless something is clearly broken)
+- As a last pass, manually click through (in dev):
+  - Create a new client workspace.
+  - Create a login for that workspace.
+  - Configure appointment types and widget branding.
+  - Run a Test Chat to create a lead + booking.
+  - Confirm:
+    - Lead and booking data look correct.
+    - Admin and client views match.
+- Only change code if you see something clearly broken or inconsistent.
+
+Important:
+- Do NOT add a client-facing onboarding wizard.
+- Do NOT change existing workspace names or demo data.
+- Do NOT add any brand-new flows; this is purely a stability/cleanup pass.
+
+When you’re done, please summarize:
+- Any bugs you found and fixed.
+- Any tests you added/adjusted.
+- Any production-specific notes you added to `replit.md`.
