@@ -390,7 +390,7 @@ export default function Home() {
                 step: "02",
                 icon: MessageSquare,
                 title: "AI chats and books 24/7",
-                description: "Visitors get instant answers and can book tours, calls, or appointments in a natural conversation."
+                description: "Visitors get instant answers and can book appointments or calls in a natural conversation."
               },
               {
                 step: "03",
