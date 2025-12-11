@@ -1,0 +1,167 @@
+You are working inside the Treasure Coast AI SaaS project on Replit.
+
+Context:
+- Multiple QA passes + a senior QA agent run show the platform is almost production-ready:
+  - New client/workspace creation works.
+  - Default assistants and automations work.
+  - Lead & booking creation via Test Chat works.
+  - Admin lead rows open detail modals (tags + activity).
+  - /dev/embed-test now correctly reflects widget styling using clientId/botId.
+  - Multi-tenant isolation and admin/client parity have been re-verified.
+- The last QA run did surface a few remaining friction points and one real data bug.
+
+Please address the following items.
+
+────────────────────
+1) Duplicate slug/email UX (New Client + Create Login)
+────────────────────
+
+Goal: Make duplicate “slug/email already in use” errors **clear and friendly**, so I (the agency owner) can quickly fix them during a live demo or onboarding.
+
+Scenarios:
+
+A. New Client / New Workspace
+- When creating a new workspace with a business name that produces a slug that already exists (e.g., running the wizard twice with the same name), the QA agent reported confusing duplicate errors that required manual guessing to resolve.
+
+Requirements:
+- In the New Client/Workspace wizard:
+  - If the generated workspace slug or client_id already exists:
+    - Show a clear inline error near the Business Name or internal ID field.
+    - Use human language like:
+      - “A workspace with this name/slug already exists. Please tweak the name (e.g., add ‘-2’).”
+  - Don’t silently close the wizard or show a generic “Something went wrong” toast.
+  - Ensure the user’s already-entered data stays in the form when the error appears.
+
+B. Create Login (Workspace Users)
+- When creating a client login with an email that already exists, the QA agent saw a duplicate email error that wasn’t obvious.
+
+Requirements:
+- In the “Create Login” form:
+  - If the email is already taken (globally or for that workspace), show:
+    - A clear inline error under the email field:
+      - “This email is already in use. Please use a different email.”
+  - Do not submit the form or clear the other fields on this error.
+
+Acceptance Criteria:
+- Trying to create a workspace or login with a duplicate slug/email should:
+  - Show a clear, specific inline error.
+  - Keep the user on the same step with all previously entered values intact.
+
+────────────────────
+2) Appointment Types Configuration – Make It Clear in Admin
+────────────────────
+
+Goal: Make it obvious where **appointment types** are managed for a workspace, so I can configure them easily as the agency owner. (Clients should NOT get a deep onboarding wizard; I configure everything.)
+
+QA Feedback:
+- The agent reported “no clear interface for adding appointment types,” which made configuring booking flows confusing.
+
+Requirements:
+- In the **super-admin view**, for each workspace’s assistant:
+  - Ensure there is a clearly labeled area in the assistant config, e.g.:
+    - Tab: “Booking & Links” or “Appointments”
+    - Section: “Appointment Types”
+  - That section should allow:
+    - Adding new appointment types (e.g., “Full Grooming Appointment”, “Quick Bath & Brush”, “Phone Consult”).
+    - Editing their:
+      - Display name
+      - Description (optional)
+      - Duration
+      - Channel/type (if applicable: in-person vs call)
+  - Ensure the UI is discoverable:
+    - Use a visible button like “Add Appointment Type”.
+    - Use simple labels, no internal jargon.
+
+Scope:
+- This config can remain **admin-only**. Do NOT build any client-facing onboarding wizard; the agency controls this.
+
+Acceptance Criteria:
+- As super-admin:
+  - Open an assistant for a workspace.
+  - Immediately see where to manage appointment types.
+  - Add/edit appointment types and confirm they persist and are used by the booking flow.
+
+────────────────────
+3) Booking Record Visitor Details – Data Integrity Bug
+────────────────────
+
+Goal: Ensure every booking record stores or is linked to the **correct visitor details** (name, email, phone) from the conversation that created it.
+
+QA Issue:
+- The agent reported that, after running a test chat as “QA Demo Visitor” (with unique email/phone), the resulting booking record had **incorrect visitor details** (likely from another lead or a default).
+
+Please:
+
+1. Reproduce:
+   - In a QA workspace:
+     - Use Test Chat to create a new lead as a unique visitor, e.g.:
+       - Name: “QA Demo Visitor X”
+       - Email: qa.demo.visitor.X@example.com
+       - Phone: 555-XXX-YYYY
+     - Request a booking.
+   - Check the Booking record:
+     - Verify the stored or displayed name/email/phone.
+
+2. Fix:
+   - Inspect the backend creation logic for bookings:
+     - Ensure the booking is associated to:
+       - The correct leadId, and/or
+       - The correct contact details collected in that conversation.
+   - Ensure you’re **not**:
+     - Reusing stale lead data from another session.
+     - Falling back to a default contact if the session lead exists.
+
+3. Verify:
+   - Create at least two distinct QA visitors with different contact info and bookings.
+   - Confirm:
+     - Each booking row in both client and admin views shows the correct details for that visitor.
+     - The booking’s lead detail (if linked) also points to the right lead.
+
+Add or adjust tests as needed (unit/integration/Playwright) to prevent regressions.
+
+────────────────────
+4) Password Reset – Dev UX Clarification Only
+────────────────────
+
+Goal: Keep the current password reset flow, but make sure developers (and I) know how to test it in dev.
+
+Constraints:
+- QA agents can’t access the server console, so they couldn’t fully validate the reset flow (reset link is logged in console in dev).
+- This is an environment limitation, not necessarily a code bug.
+
+Requirements:
+- Keep the current security model:
+  - Forgot-password form.
+  - Email-based reset link.
+  - Token is time-limited and single-use.
+  - Generic responses to avoid email enumeration.
+
+- In `replit.md`:
+  - Ensure there is a concise “Password Reset Dev Testing” section that explains:
+    - How to trigger a reset in dev.
+    - Where/how the reset URL is logged.
+    - How to confirm:
+      - Old password fails after reset.
+      - New password works.
+      - Token cannot be reused.
+  - Note clearly that in production, SMTP / email provider must be configured for real users.
+
+Do NOT add any insecure dev-only endpoints that expose reset tokens in the browser.
+
+────────────────────
+5) Final Sanity Check
+────────────────────
+
+After implementing the above:
+
+- Run a quick end-to-end sanity check for a fresh demo client:
+  - New workspace + client login.
+  - Configure appointment types via admin.
+  - Run Test Chat:
+    - Create a lead + booking as a unique test visitor.
+  - Confirm:
+    - Booking row shows the correct visitor details.
+    - Admin/client dashboards show the same lead/booking.
+    - No confusing duplicate-email/slug errors when re-running the flow with a slightly different name/email.
+
+Please keep changes focused and minimal, preserving all the good behavior we’ve already verified.
