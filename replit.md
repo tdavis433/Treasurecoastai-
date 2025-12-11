@@ -156,3 +156,15 @@ New clients receive two default automation workflows:
 - Left panel: session list with snippets, message counts, topics
 - Right panel: full message thread with user/assistant styling
 - Messages fetched from `/api/client/inbox/sessions/:sessionId`
+
+### Booking Data Extraction
+- Contact info (name, phone, email) is extracted ONLY from user messages to prevent data crossover
+- Falls back to AI's structured summary (e.g., "Name: X, Phone: Y") if not found in user messages
+- Time preferences are extracted from user messages first, then AI summary
+- This prevents booking records from showing wrong visitor details from system prompts or AI responses
+
+### Appointment Types
+- Located in Booking & Links panel of bot editor
+- Default types: Tour/Visit, Phone Call, General Appointment
+- AI automatically detects which type the customer needs based on conversation context
+- Custom appointment types can be added via Knowledge Base section

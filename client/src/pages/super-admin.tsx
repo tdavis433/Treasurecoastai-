@@ -231,8 +231,8 @@ export default function SuperAdmin() {
     // Step 3: FAQs
     faqs: [] as Array<{ question: string; answer: string }>,
   });
-  const [wizardErrors, setWizardErrors] = useState<{ businessName?: string; contactEmail?: string }>({});
-  const [wizardTouched, setWizardTouched] = useState<{ businessName?: boolean; contactEmail?: boolean }>({});
+  const [wizardErrors, setWizardErrors] = useState<{ businessName?: string; contactEmail?: string; slug?: string }>({});
+  const [wizardTouched, setWizardTouched] = useState<{ businessName?: boolean; contactEmail?: boolean; slug?: boolean }>({});
 
   // Wizard validation helper
   const isValidWizardEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -774,7 +774,36 @@ export default function SuperAdmin() {
       toast({ title: "Client Created", description: `${data.workspace?.name} has been created successfully.` });
     },
     onError: (error: any) => {
-      toast({ title: "Error", description: error.message || "Failed to create client.", variant: "destructive" });
+      const errorMessage = error.message || "Failed to create client.";
+      
+      // Parse specific 409 conflict errors and show inline validation
+      if (errorMessage.includes("Workspace with slug") && errorMessage.includes("already exists")) {
+        // Duplicate slug error - show under business name and slug fields
+        setWizardErrors(prev => ({ 
+          ...prev, 
+          slug: "A workspace with this name/slug already exists. Please tweak the business name (e.g., add '-2') or modify the slug."
+        }));
+        setWizardTouched(prev => ({ ...prev, slug: true }));
+        // Go back to step 1 if not already there
+        if (wizardStep !== 1) {
+          setWizardStep(1);
+        }
+        toast({ title: "Duplicate Workspace", description: "Please use a different business name or slug.", variant: "destructive" });
+      } else if (errorMessage.includes("account with email") && errorMessage.includes("already exists")) {
+        // Duplicate email error - show under contact email field
+        setWizardErrors(prev => ({ 
+          ...prev, 
+          contactEmail: "This email is already in use. Please use a different email address."
+        }));
+        setWizardTouched(prev => ({ ...prev, contactEmail: true }));
+        // Go back to step 1 if not already there
+        if (wizardStep !== 1) {
+          setWizardStep(1);
+        }
+        toast({ title: "Duplicate Email", description: "This email is already associated with another account.", variant: "destructive" });
+      } else {
+        toast({ title: "Error", description: errorMessage, variant: "destructive" });
+      }
     },
   });
 
@@ -3695,12 +3724,22 @@ export default function SuperAdmin() {
                   <Label className="text-white/85">Slug (auto-generated)</Label>
                   <Input
                     value={wizardData.slug}
-                    onChange={(e) => setWizardData(d => ({ ...d, slug: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') }))}
-                    className="bg-white/5 border-white/10 text-white"
+                    onChange={(e) => {
+                      setWizardData(d => ({ ...d, slug: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') }));
+                      // Clear slug error when user starts typing
+                      if (wizardErrors.slug) {
+                        setWizardErrors(prev => ({ ...prev, slug: undefined }));
+                      }
+                    }}
+                    className={`bg-white/5 text-white ${wizardTouched.slug && wizardErrors.slug ? 'border-red-500/50' : 'border-white/10'}`}
                     placeholder="e.g. faith_house_sober_living"
                     data-testid="wizard-input-slug"
                   />
-                  <p className="text-xs text-white/40">Lowercase letters, numbers, and underscores only</p>
+                  {wizardTouched.slug && wizardErrors.slug ? (
+                    <p className="text-xs text-red-400">{wizardErrors.slug}</p>
+                  ) : (
+                    <p className="text-xs text-white/40">Lowercase letters, numbers, and underscores only</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label className="text-white/85">Contact Name</Label>
@@ -5275,6 +5314,77 @@ function BookingLinksPanel({ clientId, clientName }: { clientId: string; clientN
               </Button>
             </div>
           )}
+        </GlassCardContent>
+      </GlassCard>
+
+      {/* Appointment Types Configuration */}
+      <GlassCard>
+        <GlassCardHeader>
+          <div className="flex items-center gap-2">
+            <Clock className="h-5 w-5 text-purple-400" />
+            <GlassCardTitle>Appointment Types</GlassCardTitle>
+          </div>
+          <GlassCardDescription>
+            Define the types of appointments your business offers. The AI will use these when helping customers book.
+          </GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent className="space-y-4">
+          <p className="text-sm text-white/55">
+            Appointment types help the AI understand what services can be booked and guide the conversation appropriately.
+          </p>
+          
+          {/* Default Appointment Types */}
+          <div className="space-y-3">
+            <div className="p-3 bg-white/5 rounded-lg border border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
+                  <Users className="h-4 w-4 text-purple-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-white">Tour / Visit</p>
+                  <p className="text-xs text-white/50">In-person facility tour or consultation</p>
+                </div>
+              </div>
+              <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Active</Badge>
+            </div>
+            
+            <div className="p-3 bg-white/5 rounded-lg border border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
+                  <Phone className="h-4 w-4 text-blue-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-white">Phone Call</p>
+                  <p className="text-xs text-white/50">Phone consultation or follow-up call</p>
+                </div>
+              </div>
+              <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Active</Badge>
+            </div>
+            
+            <div className="p-3 bg-white/5 rounded-lg border border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center">
+                  <Calendar className="h-4 w-4 text-cyan-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-white">General Appointment</p>
+                  <p className="text-xs text-white/50">Standard appointment or service booking</p>
+                </div>
+              </div>
+              <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Active</Badge>
+            </div>
+          </div>
+
+          <div className="mt-4 p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
+            <p className="text-cyan-400 text-xs flex items-start gap-2">
+              <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
+              <span>
+                <strong>Tip:</strong> These are the default appointment types. The AI automatically detects which type 
+                the customer needs based on their conversation. Custom appointment types can be configured in the 
+                Knowledge Base section of the assistant settings.
+              </span>
+            </p>
+          </div>
         </GlassCardContent>
       </GlassCard>
 
@@ -10742,7 +10852,20 @@ function ClientLoginsSectionPanel({ workspaces }: ClientLoginsSectionPanelProps)
       invalidateClientLogins();
     },
     onError: (error: Error) => {
-      toast({ title: "Error", description: error.message || "Failed to create client login", variant: "destructive" });
+      const errorMessage = error.message || "Failed to create client login";
+      
+      // Parse specific duplicate email errors and show inline validation
+      if (errorMessage.toLowerCase().includes("email") && 
+          (errorMessage.includes("already exists") || errorMessage.includes("already in use") || errorMessage.includes("duplicate"))) {
+        setFormErrors(prev => ({ 
+          ...prev, 
+          email: "This email is already in use. Please use a different email address."
+        }));
+        setFormTouched(prev => ({ ...prev, email: true }));
+        toast({ title: "Duplicate Email", description: "This email is already associated with another account.", variant: "destructive" });
+      } else {
+        toast({ title: "Error", description: errorMessage, variant: "destructive" });
+      }
     },
   });
 

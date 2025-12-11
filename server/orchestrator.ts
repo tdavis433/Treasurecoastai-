@@ -190,8 +190,10 @@ export function extractBookingInfoFromConversation(
   currentReply: string,
   currentUserMessage: string
 ): ExtractedBookingInfo | null {
-  const allText = [...messages.map(m => m.content), currentUserMessage, currentReply].join(' ');
+  // FIX: Only search user messages for contact info (not bot/system messages) to prevent data crossover
   const userMessages = messages.filter(m => m.role === 'user').map(m => m.content).join(' ') + ' ' + currentUserMessage;
+  // Also check AI reply for structured summaries like "Name: X, Phone: Y"
+  const aiSummaryText = currentReply;
   
   const aiConfirmsBooking = /I'?ve noted|noted your|passed along|team will (reach out|follow up|contact)|will be in touch|request:?[\s\S]*name:?/i.test(currentReply);
   
@@ -209,18 +211,29 @@ export function extractBookingInfoFromConversation(
   let email: string | undefined;
   let preferredTime: string | undefined;
 
+  // FIX: First search user messages only for contact info
+  // Then fall back to AI summary if AI confirmed booking with structured format
   const namePatterns = [
     /(?:my name is|i'?m|name:?|this is)\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
     /(?:call me|it'?s)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
-    /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)$/m,
-    /Name:\s*([^\n,]+)/i,
   ];
   
+  // Search user messages first (primary source)
   for (const pattern of namePatterns) {
-    const match = allText.match(pattern);
+    const match = userMessages.match(pattern);
     if (match && match[1] && match[1].length > 2 && match[1].length < 50) {
       name = match[1].trim();
       break;
+    }
+  }
+  
+  // If not found in user messages, check AI's structured summary (permissive pattern)
+  if (!name) {
+    // Support various label formats with flexible delimiters (colon, dash, bullet, etc.)
+    // Captures everything up to newline/comma to handle all name formats
+    const aiNameMatch = aiSummaryText.match(/(?:(?:Client|Contact|Customer|Visitor|Guest|Your)?\s*Name)[:\-–•]?\s*([^\n,]+)/i);
+    if (aiNameMatch && aiNameMatch[1] && aiNameMatch[1].trim().length > 2 && aiNameMatch[1].trim().length < 50) {
+      name = aiNameMatch[1].trim();
     }
   }
 
@@ -228,11 +241,11 @@ export function extractBookingInfoFromConversation(
     /(?:phone|number|cell|mobile|call me at|reach me at):?\s*([\d\s\-\(\)\.]{10,})/i,
     /\b(\(?\d{3}\)?[\s\-\.]?\d{3}[\s\-\.]?\d{4})\b/,
     /\b(\d{3}[\s\-\.]\d{3}[\s\-\.]\d{4})\b/,
-    /Phone:\s*([\d\s\-\(\)\.]+)/i,
   ];
   
+  // Search user messages for phone (primary source)
   for (const pattern of phonePatterns) {
-    const match = allText.match(pattern);
+    const match = userMessages.match(pattern);
     if (match && match[1]) {
       const cleaned = match[1].replace(/\D/g, '');
       if (cleaned.length >= 10) {
@@ -241,18 +254,39 @@ export function extractBookingInfoFromConversation(
       }
     }
   }
+  
+  // If not found in user messages, check AI's structured summary (permissive pattern)
+  if (!phone) {
+    // Support various label formats with flexible delimiters
+    const aiPhoneMatch = aiSummaryText.match(/(?:Phone|Phone\s*Number|Contact\s*Number|Cell|Mobile|Telephone)[:\-–•]?\s*([\d\s\-\(\)\.]+)/i);
+    if (aiPhoneMatch && aiPhoneMatch[1]) {
+      const cleaned = aiPhoneMatch[1].replace(/\D/g, '');
+      if (cleaned.length >= 10) {
+        phone = aiPhoneMatch[1].trim();
+      }
+    }
+  }
 
   const emailPatterns = [
     /(?:email|e-mail):?\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i,
     /\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/,
-    /Email:\s*([^\s,]+)/i,
   ];
   
+  // Search user messages for email (primary source)
   for (const pattern of emailPatterns) {
-    const match = allText.match(pattern);
+    const match = userMessages.match(pattern);
     if (match && match[1]) {
       email = match[1].trim();
       break;
+    }
+  }
+  
+  // If not found in user messages, check AI's structured summary (permissive pattern)
+  if (!email) {
+    // Support various label formats with flexible delimiters
+    const aiEmailMatch = aiSummaryText.match(/(?:Email|Email\s*Address|E-mail|Contact\s*Email)[:\-–•]?\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+    if (aiEmailMatch && aiEmailMatch[1]) {
+      email = aiEmailMatch[1].trim();
     }
   }
 
@@ -261,16 +295,26 @@ export function extractBookingInfoFromConversation(
     /(?:tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)(?:\s+(?:morning|afternoon|evening|at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?))?/i,
     /(?:this\s+)?(?:week|weekend|next\s+week)/i,
     /\d{1,2}(?::\d{2})?\s*(?:am|pm)/i,
-    /Preferred time:\s*([^\n]+)/i,
   ];
   
+  // Search user messages for time preference (primary source)
   for (const pattern of timePatterns) {
-    const match = allText.match(pattern);
+    const match = userMessages.match(pattern);
     if (match) {
       preferredTime = (match[1] || match[0]).trim();
       break;
     }
   }
+  
+  // If not found in user messages, check AI's structured summary (permissive pattern)
+  if (!preferredTime) {
+    // Support various label formats with flexible delimiters
+    const aiTimeMatch = aiSummaryText.match(/(?:Preferred\s*time|Time|When|Availability|Schedule|Date|Appointment\s*Time)[:\-–•]?\s*([^\n]+)/i);
+    if (aiTimeMatch && aiTimeMatch[1]) {
+      preferredTime = aiTimeMatch[1].trim();
+    }
+  }
+  
   if (!preferredTime) {
     preferredTime = 'To be confirmed';
   }

@@ -187,7 +187,20 @@ export default function ClientDetailAdmin() {
       queryClient.invalidateQueries({ queryKey: ["/api/super-admin/workspaces", slug, "users"] });
     },
     onError: (error: Error) => {
-      toast({ title: "Could not create login", description: error.message, variant: "destructive" });
+      const errorMessage = error.message || "Failed to create login";
+      
+      // Parse specific duplicate email errors and show inline validation
+      if (errorMessage.toLowerCase().includes("email") && 
+          (errorMessage.includes("already exists") || errorMessage.includes("already in use") || errorMessage.includes("duplicate"))) {
+        setUserFormErrors(prev => ({ 
+          ...prev, 
+          email: "This email is already in use. Please use a different email address."
+        }));
+        setUserFormTouched(prev => ({ ...prev, email: true }));
+        toast({ title: "Duplicate Email", description: "This email is already associated with another account.", variant: "destructive" });
+      } else {
+        toast({ title: "Could not create login", description: errorMessage, variant: "destructive" });
+      }
     },
   });
 
