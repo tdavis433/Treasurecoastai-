@@ -2573,13 +2573,21 @@ These suggestions should be relevant to what was just discussed and help guide t
         // Get bot settings for additional info
         const [settings] = await db.select().from(botSettings).where(eq(botSettings.botId, primaryBot.botId)).limit(1);
         
-        // Map special demo routes for known workspaces
-        let demoRoute = `/demo/${primaryBot.botId}`;
-        if (workspace.slug === 'faith_house_demo') {
-          demoRoute = '/demo/faith-house';
-        } else if (workspace.slug === 'demo_paws_suds_grooming_demo') {
-          demoRoute = '/demo/paws-suds';
-        }
+        // Map demo routes based on workspace slug
+        const demoRouteMap: Record<string, string> = {
+          'faith_house_demo': '/demo/faith-house',
+          'demo_paws_suds_grooming_demo': '/demo/paws-suds',
+          'demo_coastline_auto': '/demo/auto-care',
+          'demo_fade_factory': '/demo/barbershop',
+          'demo_iron_coast_fitness': '/demo/fitness',
+          'demo_tc_handyman': '/demo/handyman',
+          'demo_radiance_medspa': '/demo/med-spa',
+          'demo_premier_properties': '/demo/real-estate',
+          'demo_coastal_breeze': '/demo/restaurant',
+          'demo_ink_soul': '/demo/tattoo',
+          'demo_new_horizons': '/demo/recovery-house',
+        };
+        let demoRoute = demoRouteMap[workspace.slug] || `/demo/${primaryBot.botId}`;
         
         return {
           botId: primaryBot.botId,

@@ -27,6 +27,15 @@ import DemosPage from "@/pages/demos";
 import DemoBotPage from "@/pages/demo-bot";
 import DemoFaithHouse from "@/pages/demo-faith-house";
 import DemoPawsSuds from "@/pages/demo-paws-suds";
+import DemoAutoCare from "@/pages/demo-auto-care";
+import DemoBarbershop from "@/pages/demo-barbershop";
+import DemoFitness from "@/pages/demo-fitness";
+import DemoHandyman from "@/pages/demo-handyman";
+import DemoMedSpa from "@/pages/demo-med-spa";
+import DemoRealEstate from "@/pages/demo-real-estate";
+import DemoRestaurant from "@/pages/demo-restaurant";
+import DemoTattoo from "@/pages/demo-tattoo";
+import DemoRecoveryHouse from "@/pages/demo-recovery-house";
 import DevEmbedTest from "@/pages/dev-embed-test";
 import { useEffect } from "react";
 
@@ -63,6 +72,15 @@ function Router() {
       <Route path="/demos" component={DemosPage} />
       <Route path="/demo/faith-house" component={DemoFaithHouse} />
       <Route path="/demo/paws-suds" component={DemoPawsSuds} />
+      <Route path="/demo/auto-care" component={DemoAutoCare} />
+      <Route path="/demo/barbershop" component={DemoBarbershop} />
+      <Route path="/demo/fitness" component={DemoFitness} />
+      <Route path="/demo/handyman" component={DemoHandyman} />
+      <Route path="/demo/med-spa" component={DemoMedSpa} />
+      <Route path="/demo/real-estate" component={DemoRealEstate} />
+      <Route path="/demo/restaurant" component={DemoRestaurant} />
+      <Route path="/demo/tattoo" component={DemoTattoo} />
+      <Route path="/demo/recovery-house" component={DemoRecoveryHouse} />
       <Route path="/demo/:botId" component={DemoBotPage} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />

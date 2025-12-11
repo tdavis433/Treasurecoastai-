@@ -1,0 +1,319 @@
+You are working inside the Treasure Coast AI SaaS project on Replit.
+
+Goal:
+Right now I only see 1–2 polished demos (like Faith House). I want **demo-quality experiences for EVERY template on the platform**, all fully configured and “jam-packed” with knowledge, FAQs, and realistic data.
+
+When I click into a demo for a given template, I want it to feel like a real business:
+- Full knowledge base & FAQs in the client panel.
+- Conversational AI that actually knows the business.
+- Ability to book **appointments / meetings / tours / phone calls / consultations** appropriate to that business.
+- Client dashboards and admin dashboards that look “live” with seeded leads, bookings, and conversations.
+- **Assistant icons/avatars that visually match the business** (house for sober living, paw for grooming, spa icon, etc.) with a consistent look across all demos.
+
+Do NOT change core flows (login, billing, etc.). This work is about:
+- Discovering all templates.
+- Creating demo workspaces + assistants per template.
+- Filling them with content and data.
+- Making the demo pages, widgets, and client dashboards ready to show off.
+
+────────────────────
+1. DISCOVER ALL TEMPLATES & DEFINE DEMO WORKSPACES
+────────────────────
+
+First, identify **all templates** that currently exist in the platform. This might be via:
+- A template config file.
+- Seed scripts.
+- Hard-coded workspace templates.
+- Any “industry presets” logic.
+
+For **every template type** you find (e.g., Faith House / sober living, pet grooming, med spa, real estate, etc.):
+
+1.1 Create a dedicated demo workspace
+- Create a **demo workspace** for each template, if it doesn’t already exist.
+- Use clear, descriptive names, e.g.:
+  - `faith_house_demo` (or existing Faith House demo).
+  - `demo_pet_grooming`
+  - `demo_med_spa`
+  - `demo_real_estate`
+  - etc., one per template.
+- Each template should have:
+  - 1 main demo assistant.
+  - Any necessary automations enabled.
+
+1.2 Keep real tenant workspaces separate
+- Maintain strict separation between:
+  - Demo workspaces (used for public demos and sales).
+  - Real client workspaces (created via the New Client wizard, including canonical Faith House used by `demo_faith_house`).
+- Demo workspaces must be clearly identifiable (by slug, name, or flags) so seeding/reset logic can operate on them safely, without ever touching real customer data.
+
+────────────────────
+2. /DEMOS PAGE – ADD ALL TEMPLATE DEMOS
+────────────────────
+
+2.1 Expand /demos index
+- On the `/demos` page (or whatever main demo index route exists), add a card for **each template demo workspace**.
+- Each card should include:
+  - Business/demo name (e.g. “Faith House – Sober Living Facility”, “Paws & Suds – Pet Grooming”, etc.).
+  - 1–2 line description of:
+    - What type of business it is.
+    - What the AI assistant helps with.
+  - A clear CTA button like “Open Demo” that links to the appropriate route:
+    - For example: `/demo/faith-house`, `/demo/pet-grooming`, `/demo/med-spa`, etc.
+
+2.2 Uniform styling with room for personality
+- Use the existing demo design (e.g. `/demo/faith-house`) as the **visual baseline**:
+  - Consistent typography.
+  - Consistent card layout.
+  - Consistent button styles and spacing.
+- Each demo card can carry **business-specific visuals** (icon, mini photo, accent color), but the overall page chrome must feel unified and professional.
+
+────────────────────
+3. PER-TEMPLATE DEMO PAGES, WIDGET STYLING & ICONS
+────────────────────
+
+For each template:
+
+3.1 Individual demo pages
+- Create or update **one dedicated demo page** per template, similar to `/demo/faith-house`.
+- Each page should include:
+  - A headline and description of the fictional business.
+  - A short section explaining how Treasure Coast AI helps that type of business.
+  - A prominently embedded AI chat widget for that template’s assistant.
+
+3.2 Widget styling
+- For all demo pages:
+  - Keep widget styling **consistent** with the product:
+    - Same base chat UI.
+    - Same structure (header, message list, input).
+  - Allow template-specific branding:
+    - Widget title (e.g., “Faith House AI Assistant”, “Paws & Suds AI Assistant”).
+    - Accent color appropriate to that business.
+    - Greeting text tailored to the business.
+
+3.3 Assistant icons/avatars (NEW REQUIREMENT)
+- For each **demo assistant**, set a business-appropriate icon/avatar that visually matches the niche, for example:
+  - Faith House / sober living: a simple house/roof/home icon.
+  - Pet grooming: a paw icon or pet silhouette.
+  - Med spa: a leaf, droplet, or spa/relaxation icon.
+  - Real estate: a building/house/map-pin icon.
+  - Other templates: pick intuitive, generic icons that quickly communicate the business type.
+- Requirements:
+  - Icons should be:
+    - Consistent style (line/filled, size, and corner radius) across all demos.
+    - Rendered correctly in:
+      - Widget header.
+      - Any place assistants are listed (assistants list, demo cards on `/demos` if applicable).
+  - No placeholder avatars (no generic default heads, broken images, or missing icons) on demo assistants.
+
+────────────────────
+4. KNOWLEDGE BASE & FAQS: PACKED FOR EVERY TEMPLATE
+────────────────────
+
+For **each template’s demo workspace**, fill out the **client-facing knowledge base and FAQs** so they’re packed with realistic content.
+
+4.1 Persona & system prompt
+- Create a **rich persona** for each template’s demo assistant, e.g.:
+
+  - Sober living:
+    - “You are a friendly AI assistant for [Facility Name], a sober living home. You help prospective residents and families understand our program, rules, costs, availability, and how to schedule tours and intake calls. You are compassionate, clear, and non-judgmental.”
+
+  - Pet grooming:
+    - “You are a warm, upbeat AI assistant for [Grooming Studio Name], a local pet grooming studio. You help pet parents with services, pricing, availability, and booking grooming appointments or consultations.”
+
+  - Med spa / clinic:
+    - “You are a professional, reassuring AI assistant for [Med Spa Name], helping visitors understand treatments, pricing ranges, downtime, and booking consults.”
+
+  - Real estate:
+    - “You are a responsive AI assistant for [Brokerage/Agent Name], helping buyers and sellers with property info, viewing schedules, and consultations.”
+
+4.2 FAQs
+- For each template demo assistant:
+  - Add **8–15 realistic FAQs** in the client knowledge/FAQ panel, covering:
+    - Services offered (detailed by template).
+    - Pricing examples or ranges.
+    - How appointments/consultations/tours work.
+    - What to expect on the first visit.
+    - Policies (cancellations, requirements, limitations).
+    - Common concerns & their answers.
+
+Examples:
+- For sober living:
+  - “What’s the intake process?”
+  - “Can I work or attend school while in the program?”
+  - “Are visitors allowed?”
+- For pet grooming:
+  - “Do you groom anxious or reactive dogs?”
+  - “How often should my dog be groomed?”
+- For med spa:
+  - “What’s the downtime for [treatment]?”
+  - “Do you offer free consultations?”
+- For real estate:
+  - “How do property tours work?”
+  - “What’s the difference between pre-approval and pre-qualification?”
+
+4.3 Long-form knowledge entries
+- For each template:
+  - Add **3–5 rich knowledge entries**, e.g.:
+    - “[Business] – About Us”
+    - “How Our Program Works”
+    - “First Visit Checklist”
+    - “Our Most Popular Services”
+    - “What to Expect from Your First Tour / Appointment”
+  - Ensure content is:
+    - Cohesive.
+    - Not generic boilerplate.
+    - Consistent with the demo page copy.
+
+No lorem ipsum. No “coming soon”.
+
+────────────────────
+5. APPOINTMENTS / TOURS / CALLS PER TEMPLATE
+────────────────────
+
+For each template demo workspace, set up **appointment/booking flows** that match what that business should be doing.
+
+5.1 Hours & availability
+- Configure realistic business hours:
+  - e.g., Mon–Fri 9am–6pm; Sat 10am–4pm; closed Sunday.
+
+5.2 Appointment types by template
+- For each template, configure **appointment types** that make sense:
+
+Examples:
+- Sober living facility:
+  - “Facility Tour”
+  - “Phone Consultation”
+  - “Intake Screening Call”
+- Pet grooming:
+  - “Full Grooming Appointment”
+  - “Quick Bath & Brush”
+  - “New Client Consultation Call”
+- Med spa:
+  - “Consultation”
+  - “Treatment Session”
+  - “Follow-up Visit”
+- Real estate:
+  - “Property Tour”
+  - “Buyer Consultation”
+  - “Seller Consultation Call”
+
+- Set durations and any other required fields.
+
+5.3 Chat → booking behavior
+- Ensure that for each template demo assistant:
+  - The AI is wired (via existing automations) to:
+    - Recognize booking intent.
+    - Ask for contact details.
+    - Create a lead.
+    - Create a booking appropriate to the template’s appointment types.
+
+────────────────────
+6. DEMO DATA SEEDING & CLIENT DASHBOARDS
+────────────────────
+
+I want every template demo’s **client dashboards** to look active and ready to show off.
+
+6.1 Seed leads & bookings for all templates
+- Extend the existing demo seeding approach (e.g., `demoSeed.ts`) to handle **all template demo workspaces**.
+- For each template’s demo workspace, seed:
+  - 10–30 leads with realistic:
+    - Names, emails, phone numbers.
+    - Statuses (New, Contacted, Scheduled, Completed, etc.).
+    - Tags (e.g., “tour-request”, “consult-request”, “high-intent”, “website-chat”).
+  - Several bookings:
+    - Using the correct appointment types for that template.
+    - With a mix of dates (recent and upcoming).
+    - With varied statuses (Pending, Confirmed, Completed, No-Show).
+
+6.2 Seed conversations
+- For each template demo:
+  - Seed a set of conversations where:
+    - Visitors ask questions typical for that business.
+    - The assistant answers using the knowledge base.
+    - Some conversations end with a booking; others are info-only.
+
+6.3 Client dashboards
+- Verify that for each template demo’s client login (if applicable), the dashboard shows:
+  - Non-zero leads, bookings, and conversations.
+  - Charts with plausible data.
+  - Leads, bookings, and inbox views that align with the seeded data and the template’s business type.
+
+────────────────────
+7. TREASURE COAST AI COPY ON DEMO PAGES
+────────────────────
+
+On each **template demo page**:
+
+- Add a short section that explains:
+  - What Treasure Coast AI is doing for this business type, e.g.:
+    - “Treasure Coast AI automatically answers common questions, captures leads, and books tours/consults for [business type].”
+  - How this helps the owner:
+    - Fewer missed calls.
+    - 24/7 lead capture.
+    - Centralized dashboard of leads, bookings, and conversations.
+
+Make sure this copy is:
+- Clear.
+- Non-technical.
+- Aligned with the fictional business.
+
+────────────────────
+8. CLEANUP & NON-INTERFERENCE WITH REAL CLIENT ACCOUNTS
+────────────────────
+
+Important constraints:
+
+- **Demo seeding and demo logic must never touch real client accounts.**
+
+Requirements:
+- All demo seed logic (e.g., `demoSeed.ts`) and any reset tools MUST:
+  - Operate only on a clearly defined list of **demo workspace IDs**.
+  - Never operate on:
+    - Canonical `faith_house` workspace used by `demo_faith_house`.
+    - Any workspaces created by new real clients via the New Client wizard.
+
+- New client accounts:
+  - When a new workspace/client is created via the normal flow, they should:
+    - Get the standard “factory default” experience (auto-created bot, automations, etc.) but **no demo seed data**.
+    - Be completely unaffected by demo resets.
+
+If you have a demo reset button/endpoint already, update it so:
+- It also supports all template demo workspaces.
+- It still uses an explicit demo workspace list and never touches non-demo workspaces.
+
+────────────────────
+9. FINAL VERIFICATION & DOCS
+────────────────────
+
+After implementation:
+
+1) For each template:
+   - Visit its `/demo/...` page.
+   - Confirm:
+     - Page looks polished and informative.
+     - Widget loads with correct assistant, brand, **icon**, and greeting.
+     - Assistant answers business-specific questions well.
+     - Assistant can book the appropriate appointment types.
+
+2) For each template demo workspace:
+   - Open the client dashboard (if there is a demo client login).
+   - Confirm:
+     - Leads, bookings, and conversations look active and realistic.
+     - Clicking into leads shows plausible tags and activity.
+     - Booking types and statuses make sense.
+
+3) Update `replit.md`:
+   - Add a “Template Demos” section that documents:
+     - All template types.
+     - The corresponding demo workspace for each.
+     - The `/demo/...` route for each template.
+     - Which workspaces are safe to reset via demo seeding.
+     - That demo seeding/reset never touches real client workspaces.
+   - Note that demo assistants have **business-appropriate icons/avatars** and where those are configured.
+
+Please keep all changes focused on:
+- Demos for all templates.
+- Full knowledge bases and Q&A.
+- Appointment/booking flows tailored to each business type.
+- Business-matching assistant icons.
+- Seeded dashboards that are ready to show off to real prospects.
