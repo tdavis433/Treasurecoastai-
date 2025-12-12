@@ -1,5 +1,6 @@
-import DemoGenericPage from "./demo-generic";
+import DemoPageTemplate from "@/components/demo/DemoPageTemplate";
+import { tattooConfig } from "@/components/demo/configs/tattoo";
 
-export default function DemoTattooPage() {
-  return <DemoGenericPage workspaceSlug="demo_ink_soul" botId="bot_demo_tattoo" />;
+export default function DemoTattoo() {
+  return <DemoPageTemplate config={tattooConfig} />;
 }

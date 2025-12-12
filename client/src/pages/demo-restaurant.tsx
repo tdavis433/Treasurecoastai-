@@ -1,5 +1,6 @@
-import DemoGenericPage from "./demo-generic";
+import DemoPageTemplate from "@/components/demo/DemoPageTemplate";
+import { restaurantConfig } from "@/components/demo/configs/restaurant";
 
-export default function DemoRestaurantPage() {
-  return <DemoGenericPage workspaceSlug="demo_coastal_breeze" botId="bot_demo_restaurant" />;
+export default function DemoRestaurant() {
+  return <DemoPageTemplate config={restaurantConfig} />;
 }

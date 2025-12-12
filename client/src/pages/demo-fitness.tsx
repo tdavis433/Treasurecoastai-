@@ -1,5 +1,6 @@
-import DemoGenericPage from "./demo-generic";
+import DemoPageTemplate from "@/components/demo/DemoPageTemplate";
+import { fitnessConfig } from "@/components/demo/configs/fitness";
 
-export default function DemoFitnessPage() {
-  return <DemoGenericPage workspaceSlug="demo_iron_coast_fitness" botId="bot_demo_fitness" />;
+export default function DemoFitness() {
+  return <DemoPageTemplate config={fitnessConfig} />;
 }

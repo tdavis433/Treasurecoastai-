@@ -1,5 +1,6 @@
-import DemoGenericPage from "./demo-generic";
+import DemoPageTemplate from "@/components/demo/DemoPageTemplate";
+import { handymanConfig } from "@/components/demo/configs/handyman";
 
-export default function DemoHandymanPage() {
-  return <DemoGenericPage workspaceSlug="demo_tc_handyman" botId="bot_demo_handyman" />;
+export default function DemoHandyman() {
+  return <DemoPageTemplate config={handymanConfig} />;
 }

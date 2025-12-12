@@ -1,5 +1,6 @@
-import DemoGenericPage from "./demo-generic";
+import DemoPageTemplate from "@/components/demo/DemoPageTemplate";
+import { realEstateConfig } from "@/components/demo/configs/real-estate";
 
-export default function DemoRealEstatePage() {
-  return <DemoGenericPage workspaceSlug="demo_premier_properties" botId="bot_demo_real_estate" />;
+export default function DemoRealEstate() {
+  return <DemoPageTemplate config={realEstateConfig} />;
 }

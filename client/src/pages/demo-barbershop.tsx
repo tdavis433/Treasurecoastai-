@@ -1,5 +1,6 @@
-import DemoGenericPage from "./demo-generic";
+import DemoPageTemplate from "@/components/demo/DemoPageTemplate";
+import { barberConfig } from "@/components/demo/configs/barber";
 
-export default function DemoBarbershopPage() {
-  return <DemoGenericPage workspaceSlug="demo_fade_factory" botId="bot_demo_barbershop" />;
+export default function DemoBarbershop() {
+  return <DemoPageTemplate config={barberConfig} />;
 }

@@ -1,5 +1,6 @@
-import DemoGenericPage from "./demo-generic";
+import DemoPageTemplate from "@/components/demo/DemoPageTemplate";
+import { medSpaConfig } from "@/components/demo/configs/med-spa";
 
-export default function DemoMedSpaPage() {
-  return <DemoGenericPage workspaceSlug="demo_radiance_medspa" botId="bot_demo_med_spa" />;
+export default function DemoMedSpa() {
+  return <DemoPageTemplate config={medSpaConfig} />;
 }

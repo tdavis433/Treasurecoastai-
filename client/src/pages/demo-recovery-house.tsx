@@ -1,5 +1,6 @@
-import DemoGenericPage from "./demo-generic";
+import DemoPageTemplate from "@/components/demo/DemoPageTemplate";
+import { recoveryHouseConfig } from "@/components/demo/configs/recovery-house";
 
-export default function DemoRecoveryHousePage() {
-  return <DemoGenericPage workspaceSlug="demo_new_horizons" botId="bot_demo_recovery" />;
+export default function DemoRecoveryHouse() {
+  return <DemoPageTemplate config={recoveryHouseConfig} />;
 }

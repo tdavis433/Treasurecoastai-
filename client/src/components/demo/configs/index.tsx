@@ -13,6 +13,7 @@ import { realEstateConfig } from "./real-estate";
 import { restaurantConfig } from "./restaurant";
 import { tattooConfig } from "./tattoo";
 import { handymanConfig } from "./handyman";
+import { recoveryHouseConfig } from "./recovery-house";
 import { DemoPageConfig } from "../DemoPageTemplate";
 
 // Map URL slugs to demo configs
@@ -34,6 +35,7 @@ export const demoConfigs: Record<string, DemoPageConfig> = {
   "sunset-bistro": restaurantConfig,
   "inkwell-tattoo": tattooConfig,
   "handy-helpers": handymanConfig,
+  "new-horizons": recoveryHouseConfig,
 };
 
 // Get demo config by URL slug
@@ -49,7 +51,7 @@ export function getAllDemos(): { slug: string; config: DemoPageConfig }[] {
 // Group demos by category
 export function getDemosByCategory(): Record<string, { slug: string; config: DemoPageConfig }[]> {
   const categories: Record<string, string[]> = {
-    "Healthcare & Wellness": ["faith-house", "coastal-smiles", "blue-harbor-medspa", "neon-harbor-fitness"],
+    "Healthcare & Wellness": ["faith-house", "new-horizons", "coastal-smiles", "blue-harbor-medspa", "neon-harbor-fitness"],
     "Professional Services": ["harper-law", "coastal-realty"],
     "Home Services": ["tc-roofing", "handy-helpers", "sunrise-auto"],
     "Hospitality & Events": ["palm-resort", "oceanview-gardens", "sunset-bistro"],
@@ -83,4 +85,5 @@ export {
   restaurantConfig,
   tattooConfig,
   handymanConfig,
+  recoveryHouseConfig,
 };

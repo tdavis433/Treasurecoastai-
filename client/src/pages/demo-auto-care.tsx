@@ -1,5 +1,6 @@
-import DemoGenericPage from "./demo-generic";
+import DemoPageTemplate from "@/components/demo/DemoPageTemplate";
+import { autoShopConfig } from "@/components/demo/configs/auto-shop";
 
-export default function DemoAutoCarePage() {
-  return <DemoGenericPage workspaceSlug="demo_coastline_auto" botId="bot_demo_auto_care" />;
+export default function DemoAutoCare() {
+  return <DemoPageTemplate config={autoShopConfig} />;
 }

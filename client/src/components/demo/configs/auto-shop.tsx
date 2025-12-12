@@ -48,8 +48,8 @@ export const autoShopConfig: DemoPageConfig = {
   services: [
     {
       name: "Full Synthetic Oil Change",
-      description: "Premium full synthetic oil, new filter, 21-point inspection, tire pressure check, and fluid top-off.",
-      price: "$79.99",
+      description: "Premium full synthetic oil, new filter, multi-point inspection, tire pressure check, and fluid top-offs.",
+      price: "From $69.99",
       duration: "30 minutes",
       popular: true
     },
