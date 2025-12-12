@@ -36,6 +36,11 @@ import DemoRealEstate from "@/pages/demo-real-estate";
 import DemoRestaurant from "@/pages/demo-restaurant";
 import DemoTattoo from "@/pages/demo-tattoo";
 import DemoRecoveryHouse from "@/pages/demo-recovery-house";
+import DemoLawFirm from "@/pages/demo-law-firm";
+import DemoDental from "@/pages/demo-dental";
+import DemoHotel from "@/pages/demo-hotel";
+import DemoRoofing from "@/pages/demo-roofing";
+import DemoWedding from "@/pages/demo-wedding";
 import DevEmbedTest from "@/pages/dev-embed-test";
 import { useEffect } from "react";
 
@@ -81,6 +86,11 @@ function Router() {
       <Route path="/demo/restaurant" component={DemoRestaurant} />
       <Route path="/demo/tattoo" component={DemoTattoo} />
       <Route path="/demo/recovery-house" component={DemoRecoveryHouse} />
+      <Route path="/demo/law-firm" component={DemoLawFirm} />
+      <Route path="/demo/dental" component={DemoDental} />
+      <Route path="/demo/hotel" component={DemoHotel} />
+      <Route path="/demo/roofing" component={DemoRoofing} />
+      <Route path="/demo/wedding" component={DemoWedding} />
       <Route path="/demo/:botId" component={DemoBotPage} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />

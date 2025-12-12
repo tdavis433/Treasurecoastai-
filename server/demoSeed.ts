@@ -653,6 +653,175 @@ const DEMO_CONFIGS: Record<string, DemoWorkspaceConfig> = {
       ]},
     ],
   },
+
+  // Harper & Associates Law Firm Demo
+  demo_harper_law: {
+    slug: "demo_harper_law",
+    name: "Harper & Associates Law Firm (Demo)",
+    botType: "law_firm",
+    botName: "Harper Law Assistant",
+    botDescription: "AI assistant for Harper & Associates personal injury law firm",
+    businessProfile: {
+      businessName: "Harper & Associates",
+      type: "Law Firm",
+      location: "Stuart, FL",
+      phone: "(772) 555-LAW1",
+      email: "consult@harperlaw.demo",
+      services: ["Personal Injury", "Auto Accidents", "Workers' Compensation", "Free Consultations"],
+    },
+    systemPrompt: "You are the Harper Law Assistant, helping potential clients schedule consultations for personal injury cases.",
+    theme: { primaryColor: "#1E40AF", welcomeMessage: "Welcome to Harper & Associates. How can we help with your legal matter today?" },
+    sampleLeads: [
+      { name: "James Patterson", phone: "(772) 555-2001", email: "james.p@email.com", status: "new", daysAgo: 1 },
+      { name: "Maria Gonzalez", phone: "(772) 555-2002", status: "contacted", daysAgo: 3 },
+      { name: "Robert Chen", phone: "(772) 555-2003", email: "robert.c@email.com", status: "qualified", daysAgo: 5 },
+    ],
+    sampleBookings: [
+      { name: "James Patterson", contact: "(772) 555-2001", appointmentType: "free_consultation", preferredTime: "Tomorrow 10am", status: "new", daysAgo: 1 },
+      { name: "Robert Chen", contact: "(772) 555-2003", appointmentType: "case_review", preferredTime: "This week", status: "confirmed", daysAgo: 3 },
+    ],
+    sampleConversations: [
+      { daysAgo: 1, appointmentRequested: true, messages: [
+        { role: 'user', content: "I was in a car accident last week. The other driver ran a red light." },
+        { role: 'bot', content: "I'm sorry to hear about your accident. We handle auto accident cases on contingency - you pay nothing unless we win. Would you like to schedule a free consultation?" },
+        { role: 'user', content: "Yes, I'd like to talk to someone. I'm James Patterson, 772-555-2001" },
+      ]},
+    ],
+  },
+
+  // Coastal Smiles Dental Demo
+  demo_coastal_smiles: {
+    slug: "demo_coastal_smiles",
+    name: "Coastal Smiles Dental (Demo)",
+    botType: "dental_clinic",
+    botName: "Coastal Smiles Assistant",
+    botDescription: "AI assistant for Coastal Smiles Dental clinic",
+    businessProfile: {
+      businessName: "Coastal Smiles Dental",
+      type: "Dental Clinic",
+      location: "Vero Beach, FL",
+      phone: "(772) 555-SMILE",
+      email: "smile@coastalsmiles.demo",
+      services: ["General Dentistry", "Cosmetic Dentistry", "Invisalign", "Dental Implants", "Emergency Care"],
+    },
+    systemPrompt: "You are the Coastal Smiles Assistant, helping patients schedule dental appointments and answering insurance questions.",
+    theme: { primaryColor: "#0D9488", welcomeMessage: "Welcome to Coastal Smiles! How can we help with your dental care today?" },
+    sampleLeads: [
+      { name: "Sarah Mitchell", phone: "(772) 555-3001", email: "sarah.m@email.com", status: "new", daysAgo: 1 },
+      { name: "Michael Brown", phone: "(772) 555-3002", status: "contacted", daysAgo: 2 },
+    ],
+    sampleBookings: [
+      { name: "Sarah Mitchell", contact: "(772) 555-3001", appointmentType: "new_patient_exam", preferredTime: "Next week", status: "new", daysAgo: 1 },
+    ],
+    sampleConversations: [
+      { daysAgo: 1, appointmentRequested: true, messages: [
+        { role: 'user', content: "I need to schedule a cleaning. Do you take Delta Dental?" },
+        { role: 'bot', content: "Yes, we accept Delta Dental! We're currently accepting new patients. Would you like to schedule a new patient exam and cleaning?" },
+        { role: 'user', content: "Yes please. I'm Sarah Mitchell, 772-555-3001" },
+      ]},
+    ],
+  },
+
+  // Palm Resort & Spa Demo
+  demo_palm_resort: {
+    slug: "demo_palm_resort",
+    name: "Palm Resort & Spa (Demo)",
+    botType: "boutique_hotel",
+    botName: "Palm Resort Concierge",
+    botDescription: "AI concierge for Palm Resort & Spa boutique hotel",
+    businessProfile: {
+      businessName: "Palm Resort & Spa",
+      type: "Boutique Hotel",
+      location: "Jupiter, FL",
+      phone: "(772) 555-STAY",
+      email: "reservations@palmresort.demo",
+      services: ["Luxury Accommodations", "Full-Service Spa", "Fine Dining", "Private Beach", "Event Venues"],
+    },
+    systemPrompt: "You are the Palm Resort Concierge, helping guests with room reservations, spa bookings, and event inquiries.",
+    theme: { primaryColor: "#854D0E", welcomeMessage: "Welcome to Palm Resort & Spa. How may I assist you with your stay?" },
+    sampleLeads: [
+      { name: "Elizabeth Taylor", phone: "(772) 555-4001", email: "liz.t@email.com", status: "new", daysAgo: 1 },
+      { name: "David Williams", phone: "(772) 555-4002", status: "contacted", daysAgo: 2 },
+    ],
+    sampleBookings: [
+      { name: "Elizabeth Taylor", contact: "(772) 555-4001", appointmentType: "reservation", preferredTime: "Next weekend", status: "new", daysAgo: 1 },
+    ],
+    sampleConversations: [
+      { daysAgo: 1, appointmentRequested: true, messages: [
+        { role: 'user', content: "I'm planning a romantic getaway. Do you have ocean view suites?" },
+        { role: 'bot', content: "We have beautiful oceanfront suites with private balconies! Our Romance Package includes champagne, couples spa treatment, and dinner. What dates were you considering?" },
+        { role: 'user', content: "Next weekend. I'm Elizabeth Taylor, 772-555-4001" },
+      ]},
+    ],
+  },
+
+  // TC Roofing Pros Demo
+  demo_tc_roofing: {
+    slug: "demo_tc_roofing",
+    name: "TC Roofing Pros (Demo)",
+    botType: "roofing",
+    botName: "TC Roofing Assistant",
+    botDescription: "AI assistant for TC Roofing Pros roofing company",
+    businessProfile: {
+      businessName: "TC Roofing Pros",
+      type: "Roofing Company",
+      location: "Port St. Lucie, FL",
+      phone: "(772) 555-ROOF",
+      email: "estimate@tcroofing.demo",
+      services: ["Roof Replacement", "Roof Repairs", "Storm Damage", "Insurance Claims", "Free Inspections"],
+    },
+    systemPrompt: "You are the TC Roofing Assistant, helping homeowners schedule roof inspections and estimates.",
+    theme: { primaryColor: "#DC2626", welcomeMessage: "Welcome to TC Roofing Pros! Need a roof inspection or estimate?" },
+    sampleLeads: [
+      { name: "Richard Martinez", phone: "(772) 555-5001", email: "rick.m@email.com", status: "new", daysAgo: 1 },
+      { name: "Patricia Johnson", phone: "(772) 555-5002", status: "contacted", daysAgo: 2 },
+      { name: "Thomas Anderson", phone: "(772) 555-5003", email: "tom.a@email.com", status: "qualified", daysAgo: 4 },
+    ],
+    sampleBookings: [
+      { name: "Richard Martinez", contact: "(772) 555-5001", appointmentType: "free_inspection", preferredTime: "Tomorrow", status: "new", daysAgo: 1 },
+      { name: "Thomas Anderson", contact: "(772) 555-5003", appointmentType: "estimate", preferredTime: "This week", status: "confirmed", daysAgo: 3 },
+    ],
+    sampleConversations: [
+      { daysAgo: 1, appointmentRequested: true, messages: [
+        { role: 'user', content: "We had a storm last night and I think my roof was damaged." },
+        { role: 'bot', content: "I'm sorry to hear that. We offer free storm damage inspections and work directly with insurance companies. Can we schedule someone to come out?" },
+        { role: 'user', content: "Yes, as soon as possible. I'm Richard Martinez, 772-555-5001" },
+      ]},
+    ],
+  },
+
+  // Oceanview Gardens Wedding Venue Demo
+  demo_oceanview_gardens: {
+    slug: "demo_oceanview_gardens",
+    name: "Oceanview Gardens Wedding Venue (Demo)",
+    botType: "wedding_venue",
+    botName: "Oceanview Gardens Coordinator",
+    botDescription: "AI coordinator for Oceanview Gardens wedding and event venue",
+    businessProfile: {
+      businessName: "Oceanview Gardens",
+      type: "Wedding Venue",
+      location: "Jensen Beach, FL",
+      phone: "(772) 555-LOVE",
+      email: "events@oceanviewgardens.demo",
+      services: ["Wedding Ceremonies", "Receptions", "Bridal Suites", "Catering Packages", "Event Planning"],
+    },
+    systemPrompt: "You are the Oceanview Gardens Coordinator, helping couples plan their dream wedding and schedule venue tours.",
+    theme: { primaryColor: "#BE185D", welcomeMessage: "Welcome to Oceanview Gardens! Planning your special day? Let us help make it magical." },
+    sampleLeads: [
+      { name: "Amanda & Kevin Smith", phone: "(772) 555-6001", email: "amanda.k@email.com", status: "new", daysAgo: 1 },
+      { name: "Jennifer & Michael Davis", phone: "(772) 555-6002", status: "contacted", daysAgo: 3 },
+    ],
+    sampleBookings: [
+      { name: "Amanda & Kevin Smith", contact: "(772) 555-6001", appointmentType: "venue_tour", preferredTime: "Saturday afternoon", status: "new", daysAgo: 1 },
+    ],
+    sampleConversations: [
+      { daysAgo: 1, appointmentRequested: true, messages: [
+        { role: 'user', content: "We just got engaged! We're looking for a venue for about 150 guests next spring." },
+        { role: 'bot', content: "Congratulations on your engagement! We'd love to host your special day. Our gardens can accommodate up to 200 guests. Would you like to schedule a tour to see our ceremony and reception spaces?" },
+        { role: 'user', content: "Yes! We're free Saturday afternoon. I'm Amanda, 772-555-6001" },
+      ]},
+    ],
+  },
 };
 
 function getDateDaysAgo(daysAgo: number): Date {
@@ -699,6 +868,11 @@ export const DEMO_CLIENT_LOGINS: Record<string, { username: string; password: st
   demo_premier_properties: { username: "premier", password: "demo123", businessName: "Premier Properties" },
   demo_radiance_medspa: { username: "radiance", password: "demo123", businessName: "Radiance Med Spa" },
   demo_tc_handyman: { username: "tchandyman", password: "demo123", businessName: "TC Pro Handyman" },
+  demo_harper_law: { username: "harperlaw", password: "demo123", businessName: "Harper & Associates" },
+  demo_coastal_smiles: { username: "coastalsmiles", password: "demo123", businessName: "Coastal Smiles Dental" },
+  demo_palm_resort: { username: "palmresort", password: "demo123", businessName: "Palm Resort & Spa" },
+  demo_tc_roofing: { username: "tcroofing", password: "demo123", businessName: "TC Roofing Pros" },
+  demo_oceanview_gardens: { username: "oceanviewgardens", password: "demo123", businessName: "Oceanview Gardens" },
 };
 
 async function getOrCreateDemoClientUser(slug: string): Promise<string> {
