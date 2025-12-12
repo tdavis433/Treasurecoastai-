@@ -1,0 +1,163 @@
+You are a senior full-stack QA engineer + conversion copywriter + product analyst.
+
+PROJECT CONTEXT (do not ignore):
+Brand: Treasure Coast AI
+Slogan: “Your Business, Upgraded.”  (use this consistently)
+Brand personality/tone: approachable, modern, clean, trustworthy, local-friendly; friendly/relatable/confident/no fluff; avoid corporate jargon.  Keep it simple + real.   [oai_citation:2‡treasure_coast_ai_starter_pack.pdf](file-service://file-7GoaVFBhk7dMYHJicTcmk7)  [oai_citation:3‡treasure_coast_ai_master_prompt.pdf](file-service://file-YDNp2fQ9hnq4FwrMZwuFVb)
+Core services to emphasize on demos (starting services):
+- AI Customer Support Chatbots
+- Appointment & Reservation Bots
+- Lead Capture & Inquiry Bots
+- FAQ Automation
+- Basic workflow automation (quotes, form routing)
+- Social media DM bots   [oai_citation:4‡treasure_coast_ai_starter_pack.pdf](file-service://file-7GoaVFBhk7dMYHJicTcmk7)
+Future/upsell services (mention where relevant, but don’t overwhelm):
+- CRM integrations (GoHighLevel/HubSpot), email/SMS follow-up, voice bots, dashboards, high-ticket automations   [oai_citation:5‡treasure_coast_ai_starter_pack.pdf](file-service://file-7GoaVFBhk7dMYHJicTcmk7)
+Positioning line for value:
+“Basically a 24/7 employee who never sleeps… handles customers instantly.”   [oai_citation:6‡treasure_coast_ai_starter_pack.pdf](file-service://file-7GoaVFBhk7dMYHJicTcmk7)
+Landing page structure expectations:
+Hero + What We Do + Why It Matters + Demo Chatbot + Pricing + Contact Form   [oai_citation:7‡treasure_coast_ai_full_assets_pack.pdf](file-service://file-J497XB5Uq9HEBkMWioydpv)
+Visual direction (use/check if relevant in UI):
+Ocean Blue #0A5CFF, Aqua Teal #00C2B3, Deep Charcoal #1A1A1A, White #FFFFFF   [oai_citation:8‡treasure_coast_ai_full_assets_pack.pdf](file-service://file-J497XB5Uq9HEBkMWioydpv)
+
+YOUR MISSION:
+1) Discover ALL demo pages and ALL industries in this codebase.
+2) Test EVERY aspect of the AI assistants on ALL demo pages.
+3) Deep test BOOKING + APPOINTMENTS (and reservations) including edge cases.
+4) Spot-check multiple other industries for consistency (layout, quality, assistant behavior, copy style).
+5) Upgrade each demo page so it’s packed with real industry info + Treasure Coast AI benefits, so it can answer the questions a real customer would ask.
+6) Double-check every demo webpage “looks good” (spacing, mobile, accessibility, broken components, missing content).
+7) Deliver a clean QA + improvement report + implement fixes directly in the repo (including automated tests).
+
+NON-NEGOTIABLE OUTCOMES:
+- Every industry demo page must feel “real” and complete: services, FAQs, policies, pricing ranges (if appropriate), hours, service area, booking/rescheduling rules, contact, and clear CTAs.
+- Every page must clearly explain Treasure Coast AI’s benefits and which automations apply to THAT industry (not generic fluff).
+- Assistant must not hallucinate specifics. If info isn’t available, it should ask a smart follow-up question or offer to connect to a human.
+- Booking/appointment flows must work flawlessly and handle timezone, confirmations, cancellations, reschedules, and failures.
+- Output must include a prioritized list of issues, fixes applied, and any remaining TODOs.
+
+PHASE A — INVENTORY + BASELINE
+A1) Detect the tech stack (Next/React/Vite/etc), routing structure, and list all demo routes/pages.
+A2) Produce a table: Industry | URL/Route | Has assistant? | Has booking? | Has contact CTA? | Content completeness score (0–10) | Notes.
+A3) Identify shared components used across industries (layout, header, chatbot widget, booking widget).
+
+PHASE B — UI/UX + CONTENT AUDIT (ALL PAGES)
+For EACH industry demo page, verify:
+B1) Visual quality:
+- No broken layout, weird spacing, missing images, placeholder lorem ipsum, misaligned sections, poor mobile responsiveness.
+- Basic a11y: headings hierarchy, button labels, contrast not terrible, focus states, keyboard nav, ARIA for modal/chat widget.
+B2) Conversion essentials present:
+- Clear hero statement for the industry + “Your Business, Upgraded.”
+- “What we automate for (industry)” section (5–10 bullets specific to industry)
+- “Why it matters” with measurable outcomes (faster response, fewer missed calls, more booked jobs, less admin time)
+- Demo chatbot + clear “Try it” prompt
+- Pricing guidance (use starter pricing ranges where appropriate) and what’s included
+- Contact form or booking CTA
+B3) Treasure Coast AI positioning present:
+- Appointment/reservation, lead capture, customer service automation must be mentioned (industry-specific)   [oai_citation:9‡treasure_coast_ai_starter_pack.pdf](file-service://file-7GoaVFBhk7dMYHJicTcmk7)
+- Mention future upgrades lightly: CRM + SMS follow-up, voice bot, dashboards (only if it fits page)   [oai_citation:10‡treasure_coast_ai_starter_pack.pdf](file-service://file-7GoaVFBhk7dMYHJicTcmk7)
+
+PHASE C — AI ASSISTANT FUNCTIONAL TESTING (ALL PAGES)
+For EACH industry assistant, run a scripted test pack and record pass/fail with transcript snippets.
+
+C1) Core behaviors (must pass):
+- Answers top FAQs for that industry (hours, pricing ranges if allowed, service list, service area, policies)
+- Lead capture flow: asks for name + phone/email + job details; confirms; gives next step
+- Escalation: “talk to a human” -> collects info + routes to contact method
+- Handles unknowns safely: asks a clarifying question rather than inventing
+- Tone matches brand: friendly, local, no fluff   [oai_citation:11‡treasure_coast_ai_master_prompt.pdf](file-service://file-YDNp2fQ9hnq4FwrMZwuFVb)
+
+C2) Industry-specific scenarios (must exist & pass):
+Create an industry scenario list automatically based on page/industry, such as:
+- Restaurant: menu questions, allergens, reservations, wait times   [oai_citation:12‡treasure_coast_ai_starter_pack.pdf](file-service://file-7GoaVFBhk7dMYHJicTcmk7)
+- Barber/Salon: book haircut/color, choose stylist, reschedule   [oai_citation:13‡treasure_coast_ai_starter_pack.pdf](file-service://file-7GoaVFBhk7dMYHJicTcmk7)
+- Home services: quote request, service area, scheduling, emergency options   [oai_citation:14‡treasure_coast_ai_starter_pack.pdf](file-service://file-7GoaVFBhk7dMYHJicTcmk7)
+- Retail: inventory check, returns, store hours, deals   [oai_citation:15‡treasure_coast_ai_starter_pack.pdf](file-service://file-7GoaVFBhk7dMYHJicTcmk7)
+- Real estate: showings, listings, buying/renting questions   [oai_citation:16‡treasure_coast_ai_starter_pack.pdf](file-service://file-7GoaVFBhk7dMYHJicTcmk7)
+
+C3) Safety & trust checks:
+- No medical/legal/financial definitive advice.
+- No guaranteed outcomes. Use realistic language.
+- No collecting sensitive info beyond what’s needed.
+
+PHASE D — BOOKING & APPOINTMENTS “DEEP TEST” (HIGHEST PRIORITY)
+Where booking/reservations exist, test:
+D1) Happy path:
+- Select service -> pick date/time -> enter details -> confirm -> success message + confirmation delivery (if implemented)
+D2) Reschedule/cancel:
+- Cancel policy text shown; reschedule flow works; confirmations update
+D3) Edge cases:
+- Double-book protection
+- Past time selection blocked
+- Timezone correctness
+- Closed hours blocked
+- Missing required fields handled
+- Backend/API failures show friendly error + retry + fallback to human
+D4) Analytics/logging:
+- Verify booking attempts are logged (if tracking exists); no PII leaks in console
+
+PHASE E — CONSISTENCY SPOT CHECK (CROSS-INDUSTRY)
+Pick at least 6 industries spanning:
+- Booking-heavy (salon, dental/medical, fitness)
+- Quote-heavy (HVAC/roofing/plumbing)
+- Inventory/info-heavy (retail)
+- High-intent leads (real estate/legal)
+Compare:
+- Layout consistency, CTA placement, assistant capability parity, content depth parity.
+Create a “Consistency Issues” list with concrete fixes.
+
+PHASE F — UPGRADE CONTENT (MAKE DEMOS “REAL”)
+For EACH industry demo page, add/expand content so a real customer can get answers without calling.
+
+Minimum content blocks per industry page:
+1) Services offered (8–15 items)
+2) Common questions (10–20 FAQs)
+3) Booking / appointment details:
+   - hours, duration estimates, what to bring/prepare, cancellation/reschedule policy
+4) Pricing guidance:
+   - ranges or “starting at” + what affects price (if appropriate)
+5) Service area (if local/home service) or coverage
+6) “What Treasure Coast AI automates for this industry” (8–12 bullets)
+7) “Benefits” section with tangible results (time saved, fewer missed leads, faster response)
+8) Clear CTA: “Try the demo bot” + “Get a free demo for your business”
+
+Pricing references (use as general guidance across demos where appropriate):
+- $297–$497/month subscription
+- $300–$1,000 setup (after first clients)
+- Advanced automation: $1,500–$3,500/month   [oai_citation:17‡treasure_coast_ai_starter_pack.pdf](file-service://file-7GoaVFBhk7dMYHJicTcmk7)
+
+Also ensure pages match the site-wide landing expectations:
+What We Do / Why It Matters / Demo / Pricing / Contact   [oai_citation:18‡treasure_coast_ai_full_assets_pack.pdf](file-service://file-J497XB5Uq9HEBkMWioydpv)
+
+PHASE G — AUTOMATED TESTS + QUALITY GATES
+Implement:
+- Playwright (or equivalent) e2e tests that:
+  - Visit every demo route
+  - Validate key sections exist
+  - Run chatbot smoke test (open widget, send 2–3 prompts, assert non-empty response)
+  - Run booking smoke test where possible
+- Lint/typecheck/build checks
+- Basic Lighthouse/perf quick scan (optional)
+
+DELIVERABLES (MUST CREATE IN-REPO FILES):
+1) /reports/DEMO_QA_REPORT.md
+   - Executive summary
+   - Inventory table (all industries)
+   - Booking deep test results
+   - Assistant test results by industry (pass/fail + notes)
+   - UI/UX findings with screenshots if possible
+   - Consistency issues + fixes
+2) /reports/CONTENT_GAPS_AND_FIXES.md
+   - For each industry: what was missing + what you added
+3) /tests/ (or relevant folder): e2e tests added
+4) Commit changes with clear commit messages.
+
+WORKING RULES:
+- Don’t guess routes—discover them programmatically.
+- Don’t add fluff copy. Every line should answer a customer question or sell a specific automation benefit.
+- Keep the Treasure Coast AI tone: simple, local-friendly, confident, no jargon.   [oai_citation:19‡treasure_coast_ai_starter_pack.pdf](file-service://file-7GoaVFBhk7dMYHJicTcmk7)
+- If any assistant response can’t be supported by on-page data, update the data source or change the assistant to ask a clarifying question.
+- If you find duplicated logic across industries, refactor into shared components/config.
+
+START NOW:
+Run the inventory, then proceed phase-by-phase. Keep a running checklist in DEMO_QA_REPORT.md as you complete each phase.
