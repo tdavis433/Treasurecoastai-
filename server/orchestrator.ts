@@ -1357,6 +1357,23 @@ class ConversationOrchestrator {
       topics: sessionData.topics || [],
     });
 
+    // Log to conversationAnalytics table for dashboard conversation counts
+    const userCategory = categorizeMessageTopic(userMessage);
+    await storage.logConversation(sessionData.clientId, {
+      sessionId: sessionData.sessionId,
+      role: 'user',
+      content: userMessage.slice(0, 500), // Limit content size
+      category: userCategory,
+    });
+    
+    const botCategory = showBooking ? 'appointments' : categorizeMessageTopic(botReply);
+    await storage.logConversation(sessionData.clientId, {
+      sessionId: sessionData.sessionId,
+      role: 'assistant',
+      content: botReply.slice(0, 500), // Limit content size
+      category: botCategory,
+    });
+
     // Log analytics events
     await storage.logAnalyticsEvent({
       clientId: sessionData.clientId,
