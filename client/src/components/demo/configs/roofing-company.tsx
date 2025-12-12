@@ -9,7 +9,7 @@ const RoofIcon = ({ className }: { className?: string }) => (
 
 export const roofingCompanyConfig: DemoPageConfig = {
   clientId: "demo_tc_roofing",
-  botId: "tc_roofing_demo_main",
+  botId: "bot_demo_roofing",
   
   business: {
     name: "Treasure Coast Roofing",

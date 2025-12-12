@@ -9,7 +9,7 @@ const RingsIcon = ({ className }: { className?: string }) => (
 
 export const weddingVenueConfig: DemoPageConfig = {
   clientId: "demo_oceanview_gardens",
-  botId: "oceanview_gardens_demo_main",
+  botId: "bot_demo_wedding",
   
   business: {
     name: "Oceanview Gardens",

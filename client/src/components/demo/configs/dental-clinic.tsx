@@ -9,7 +9,7 @@ const ToothIcon = ({ className }: { className?: string }) => (
 
 export const dentalClinicConfig: DemoPageConfig = {
   clientId: "demo_coastal_smiles",
-  botId: "coastal_smiles_demo_main",
+  botId: "bot_demo_dental",
   
   business: {
     name: "Coastal Smiles Dentistry",

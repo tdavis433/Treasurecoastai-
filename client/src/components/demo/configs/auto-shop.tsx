@@ -2,8 +2,8 @@ import { Car, Shield, Clock, Calendar, TrendingUp, MessageCircle, Wrench, CheckC
 import { DemoPageConfig } from "../DemoPageTemplate";
 
 export const autoShopConfig: DemoPageConfig = {
-  clientId: "demo_sunrise_auto",
-  botId: "sunrise_auto_demo_main",
+  clientId: "demo_coastline_auto",
+  botId: "bot_demo_auto_care",
   
   business: {
     name: "Sunrise Auto Care",

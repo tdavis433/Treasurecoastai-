@@ -2,8 +2,8 @@ import { Sparkles, Heart, Clock, Calendar, TrendingUp, MessageCircle, Shield, St
 import { DemoPageConfig } from "../DemoPageTemplate";
 
 export const medSpaConfig: DemoPageConfig = {
-  clientId: "demo_blue_harbor_spa",
-  botId: "blue_harbor_spa_demo_main",
+  clientId: "demo_radiance_medspa",
+  botId: "bot_demo_med_spa",
   
   business: {
     name: "Blue Harbor Med Spa",

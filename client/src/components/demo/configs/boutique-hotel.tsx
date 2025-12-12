@@ -3,7 +3,7 @@ import { DemoPageConfig } from "../DemoPageTemplate";
 
 export const boutiqueHotelConfig: DemoPageConfig = {
   clientId: "demo_palm_resort",
-  botId: "palm_resort_demo_main",
+  botId: "bot_demo_resort",
   
   business: {
     name: "The Palm Resort & Spa",

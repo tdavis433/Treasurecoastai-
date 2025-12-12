@@ -2,8 +2,8 @@ import { Dumbbell, Heart, Clock, Calendar, TrendingUp, MessageCircle, Users, Zap
 import { DemoPageConfig } from "../DemoPageTemplate";
 
 export const fitnessConfig: DemoPageConfig = {
-  clientId: "demo_neon_fitness",
-  botId: "neon_fitness_demo_main",
+  clientId: "demo_iron_coast_fitness",
+  botId: "bot_demo_fitness",
   
   business: {
     name: "Neon Harbor Fitness",

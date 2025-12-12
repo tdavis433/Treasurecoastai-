@@ -3,7 +3,7 @@ import { DemoPageConfig } from "../DemoPageTemplate";
 
 export const lawFirmConfig: DemoPageConfig = {
   clientId: "demo_harper_law",
-  botId: "harper_law_demo_main",
+  botId: "bot_demo_law_firm",
   
   business: {
     name: "Harper & Associates",

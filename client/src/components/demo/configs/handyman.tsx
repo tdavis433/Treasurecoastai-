@@ -2,8 +2,8 @@ import { Home, Wrench, Clock, Calendar, TrendingUp, MessageCircle, Shield, Check
 import { DemoPageConfig } from "../DemoPageTemplate";
 
 export const handymanConfig: DemoPageConfig = {
-  clientId: "demo_handy_helpers",
-  botId: "handy_helpers_demo_main",
+  clientId: "demo_tc_handyman",
+  botId: "bot_demo_handyman",
   
   business: {
     name: "Handy Helpers",
