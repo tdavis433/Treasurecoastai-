@@ -1,0 +1,348 @@
+ROLE
+You are a senior full-stack engineer + QA lead. Your job is to IMPLEMENT (not just plan) a “Payment Required at Booking” system with a DEMO checkout and an optional LIVE external redirect mode. This must be production-quality: deterministic state machine, multi-tenant secure, no PII leaks, fully tested, and with clean UX.
+
+PROJECT CONTEXT
+- Product: Treasure Coast AI demo platform with booking/appointments + multi-industry demo pages + dashboard.
+- Goal: Some businesses require payment at booking. We need:
+  1) No payment required: booking confirms normally.
+  2) Payment required + demo mode: booking is created as payment_required and user completes a Stripe-like FAKE checkout UI (visual only), then status becomes paid_simulated.
+  3) Payment required + live mode: we do NOT integrate Stripe or any payment SDK. Instead we redirect to the business’s own payment URL and mark status redirected_external.
+- Non-negotiable: Demo checkout must NEVER collect/store/transmit real card data. No real payment APIs.
+
+ABSOLUTE RULES (MUST FOLLOW)
+1) Multi-tenant isolation is mandatory:
+   - Every booking/appointment/payment endpoint must enforce booking belongs to current workspace/client.
+   - Super-admin must explicitly operate in a client context; client users derive clientId from session.
+2) Deterministic state machine:
+   - Booking cannot appear confirmed if payment_required.
+   - Disallow invalid transitions server-side.
+3) Security & privacy:
+   - Fake card fields are purely visual.
+   - Do not send card values to backend.
+   - Do not log request bodies for checkout/payment routes.
+   - Add server-side guard: reject payloads containing card/cvc/pan-like keys.
+4) Implementation must include automated tests (Playwright or equivalent) and a QA report file in-repo.
+5) No “hand waving” — if something is ambiguous, inspect the codebase and implement in the project’s established patterns.
+
+========================================================
+PHASE 0 — DISCOVERY (DO THIS FIRST, THEN IMPLEMENT)
+========================================================
+0.1 Identify the tech stack:
+- Framework (Next.js/React/Vite/etc), router, API layer, DB/ORM, auth middleware patterns, environment config.
+0.2 Inspect existing schema:
+- Find client/workspace settings table (often clientSettings/workspaceSettings).
+- Find appointments/bookings table and current status enum/strings.
+- Find existing booking creation flow, booking confirmation logic, and dashboard displays for bookings.
+0.3 Identify existing patterns:
+- How “effectiveClientId” is determined.
+- How admin vs client users are authorized.
+- Where to place migrations, server routes, shared UI components, and tests.
+0.4 Output a quick internal note (in a report file) describing what you found before coding.
+
+========================================================
+PHASE 1 — SCHEMA + MIGRATIONS (HARDENED, SAFE, INDEXED)
+========================================================
+Goal: Add payment configuration per client/workspace and add payment timeline fields on appointments/bookings.
+
+1.1 clientSettings/workspaceSettings changes (exact naming based on repo conventions)
+Add:
+- requiresPaymentAtBooking BOOLEAN NOT NULL DEFAULT false
+- paymentMode TEXT NOT NULL DEFAULT 'demo'  (allowed: 'demo' | 'live')
+- paymentRedirectUrl TEXT NULL  (only used in live mode)
+- paymentProviderLabel TEXT NULL  (e.g., "Pay by Stripe", "Pay by Square", "Pay Invoice", displayed to users)
+OPTIONAL BUT RECOMMENDED:
+- paymentDisclaimer TEXT NULL (custom disclaimer shown on checkout pages)
+
+Constraints:
+- Enforce paymentMode in DB if your DB supports CHECK constraints or enum type.
+
+1.2 appointments/bookings table changes
+Extend statuses to include:
+- payment_required
+- paid_simulated
+- redirected_external
+Also keep existing statuses (confirmed/cancelled/etc).
+Add:
+- paidAt TIMESTAMP NULL
+- redirectedAt TIMESTAMP NULL
+- servicePriceCents INTEGER NULL  (money stored in cents; avoid floats)
+- currency TEXT NOT NULL DEFAULT 'USD'
+OPTIONAL:
+- paymentRequiredAt TIMESTAMP NULL (when set to payment_required)
+- paymentNotes TEXT NULL (internal only, never user-facing)
+
+Constraints:
+- Prefer enum or CHECK constraint for status.
+
+1.3 Indexes (IMPORTANT for dashboard and lookup)
+Add indexes appropriate to DB:
+- appointments(clientId, createdAt)
+- appointments(clientId, status)
+- appointments(id) already exists, but ensure bookingId/appointmentId lookup is efficient
+- If bookings are separate from appointments, index booking table similarly.
+
+1.4 Migration/backfill
+- Existing bookings/appointments must remain valid:
+  - If status values existed previously, map them accordingly.
+  - Default existing bookings to confirmed (unless they already represent unconfirmed states).
+- Write migration scripts so local dev and production both work.
+
+1.5 Document schema changes in /reports/PAYMENT_BOOKING_QA.md (create if missing).
+
+========================================================
+PHASE 2 — STATE MACHINE (SERVER-ENFORCED, NO WEIRD STATES)
+========================================================
+Create a clear status transition model and enforce it in backend logic.
+
+2.1 Recommended minimal statuses (adjust if repo already has more):
+- confirmed
+- payment_required
+- paid_simulated
+- redirected_external
+- cancelled
+- failed (optional)
+
+2.2 Allowed transitions (enforce server-side)
+- NEW booking:
+  - if requiresPaymentAtBooking=false => confirmed
+  - if true => payment_required
+- payment_required => paid_simulated (demo confirm)
+- payment_required => redirected_external (live redirect recorded)
+- payment_required => cancelled / failed
+- paid_simulated => cancelled (if you allow cancellation after payment, reflect policy; otherwise keep cancellation but record refund not supported)
+Block:
+- confirmed => paid_simulated (should never happen)
+- paid_simulated => payment_required (never go backwards)
+- redirected_external => paid_simulated (unless you explicitly create a later “paid_live_confirmed”, but we are NOT doing real payments)
+
+2.3 Implement server-side validation:
+- A single helper (e.g., canTransition(from,to)) used everywhere status changes.
+- If invalid transition, return 400 with a clear message.
+
+========================================================
+PHASE 3 — BOOKING FLOW LOGIC (PAYMENT CONDITIONAL)
+========================================================
+Update the booking creation + confirmation behavior.
+
+3.1 Booking creation endpoint / handler
+When user submits booking request:
+- Load clientSettings.requiresPaymentAtBooking + paymentMode.
+- Determine price:
+  - If service has a price, store servicePriceCents and currency.
+  - If unknown price, keep null but still allow payment_required (some businesses charge deposit later; that’s fine).
+- If requiresPaymentAtBooking=false:
+  - Create booking with status confirmed.
+  - Return normal success response.
+- If requiresPaymentAtBooking=true:
+  - Create booking with status payment_required and set paymentRequiredAt timestamp.
+  - Return response that includes:
+    - bookingId
+    - status
+    - nextStep object:
+      - if paymentMode=demo: demoCheckoutUrl (e.g., /demo-checkout/:bookingId)
+      - if paymentMode=live: redirectUrl (from settings) and display label
+
+3.2 Booking confirmation messaging (front-end + chatbot)
+- If payment_required:
+  - UI must clearly show: “Your booking is pending until payment is completed.”
+  - Provide clear CTA button to “Complete Payment (Demo)” or “Continue to Payment”.
+- If confirmed:
+  - Show confirmed.
+
+3.3 Prevent time slot conflicts
+- If booking time becomes unavailable before payment completes:
+  - Demo checkout confirm must detect conflict and respond:
+    - “That time is no longer available. Please pick a new time.”
+  - Provide reschedule flow.
+
+========================================================
+PHASE 4 — DEMO CHECKOUT PAGE (STRIPE-LIKE UI, VISUAL ONLY)
+========================================================
+Create:
+Route: /demo-checkout/:bookingId
+
+4.1 UI requirements
+- Show:
+  - Service name
+  - Date/time
+  - Duration (if known)
+  - Price (if known)
+  - Business/paymentProviderLabel (optional)
+- Show disclaimers prominently:
+  - “DEMO PAYMENT ONLY — no real charge will occur.”
+  - “Do not enter real card information.”
+- “Pay” button triggers demo confirm API call.
+
+4.2 Fake card fields (STRICT SAFETY)
+- Inputs must:
+  - NOT have name attributes (name="")
+  - autocomplete="off"
+  - inputMode can be numeric for UX, but DO NOT store values anywhere persistent.
+- Frontend must never send these values to backend:
+  - API request should only send bookingId and a simple action like { action: "confirm_demo_payment" }.
+- Do NOT console.log card field values.
+- Ensure analytics (if any) do not capture input values.
+
+4.3 Invalid booking handling
+If bookingId is invalid, wrong tenant, expired, cancelled, or not payment_required:
+- Show friendly page:
+  - “This checkout link is no longer valid.”
+  - CTA: “Contact us” or “Start over” depending on product design.
+
+========================================================
+PHASE 5 — PAYMENT CONFIRM + REDIRECT ENDPOINTS (NO REAL PAYMENTS)
+========================================================
+5.1 Demo payment confirm endpoint
+Example: POST /api/bookings/:bookingId/confirm-demo-payment
+Behavior:
+- Authorize tenant: booking must belong to effectiveClientId.
+- Server-side payload guard:
+  - Reject if body includes keys like card, cvc, cvv, pan, number, exp, expiry, etc.
+- Validate current status must be payment_required.
+- Validate slot availability still valid if your system enforces it.
+- Update:
+  - status = paid_simulated
+  - paidAt = now()
+- Return updated booking object.
+
+5.2 Live redirect recording endpoint (optional but recommended)
+If paymentMode=live, you’ll typically redirect immediately from UI.
+We still want a record:
+Example: POST /api/bookings/:bookingId/mark-redirected
+- Authorize tenant
+- Validate status payment_required
+- status = redirected_external
+- redirectedAt = now()
+Return updated booking.
+
+5.3 Logging policy
+- Do not log request bodies for these endpoints.
+- Do not include PII in logs.
+- Ensure server error logs do not dump request payload.
+
+========================================================
+PHASE 6 — DASHBOARD UPDATES (BADGES + TIMELINE + FILTERS)
+========================================================
+6.1 Booking list UI
+- Add status badge mapping:
+  - payment_required => “Payment required”
+  - paid_simulated => “Demo paid”
+  - redirected_external => “Redirected to payment”
+- Add filters by status (if dashboard already has filters).
+
+6.2 Booking detail view
+- Add timeline section:
+  - Created
+  - Payment required (if applicable)
+  - Demo paid at (paidAt)
+  - Redirected at (redirectedAt)
+- Clearly reflect whether booking is confirmed or pending.
+
+6.3 Admin/client parity
+- Ensure both admin view and client view show consistent statuses, with tenant-safe data.
+
+========================================================
+PHASE 7 — SETTINGS UI (CLIENT SETTINGS MANAGEMENT)
+========================================================
+If there is a settings page for client/workspace:
+- Add toggles/fields:
+  - requiresPaymentAtBooking (checkbox)
+  - paymentMode (radio: demo/live)
+  - paymentRedirectUrl (only show if live)
+  - paymentProviderLabel (optional)
+- Validate:
+  - If paymentMode=live then paymentRedirectUrl must be present and a valid URL.
+- Ensure changes are tenant-scoped.
+
+========================================================
+PHASE 8 — ERROR HANDLING + UX FAILSAFES (NO DEMO EMBARRASSMENTS)
+========================================================
+Implement friendly failures for:
+- Booking not found / unauthorized: “Link invalid”
+- Server error updating payment status: retry button + fallback “Contact us”
+- Slot unavailable: prompt reschedule
+- Closed hours / past time selection: blocked with clear message
+- Double-book prevention: block and explain
+
+Ensure UI never lies:
+- If payment_required, never show “Confirmed” anywhere.
+
+========================================================
+PHASE 9 — AUTOMATED TESTS (REQUIRED)
+========================================================
+Add Playwright (or repo’s existing e2e framework). Must include:
+
+9.1 E2E: No payment required
+- Set requiresPaymentAtBooking=false for a test client/workspace
+- Create booking
+- Assert status confirmed
+- Assert confirmation UI
+
+9.2 E2E: Demo payment required happy path
+- Set requiresPaymentAtBooking=true, paymentMode=demo
+- Create booking
+- Assert status payment_required and checkout link visible
+- Visit /demo-checkout/:bookingId
+- Click Pay (demo)
+- Assert API sets paid_simulated + paidAt
+- Assert dashboard badge shows “Demo paid”
+
+9.3 E2E: Live redirect flow
+- Set requiresPaymentAtBooking=true, paymentMode=live, paymentRedirectUrl set
+- Create booking
+- UI should show “Continue to payment”
+- Trigger redirect recording (if implemented)
+- Assert status redirected_external + redirectedAt
+
+9.4 Negative: Cross-tenant denial
+- Create booking under client A
+- Try to open checkout / confirm payment under client B session/context
+- Must return 403/404 and NOT leak details.
+
+9.5 Payload guard test
+- Attempt to send confirm-demo-payment with body containing “cardNumber”
+- Must reject with 400.
+
+9.6 Quality gates
+- Add scripts so CI/local can run: lint + typecheck + test + build.
+- Ensure tests are stable (no random timing flakiness).
+
+========================================================
+PHASE 10 — REPORTING + DELIVERABLES (IN-REPO)
+========================================================
+Create/update:
+1) /reports/PAYMENT_BOOKING_QA.md
+Must include:
+- What you discovered in Phase 0 (stack, tables, current flows)
+- Schema changes (fields, constraints, indexes)
+- State machine rules
+- Manual test checklist with results
+- Automated test list + how to run
+- Screenshots or notes of key UI states (pending, paid, redirected)
+- Known limitations / TODOs
+
+2) If repo has a general QA report folder, link to this new report from it.
+
+3) Commit hygiene:
+- Make small, clear commits (schema, endpoints, UI, tests).
+- Ensure code compiles and all tests pass.
+
+========================================================
+IMPLEMENTATION ORDER (DO IN THIS SEQUENCE)
+========================================================
+1) Phase 0 discovery notes
+2) Phase 1 schema/migrations
+3) Phase 2 state machine helpers
+4) Phase 3 booking logic updates (API + UI)
+5) Phase 4 demo checkout page
+6) Phase 5 endpoints (confirm + redirect) + payload guard
+7) Phase 6 dashboard UI badges + timeline
+8) Phase 7 settings UI updates
+9) Phase 8 error handling
+10) Phase 9 tests
+11) Phase 10 reports + cleanup
+
+START NOW
+- Begin with discovery and immediately implement. Do not stop at “plan only.”
+- If you find existing booking status patterns, integrate rather than duplicating.
+- Keep everything tenant-safe and deterministic.

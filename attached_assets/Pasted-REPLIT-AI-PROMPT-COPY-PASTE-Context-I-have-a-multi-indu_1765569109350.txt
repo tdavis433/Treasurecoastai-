@@ -1,0 +1,119 @@
+REPLIT AI PROMPT (COPY/PASTE)
+
+Context:
+- I have a multi-industry demo platform that is basically finished.
+- I have a bunch of demos packed full of real information. If a client views it, they can go to any demo page, act like a real customer, and the system should treat them like a real customer and give them information.
+- All demo pages look good. Now I need to update ONE specific behavior: booking flows.
+
+Core requirement (DO NOT IGNORE):
+I do NOT want to handle any real payments for clients (now or later). For certain industries that normally require payment at booking (example: barbershops / salons / similar paid service businesses), the flow should still FEEL like payment happens, but our platform must NOT process money.
+
+What I want:
+1) For industries that do NOT require payment at booking (examples: tours, calls, consultations, free estimates, any “just schedule it” appointment):
+   - When the user clicks “Book” and submits the booking form:
+     - Create/save the booking inside our system (database).
+     - Immediately show a success/confirmation state.
+     - Display the booking in the business/client dashboard (so the client can see all booking info from the dashboard).
+     - NO redirect anywhere. Keep everything inside the platform.
+
+2) For industries that DO require payment at booking (examples: barbershops, paid haircut services, paid appointments, anything that normally charges at booking):
+   - When the user clicks “Book” and submits the booking form:
+     - STILL create/save the booking inside our system (database) so it shows up in the business/client dashboard.
+     - Then redirect the user into a payment-like flow WITHOUT real payment processing.
+   - IMPORTANT: This must be handled in two modes:
+     A) DEMO MODE (for my demo pages):
+        - Redirect to an INTERNAL landing page that looks like a realistic “checkout” experience.
+        - Replit should create a fake replica of a normal payment service that the majority of businesses/customers would recognize (think Stripe-style checkout vibe).
+        - It must be clearly demo/simulated (small disclaimer), but visually believable.
+        - No real payments, no external API calls required.
+        - After the user completes the fake checkout (clicks “Pay” / “Confirm”):
+          - Mark the booking status as “Paid (Simulated)” (or similar).
+          - Keep the booking visible in the dashboard with this status and a timestamp.
+          - Show a success screen and optionally redirect back to a “Booking Confirmed” page for that demo.
+     B) REAL CLIENT MODE (for when this is connected to a real business):
+        - Redirect to THAT BUSINESS’S OWN booking/payment link (the client’s external link) so THEIR service handles payment.
+        - Still log the booking in our dashboard before redirecting.
+        - I do NOT want to store or process credit cards, payment tokens, or anything financial.
+
+Implementation details (build it cleanly + scalable):
+A) Add configuration per business/demo:
+   - requiresPaymentAtBooking: boolean
+   - paymentRedirectUrl: string (external link for real client mode)
+   - isDemo: boolean (or a “mode” field: demo vs live)
+   - (Optional) paymentProviderLabel: string (ex: “Stripe”, “Square”, “Booksy”, etc. for display only)
+
+B) Booking statuses:
+   - “Confirmed” (for non-paid booking flows)
+   - “Payment Required” (created immediately for paid flows)
+   - “Paid (Simulated)” (demo mode fake checkout completion)
+   - “Redirected to External Payment” (live mode after redirect is triggered)
+   - Store timestamps for createdAt, updatedAt, paidAt (if simulated), redirectedAt (if live)
+
+C) Data captured in booking record (minimum):
+   - businessId / demoId
+   - serviceName
+   - price (if paid industry; can be 0 for non-paid)
+   - customerName
+   - customerPhone / customerEmail (whatever we already collect)
+   - date + time
+   - notes (optional)
+   - status (from above)
+
+D) UI/UX behavior:
+   1) Booking form submit:
+      - Validate inputs
+      - Save booking
+      - If requiresPaymentAtBooking == false:
+        - Show “Booking Confirmed” and stop.
+      - If requiresPaymentAtBooking == true:
+        - Immediately show a brief “Booking saved — redirecting to checkout…” message
+        - Then:
+          - If isDemo == true: route to /demo-checkout/:bookingId (internal fake checkout page)
+          - If isDemo == false: redirect to paymentRedirectUrl (external) AND set status “Redirected to External Payment”
+
+   2) Fake demo checkout page (/demo-checkout/:bookingId):
+      - Looks like a modern checkout page:
+        - Business name/logo (if available)
+        - Service summary (service, date/time, price)
+        - Customer info summary
+        - “Payment method” section with fake card fields (Card number, Expiry, CVC, ZIP)
+        - A pay button like “Pay $XX.XX”
+      - Must NOT store any card details (front-end only; do not log it; do not save it).
+      - On clicking “Pay”:
+        - Simulate processing (1–2s loading)
+        - Update booking status to “Paid (Simulated)”
+        - Show “Payment Successful (Demo)” confirmation
+        - Provide a button to return to the demo page or “View booking confirmation”
+      - Include small disclaimer text like: “Demo checkout — no real payment is processed.”
+
+   3) Dashboard:
+      - Ensure ALL bookings appear in the dashboard.
+      - Paid-service bookings should show their status clearly (Payment Required / Paid (Simulated) / Redirected).
+      - Add a “View” drawer/modal/page for each booking with full details and timeline.
+
+E) IMPORTANT constraints:
+   - I never want to handle real payments. No Stripe keys, no Square keys, no payment SDK required for this implementation.
+   - For demo pages, the fake checkout must be believable but clearly a demo.
+   - For live pages, redirect to the business’s own link (paymentRedirectUrl). Our platform just logs the booking and sends them out.
+
+Your tasks:
+1) Inspect the existing codebase structure for booking and dashboard.
+2) Implement the configuration fields (business/demo settings) and booking status model changes.
+3) Add routing/handlers for:
+   - booking create endpoint
+   - internal demo checkout page route
+   - demo “payment confirm” action to update booking status
+4) Update UI components:
+   - booking form submission behavior with conditional redirect logic
+   - dashboard list + booking details view showing statuses
+5) Add seed/sample data for at least one paid-service demo (barbershop) and one non-paid demo (consultation/tour) to verify behavior.
+6) Provide a short “How to test” checklist at the end.
+
+Output required:
+- Make the necessary code changes.
+- Keep it clean and easy to extend to more industries.
+- Do not break existing demos.
+- Deliver working flows for both:
+  (1) Non-paid booking: saves + shows in dashboard, no redirect
+  (2) Paid booking demo: saves + shows in dashboard, redirects to internal fake checkout, marks “Paid (Simulated)”
+  (3) Paid booking live: saves + shows in dashboard, redirects to external paymentRedirectUrl, marks “Redirected to External Payment”

@@ -474,7 +474,9 @@ export interface OrchestratorMeta {
   responseTimeMs: number;
   showBooking: boolean;
   bookingType?: 'tour' | 'call' | 'appointment';  // Type of booking intent detected
+  bookingMode: 'internal' | 'external';  // Whether booking is handled in-chat or via external URL
   externalBookingUrl: string | null;
+  externalBookingProviderName?: string | null;  // e.g., "Square", "Acuity" for CTA button text
   externalPaymentUrl: string | null;
   suggestedReplies: string[];
   crisis?: boolean;
@@ -631,11 +633,12 @@ class ConversationOrchestrator {
         botReply: reply,
       });
 
-      // 12. Get client settings for external URLs
+      // 12. Get client settings for external URLs and booking mode
       const clientSettings = await configCache.getClientSettings(clientId);
+      const bookingMode = (clientSettings?.bookingMode as 'internal' | 'external') || 'internal';
 
-      // 13. Return standardized response - only include booking URL when intent is detected
-      const bookingUrl = postProcessResult.showBooking 
+      // 13. Return standardized response - only include booking URL when intent is detected and mode is external
+      const bookingUrl = (postProcessResult.showBooking && bookingMode === 'external')
         ? (clientSettings?.externalBookingUrl || botConfig.externalBookingUrl || null)
         : null;
       
@@ -649,7 +652,9 @@ class ConversationOrchestrator {
           responseTimeMs: responseTime,
           showBooking: postProcessResult.showBooking,
           bookingType: postProcessResult.bookingType,
+          bookingMode,
           externalBookingUrl: bookingUrl,
+          externalBookingProviderName: bookingMode === 'external' ? (clientSettings?.externalBookingProviderName || null) : null,
           externalPaymentUrl: postProcessResult.showBooking ? (clientSettings?.externalPaymentUrl || botConfig.externalPaymentUrl || null) : null,
           suggestedReplies: [],
           leadCaptured: postProcessResult.leadCaptured,
@@ -679,6 +684,7 @@ class ConversationOrchestrator {
             sessionId: request.sessionId || `session_${Date.now()}`,
             responseTimeMs: Date.now() - startTime,
             showBooking: false,
+            bookingMode: 'internal',
             externalBookingUrl: null,
             externalPaymentUrl: null,
             suggestedReplies: ["When can I call you?", "What are your hours?"],
@@ -736,6 +742,7 @@ class ConversationOrchestrator {
             sessionId,
             responseTimeMs: Date.now() - startTime,
             showBooking: false,
+            bookingMode: 'internal',
             externalBookingUrl: null,
             externalPaymentUrl: null,
             suggestedReplies: [],
@@ -760,6 +767,7 @@ class ConversationOrchestrator {
             sessionId,
             responseTimeMs: Date.now() - startTime,
             showBooking: false,
+            bookingMode: 'internal',
             externalBookingUrl: null,
             externalPaymentUrl: null,
             suggestedReplies: [],
@@ -830,8 +838,9 @@ class ConversationOrchestrator {
       );
       await incrementMessageCount(clientId);
 
-      // 10. Send final meta - only include booking URL when intent is detected
-      const bookingUrl = postProcessResult.showBooking 
+      // 10. Send final meta - only include booking URL when intent is detected and mode is external
+      const streamBookingMode = (clientSettings?.bookingMode as 'internal' | 'external') || 'internal';
+      const bookingUrl = (postProcessResult.showBooking && streamBookingMode === 'external')
         ? (clientSettings?.externalBookingUrl || botConfig.externalBookingUrl || null)
         : null;
       const paymentUrl = postProcessResult.showBooking 
@@ -848,7 +857,9 @@ class ConversationOrchestrator {
           responseTimeMs: responseTime,
           showBooking: postProcessResult.showBooking,
           bookingType: postProcessResult.bookingType,
+          bookingMode: streamBookingMode,
           externalBookingUrl: bookingUrl,
+          externalBookingProviderName: streamBookingMode === 'external' ? (clientSettings?.externalBookingProviderName || null) : null,
           externalPaymentUrl: paymentUrl,
           suggestedReplies: [],
           leadCaptured: postProcessResult.leadCaptured,
@@ -976,6 +987,7 @@ class ConversationOrchestrator {
             sessionId,
             responseTimeMs: Date.now() - startTime,
             showBooking: false,
+            bookingMode: 'internal',
             externalBookingUrl: null,
             externalPaymentUrl: null,
             suggestedReplies: ["When can I call you?", "What are your hours?"],
@@ -1451,6 +1463,7 @@ class ConversationOrchestrator {
         sessionId: request.sessionId,
         responseTimeMs: responseTime,
         showBooking: false,
+        bookingMode: 'internal',
         externalBookingUrl: null,
         externalPaymentUrl: null,
         suggestedReplies: [],
@@ -1511,6 +1524,7 @@ class ConversationOrchestrator {
         sessionId: request.sessionId,
         responseTimeMs: responseTime,
         showBooking: false,
+        bookingMode: 'internal',
         externalBookingUrl: null,
         externalPaymentUrl: null,
         suggestedReplies: [],
@@ -1540,6 +1554,7 @@ class ConversationOrchestrator {
         sessionId: request.sessionId,
         responseTimeMs: Date.now() - startTime,
         showBooking: false,
+        bookingMode: 'internal',
         externalBookingUrl: null,
         externalPaymentUrl: null,
         suggestedReplies: [],

@@ -1,0 +1,257 @@
+ROLE
+You are a senior full-stack engineer + QA lead. Implement an “External Booking & Payment Handoff” system.
+Hard requirement: We DO NOT process payments and we DO NOT run a full booking engine when external mode is enabled.
+Instead we redirect (or embed) to the business’s existing provider that handles booking + payment.
+
+PRIMARY USER STORY
+“As a demo visitor, I can ask to book. The assistant captures my info and intent, then sends me to the business’s own booking/payment page (Calendly/Square/Acuity/Mindbody/etc). The system tracks that handoff and the dashboard shows that the lead was redirected and optionally completed if a webhook is configured.”
+
+NON-NEGOTIABLE RULES
+1) No payment processing:
+- No Stripe SDK, no payment intents, no fake card fields.
+- We never collect or store any card data.
+2) External booking provider is the source of truth when enabled:
+- We do not double-book or maintain full availability logic.
+- We only capture lead + preferred times + notes and then handoff.
+3) Multi-tenant security is mandatory:
+- Every query/endpoint must enforce effectiveClientId.
+- No cross-tenant leakage.
+4) Great UX:
+- Clear CTA: “Continue to booking”
+- Works on mobile
+- Friendly failures
+5) Proof:
+- Automated tests + QA report in-repo.
+
+========================================================
+PHASE 0 — DISCOVERY (DO FIRST)
+========================================================
+0.1 Identify current stack, routing, DB/ORM, auth, dashboard patterns.
+0.2 Identify current booking flow:
+- Is there an internal booking engine already?
+- What tables exist (appointments/bookings/leads/clientSettings/workspaceSettings)?
+0.3 Identify existing assistant/chatbot lead capture logic and form handling.
+
+Write findings to:
+- /reports/EXTERNAL_BOOKING_HANDOFF_QA.md (create if missing)
+Include file paths and current status fields.
+
+========================================================
+PHASE 1 — SETTINGS MODEL (EXTERNAL PROVIDER CONFIG)
+========================================================
+Add to client/workspace settings (use existing naming conventions):
+- bookingMode: 'internal' | 'external'  (default 'internal' if internal exists, otherwise default 'external')
+- externalBookingProviderName: TEXT NULL (e.g., Calendly, Square, Acuity, Mindbody, Vagaro, Fresha, “Website Checkout”)
+- externalBookingUrl: TEXT NULL (the primary URL we redirect to)
+- externalBookingEmbedMode: 'redirect' | 'iframe' (default 'redirect')
+- externalBookingDisclaimer: TEXT NULL (optional text shown near CTA)
+- externalBookingUtmSource: TEXT NULL (optional; default 'treasurecoastai')
+- externalBookingUtmCampaign: TEXT NULL (optional; e.g., industry-demo)
+
+Optional (only if we implement webhook confirmation):
+- externalBookingWebhookEnabled BOOLEAN default false
+- externalBookingWebhookProvider: TEXT NULL
+- externalBookingWebhookSecret: TEXT NULL (encrypted/secure storage if available)
+- externalBookingCompletionEventName: TEXT NULL
+
+Validation rules:
+- If bookingMode='external', externalBookingUrl MUST be present and a valid URL.
+- If embedMode='iframe', require URL allowlist or set X-Frame-Options fallback (many providers block iframes; handle gracefully).
+- Settings are tenant-scoped.
+
+Deliverables:
+- Migration + updated ORM schema + settings UI updates.
+- Update report with schema changes.
+
+========================================================
+PHASE 2 — LEAD + HANDOFF TRACKING MODEL (NO PAYMENT/BOOKING ENGINE)
+========================================================
+We need to track “someone tried to book” and that we redirected them externally.
+
+Create/extend a table:
+Option A: bookingHandoffs (recommended)
+Fields:
+- id
+- clientId
+- createdAt
+- sourcePage/industry (if available)
+- customerName
+- customerEmail
+- customerPhone
+- requestedService
+- preferredDateTimeText (free text)
+- notes
+- status: 'new' | 'redirected' | 'completed_external' | 'abandoned'  (completed_external only if webhook enabled)
+- redirectedAt TIMESTAMP NULL
+- completedAt TIMESTAMP NULL
+- externalBookingUrlUsed TEXT
+- userAgent/ipHash (optional; DO NOT store raw IP unless your privacy policy allows; prefer hash)
+- metadata JSON (optional, small)
+
+Option B: reuse existing leads table if it exists:
+- add fields above + statuses
+
+Indexes:
+- (clientId, createdAt)
+- (clientId, status)
+
+Data policy:
+- Do not store sensitive info. No card. No SSN. No medical details.
+- Mask/limit free-text length.
+
+========================================================
+PHASE 3 — ASSISTANT + UI FLOW (CAPTURE THEN HANDOFF)
+========================================================
+When a user asks to book:
+1) Collect minimum info:
+- name
+- phone or email
+- what they want (service)
+- preferred date/time window (not strict slotting; external provider handles it)
+- optional notes
+2) Create bookingHandoff record status='new'.
+3) Show a confirmation message and a prominent button:
+- “Continue to booking” (links to externalBookingUrl with UTM parameters and optionally prefill query params if supported)
+4) On click:
+- Log event status becomes 'redirected' + redirectedAt + urlUsed
+- Redirect user (or show iframe if embedMode and provider allows)
+5) Provide fallback:
+- “If the booking page doesn’t open, tap here” with raw link
+- Provide contact CTA
+
+UTM and tracking:
+- Append utm_source, utm_medium, utm_campaign (configurable via settings)
+- If we have a handoffId, append it as a harmless query param (e.g., tca_ref=handoffId) so provider pages can capture it in their own analytics if they want.
+
+IMPORTANT: We must not pretend the appointment is confirmed.
+Copy must be accurate:
+- “You’ll complete your booking on (Provider). We’ll be here if you need help.”
+
+========================================================
+PHASE 4 — DASHBOARD (HANDOFF PIPELINE VIEW)
+========================================================
+Add a “Booking Handoffs / Booking Leads” section:
+- Table columns:
+  - createdAt
+  - customerName
+  - contact
+  - requestedService
+  - preferredTime
+  - status badge (new/redirected/completed_external/abandoned)
+  - source/industry
+  - actions: view details, copy link, mark completed manually (optional)
+- Detail page:
+  - timeline:
+    - created
+    - redirectedAt
+    - completedAt (if webhook/manual)
+  - externalBookingUrlUsed
+  - notes
+
+Filtering:
+- by status
+- by date range
+- by industry/source
+
+========================================================
+PHASE 5 — OPTIONAL WEBHOOK CONFIRMATION (ONLY IF EASY AND SAFE)
+========================================================
+This is optional. Default system works without it.
+If you implement it, do it behind externalBookingWebhookEnabled and only for providers you can safely verify signatures for.
+If provider support is unknown, SKIP and just allow manual “mark completed”.
+
+If implemented:
+- Create endpoint: POST /api/webhooks/external-booking/:provider
+- Verify signature if provider supports it (store secret per tenant).
+- Map event to handoffId if provider can pass our tca_ref back (best), otherwise match by email/time (risky; avoid if ambiguous).
+- Update status to completed_external + completedAt.
+
+Safety:
+- Rate limit webhook endpoint.
+- Strict tenant validation.
+- Do not log full payloads.
+
+========================================================
+PHASE 6 — SETTINGS UI
+========================================================
+Add controls to the client settings page:
+- bookingMode (internal/external)
+- externalBookingProviderName
+- externalBookingUrl
+- embedMode (redirect/iframe)
+- optional disclaimers
+- optional UTMs
+- optional webhook enable + provider + secret (advanced section)
+
+Validation:
+- Cannot enable external mode without URL.
+- Show warning that many providers block iframe; auto-fallback to redirect if iframe fails.
+
+========================================================
+PHASE 7 — ERROR HANDLING / EDGE CASES (NO DEMO FAILS)
+========================================================
+Handle:
+- Missing externalBookingUrl while external mode is enabled -> show clear admin error + fallback contact CTA.
+- Provider blocks iframe -> detect and switch to redirect mode with a message.
+- Redirect blocked by popup blockers -> use standard link/button navigation, not window.open.
+- If DB write fails creating handoff -> show apology + direct external link (still let user book).
+
+========================================================
+PHASE 8 — AUTOMATED TESTS (REQUIRED)
+========================================================
+Add Playwright (or existing test framework) tests:
+
+E2E 1: External mode handoff
+- Configure tenant bookingMode=external with externalBookingUrl.
+- Trigger booking CTA (via assistant or booking UI).
+- Fill lead capture.
+- Assert a bookingHandoff record created (via API or UI confirmation).
+- Click “Continue to booking”.
+- Assert status becomes redirected and redirectedAt is set.
+- Assert outbound link contains UTMs and tca_ref.
+
+E2E 2: Tenant isolation
+- Create handoff under client A.
+- Attempt to view it under client B.
+- Must fail with 403/404 and no data leak.
+
+E2E 3: Missing URL failure mode
+- bookingMode=external but URL missing.
+- UI shows proper error and provides contact CTA (no crash).
+
+Optional E2E: iframe fallback
+- If iframe mode enabled but blocked, verify fallback to redirect message appears.
+
+Quality gates:
+- lint + typecheck + build + tests all pass.
+
+========================================================
+PHASE 9 — REPORT DELIVERABLES (IN REPO)
+========================================================
+Create:
+- /reports/EXTERNAL_BOOKING_HANDOFF_QA.md
+
+Must include:
+- Discovery findings + file paths
+- Schema/settings changes
+- Lead/handoff flow description
+- Manual QA checklist with PASS/FAIL
+- Automated tests list + how to run
+- Known limitations (e.g., webhook not enabled by default)
+
+========================================================
+IMPLEMENTATION ORDER (DO IN THIS ORDER)
+========================================================
+1) Phase 0 discovery notes
+2) Schema/migrations
+3) Lead/handoff model
+4) UI + assistant capture + redirect flow
+5) Dashboard pipeline
+6) Settings UI
+7) Errors/fallbacks
+8) Tests
+9) Report
+
+START NOW
+- Implement everything, commit changes, ensure tests pass.
+- Do not build any payment processing or internal booking confirmation logic in external mode.

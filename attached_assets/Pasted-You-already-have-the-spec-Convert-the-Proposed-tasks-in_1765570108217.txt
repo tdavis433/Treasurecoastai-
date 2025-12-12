@@ -1,0 +1,250 @@
+You already have the spec. Convert the “Proposed tasks” into an execution plan WITH acceptance criteria and implement it. Do not stop at planning.
+
+GLOBAL DEFINITION OF DONE (applies to every task)
+- Multi-tenant isolation enforced on EVERY new/modified query/endpoint (no cross-tenant reads or writes).
+- Deterministic booking/payment state machine enforced server-side (invalid transitions rejected).
+- Demo checkout is visual-only: no card data stored/transmitted/logged; server rejects suspicious payload keys.
+- UI never shows “confirmed” when status is payment_required.
+- Automated tests added and passing: e2e + key unit/integration tests.
+- Repo builds clean. No lint/typecheck failures.
+- Report file created/updated with checklist + results.
+
+========================================================
+TASK 1 — Examine current process, document findings (MANDATORY FIRST)
+========================================================
+Implement:
+1. Locate current booking creation flow (API route + UI submit).
+2. Identify DB tables: client/workspace settings, appointments/bookings, services/pricing, availability.
+3. Identify auth patterns: effectiveClientId, super-admin client context, middleware.
+4. Identify how dashboard renders booking status + detail.
+
+Deliverable:
+- /reports/PAYMENT_BOOKING_QA.md section “Discovery”
+  - stack summary
+  - relevant file paths
+  - current status values
+  - current settings structure
+  - where to hook booking + dashboard
+
+Acceptance:
+- Report lists exact routes, tables, and status strings currently used.
+- You can point to the exact “single source of truth” for clientId.
+
+========================================================
+TASK 2 — Update settings and appointment details (Schema + migrations + indexes)
+========================================================
+Implement:
+A) Settings table (clientSettings/workspaceSettings)
+- requiresPaymentAtBooking BOOLEAN default false
+- paymentMode TEXT default 'demo' (allowed demo|live)
+- paymentRedirectUrl TEXT nullable
+- paymentProviderLabel TEXT nullable
+(Optional) paymentDisclaimer TEXT nullable
+
+B) Appointments/bookings table
+- Extend status with: payment_required, paid_simulated, redirected_external (keep existing)
+- paidAt TIMESTAMP nullable
+- redirectedAt TIMESTAMP nullable
+- servicePriceCents INT nullable (money as cents)
+- currency TEXT default 'USD'
+(Optional) paymentRequiredAt TIMESTAMP nullable
+
+C) Constraints + indexes
+- Enforce allowed values (CHECK/enum if supported)
+- Index (clientId, createdAt) and (clientId, status)
+
+D) Backfill/migration safety
+- Existing rows remain valid; default old bookings remain confirmed (or existing equivalent)
+
+Deliverables:
+- Migration files + updated ORM schema
+- Report section “Schema Changes”
+
+Acceptance:
+- Migrations run clean on a fresh DB and an existing DB.
+- No runtime errors from missing fields.
+- Dashboard query performance not degraded (indexes present).
+
+========================================================
+TASK 3 — Control valid status transitions logic (State machine helper)
+========================================================
+Implement:
+- A central helper (server-side) for allowed transitions:
+  - confirmed (no payment required)
+  - payment_required -> paid_simulated | redirected_external | cancelled | failed
+  - paid_simulated -> cancelled (if policy allows) but NEVER back to payment_required
+  - redirected_external -> cancelled (optional) but NEVER to paid_simulated (we’re not doing real payments)
+- Enforce this in all places that update status.
+
+Deliverables:
+- canTransition(from,to) or equivalent helper + tests
+
+Acceptance:
+- Any invalid transition returns 400 with a clear message.
+- All status updates call the helper (no scattered status writes bypassing it).
+
+========================================================
+TASK 4 — Update booking to set payment status (Core booking logic)
+========================================================
+Implement:
+- On booking creation:
+  - load client settings
+  - if requiresPaymentAtBooking=false -> create confirmed booking (existing behavior)
+  - if true -> create booking as payment_required + paymentRequiredAt
+- Return “next step” object:
+  - demo: demoCheckoutUrl (/demo-checkout/:bookingId)
+  - live: paymentRedirectUrl + label
+- Ensure slot conflict rules still apply (no double booking).
+- Ensure booking is never “confirmed” until paid_simulated/redirected_external (depending on mode).
+
+Deliverables:
+- Updated API response contract + UI handling + report notes
+
+Acceptance:
+- Confirmed path unchanged for clients not requiring payment.
+- Payment-required path reliably creates payment_required.
+- UI clearly shows “pending until payment” (no misleading confirmation).
+
+========================================================
+TASK 5 — Create demo checkout page UI (/demo-checkout/:bookingId)
+========================================================
+Implement:
+- Stripe-like layout showing booking summary (service, date/time, price if known).
+- Prominent disclaimer: “DEMO PAYMENT ONLY — do not enter real card info.”
+- Fake card fields MUST:
+  - have NO name attributes
+  - autocomplete off
+  - never sent to server
+  - never logged
+- “Pay (Demo)” button calls confirm-demo-payment endpoint with minimal payload.
+
+Edge handling:
+- invalid bookingId / unauthorized / wrong status -> friendly error + CTA.
+
+Deliverables:
+- Page component + route + minimal styling consistent with site
+
+Acceptance:
+- Network inspector shows NO card fields sent.
+- Page works on mobile.
+- Invalid/expired bookings handled gracefully.
+
+========================================================
+TASK 6 — Create payment confirmation endpoints (Demo confirm + live redirect record)
+========================================================
+Implement:
+A) POST /api/bookings/:id/confirm-demo-payment
+- Tenant auth check (booking belongs to effectiveClientId)
+- Payload guard: reject body containing card/cvc/pan/exp/etc keys
+- Validate status is payment_required
+- Validate slot still available if your system enforces it
+- Update status -> paid_simulated and paidAt=now
+
+B) POST /api/bookings/:id/mark-redirected (recommended)
+- Tenant auth check
+- Validate status payment_required
+- Update status -> redirected_external and redirectedAt=now
+
+Logging:
+- Do not log bodies for these endpoints.
+- Ensure error logs don’t dump sensitive payload.
+
+Acceptance:
+- Wrong tenant gets 403/404 and no booking details leak.
+- Invalid transition blocked.
+- Payload with cardNumber rejected with 400.
+
+========================================================
+TASK 7 — Add payment status to dashboard (Badges + timeline)
+========================================================
+Implement:
+- Status badge mapping:
+  - payment_required: “Payment required”
+  - paid_simulated: “Demo paid”
+  - redirected_external: “Redirected to payment”
+- Booking detail: timeline rows:
+  - created
+  - paymentRequiredAt (if exists)
+  - paidAt / redirectedAt
+- Filters/search include new statuses.
+
+Acceptance:
+- Admin and client dashboards show consistent labels.
+- No “confirmed” label appears when payment_required.
+
+========================================================
+TASK 8 — Add payment fields to settings UI
+========================================================
+Implement:
+- Toggle requiresPaymentAtBooking
+- Radio/select paymentMode demo/live
+- paymentRedirectUrl shown only when live; validate URL
+- paymentProviderLabel optional
+- (Optional) paymentDisclaimer text
+
+Acceptance:
+- Saving settings only affects that tenant.
+- Live mode cannot be saved without a valid redirect URL.
+- Changes reflect immediately in booking flow.
+
+========================================================
+TASK 9 — Handle errors, offer retry options (No demo embarrassment)
+========================================================
+Implement:
+- User-friendly errors for:
+  - booking not found/unauthorized
+  - server failure on confirm
+  - slot no longer available
+  - closed hours/past times/double-book
+- Retry button where appropriate
+- Fallback CTA “Contact us” (or your contact flow)
+
+Acceptance:
+- No raw stack traces shown to user.
+- Every failure has a clear next step.
+
+========================================================
+TASK 10 — Configure demo data, test flows (Manual test checklist)
+========================================================
+Implement:
+- Seed/demo tenant(s):
+  - one with requiresPaymentAtBooking=false
+  - one with requiresPaymentAtBooking=true + demo
+  - one with requiresPaymentAtBooking=true + live + redirect URL
+- Add manual checklist to report with PASS/FAIL fields.
+
+Acceptance:
+- A fresh dev environment can reproduce all 3 flows easily.
+
+========================================================
+TASK 11 — Add automated tests, update report (Quality gates)
+========================================================
+Implement Playwright (or existing e2e):
+- E2E: no payment required -> confirmed
+- E2E: demo payment required -> payment_required -> paid_simulated
+- E2E: live mode -> payment_required -> redirected_external
+- Negative: cross-tenant access denied for checkout + confirm
+- Negative: payload guard rejects cardNumber
+
+Also add:
+- lint + typecheck + build scripts
+- CI config update if repo uses it
+
+Deliverables:
+- /reports/PAYMENT_BOOKING_QA.md fully filled
+- e2e tests in /tests (or existing structure)
+- instructions to run: npm/yarn/pnpm commands
+
+Acceptance:
+- All tests pass reliably (no flaky waits).
+- Build passes.
+- Report includes results and how to run tests.
+
+========================================================
+FINAL VERIFICATION (must do at end)
+========================================================
+- Confirm there is NO path where UI says confirmed while status payment_required.
+- Confirm no card-like values ever hit server logs.
+- Confirm cross-tenant attempts fail with no data leak.
+- Confirm state transitions are enforced in code + tested.
+- Confirm all deliverables exist and are committed.

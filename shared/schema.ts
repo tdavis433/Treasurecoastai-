@@ -164,7 +164,9 @@ export const clientSettings = pgTable("client_settings", {
   accentColor: text("accent_color").notNull().default("#F59E0B"),
   
   // External integrations - allow clients to link their existing systems
+  bookingMode: text("booking_mode").notNull().default("internal"), // 'internal' for in-chat confirmation, 'external' for redirect to booking URL
   externalBookingUrl: text("external_booking_url"), // Client's existing booking system (Calendly, Acuity, etc.)
+  externalBookingProviderName: text("external_booking_provider_name"), // e.g., "Square", "Acuity", "Vagaro" - shown in CTA
   externalPaymentUrl: text("external_payment_url"), // Client's existing payment page (Square, PayPal, etc.)
   
   // Webhook configuration for real-time event delivery to client's systems

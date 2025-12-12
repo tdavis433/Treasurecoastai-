@@ -1,0 +1,47 @@
+Implement the dual-mode booking payment flow with strict guardrails:
+
+1) Schema / models
+- Add business/demo settings:
+  - requiresPaymentAtBooking (boolean)
+  - mode ("demo" | "live")
+  - paymentRedirectUrl (string, required only if requiresPaymentAtBooking && mode=="live")
+- Add booking fields:
+  - status enum: Confirmed | PaymentRequired | PaidSimulated | RedirectedExternal
+  - timestamps: createdAt, updatedAt, paidAt (nullable), redirectedAt (nullable)
+
+2) Booking creation logic (must always create a booking record first)
+- On submit: validate → create booking
+- If requiresPaymentAtBooking == false:
+  - set status Confirmed
+  - return success, no redirect
+- If requiresPaymentAtBooking == true:
+  - set status PaymentRequired
+  - If mode == "demo":
+    - return redirectUrl = /demo-checkout/{bookingId}
+  - If mode == "live":
+    - set status RedirectedExternal and redirectedAt
+    - return redirectUrl = paymentRedirectUrl from settings (no query-param redirects allowed)
+
+3) Demo checkout page (/demo-checkout/:bookingId)
+- Build a realistic “Stripe-like” checkout UI (but demo only)
+- Fake card fields are front-end only:
+  - DO NOT store, DO NOT log, DO NOT send to backend
+- Clicking “Pay” calls a demo-confirm endpoint/action:
+  - updates booking: status PaidSimulated, paidAt timestamp
+  - then shows success screen + button back to confirmation
+
+4) Dashboard updates
+- Show all bookings with status badges
+- Booking detail view shows status + timestamps (created, paidAt, redirectedAt)
+- Ensure paid demo bookings reflect PaidSimulated after fake checkout
+
+5) Seed data + testing
+- Add one paid-service demo (barbershop) with requiresPaymentAtBooking=true, mode=demo
+- Add one non-paid demo (consultation/tour) with requiresPaymentAtBooking=false
+- Provide a short test checklist confirming:
+  - non-paid no redirect
+  - paid demo internal checkout + PaidSimulated
+  - paid live external redirect + RedirectedExternal
+
+Do not add any real payment integrations or APIs.
+Do not break existing demos.
