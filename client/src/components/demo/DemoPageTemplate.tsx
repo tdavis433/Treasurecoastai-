@@ -246,10 +246,12 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
                         "mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90 shadow-lg cursor-pointer",
                         `bg-gradient-to-r ${config.colors.primary}`
                       )}
-                      data-testid={`button-book-appointment-${index}`}
+                      data-testid="button-book-appointment"
                     >
                       <Calendar className="h-4 w-4" />
-                      {config.bookingLabel}
+                      {message.bookingMode === 'external' && message.bookingProviderName
+                        ? `Continue to book on ${message.bookingProviderName}`
+                        : config.bookingLabel}
                       <ExternalLink className="h-3 w-3" />
                     </button>
                   )}

@@ -22,6 +22,8 @@ export interface Message {
   content: string;
   bookingUrl?: string;
   bookingType?: 'tour' | 'call' | 'appointment';
+  bookingMode?: 'internal' | 'external';
+  bookingProviderName?: string | null;
   paymentUrl?: string;
   suggestedReplies?: string[];
   isStreaming?: boolean;
@@ -120,6 +122,8 @@ export function useChatAssistant(config: UseChatAssistantConfig): UseChatAssista
         content: response.reply,
         bookingUrl: response.meta?.externalBookingUrl || undefined,
         bookingType: response.meta?.bookingType || undefined,
+        bookingMode: response.meta?.bookingMode || 'internal',
+        bookingProviderName: response.meta?.externalBookingProviderName || null,
         paymentUrl: response.meta?.externalPaymentUrl || undefined,
         suggestedReplies: response.meta?.suggestedReplies,
       };

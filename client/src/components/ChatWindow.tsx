@@ -10,6 +10,8 @@ interface Message {
   content: string;
   suggestedReplies?: string[];
   bookingUrl?: string | null;
+  bookingMode?: 'internal' | 'external';
+  bookingProviderName?: string | null;
   paymentUrl?: string | null;
 }
 
@@ -198,7 +200,11 @@ export default function ChatWindow({
                   data-testid="button-book-appointment"
                 >
                   <Calendar className="h-4 w-4" />
-                  {language === "es" ? "Completar Reserva" : "Complete Booking"}
+                  {message.bookingMode === 'external' && message.bookingProviderName
+                    ? (language === "es" 
+                        ? `Continuar reserva en ${message.bookingProviderName}` 
+                        : `Continue to book on ${message.bookingProviderName}`)
+                    : (language === "es" ? "Completar Reserva" : "Complete Booking")}
                   <ExternalLink className="h-3 w-3" />
                 </a>
                 {message.paymentUrl && (

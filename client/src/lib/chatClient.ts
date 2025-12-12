@@ -37,7 +37,9 @@ export interface ChatMeta {
   responseTimeMs?: number;
   showBooking?: boolean;
   bookingType?: 'tour' | 'call' | 'appointment';
+  bookingMode?: 'internal' | 'external';
   externalBookingUrl?: string | null;
+  externalBookingProviderName?: string | null;
   externalPaymentUrl?: string | null;
   suggestedReplies?: string[];
   crisis?: boolean;

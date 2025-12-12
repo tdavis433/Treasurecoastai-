@@ -8,7 +8,8 @@ import {
   chatAnalyticsEvents,
   dailyAnalytics,
   adminUsers,
-  workspaceMemberships 
+  workspaceMemberships,
+  clientSettings 
 } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 import bcrypt from "bcryptjs";
@@ -33,6 +34,11 @@ interface DemoWorkspaceConfig {
   theme: {
     primaryColor: string;
     welcomeMessage: string;
+  };
+  externalBooking?: {
+    mode: 'internal' | 'external';
+    url?: string;
+    providerName?: string;
   };
   sampleLeads: Array<{
     name: string;
@@ -439,6 +445,11 @@ const DEMO_CONFIGS: Record<string, DemoWorkspaceConfig> = {
     },
     systemPrompt: "You are the Fade Factory Assistant, booking appointments for our barbershop.",
     theme: { primaryColor: "#8B5CF6", welcomeMessage: "Welcome to Fade Factory! Ready for a fresh cut?" },
+    externalBooking: {
+      mode: 'external',
+      url: 'https://square.site/book/example-fade-factory',
+      providerName: 'Square'
+    },
     sampleLeads: [
       { name: "Jason Miller", phone: "(772) 555-7001", status: "new", daysAgo: 1 },
       { name: "Derek Williams", phone: "(772) 555-7002", email: "derek.w@email.com", status: "contacted", daysAgo: 2 },
@@ -473,6 +484,11 @@ const DEMO_CONFIGS: Record<string, DemoWorkspaceConfig> = {
     },
     systemPrompt: "You are the Ink & Soul Guide, helping clients book consultations and tattoo appointments.",
     theme: { primaryColor: "#EC4899", welcomeMessage: "Welcome to Ink & Soul! Ready to create something beautiful?" },
+    externalBooking: {
+      mode: 'external',
+      url: 'https://www.vagaro.com/example-ink-soul',
+      providerName: 'Vagaro'
+    },
     sampleLeads: [
       { name: "Alex Rivera", phone: "(772) 555-8001", email: "alex.r@email.com", status: "new", daysAgo: 1 },
       { name: "Sam Taylor", phone: "(772) 555-8002", status: "contacted", daysAgo: 3 },
@@ -506,6 +522,11 @@ const DEMO_CONFIGS: Record<string, DemoWorkspaceConfig> = {
     },
     systemPrompt: "You are the Iron Coast Fitness Assistant, helping people learn about memberships and classes.",
     theme: { primaryColor: "#EF4444", welcomeMessage: "Welcome to Iron Coast Fitness! Ready to get started?" },
+    externalBooking: {
+      mode: 'external',
+      url: 'https://classpass.com/example-iron-coast-fitness',
+      providerName: 'ClassPass'
+    },
     sampleLeads: [
       { name: "Michelle Brown", phone: "(772) 555-9001", email: "michelle.b@email.com", status: "new", daysAgo: 1 },
       { name: "David Garcia", phone: "(772) 555-9002", status: "contacted", daysAgo: 2 },
@@ -605,6 +626,11 @@ const DEMO_CONFIGS: Record<string, DemoWorkspaceConfig> = {
     },
     systemPrompt: "You are the Radiance Med Spa Concierge, helping clients with aesthetic treatment consultations.",
     theme: { primaryColor: "#A855F7", welcomeMessage: "Welcome to Radiance Med Spa! Ready to glow?" },
+    externalBooking: {
+      mode: 'external',
+      url: 'https://app.acuityscheduling.com/schedule/example-radiance-medspa',
+      providerName: 'Acuity'
+    },
     sampleLeads: [
       { name: "Victoria Chen", phone: "(772) 555-1301", email: "vic.c@email.com", status: "new", daysAgo: 1 },
       { name: "Ashley Moore", phone: "(772) 555-1302", status: "contacted", daysAgo: 2 },
@@ -1091,6 +1117,67 @@ export async function seedDemoWorkspace(slug: string): Promise<{
         isDemo: true,
       })
       .returning();
+  }
+
+  // Upsert clientSettings with external booking configuration if defined
+  if (config.externalBooking) {
+    const [existingSettings] = await db
+      .select()
+      .from(clientSettings)
+      .where(eq(clientSettings.clientId, config.slug))
+      .limit(1);
+
+    if (existingSettings) {
+      await db
+        .update(clientSettings)
+        .set({
+          bookingMode: config.externalBooking.mode,
+          externalBookingUrl: config.externalBooking.url || null,
+          externalBookingProviderName: config.externalBooking.providerName || null,
+          businessName: config.businessProfile.businessName,
+          businessType: config.businessProfile.type,
+          primaryPhone: config.businessProfile.phone || null,
+          primaryEmail: config.businessProfile.email || null,
+          updatedAt: new Date(),
+        })
+        .where(eq(clientSettings.clientId, config.slug));
+    } else {
+      await db
+        .insert(clientSettings)
+        .values({
+          clientId: config.slug,
+          bookingMode: config.externalBooking.mode,
+          externalBookingUrl: config.externalBooking.url || null,
+          externalBookingProviderName: config.externalBooking.providerName || null,
+          businessName: config.businessProfile.businessName,
+          tagline: config.theme.welcomeMessage,
+          businessType: config.businessProfile.type,
+          primaryPhone: config.businessProfile.phone || null,
+          primaryEmail: config.businessProfile.email || null,
+          primaryColor: config.theme.primaryColor,
+          knowledgeBase: {
+            about: `${config.businessProfile.businessName} is a ${config.businessProfile.type} located in ${config.businessProfile.location || 'Florida'}.`,
+            requirements: 'Contact us for more information.',
+            pricing: 'Contact us for pricing details.',
+            application: 'Contact us to get started.'
+          },
+          operatingHours: {
+            enabled: true,
+            timezone: 'America/New_York',
+            schedule: {
+              monday: { open: '09:00', close: '17:00', enabled: true },
+              tuesday: { open: '09:00', close: '17:00', enabled: true },
+              wednesday: { open: '09:00', close: '17:00', enabled: true },
+              thursday: { open: '09:00', close: '17:00', enabled: true },
+              friday: { open: '09:00', close: '17:00', enabled: true },
+              saturday: { open: '10:00', close: '14:00', enabled: true },
+              sunday: { open: '00:00', close: '00:00', enabled: false }
+            },
+            afterHoursMessage: 'We are currently closed. Leave a message and we will get back to you.'
+          },
+          status: 'active',
+        });
+    }
   }
 
   await clearDemoWorkspaceData(config.slug);

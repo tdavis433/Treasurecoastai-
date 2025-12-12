@@ -19,7 +19,7 @@ import {
   Users, Plus, Search, Phone, Mail, MessageSquare,
   Calendar, Tag, ChevronRight, ArrowLeft, Edit2, Trash2,
   Save, X, Filter, User, Clock, Star, Building2, RefreshCw,
-  CheckSquare, Square, Download
+  CheckSquare, Square, Download, ExternalLink, Check, CalendarCheck
 } from "lucide-react";
 
 interface Lead {
@@ -41,6 +41,10 @@ interface Lead {
   createdAt: string;
   updatedAt: string;
   lastContactedAt: string | null;
+  bookingStatus: string | null;
+  bookingIntent: boolean;
+  serviceRequested: string | null;
+  preferredDateTime: string | null;
 }
 
 const STATUS_OPTIONS = [
@@ -55,6 +59,13 @@ const PRIORITY_OPTIONS = [
   { value: 'low', label: 'Low', color: 'bg-white/10 text-white/55 border-white/20' },
   { value: 'medium', label: 'Medium', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
   { value: 'high', label: 'High', color: 'bg-red-500/20 text-red-400 border-red-500/30' },
+];
+
+const BOOKING_STATUS_OPTIONS = [
+  { value: 'pending_redirect', label: 'Pending Redirect', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', icon: 'clock' },
+  { value: 'redirected', label: 'Redirected to Booking', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30', icon: 'external' },
+  { value: 'completed', label: 'Booking Completed', color: 'bg-green-500/20 text-green-400 border-green-500/30', icon: 'check' },
+  { value: 'no_url', label: 'No Booking URL', color: 'bg-red-500/20 text-red-400 border-red-500/30', icon: 'x' },
 ];
 
 interface UserProfile {
@@ -284,6 +295,24 @@ export default function LeadsPage() {
       </Badge>
     ) : (
       <Badge className="bg-white/10 text-white/55 border border-white/20">{priority}</Badge>
+    );
+  };
+
+  const getBookingStatusBadge = (bookingStatus: string | null) => {
+    if (!bookingStatus) return null;
+    const option = BOOKING_STATUS_OPTIONS.find(o => o.value === bookingStatus);
+    if (!option) return null;
+    
+    const IconComponent = option.icon === 'clock' ? Clock 
+      : option.icon === 'external' ? ExternalLink 
+      : option.icon === 'check' ? Check 
+      : X;
+    
+    return (
+      <Badge className={`${option.color} border`} data-testid={`badge-booking-status-${bookingStatus}`}>
+        <IconComponent className="h-3 w-3 mr-1" />
+        {option.label}
+      </Badge>
     );
   };
 
@@ -545,6 +574,7 @@ export default function LeadsPage() {
                         </div>
                         <div className="flex flex-col items-end gap-2">
                           {getStatusBadge(lead.status)}
+                          {lead.bookingStatus && getBookingStatusBadge(lead.bookingStatus)}
                           <span className="text-xs text-white/40">
                             {format(new Date(lead.createdAt), 'MMM d, h:mm a')}
                           </span>
@@ -615,9 +645,10 @@ export default function LeadsPage() {
                     <h3 className="text-xl font-semibold text-white">
                       {selectedLead.name || 'Unknown'}
                     </h3>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
                       {getStatusBadge(selectedLead.status)}
                       {getPriorityBadge(selectedLead.priority)}
+                      {selectedLead.bookingStatus && getBookingStatusBadge(selectedLead.bookingStatus)}
                     </div>
                   </div>
                 </div>
@@ -669,6 +700,37 @@ export default function LeadsPage() {
                     )}
                   </GlassCardContent>
                 </GlassCard>
+
+                {(selectedLead.bookingIntent || selectedLead.bookingStatus) && (
+                  <GlassCard>
+                    <GlassCardHeader className="pb-3">
+                      <GlassCardTitle className="text-sm flex items-center gap-2">
+                        <CalendarCheck className="h-4 w-4 text-cyan-400" />
+                        Booking Information
+                      </GlassCardTitle>
+                    </GlassCardHeader>
+                    <GlassCardContent className="space-y-3">
+                      {selectedLead.bookingStatus && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-white/55">Booking Status</span>
+                          {getBookingStatusBadge(selectedLead.bookingStatus)}
+                        </div>
+                      )}
+                      {selectedLead.serviceRequested && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-white/55">Service Requested</span>
+                          <span className="text-white/85">{selectedLead.serviceRequested}</span>
+                        </div>
+                      )}
+                      {selectedLead.preferredDateTime && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-white/55">Preferred Time</span>
+                          <span className="text-white/85">{selectedLead.preferredDateTime}</span>
+                        </div>
+                      )}
+                    </GlassCardContent>
+                  </GlassCard>
+                )}
 
                 {selectedLead.notes && (
                   <GlassCard>
