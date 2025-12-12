@@ -227,6 +227,14 @@ export const recoveryHouseConfig: DemoPageConfig = {
     {
       question: "How do I schedule a tour?",
       answer: "We offer tours by appointment 7 days a week. You can schedule one through our AI assistant or by calling us. Tours typically take 30-45 minutes."
+    },
+    {
+      question: "What meetings do you attend?",
+      answer: "We support all recovery pathways including AA, NA, SMART Recovery, and Celebrate Recovery. House meetings are held weekly."
+    },
+    {
+      question: "Are pets allowed?",
+      answer: "We have pet-friendly rooms available for an additional fee. Dogs under 50 lbs are welcome with approval. Space is limited."
     }
   ],
 
