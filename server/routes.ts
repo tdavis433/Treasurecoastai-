@@ -2625,12 +2625,18 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
       
       // Return config without sensitive system prompt details
+      // Ensure businessProfile includes the type from botType
+      const businessProfile = {
+        ...botConfig.businessProfile,
+        type: botConfig.botType || botConfig.businessProfile?.type || 'general'
+      };
+      
       res.json({
         botId: botConfig.botId,
         clientId: botConfig.clientId,
         name: botConfig.name,
         description: botConfig.description,
-        businessProfile: botConfig.businessProfile,
+        businessProfile,
         faqs: botConfig.faqs,
         isDemo: botConfig.metadata?.isDemo ?? (botConfig.clientId === 'demo')
       });

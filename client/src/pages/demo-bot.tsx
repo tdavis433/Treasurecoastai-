@@ -29,7 +29,13 @@ import {
   Users,
   CheckCircle2,
   Calendar,
-  ExternalLink
+  ExternalLink,
+  Scale,
+  Smile,
+  Hotel,
+  Hammer,
+  PartyPopper,
+  PawPrint
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useChatAssistant, Message } from "@/hooks/useChatAssistant";
@@ -68,6 +74,12 @@ const businessTypeIcons: Record<string, React.ReactNode> = {
   med_spa: <Sparkles className="h-6 w-6" />,
   real_estate: <Building2 className="h-6 w-6" />,
   tattoo: <Heart className="h-6 w-6" />,
+  law_firm: <Scale className="h-6 w-6" />,
+  dental_clinic: <Smile className="h-6 w-6" />,
+  boutique_hotel: <Hotel className="h-6 w-6" />,
+  roofing: <Hammer className="h-6 w-6" />,
+  wedding_venue: <PartyPopper className="h-6 w-6" />,
+  pet_grooming: <PawPrint className="h-6 w-6" />,
 };
 
 const businessTypeColors: Record<string, { primary: string; accent: string; gradient: string }> = {
@@ -82,6 +94,12 @@ const businessTypeColors: Record<string, { primary: string; accent: string; grad
   med_spa: { primary: "from-pink-500 to-purple-600", accent: "bg-pink-500", gradient: "from-pink-900/90 to-purple-900/90" },
   real_estate: { primary: "from-sky-600 to-blue-700", accent: "bg-sky-500", gradient: "from-sky-900/90 to-blue-900/90" },
   tattoo: { primary: "from-purple-700 to-pink-700", accent: "bg-purple-500", gradient: "from-purple-900/90 to-pink-900/90" },
+  law_firm: { primary: "from-slate-700 to-blue-800", accent: "bg-blue-600", gradient: "from-slate-900/90 to-blue-900/90" },
+  dental_clinic: { primary: "from-sky-500 to-teal-600", accent: "bg-sky-500", gradient: "from-sky-900/90 to-teal-900/90" },
+  boutique_hotel: { primary: "from-amber-600 to-orange-700", accent: "bg-amber-500", gradient: "from-amber-900/90 to-orange-900/90" },
+  roofing: { primary: "from-red-600 to-orange-600", accent: "bg-red-500", gradient: "from-red-900/90 to-orange-900/90" },
+  wedding_venue: { primary: "from-rose-500 to-pink-600", accent: "bg-rose-500", gradient: "from-rose-900/90 to-pink-900/90" },
+  pet_grooming: { primary: "from-cyan-500 to-blue-600", accent: "bg-cyan-500", gradient: "from-cyan-900/90 to-blue-900/90" },
 };
 
 const businessTypeTaglines: Record<string, string> = {
@@ -96,6 +114,12 @@ const businessTypeTaglines: Record<string, string> = {
   med_spa: "Rejuvenate Your Body and Mind",
   real_estate: "Find Your Dream Home Today",
   tattoo: "Your Vision, Our Artistry",
+  law_firm: "Justice. Dedication. Results.",
+  dental_clinic: "Creating Beautiful Smiles",
+  boutique_hotel: "Luxury Escape Awaits",
+  roofing: "Protecting Your Home from the Top Down",
+  wedding_venue: "Where Forever Begins",
+  pet_grooming: "Pampered Pets, Happy Owners",
 };
 
 const businessTypeFeatures: Record<string, string[]> = {
@@ -110,6 +134,12 @@ const businessTypeFeatures: Record<string, string[]> = {
   med_spa: ["Board Certified", "Latest Technology", "Custom Treatments", "Relaxing Environment"],
   real_estate: ["Local Expertise", "Virtual Tours", "Personalized Service", "Market Analysis"],
   tattoo: ["Custom Designs", "Sterile Environment", "Experienced Artists", "Aftercare Support"],
+  law_firm: ["Free Consultations", "25+ Years Experience", "No Fee Unless We Win", "Bilingual Staff"],
+  dental_clinic: ["Gentle Care", "Modern Technology", "Family Friendly", "Insurance Accepted"],
+  boutique_hotel: ["Ocean Views", "Fine Dining", "Full-Service Spa", "Concierge Service"],
+  roofing: ["Licensed & Insured", "Free Estimates", "Storm Damage Experts", "Financing Available"],
+  wedding_venue: ["Ocean Views", "Full Planning", "On-Site Catering", "Indoor & Outdoor Options"],
+  pet_grooming: ["Certified Groomers", "All Breeds Welcome", "Gentle Handling", "Premium Products"],
 };
 
 // Industry-specific booking button labels
@@ -125,6 +155,12 @@ const businessTypeBookingLabels: Record<string, string> = {
   med_spa: "Book Consultation",
   real_estate: "Schedule Viewing",
   tattoo: "Book Consultation",
+  law_firm: "Free Case Evaluation",
+  dental_clinic: "Book Appointment",
+  boutique_hotel: "Book Your Stay",
+  roofing: "Free Estimate",
+  wedding_venue: "Schedule Tour",
+  pet_grooming: "Book Grooming",
 };
 
 /**
