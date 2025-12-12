@@ -1163,7 +1163,12 @@ class ConversationOrchestrator {
     
     const aiMentionsBookingButton = /\b(book\s*appointment|book\s*a?\s*tour|schedule\s*a?\s*call|click.*button|scheduling\s*page|finalize.*booking|complete.*booking)\b/i.test(reply);
     
-    const showBooking = directBookingIntent || isAffirmativeToBookingPrompt || alreadyRequestedBooking || conversationHasBookingIntent || aiMentionsBookingButton;
+    // Extract booking info early to check if complete info has been collected
+    const bookingInfo = extractBookingInfoFromConversation(messages, reply, userMessage);
+    const bookingInfoComplete = bookingInfo?.isComplete || false;
+    
+    // Show booking button when: user has booking intent OR AI confirmed booking with complete info
+    const showBooking = directBookingIntent || isAffirmativeToBookingPrompt || alreadyRequestedBooking || conversationHasBookingIntent || aiMentionsBookingButton || bookingInfoComplete;
 
     // Determine booking type based on user's message and conversation context
     let bookingType: 'tour' | 'call' | 'appointment' | undefined;
@@ -1240,7 +1245,7 @@ class ConversationOrchestrator {
 
     // AI-driven booking creation: When AI confirms it has "noted" the booking request
     // with complete info (name + phone required), create an appointment record
-    const bookingInfo = extractBookingInfoFromConversation(messages, reply, userMessage);
+    // Note: bookingInfo is already extracted earlier for showBooking detection
     let bookingSaved = false;
     
     if (bookingInfo && bookingInfo.isComplete) {

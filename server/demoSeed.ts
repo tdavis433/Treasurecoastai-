@@ -189,6 +189,11 @@ const DEMO_CONFIGS: Record<string, DemoWorkspaceConfig> = {
       primaryColor: "#F59E0B",
       welcomeMessage: "Welcome to Elite Cuts! Ready to look sharp? Let me help you book your next appointment.",
     },
+    externalBooking: {
+      mode: 'external',
+      url: 'https://square.site/book/example-elite-cuts',
+      providerName: 'Square'
+    },
     sampleLeads: [
       { name: "Jason Miller", phone: "(772) 555-2001", status: "new", daysAgo: 0 },
       { name: "Kevin Wright", phone: "(772) 555-2002", email: "kevin.w@email.com", status: "contacted", daysAgo: 2 },
