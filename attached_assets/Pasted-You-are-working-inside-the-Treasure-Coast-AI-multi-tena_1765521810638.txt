@@ -1,0 +1,290 @@
+You are working inside the Treasure Coast AI multi-tenant SaaS project (Treasure Coast AI).
+
+Context:
+A previous, very detailed QA pass produced a long markdown report (not included here). This prompt is a distilled version of all important issues and recommendations from that report.
+
+Your job:
+Bring the app to **production-demo quality** by implementing or tightening all the behaviors described below. Some items may already be partially fixed; in those cases, **verify** that they behave exactly as specified and adjust as needed. Do NOT remove working features or break existing routes.
+
+High-level goals:
+- Secure, predictable auth + logout for admin & client.
+- Reliable new client/workspace creation wizard with solid validation.
+- Clean multi-tenant behavior with no cross-tenant data leaks.
+- Smooth chat & booking UX (Enter to send, scroll, phone call booking).
+- Readable conversations and tables (no tiny scrollbars or hidden data).
+- Strong, consistent form validation and error handling.
+- Graceful handling of OpenAI rate limits / external errors.
+
+────────────────────
+A. AUTH, SESSIONS & LOGOUT
+────────────────────
+
+From QA:
+- There was **no visible logout** for client or admin dashboards.
+- Session state felt “sticky”; users could close the tab and still be effectively logged in.
+
+Tasks:
+1. Add a clear **Logout** option for both:
+   - Client dashboard header/topbar.
+   - Super-admin / agency dashboard header/topbar.
+
+2. Behavior for logout:
+   - Calls a proper logout endpoint that:
+     - Clears auth session (cookies/tokens, server-side session).
+     - Redirects to the appropriate login page (`/login` or `/client-login`, depending on flow).
+   - Prevents accessing protected routes after logout:
+     - If a logged-out user navigates directly to a client/admin route, they should be redirected to the correct login screen.
+
+3. Route protection:
+   - Ensure all admin-only routes require the correct admin role.
+   - Ensure all client-only routes require a valid client session scoped to a specific workspace.
+   - No “back-button” access to data after logout.
+
+────────────────────
+B. NEW CLIENT / WORKSPACE WIZARD
+────────────────────
+
+From QA:
+- New Client wizard could **close unexpectedly** when required fields were empty.
+- Instead of showing inline validation, it simply failed and closed the modal.
+- Multi-tenant testing was blocked by inability to reliably create new workspaces.
+
+Tasks:
+1. Fix Step 1 validation:
+   - Required fields: at minimum, business name & contact email.
+   - If user clicks “Next” with missing or invalid values:
+     - Do NOT close the modal.
+     - Show clear inline validation messages near each field (e.g., “Business name is required”, “Enter a valid email address”).
+     - Prevent step advancement until fields are valid.
+
+2. Preserve form state:
+   - If validation fails, keep user-entered values in all fields.
+   - Do not blank out the form on error.
+
+3. Wizard stability:
+   - Ensure the wizard does not close itself unless:
+     - User explicitly cancels / closes it.
+     - Or the wizard successfully completes and the workspace is created.
+
+4. After creation:
+   - The new workspace must appear reliably in the admin client list.
+   - Opening it should show zero leads/bookings initially (unless there is explicit seeding logic).
+
+────────────────────
+C. FAITH HOUSE WORKSPACE & MULTI-TENANT SANITY
+────────────────────
+
+From QA:
+- There were **multiple “Faith House” entries** in admin, with slightly different metrics.
+- It wasn’t clear which workspace was backing the Faith House client login.
+- Multi-tenant isolation couldn’t be fully validated.
+
+Tasks:
+1. Workspace mapping:
+   - Ensure there is a **single canonical Faith House workspace** used by the Faith House client login.
+   - If there are stale / duplicate Faith House demo workspaces, either:
+     - Consolidate data into the canonical one, OR
+     - Clearly mark demo variants (e.g., `faith_house_demo`) and ensure they are only used for public demos, not client login.
+
+2. Multi-tenant isolation:
+   - All data access for leads/bookings/conversations MUST be scoped by a tenant/workspace ID.
+   - Implement middleware / helpers that:
+     - Determine the effective clientId / workspaceId from session (for clients) or explicit selection (for admins).
+     - Prevent leakage between workspaces.
+
+3. Admin views:
+   - Admin global views may show aggregates, but:
+     - Per-workspace views should only show that tenant’s data.
+     - Faith House data must never appear in other demo or real client workspaces.
+
+────────────────────
+D. CHAT UX & BOOKING FLOWS
+────────────────────
+
+From QA:
+- Chat required clicking the send icon; Enter key did nothing.
+- No auto-scroll to the latest message; transcript felt “stuck”.
+- Phone call booking flow often failed or got stuck, possibly due to rate limit / logic issues.
+- Chat input focus behavior was clumsy (user had to click into the field repeatedly).
+
+Tasks:
+1. Chat sending:
+   - Enable Enter to send messages.
+   - Use Shift+Enter (or similar) for adding line breaks.
+   - After sending:
+     - Clear the input.
+     - Maintain focus in the input so the next message can be typed without clicking.
+
+2. Auto-scroll:
+   - On new incoming or outgoing messages:
+     - Auto-scroll the chat container to the latest message.
+   - Ensure this works both in the public demo chat and any client-side chat/test-chat implementations.
+
+3. Phone call booking:
+   - Review the booking/automation logic for “schedule a phone call”.
+   - Ensure:
+     - When the user expresses intent to schedule a call, the assistant collects name, phone, email, and preferred time.
+     - A **booking record** of type “Phone Call” (or equivalent) is created correctly with those details.
+   - If OpenAI is rate-limited or errors out:
+     - Show a friendly message (e.g., “Our assistant is a bit busy right now — please try again in a moment or leave your details and we’ll follow up.”).
+     - Do NOT crash or leave the UI in a broken state.
+
+4. Rate-limit handling:
+   - Validate that rate-limit / API errors never surface as raw stack traces, JSON dumps, or console-visible errors.
+   - All such errors should be mapped to friendly user messages in the chat UI.
+
+────────────────────
+E. CONVERSATIONS & SCROLLING (CLIENT & ADMIN)
+────────────────────
+
+From QA:
+- Conversation transcript scrollbars were extremely thin and hard to use.
+- No auto-scroll to bottom; users did not see the latest messages.
+- Some inbox views truncated conversations or didn’t reveal full content easily.
+
+Tasks:
+1. Conversations (client dashboard):
+   - Improve scrollbar usability:
+     - Increase scrollbar width / visibility in the transcript panel.
+   - Enable auto-scroll to the latest message when a conversation is opened or updated.
+   - Ensure there is a clear layout:
+     - Conversation list on the left.
+     - Current thread on the right with full message history.
+
+2. Conversations (admin view):
+   - Confirm admin can:
+     - See all conversations per workspace.
+     - View full threads with chronological messages.
+   - Ensure the same scrollbar and auto-scroll improvements apply here as needed.
+
+────────────────────
+F. BOOKINGS TABLE & DATA VISIBILITY
+────────────────────
+
+From QA:
+- Bookings table in the client view did **not scroll**; only the first few entries were visible.
+- This made it appear as though bookings were missing.
+
+Tasks:
+1. Bookings table (client):
+   - Implement either:
+     - Vertical scrolling with a clearly visible scrollbar, OR
+     - Pagination (e.g., 10–20 bookings per page).
+   - Ensure:
+     - All booking records for the workspace can be accessed.
+     - Columns are readable and not cut off on smaller screens.
+
+2. Bookings table (admin):
+   - Verify that admin can view all bookings for a workspace with similar accessibility.
+   - Keep consistency between admin and client views (fields, statuses, etc.).
+
+────────────────────
+G. ADMIN CLIENT LIST & WORKSPACE DISCOVERY
+────────────────────
+
+From QA:
+- Admin client list had confusing **duplicate workspaces** (especially around Faith House).
+- It was unclear which one was actually live or connected to the client login.
+
+Tasks:
+1. Admin clients list:
+   - Ensure each workspace appears exactly once (unless there is a deliberate demo vs canonical separation, which must be clearly named).
+   - Consider adding:
+     - Search by workspace name and/or slug.
+     - Clear labeling for demo vs real clients.
+
+2. Workspace detail:
+   - From the admin clients list, opening a workspace should consistently load:
+     - Overview metrics.
+     - Leads.
+     - Bookings.
+     - Conversations.
+   - No “dead” or non-functional workspaces should remain in the UI.
+
+────────────────────
+H. FORMS & VALIDATION (GLOBAL)
+────────────────────
+
+From QA:
+- Login forms were good; clear errors for blank and wrong credentials.
+- New client wizard validation was weak/non-existent (see B).
+- Chat form lacked Enter-to-send and focus behavior.
+- Settings and some client pages were mostly read-only, with unclear intent.
+- User creation (client logins) validation hadn’t been fully tested.
+
+Tasks:
+1. Login forms (admin & client):
+   - Reconfirm behavior:
+     - Blank submit → inline or toast errors.
+     - Wrong credentials → clear “invalid username or password” style error.
+   - Make sure no raw backend error messages/stack traces leak to UI.
+
+2. New client wizard:
+   - Covered in B, but verify again as part of global forms check.
+
+3. Client settings:
+   - If settings fields are intentionally read-only, make that clear in the UI (e.g., a small note: “Settings are managed by your agency”).
+   - If some fields are meant to be editable:
+     - Add proper validation for email, phone, etc.
+     - Provide clear success/error feedback on save.
+
+4. User creation (workspace logins):
+   - Ensure the “Create Login” / “Add User” form validates:
+     - Required email.
+     - Proper email format.
+     - Reasonable password rules (min length, complexity if desired).
+   - If email or username already exists:
+     - Show a friendly inline error (e.g., “This email is already in use”).
+
+────────────────────
+I. UI & RESPONSIVENESS
+────────────────────
+
+From QA:
+- Desktop layout is generally polished.
+- Full mobile responsiveness wasn’t completely tested.
+- Modals sometimes closed unexpectedly.
+- Some areas (like bookings table, conversations) had scroll/visibility issues.
+
+Tasks:
+1. Responsiveness:
+   - Test `/` and key app pages at common breakpoints (desktop, tablet, mobile).
+   - Fix any obvious layout breakage:
+     - Horizontal scrolling.
+     - Overlapping text.
+     - Buttons off-screen.
+
+2. Modals & drawers:
+   - Ensure modal wizards (e.g., New Client) do not close unexpectedly.
+   - Provide obvious close/cancel affordances.
+   - Ensure all modals and drawers are scrollable on smaller screens without hiding the primary actions.
+
+────────────────────
+J. ENVIRONMENT LIMITATIONS (NOTE ONLY)
+────────────────────
+
+From QA:
+- Some issues (especially around OpenAI rate limits) were recognized as environment constraints rather than core application bugs.
+- External integrations (payments, calendar sync, etc.) were not fully tested.
+
+Tasks:
+- Do **not** attempt to fully solve API rate limiting or add new integrations here.
+- Just ensure:
+  - The UI remains stable and user-friendly under API errors.
+  - No raw error details leak to the end user.
+
+────────────────────
+DELIVERABLES
+────────────────────
+
+When you are done:
+
+1. Ensure the project builds and runs without TypeScript/JS errors.
+2. Summarize:
+   - Which parts of the app you touched (files, components).
+   - How each of the above sections (A–I) is now handled.
+3. Validate:
+   - Admin and client can log in, log out, and navigate without seeing sensitive or broken states.
+   - New client/workspace creation works smoothly with proper validation.
+   - Chat behaves like a modern chat (Enter to send, auto-scroll, stable booking flows).
+   - Dashboards (leads, bookings, conversations) are readable and complete.
