@@ -364,11 +364,12 @@
     }, 500);
   }
   
-  function handleKeyPress(e) {
+  function handleKeyDown(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage(elements.input.value);
     }
+    // Shift+Enter allows line breaks naturally
   }
   
   function handleSendClick() {
@@ -527,7 +528,7 @@
     elements.input = document.getElementById('tcai-input');
     elements.sendBtn = document.getElementById('tcai-send');
     
-    elements.input.addEventListener('keypress', handleKeyPress);
+    elements.input.addEventListener('keydown', handleKeyDown);
     elements.sendBtn.addEventListener('click', handleSendClick);
     
     var hasExisting = loadConversation();

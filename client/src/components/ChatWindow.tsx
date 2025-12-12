@@ -1,6 +1,7 @@
 import { X, Send, Languages, RotateCcw, User, Calendar, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useState, useEffect, useRef, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
@@ -69,6 +70,7 @@ export default function ChatWindow({
 }: ChatWindowProps) {
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   
   const isInitialState = messages.length === 1;
   
@@ -90,15 +92,25 @@ export default function ChatWindow({
     if (inputValue.trim() && !isLoading) {
       onSendMessage(inputValue);
       setInputValue("");
+      // Maintain focus on input after sending
+      setTimeout(() => inputRef.current?.focus(), 0);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
+    // Shift+Enter allows line breaks naturally in textarea
   };
+  
+  // Focus input when chat opens
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -311,22 +323,24 @@ export default function ChatWindow({
       </div>
 
       <div className="p-4 border-t border-border">
-        <div className="flex gap-2">
-          <Input
+        <div className="flex gap-2 items-end">
+          <Textarea
+            ref={inputRef}
             data-testid="input-chat-message"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder={language === "es" ? "Escribe tu mensaje..." : "Type your message..."}
-            className="flex-1 rounded-lg"
+            onKeyDown={handleKeyDown}
+            placeholder={language === "es" ? "Escribe tu mensaje... (Enter para enviar)" : "Type your message... (Enter to send)"}
+            className="flex-1 rounded-lg min-h-[40px] max-h-[120px] resize-none py-2"
             disabled={isLoading}
+            rows={1}
           />
           <Button
             data-testid="button-send-message"
             onClick={handleSend}
             disabled={!inputValue.trim() || isLoading}
             size="icon"
-            className="rounded-lg"
+            className="rounded-lg h-10 w-10 flex-shrink-0"
           >
             <Send className="h-4 w-4" />
           </Button>

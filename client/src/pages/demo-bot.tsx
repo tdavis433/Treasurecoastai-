@@ -196,11 +196,12 @@ function FloatingChatWidget({ botConfig }: { botConfig: BotConfig }) {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
+    // Shift+Enter allows line breaks naturally
   };
 
   return (
@@ -301,8 +302,8 @@ function FloatingChatWidget({ botConfig }: { botConfig: BotConfig }) {
                 data-testid="widget-input-message"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Type a message..."
+                onKeyDown={handleKeyDown}
+                placeholder="Type a message... (Enter to send)"
                 disabled={isLoading}
                 className="flex-1 rounded-full border-gray-200 focus:border-gray-300 text-sm"
               />
