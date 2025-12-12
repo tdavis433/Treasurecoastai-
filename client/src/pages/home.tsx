@@ -300,9 +300,9 @@ export default function Home() {
               { value: "10+", label: "Industries" },
               { value: "Zero", label: "Staff Needed" }
             ].map((stat, i) => (
-              <div key={i} className="text-center">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary mb-1" data-testid={`stat-value-${i}`}>{stat.value}</div>
-                <div className="text-xs sm:text-sm text-white/50">{stat.label}</div>
+              <div key={i} className="text-center glass-card p-4 sm:p-6">
+                <div className="text-3xl sm:text-4xl font-bold text-primary mb-2 text-glow-cyan" data-testid={`stat-value-${i}`}>{stat.value}</div>
+                <div className="text-sm text-white/60 font-medium">{stat.label}</div>
               </div>
             ))}
           </motion.div>
@@ -322,7 +322,7 @@ export default function Home() {
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
           >
-            <span className="text-white/50 text-sm font-medium uppercase tracking-wider">Built for</span>
+            <span className="text-white/60 text-sm font-semibold uppercase tracking-wider">Built for</span>
             <div className="flex flex-wrap items-center justify-center gap-3">
               {[
                 { icon: Building2, label: "Small Businesses" },
@@ -331,17 +331,17 @@ export default function Home() {
               ].map((item, i) => (
                 <div 
                   key={i} 
-                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.08]"
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/5 border border-white/10 hover:border-primary/30 transition-colors"
                   data-testid={`badge-audience-${i}`}
                 >
                   <item.icon className="w-4 h-4 text-primary" />
-                  <span className="text-white/70 text-sm">{item.label}</span>
+                  <span className="text-white/80 text-sm font-medium">{item.label}</span>
                 </div>
               ))}
             </div>
           </motion.div>
           <motion.p 
-            className="text-center text-white/40 text-sm mt-4"
+            className="text-center text-white/50 text-sm mt-4 font-medium"
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
@@ -568,20 +568,20 @@ export default function Home() {
               >
                 <Link href={demo.href}>
                   <div 
-                    className="glass-card p-6 h-full cursor-pointer group hover:border-primary/30 transition-all duration-300"
+                    className="glass-card glass-card-hover p-6 h-full cursor-pointer group hover:border-primary/30 hover:glow-cyan transition-all duration-300"
                     data-testid={`card-demo-${i}`}
                   >
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${demo.color} flex items-center justify-center mb-4`}>
-                      <demo.icon className="w-6 h-6 text-white" />
+                    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${demo.color} flex items-center justify-center mb-5 group-hover:scale-105 transition-transform duration-300`}>
+                      <demo.icon className="w-7 h-7 text-white" />
                     </div>
                     <div className="mb-4">
                       <h3 className="text-xl font-semibold text-white group-hover:text-primary transition-colors">{demo.name}</h3>
-                      <p className="text-primary/80 text-sm">{demo.type}</p>
+                      <p className="text-primary/80 text-sm font-medium">{demo.type}</p>
                     </div>
-                    <p className="text-white/60 text-sm leading-relaxed mb-4">{demo.description}</p>
-                    <div className="flex items-center text-primary text-sm font-medium group-hover:gap-3 transition-all">
-                      <span>Open Demo</span>
-                      <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                    <p className="text-white/60 text-sm leading-relaxed mb-5">{demo.description}</p>
+                    <div className="flex items-center text-primary text-sm font-semibold group-hover:gap-3 transition-all">
+                      <span>Try Demo</span>
+                      <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-2 transition-transform" />
                     </div>
                   </div>
                 </Link>
@@ -631,9 +631,9 @@ export default function Home() {
             <p className="text-lg sm:text-xl text-white/60 max-w-2xl mx-auto mb-4">
               Purpose-built for real local businesses, not developers
             </p>
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20">
-              <Bot className="w-4 h-4 text-primary" />
-              <span className="text-sm text-white/70">Powered by GPT-4 — but you never have to touch a prompt</span>
+            <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary/10 border border-primary/30 glow-cyan">
+              <Bot className="w-5 h-5 text-primary" />
+              <span className="text-sm text-white/80 font-medium">Powered by GPT-4 — we handle all the prompts for you</span>
             </div>
           </motion.div>
 
@@ -671,18 +671,22 @@ export default function Home() {
               >
                 <h4 className="text-lg font-semibold text-white mb-4">{item.feature}</h4>
                 <div className="grid md:grid-cols-2 gap-4">
-                  <div className="flex items-start gap-3 p-4 rounded-lg bg-red-500/5 border border-red-500/20">
-                    <X className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-3 p-4 rounded-xl bg-red-500/5 border border-red-500/15">
+                    <div className="w-6 h-6 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                      <X className="w-3.5 h-3.5 text-red-400" />
+                    </div>
                     <div>
-                      <span className="text-white/40 text-xs uppercase tracking-wider">Generic chatbots</span>
-                      <p className="text-white/60 mt-1">{item.generic}</p>
+                      <span className="text-white/50 text-xs font-medium uppercase tracking-wider">Generic chatbots</span>
+                      <p className="text-white/60 mt-1 text-sm leading-relaxed">{item.generic}</p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-3 p-4 rounded-lg bg-primary/5 border border-primary/20">
-                    <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20">
+                    <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                      <Check className="w-3.5 h-3.5 text-primary" />
+                    </div>
                     <div>
-                      <span className="text-primary/80 text-xs uppercase tracking-wider">Treasure Coast AI</span>
-                      <p className="text-white/80 mt-1">{item.ours}</p>
+                      <span className="text-primary text-xs font-medium uppercase tracking-wider">Treasure Coast AI</span>
+                      <p className="text-white/80 mt-1 text-sm leading-relaxed">{item.ours}</p>
                     </div>
                   </div>
                 </div>
@@ -748,7 +752,7 @@ export default function Home() {
                     animate={{ opacity: 1, height: 'auto' }}
                     transition={{ duration: 0.2 }}
                   >
-                    <p className="text-white/70 leading-relaxed">{faq.answer}</p>
+                    <p className="text-white/60 leading-relaxed">{faq.answer}</p>
                   </motion.div>
                 )}
               </motion.div>
@@ -979,20 +983,58 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-6 border-t border-white/[0.06] bg-[#050608]" data-testid="footer">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div data-testid="footer-logo">
-            <TreasureCoastLogo size="sm" />
+      <footer className="py-16 px-6 border-t border-white/[0.08] bg-[#050608]" data-testid="footer">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-4 gap-12 mb-12">
+            <div className="md:col-span-2">
+              <div data-testid="footer-logo" className="mb-4">
+                <TreasureCoastLogo size="md" />
+              </div>
+              <p className="text-white/50 text-sm max-w-md leading-relaxed mb-6">
+                AI-powered front desk assistants for local businesses. We build and manage custom chatbots that capture leads, answer questions, and book appointments 24/7.
+              </p>
+              <div className="flex items-center gap-4">
+                <a 
+                  href="mailto:hello@treasurecoastai.com" 
+                  className="flex items-center gap-2 text-white/50 hover:text-primary transition-colors text-sm"
+                  data-testid="footer-email"
+                >
+                  <Mail className="w-4 h-4" />
+                  hello@treasurecoastai.com
+                </a>
+              </div>
+            </div>
+            
+            <div>
+              <h4 className="text-white font-semibold mb-4">Quick Links</h4>
+              <div className="flex flex-col gap-3">
+                <a href="#faq" className="text-white/50 hover:text-primary transition-colors text-sm">FAQ</a>
+                <Link href="/demos" className="text-white/50 hover:text-primary transition-colors text-sm">View Demos</Link>
+                <a href="#contact-form" className="text-white/50 hover:text-primary transition-colors text-sm">Book Demo</a>
+                <Link href="/login" className="text-white/50 hover:text-primary transition-colors text-sm">Client Login</Link>
+              </div>
+            </div>
+            
+            <div>
+              <h4 className="text-white font-semibold mb-4">Industries</h4>
+              <div className="flex flex-col gap-3">
+                <span className="text-white/50 text-sm">Medical & Wellness</span>
+                <span className="text-white/50 text-sm">Home Services</span>
+                <span className="text-white/50 text-sm">Hospitality</span>
+                <span className="text-white/50 text-sm">Professional Services</span>
+              </div>
+            </div>
           </div>
           
-          <p className="text-white/40 text-sm" data-testid="footer-copyright">
-            &copy; {new Date().getFullYear()} Treasure Coast AI. All rights reserved.
-          </p>
-          
-          <div className="flex items-center gap-6">
-            <a href="#" className="text-white/40 hover:text-white transition-colors text-sm" data-testid="link-privacy">Privacy</a>
-            <a href="#" className="text-white/40 hover:text-white transition-colors text-sm" data-testid="link-terms">Terms</a>
-            <a href="#" className="text-white/40 hover:text-white transition-colors text-sm" data-testid="link-contact">Contact</a>
+          <div className="pt-8 border-t border-white/[0.06] flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-white/40 text-sm" data-testid="footer-copyright">
+              &copy; {new Date().getFullYear()} Treasure Coast AI. All rights reserved.
+            </p>
+            
+            <div className="flex items-center gap-6">
+              <a href="#" className="text-white/40 hover:text-primary transition-colors text-sm" data-testid="link-privacy">Privacy Policy</a>
+              <a href="#" className="text-white/40 hover:text-primary transition-colors text-sm" data-testid="link-terms">Terms of Service</a>
+            </div>
           </div>
         </div>
       </footer>

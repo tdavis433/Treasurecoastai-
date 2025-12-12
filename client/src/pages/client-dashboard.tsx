@@ -734,8 +734,9 @@ export default function ClientDashboard() {
     return (
       <div className="min-h-screen bg-[#0B0E13] flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400 mx-auto mb-4"></div>
-          <p className="text-white/60">Loading your dashboard...</p>
+          <div className="w-12 h-12 spin-gradient mx-auto mb-5" />
+          <h3 className="text-base font-medium text-white mb-1">Loading Dashboard</h3>
+          <p className="text-white/45 text-sm">Preparing your analytics...</p>
         </div>
       </div>
     );
@@ -743,12 +744,28 @@ export default function ClientDashboard() {
 
   if (profileLoading) {
     return (
-      <div className="min-h-screen bg-[#0B0E13] text-white p-6 space-y-6">
-        <div className="h-10 w-64 bg-white/10 rounded-lg animate-pulse" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="h-32 bg-white/10 rounded-2xl animate-pulse" />
-          ))}
+      <div className="min-h-screen bg-[#0B0E13] text-white p-8">
+        <div className="max-w-7xl mx-auto space-y-8">
+          <div className="flex items-center justify-between">
+            <div className="h-8 w-64 bg-white/10 rounded-lg animate-pulse" />
+            <div className="h-10 w-10 bg-white/10 rounded-full animate-pulse" />
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+            <div className="h-6 w-48 bg-white/10 rounded animate-pulse mb-4" />
+            <div className="h-4 w-full max-w-md bg-white/10 rounded animate-pulse" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="h-12 w-12 bg-white/10 rounded-xl animate-pulse" />
+                  <div className="h-4 w-12 bg-white/10 rounded animate-pulse" />
+                </div>
+                <div className="h-8 w-20 bg-white/10 rounded animate-pulse" />
+                <div className="h-3 w-24 bg-white/10 rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );

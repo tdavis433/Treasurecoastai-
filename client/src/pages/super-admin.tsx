@@ -996,8 +996,9 @@ export default function SuperAdmin() {
     return (
       <div className="min-h-screen bg-[#0B0E13] flex items-center justify-center">
         <div className="text-center">
-          <div className="h-8 w-8 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin mx-auto mb-3" />
-          <div className="text-white/55">Loading...</div>
+          <div className="w-12 h-12 spin-gradient mx-auto mb-5" />
+          <h3 className="text-base font-medium text-white mb-1">Loading Admin Dashboard</h3>
+          <p className="text-white/45 text-sm">Initializing platform...</p>
         </div>
       </div>
     );

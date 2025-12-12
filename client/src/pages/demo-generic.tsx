@@ -325,7 +325,11 @@ export default function DemoGenericPage({ workspaceSlug, botId }: DemoPageProps)
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#0B0E13] flex items-center justify-center">
-        <div className="text-white/60">Loading demo...</div>
+        <div className="text-center">
+          <div className="w-12 h-12 spin-gradient mx-auto mb-5" />
+          <h3 className="text-base font-medium text-white mb-1">Loading Demo</h3>
+          <p className="text-white/45 text-sm">Preparing your experience...</p>
+        </div>
       </div>
     );
   }
@@ -406,12 +410,17 @@ export default function DemoGenericPage({ workspaceSlug, botId }: DemoPageProps)
             {features.map((feature, i) => (
               <Card 
                 key={i} 
-                className="bg-white/5 border-white/10 backdrop-blur-sm"
+                className="glass-card glass-card-hover group transition-all duration-300"
                 data-testid={`card-feature-${i}`}
               >
-                <CardContent className="p-4 flex items-center gap-3">
-                  <CheckCircle2 className="h-5 w-5 flex-shrink-0" style={{ color: accentColor }} />
-                  <span className="text-white/80 text-sm">{feature}</span>
+                <CardContent className="p-5 flex items-center gap-3">
+                  <div 
+                    className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform"
+                    style={{ background: `${accentColor}20` }}
+                  >
+                    <CheckCircle2 className="h-4 w-4" style={{ color: accentColor }} />
+                  </div>
+                  <span className="text-white/80 text-sm font-medium">{feature}</span>
                 </CardContent>
               </Card>
             ))}
@@ -420,13 +429,13 @@ export default function DemoGenericPage({ workspaceSlug, botId }: DemoPageProps)
 
         {services.length > 0 && (
           <section className="max-w-4xl mx-auto px-4 sm:px-6 mb-16">
-            <h2 className="text-2xl font-bold text-center mb-8">Services</h2>
+            <h2 className="text-2xl font-bold text-center mb-8">Services Offered</h2>
             <div className="flex flex-wrap justify-center gap-3">
               {services.slice(0, 8).map((service, i) => (
                 <Badge 
                   key={i} 
                   variant="outline" 
-                  className="text-white/70 border-white/20 px-4 py-2"
+                  className="text-white/80 border-white/15 bg-white/5 px-4 py-2.5 text-sm font-medium"
                 >
                   {service}
                 </Badge>
@@ -472,30 +481,51 @@ export default function DemoGenericPage({ workspaceSlug, botId }: DemoPageProps)
           </Card>
         </section>
 
-        <section className="max-w-2xl mx-auto px-4 sm:px-6 text-center">
-          <h3 className="text-xl font-bold mb-4">Want one for your business?</h3>
-          <p className="text-white/60 mb-6">
-            We'll build and manage a custom AI assistant tailored to your needs.
-          </p>
-          <Link href="/#contact-form">
-            <Button 
-              size="lg"
-              className="gap-2"
-              style={{ 
-                background: `linear-gradient(135deg, ${accentColor}, ${accentColor}cc)`
-              }}
-              data-testid="button-get-started"
-            >
-              Get Started — We Build It For You
-              <ArrowRight className="h-5 w-5" />
-            </Button>
-          </Link>
+        <section className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
+          <div className="glass-card p-8 md:p-12 relative overflow-hidden">
+            <div 
+              className="absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl pointer-events-none"
+              style={{ background: `${accentColor}15` }}
+            />
+            <div 
+              className="absolute bottom-0 left-0 w-40 h-40 rounded-full blur-3xl pointer-events-none"
+              style={{ background: `${accentColor}10` }}
+            />
+            <div className="relative z-10">
+              <h3 className="text-2xl font-bold mb-4">Want one for your business?</h3>
+              <p className="text-white/60 mb-8 max-w-lg mx-auto">
+                We'll build and manage a custom AI assistant tailored to your needs — no technical skills required.
+              </p>
+              <Link href="/#contact-form">
+                <Button 
+                  size="lg"
+                  className="gap-2 px-8"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${accentColor}, ${accentColor}cc)`,
+                    boxShadow: `0 0 30px ${accentColor}30`
+                  }}
+                  data-testid="button-get-started"
+                >
+                  Get Started — We Build It For You
+                  <ArrowRight className="h-5 w-5" />
+                </Button>
+              </Link>
+            </div>
+          </div>
         </section>
       </main>
 
-      <footer className="relative z-10 border-t border-white/10 py-8">
-        <div className="max-w-7xl mx-auto px-4 text-center text-white/40 text-sm">
-          © {new Date().getFullYear()} Treasure Coast AI. All rights reserved.
+      <footer className="relative z-10 border-t border-white/10 py-10">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <TreasureCoastLogo size="sm" />
+          <p className="text-white/40 text-sm">
+            © {new Date().getFullYear()} Treasure Coast AI. All rights reserved.
+          </p>
+          <Link href="/">
+            <Button variant="ghost" size="sm" className="text-white/50 hover:text-primary">
+              Back to Home
+            </Button>
+          </Link>
         </div>
       </footer>
     </div>

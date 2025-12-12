@@ -530,6 +530,212 @@
   @keyframes spinGradient {
     to { transform: rotate(360deg); }
   }
+  
+  /* ============================================
+     TCAI DESIGN SYSTEM UTILITIES
+     Prefixed utilities for Treasure Coast AI
+     ============================================ */
+  
+  /* TCAI Icon container sizes - standardized */
+  .tcai-icon-sm {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  
+  .tcai-icon-md {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  
+  .tcai-icon-lg {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  
+  .tcai-icon-xl {
+    width: 80px;
+    height: 80px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  
+  /* TCAI Icon gradient backgrounds */
+  .tcai-icon-bg-gradient {
+    background: linear-gradient(135deg, rgba(0, 229, 204, 0.15), rgba(168, 85, 247, 0.15));
+  }
+  
+  .tcai-icon-bg-primary {
+    background: rgba(0, 229, 204, 0.15);
+  }
+  
+  .tcai-icon-bg-secondary {
+    background: rgba(168, 85, 247, 0.15);
+  }
+  
+  /* TCAI Card padding presets */
+  .tcai-card-sm {
+    padding: 16px;
+  }
+  
+  .tcai-card-md {
+    padding: 24px;
+  }
+  
+  .tcai-card-lg {
+    padding: 32px;
+  }
+  
+  /* TCAI Section spacing */
+  .tcai-section {
+    padding-top: 96px;
+    padding-bottom: 96px;
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+  
+  @media (min-width: 640px) {
+    .tcai-section {
+      padding-top: 128px;
+      padding-bottom: 128px;
+    }
+  }
+  
+  /* TCAI Enhanced table styles */
+  .tcai-table thead tr {
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  
+  .tcai-table thead th {
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 500;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 12px 16px;
+  }
+  
+  .tcai-table tbody tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background 0.15s ease;
+  }
+  
+  .tcai-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.02);
+  }
+  
+  .tcai-table tbody td {
+    padding: 16px;
+    color: rgba(255, 255, 255, 0.85);
+  }
+  
+  /* TCAI Skeleton loading for cards */
+  .tcai-skeleton-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  
+  .tcai-skeleton-text {
+    height: 16px;
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.03) 0%,
+      rgba(255, 255, 255, 0.08) 50%,
+      rgba(255, 255, 255, 0.03) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 4px;
+  }
+  
+  .tcai-skeleton-circle {
+    border-radius: 50%;
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.03) 0%,
+      rgba(255, 255, 255, 0.08) 50%,
+      rgba(255, 255, 255, 0.03) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+  
+  /* TCAI Enhanced form focus states */
+  .tcai-input-glow:focus {
+    border-color: rgba(0, 229, 204, 0.5);
+    box-shadow: 0 0 0 3px rgba(0, 229, 204, 0.1), 0 0 20px rgba(0, 229, 204, 0.15);
+    outline: none;
+  }
+  
+  /* TCAI Dashboard stat card enhancements */
+  .tcai-stat-glow {
+    transition: all 0.3s ease;
+  }
+  
+  .tcai-stat-glow:hover {
+    box-shadow: 0 0 30px rgba(0, 229, 204, 0.1);
+    border-color: rgba(0, 229, 204, 0.2);
+  }
+  
+  /* TCAI Empty state styling */
+  .tcai-empty-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    text-align: center;
+  }
+  
+  .tcai-empty-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(0, 229, 204, 0.1), rgba(168, 85, 247, 0.1));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+  
+  .tcai-empty-icon svg {
+    width: 28px;
+    height: 28px;
+    color: rgba(255, 255, 255, 0.5);
+  }
+  
+  .tcai-empty-title {
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 600;
+    font-size: 16px;
+    margin-bottom: 8px;
+  }
+  
+  .tcai-empty-desc {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 14px;
+    max-width: 280px;
+  }
 }
 
 /* ============================================
