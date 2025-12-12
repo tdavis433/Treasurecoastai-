@@ -1,0 +1,104 @@
+You are a senior frontend engineer and UI/UX designer working on the Treasure Coast AI platform in this Replit project.
+
+In the repo there is a file called `report.md` titled **“Treasure Coast AI Platform – Visual Design & UX Audit.”**  
+Treat that file as the source-of-truth design spec.
+
+Your job:
+Use the recommendations in `report.md` to refactor and upgrade ALL visuals in the project (landing page, demo pages, client dashboards, and admin dashboard) so the product matches that spec and feels like a top-tier SaaS app (Stripe / Linear / Notion / Intercom level polish).
+
+### How to work with `report.md`
+
+1. Open `report.md` and read it fully.
+2. Note its structure:
+   - High-Level First Impression
+   - Page-by-Page / Area-by-Area Review
+     - Landing Page (Home)
+     - Demo Overview / All Demos
+     - Individual Demo Pages & Chat Widget
+     - Client Dashboards
+     - Admin / Super Admin
+   - Global Visual Design Recommendations
+   - Customer-Perspective Attractiveness Upgrades
+   - Prioritized Action List (Quick Wins / Medium Lifts / Later)
+
+3. Use those sections as your implementation checklist:
+   - For each page/area in the codebase, apply the corresponding bullets under:
+     - “Visual issues / inconsistencies”
+     - “UX friction or confusion points”
+     - “Specific improvements I recommend”
+   - Then apply the “Global Visual Design Recommendations” and spacing/consistency rules across shared components.
+
+### Implementation requirements
+
+**A. Central design system**
+
+- Create or update a shared theme / design system:
+  - Define color tokens (primary, accent, background, surface, border, text-main, text-muted, success, warning, error) following the coastal / dark theme described in `report.md`.
+  - Define typography scale (H1–H4, body, small, caption) with consistent sizes, line heights, and weights.
+  - Define a spacing scale (e.g. 4/8/12/16/24/32/40/64px) and use it for section padding, card padding, and gaps.
+  - Standardize border radiuses and shadows for cards, modals, nav bars, and buttons.
+- Replace scattered inline styles / random hex colors with these tokens.
+- Ensure landing, demos, dashboards, and admin all consume the same design tokens and components.
+
+**B. Buttons & CTAs**
+
+- Implement a reusable Button component or classes for:
+  - Primary CTA
+  - Secondary
+  - Tertiary / ghost
+- Base the styling and states on the “Global visual design recommendations” and “Quick wins” in `report.md`:
+  - Same height, padding, radius, and typography everywhere.
+  - Consistent hover/focus/active states with subtle transitions.
+- Replace all ad-hoc buttons on:
+  - Hero sections, demo cards, “Book Demo” / “Try this Demo”
+  - Client login, dashboards, and admin actions.
+
+**C. Layout, spacing, and alignment**
+
+- Using the detailed notes in each page’s section of `report.md`, adjust:
+  - Grid structure (consistent column widths, card sizes).
+  - Vertical rhythm (consistent spacing between sections and components).
+  - Alignment of icons, text baselines, and badges so nothing looks “off by a few pixels.”
+- Fix every spacing/alignment issue called out in `report.md`:
+  - Landing page sections
+  - Demo grid and demo detail pages
+  - Dashboard cards, tables, and filters
+  - Admin client list and overview cards
+
+**D. Typography**
+
+- Apply the hierarchy described in `report.md`:
+  - H1 for main page titles (e.g. hero headings).
+  - H2/H3 for section titles.
+  - Body text and muted helper text for labels, captions, and secondary info.
+- Ensure tables, metrics, and chat messages use readable sizes and weights.
+- Fix any inconsistent font usage that `report.md` mentions.
+
+**E. Demos & chat widget**
+
+- For each demo page mentioned in `report.md`:
+  - Apply the recommended hero layout, card styling, and tags/chips styling.
+- Update the embedded chat widget styling so it:
+  - Uses the same color tokens, border radius, and typography as the rest of the app.
+  - Fixes any contrast or spacing issues the audit calls out.
+
+**F. Dashboards & admin**
+
+- Implement the specific dashboard improvements listed in `report.md`:
+  - Consistent KPI card design (numbers, labels, icons).
+  - Cleaner tables with consistent header styles and row spacing.
+  - Standardized tags/badges for statuses (“Active”, plans, etc.).
+- Apply the admin-specific suggestions (e.g., client list cards, “Needs Your Review” section).
+
+**G. Responsiveness**
+
+- Use the mobile/responsive recommendations in `report.md` to:
+  - Fix any layout issues on small screens (overflows, cramped sections).
+  - Ensure CTAs and nav elements are tappable and well-spaced.
+
+**H. Respect functionality**
+
+- Do **not** change business logic, data fetching, or routing.
+- Only adjust JSX/HTML/CSS/Tailwind/layout and small structural changes needed for design.
+
+When you’re done, the UI should visually match the intent and concrete recommendations in `report.md`. Make sure the final result feels unified, premium, and clearly more polished than a generic SaaS template.
