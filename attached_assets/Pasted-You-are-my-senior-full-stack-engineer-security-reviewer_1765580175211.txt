@@ -1,0 +1,144 @@
+You are my senior full-stack engineer + security reviewer. Do a COMPLETE end-to-end audit of this repo to get it “demo ready” and “production ready” for a multi-tenant client platform.
+
+CONTEXT (what this platform is supposed to do)
+- Multi-tenant SaaS: super-admin + client dashboards.
+- Embedded chat widget on business pages.
+- The chat can answer FAQs, capture leads (name/email/phone), and capture booking requests/intents.
+- All conversations must be recorded and visible in the dashboard.
+- Booking: when “Book Now” appears/clicked, we track the booking intent/redirect like normal, then we redirect users to the CLIENT’S external booking/payment platform to finish booking + payment there.
+
+NON-NEGOTIABLE GUARDRAIL (hard stop)
+- We DO NOT process payments.
+- No payment collection, no storing card data, no checkout UI, no payment tokens, no refunds, no chargebacks.
+- “Book Now” must be redirect-only to the client’s platform.
+- If you find ANY payment processing code beyond redirect/outbound linking, list it as a BLOCKER and show exactly where.
+
+YOUR JOB
+1) Read the entire repo: frontend, backend/API routes, database layer, auth, middleware, dashboard pages, widget embed code, analytics/events, and any integrations.
+2) Identify all bugs, incomplete parts, security issues, data consistency issues, and anything that could break a live demo.
+3) Recommend concrete fixes with file paths + line numbers and implement changes if you are allowed to edit code.
+4) Produce a prioritized “Fix Order Roadmap” (do these first so the demo never breaks).
+
+WHAT YOU MUST VERIFY (REQUIRED CHECKS)
+A) Access Control / Tenant Isolation (CRITICAL)
+- Confirm server-side enforcement (not just UI hiding).
+- Every read/write for leads, bookings, conversations, pages, analytics must be scoped to the active tenant/workspace/clientId.
+- Ensure no cross-tenant leakage is possible via IDs, query params, URL guessing, or “view as client”.
+- Verify RBAC for: super-admin, client user, any other roles.
+- Confirm API routes reject unauthorized access consistently (401/403).
+
+B) Lead Capture from Chat (CRITICAL)
+- Verify lead objects are created correctly from chat flows.
+- Required fields captured + validated.
+- Stored with correct tenant/workspace mapping.
+- Appears in BOTH dashboards (admin + client) with consistent counts.
+
+C) Conversations Recorded + Visible (CRITICAL)
+- Every user/assistant message is saved reliably.
+- Transcript integrity: ordering, timestamps, user identifiers, tenant IDs.
+- Dashboard view loads transcripts and is scoped correctly.
+- Check retention/deletion behavior if present.
+
+D) Booking Requests + External Redirect (CRITICAL)
+- Booking request/intents create appointment objects in DB (or equivalent).
+- “Book Now” logs internal event (booking_intent / booking_redirect / attribution).
+- Then redirects to client’s booking/payment URL (Calendly, Square, etc).
+- NO payment processing on our side.
+- Confirm status labeling: “intent/redirect” vs “confirmed booking” (only if webhook/confirmation exists).
+- Confirm webhook endpoints (if any) do not process payments and are secure (signature validation, idempotency).
+
+E) Dashboards + Metrics Parity (HIGH)
+- Admin and client dashboards show the same totals for same tenant and filters.
+- Ensure consistent time window logic and timezone handling.
+- Ensure counts reflect actual DB state (no caching mismatch without reason).
+
+F) New Client Setup (HIGH)
+- Onboarding wizard works on desktop and mobile.
+- Creates workspace/tenant, admin link, client login, config, embed snippet.
+- No broken steps, no “coming soon” dead ends, no missing env vars.
+- Ensure onboarding doesn’t create partially broken tenants.
+
+G) “View as Client” Feature (HIGH)
+- Must be safe, not leak data, not persist incorrectly.
+- Confirm it uses scoped impersonation and cannot hop between tenants.
+
+H) Password Reset (HIGH)
+- Reset token security (expiration, one-time use, hashing, not logged).
+- Email template and links correct.
+- Friendly UX.
+- Confirm rate limiting / abuse protections if possible.
+
+I) Error Handling + UX (MED)
+- No stack traces shown to end users.
+- Friendly error messages on widget + dashboards.
+- Logging is useful but does not leak secrets.
+
+J) Mobile Usability (MED)
+- Widget usable on mobile (open/close, send, lead capture, booking).
+- Dashboards usable on mobile (scroll, tables, modals, forms).
+- No layout traps.
+
+K) Performance + Reliability (MED)
+- Widget loads fast and doesn’t block page.
+- Debounce/throttle if needed.
+- Avoid large bundles; check obvious bloat.
+
+L) Security Baseline (CRITICAL)
+- Auth/session security: cookie flags, CSRF considerations, JWT handling if used.
+- Input validation and sanitization.
+- Rate limiting on auth and public endpoints.
+- Protect webhook routes (signature + replay prevention).
+- Secrets not hardcoded; ensure .env usage.
+- CORS is not overly permissive.
+
+WHAT TO SEARCH FOR (PAYMENT & TENANT RED FLAGS)
+- Search repo for: stripe, square, payment, checkout, payment_intent, client_secret, card, ach, refund, chargeback, invoice, subscription.
+- Search for data queries missing tenant filters: “where id =”, “findUnique”, “select * from”, etc. Confirm tenant scoping exists.
+
+DELIVERABLE FORMAT (DO NOT SKIP)
+1) Executive Summary
+- Is it demo-ready? (YES/NO)
+- Is it production-ready? (YES/NO)
+- Top 5 risks.
+
+2) Findings (grouped by severity)
+- BLOCKER: must fix before demo/launch
+- HIGH: should fix before demo if possible
+- MEDIUM / LOW
+Each finding MUST include:
+- Title
+- Severity
+- Exact file path + line number(s)
+- Why it matters
+- Steps to reproduce (if applicable)
+- Recommended fix (with code suggestion)
+
+3) “No Payments Compliance Report”
+- Confirm redirect-only design for “Book Now”.
+- List any payment-related code and how to remove it or convert to redirect-only.
+
+4) Fix Order Roadmap
+- Step-by-step order to fix issues, with estimated risk reduction per step.
+
+5) Test Plan
+- Recommend a Playwright E2E test suite:
+  - FAQ chat works
+  - lead capture saved
+  - conversation saved
+  - booking intent logged
+  - Book Now redirects externally
+  - dashboards show matching counts
+  - password reset
+  - mobile viewport smoke tests
+
+IMPORTANT RULES FOR YOU (REPLIT)
+- Do not hand-wave. If you claim something works, point to the exact code proving it.
+- If you can’t find a feature, label it missing and propose how to implement it.
+- Prefer secure, boring solutions over clever ones.
+- Any hint of payment processing is a BLOCKER.
+- If the codebase has unfinished features, placeholders, or “coming soon” UI exposed to clients, treat them as HIGH unless they’re fully hidden behind feature flags for admin only.
+
+Start by:
+- Identifying the stack (frameworks/libraries) from package files.
+- Listing all critical routes/pages/components involved in chat widget, leads, bookings, conversations, dashboards, auth.
+- Then run the audit.
