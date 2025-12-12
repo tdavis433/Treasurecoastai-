@@ -28,7 +28,8 @@ import {
   Sparkles,
   Award,
   Heart,
-  Quote
+  Quote,
+  RotateCcw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useChatAssistant, Message } from "@/hooks/useChatAssistant";
@@ -117,7 +118,8 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
     messages, 
     isLoading, 
     sendMessage, 
-    handleBookingClick 
+    handleBookingClick,
+    resetChat 
   } = useChatAssistant({
     clientId: config.clientId,
     botId: config.botId,
@@ -175,34 +177,46 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
           className="absolute bottom-16 right-0 w-80 sm:w-96 bg-[#0A0A0F] rounded-2xl shadow-2xl border border-white/10 overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300"
           data-testid="chat-window"
         >
-          {/* Header */}
-          <div className={`bg-gradient-to-r ${config.colors.primary} p-4 text-white`}>
+          {/* Header - Dark with icon container */}
+          <div className="bg-[#12151A] p-4 text-white border-b border-white/10">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 bg-slate-700/80 rounded-xl flex items-center justify-center">
                   {config.icon}
                 </div>
-                <div>
-                  <p className="font-semibold text-sm">{config.business.name}</p>
-                  <div className="flex items-center gap-1">
-                    <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                    <p className="text-xs text-white/80">AI Assistant Online</p>
-                  </div>
-                </div>
+                <p className="font-semibold text-base">{config.business.name}</p>
               </div>
-              <button 
-                onClick={() => setIsOpen(false)}
-                className="p-1 hover:bg-white/20 rounded-full transition-colors"
-                data-testid="button-close-chat"
-                aria-label="Close chat"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={resetChat}
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors text-white/70 hover:text-white"
+                  data-testid="button-reset-chat"
+                  aria-label="Reset chat"
+                >
+                  <RotateCcw className="h-5 w-5" />
+                </button>
+                <button 
+                  onClick={() => setIsOpen(false)}
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors text-white/70 hover:text-white"
+                  data-testid="button-close-chat"
+                  aria-label="Close chat"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
           </div>
 
+          {/* Status Bar - Online & Secured by TCAI */}
+          <div className="bg-[#0B0E13] px-4 py-2 flex items-center justify-center gap-2 border-b border-white/5">
+            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            <span className="text-xs text-white/70">Online</span>
+            <span className="text-xs text-white/30">•</span>
+            <span className="text-xs text-white/70">Secured by TCAI</span>
+          </div>
+
           {/* Messages */}
-          <ScrollArea className="h-72 p-4 bg-[#0B0E13]">
+          <ScrollArea className="h-64 p-4 bg-[#0B0E13]">
             <div className="space-y-3">
               {messages.map((message, index) => (
                 <div
@@ -215,10 +229,10 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
                   <div
                     data-testid={`widget-message-${message.role}-${index}`}
                     className={cn(
-                      "max-w-[85%] rounded-2xl px-4 py-2 text-sm",
+                      "max-w-[85%] rounded-2xl px-4 py-3 text-sm",
                       message.role === "user"
-                        ? `bg-gradient-to-r ${config.colors.primary} text-white`
-                        : "bg-white/10 text-white/90 border border-white/5"
+                        ? "bg-white/10 text-white border border-white/10"
+                        : "bg-[#1A1D24] text-white/90 border border-white/5"
                     )}
                   >
                     {message.content}
@@ -244,7 +258,7 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
               
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-white/10 rounded-2xl px-4 py-2 text-sm border border-white/5">
+                  <div className="bg-[#1A1D24] rounded-2xl px-4 py-3 text-sm border border-white/5">
                     <span className="inline-flex gap-1 text-cyan-400">
                       <span className="animate-bounce">.</span>
                       <span className="animate-bounce" style={{ animationDelay: "0.2s" }}>.</span>
@@ -266,25 +280,33 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Type a message..."
+                placeholder="Type your message..."
                 disabled={isLoading}
-                className="flex-1 rounded-full bg-white/5 border-white/10 focus:border-cyan-500/50 text-sm text-white placeholder:text-white/40"
+                className="flex-1 rounded-full bg-[#1A1D24] border-white/10 focus:border-cyan-500/50 text-sm text-white placeholder:text-white/40"
               />
               <Button
                 data-testid="widget-button-send"
                 onClick={handleSend}
                 disabled={!inputValue.trim() || isLoading}
                 size="icon"
-                className={`rounded-full bg-gradient-to-r ${config.colors.primary} hover:opacity-90`}
+                className="rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/10"
                 aria-label="Send message"
               >
                 <Send className="h-4 w-4" />
               </Button>
             </div>
-            <div className="mt-2 flex items-center justify-center">
+            <div className="mt-2 flex items-center justify-between">
               <p className="text-[10px] text-white/40">
                 Powered by <span className="text-cyan-400">Treasure Coast AI</span>
               </p>
+              <button
+                onClick={() => window.open('mailto:support@treasurecoastai.com?subject=Human%20Support%20Request', '_blank')}
+                className="text-[10px] text-white/50 hover:text-white/70 flex items-center gap-1"
+                data-testid="button-talk-to-human"
+              >
+                <Users className="h-3 w-3" />
+                Talk to a person
+              </button>
             </div>
           </div>
         </div>
@@ -304,8 +326,8 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
             <X className="h-4 w-4" />
           </button>
           <div className="flex items-start gap-3">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-r ${config.colors.primary}`}>
-              <Bot className="h-5 w-5 text-white" />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-slate-700/80 text-white">
+              {config.icon}
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-white">Hi there!</p>
@@ -315,7 +337,7 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
               <Button 
                 size="sm" 
                 onClick={handleOpenChat}
-                className={`mt-3 w-full bg-gradient-to-r ${config.colors.primary} hover:opacity-90 text-white text-xs`}
+                className="mt-3 w-full bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
                 data-testid="button-greeting-chat"
               >
                 <MessageCircle className="h-3 w-3 mr-1" />

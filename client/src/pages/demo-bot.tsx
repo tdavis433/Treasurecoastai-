@@ -35,7 +35,9 @@ import {
   Hotel,
   Hammer,
   PartyPopper,
-  PawPrint
+  PawPrint,
+  RotateCcw,
+  Bot
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useChatAssistant, Message } from "@/hooks/useChatAssistant";
@@ -191,7 +193,8 @@ function FloatingChatWidget({ botConfig }: { botConfig: BotConfig }) {
     isLoading, 
     error, 
     sendMessage, 
-    handleBookingClick 
+    handleBookingClick,
+    resetChat 
   } = useChatAssistant({
     clientId: botConfig.clientId,
     botId: botConfig.botId,
@@ -245,34 +248,49 @@ function FloatingChatWidget({ botConfig }: { botConfig: BotConfig }) {
       {/* Chat Window */}
       {isOpen && (
         <div 
-          className="absolute bottom-16 right-0 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300"
+          className="absolute bottom-16 right-0 w-80 sm:w-96 bg-[#0A0A0F] rounded-2xl shadow-2xl border border-white/10 overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300"
           data-testid="chat-window"
         >
-          {/* Header */}
-          <div className={`bg-gradient-to-r ${colors.primary} p-4 text-white`}>
+          {/* Header - Dark with icon container */}
+          <div className="bg-[#12151A] p-4 text-white border-b border-white/10">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 bg-slate-700/80 rounded-xl flex items-center justify-center">
                   {businessTypeIcons[businessType] || <MessageCircle className="h-5 w-5" />}
                 </div>
-                <div>
-                  <p className="font-semibold text-sm">{businessName}</p>
-                  <p className="text-xs text-white/80">Virtual Assistant</p>
-                </div>
+                <p className="font-semibold text-base">{businessName}</p>
               </div>
-              <button 
-                onClick={() => setIsOpen(false)}
-                className="p-1 hover:bg-white/20 rounded-full transition-colors"
-                data-testid="button-close-chat"
-                aria-label="Close chat"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={resetChat}
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors text-white/70 hover:text-white"
+                  data-testid="button-reset-chat"
+                  aria-label="Reset chat"
+                >
+                  <RotateCcw className="h-5 w-5" />
+                </button>
+                <button 
+                  onClick={() => setIsOpen(false)}
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors text-white/70 hover:text-white"
+                  data-testid="button-close-chat"
+                  aria-label="Close chat"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
           </div>
 
+          {/* Status Bar - Online & Secured by TCAI */}
+          <div className="bg-[#0B0E13] px-4 py-2 flex items-center justify-center gap-2 border-b border-white/5">
+            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            <span className="text-xs text-white/70">Online</span>
+            <span className="text-xs text-white/30">•</span>
+            <span className="text-xs text-white/70">Secured by TCAI</span>
+          </div>
+
           {/* Messages */}
-          <ScrollArea className="h-72 p-4">
+          <ScrollArea className="h-64 p-4 bg-[#0B0E13]">
             <div className="space-y-3">
               {messages.map((message, index) => (
                 <div
@@ -285,10 +303,10 @@ function FloatingChatWidget({ botConfig }: { botConfig: BotConfig }) {
                   <div
                     data-testid={`widget-message-${message.role}-${index}`}
                     className={cn(
-                      "max-w-[85%] rounded-2xl px-4 py-2 text-sm",
+                      "max-w-[85%] rounded-2xl px-4 py-3 text-sm",
                       message.role === "user"
-                        ? `bg-gradient-to-r ${colors.primary} text-white`
-                        : "bg-gray-100 text-gray-800"
+                        ? "bg-white/10 text-white border border-white/10"
+                        : "bg-[#1A1D24] text-white/90 border border-white/5"
                     )}
                   >
                     {message.content}
@@ -318,8 +336,8 @@ function FloatingChatWidget({ botConfig }: { botConfig: BotConfig }) {
               
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-gray-100 rounded-2xl px-4 py-2 text-sm">
-                    <span className="inline-flex gap-1">
+                  <div className="bg-[#1A1D24] rounded-2xl px-4 py-3 text-sm border border-white/5">
+                    <span className="inline-flex gap-1 text-cyan-400">
                       <span className="animate-bounce">.</span>
                       <span className="animate-bounce" style={{ animationDelay: "0.2s" }}>.</span>
                       <span className="animate-bounce" style={{ animationDelay: "0.4s" }}>.</span>
@@ -332,35 +350,35 @@ function FloatingChatWidget({ botConfig }: { botConfig: BotConfig }) {
           </ScrollArea>
 
           {/* Input */}
-          <div className="p-3 border-t border-gray-100 bg-gray-50">
+          <div className="p-3 border-t border-white/10 bg-[#0A0A0F]">
             <div className="flex gap-2">
               <Input
                 data-testid="widget-input-message"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Type a message... (Enter to send)"
+                placeholder="Type your message..."
                 disabled={isLoading}
-                className="flex-1 rounded-full border-gray-200 focus:border-gray-300 text-sm"
+                className="flex-1 rounded-full bg-[#1A1D24] border-white/10 focus:border-cyan-500/50 text-sm text-white placeholder:text-white/40"
               />
               <Button
                 data-testid="widget-button-send"
                 onClick={handleSend}
                 disabled={!inputValue.trim() || isLoading}
                 size="icon"
-                className={`rounded-full bg-gradient-to-r ${colors.primary} hover:opacity-90`}
+                className="rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/10"
                 aria-label="Send message"
               >
                 <Send className="h-4 w-4" />
               </Button>
             </div>
             <div className="mt-2 flex items-center justify-between">
-              <p className="text-[10px] text-gray-400">
-                Powered by Treasure Coast AI
+              <p className="text-[10px] text-white/40">
+                Powered by <span className="text-cyan-400">Treasure Coast AI</span>
               </p>
               <button
                 onClick={() => window.open('mailto:support@treasurecoastai.com?subject=Human%20Support%20Request', '_blank')}
-                className="text-[10px] text-blue-500 hover:text-blue-600 flex items-center gap-1"
+                className="text-[10px] text-white/50 hover:text-white/70 flex items-center gap-1"
                 data-testid="button-talk-to-human"
               >
                 <Users className="h-3 w-3" />
@@ -374,29 +392,29 @@ function FloatingChatWidget({ botConfig }: { botConfig: BotConfig }) {
       {/* Proactive Greeting Bubble */}
       {showGreeting && !isOpen && (
         <div 
-          className="absolute bottom-16 right-0 w-72 bg-white rounded-2xl shadow-xl border border-gray-200 p-4 animate-in slide-in-from-bottom-4 fade-in duration-300"
+          className="absolute bottom-16 right-0 w-72 bg-[#0B0E13] rounded-2xl shadow-xl border border-white/10 p-4 animate-in slide-in-from-bottom-4 fade-in duration-300"
           data-testid="proactive-greeting"
         >
           <button 
             onClick={dismissGreeting}
-            className="absolute top-2 right-2 p-1 hover:bg-gray-100 rounded-full text-gray-400"
+            className="absolute top-2 right-2 p-1 hover:bg-white/10 rounded-full text-white/40"
             data-testid="button-dismiss-greeting"
           >
             <X className="h-4 w-4" />
           </button>
           <div className="flex items-start gap-3">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-r ${colors.primary}`}>
-              {businessTypeIcons[businessType] || <MessageCircle className="h-5 w-5 text-white" />}
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-slate-700/80">
+              {businessTypeIcons[businessType] || <Bot className="h-5 w-5 text-white" />}
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">Hi there!</p>
-              <p className="text-xs text-gray-600 mt-1">
+              <p className="text-sm font-medium text-white">Hi there!</p>
+              <p className="text-xs text-white/60 mt-1">
                 Have questions about {businessName}? I'm here to help!
               </p>
               <Button 
                 size="sm" 
                 onClick={handleOpenChat}
-                className={`mt-3 w-full bg-gradient-to-r ${colors.primary} hover:opacity-90 text-white text-xs`}
+                className="mt-3 w-full bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
                 data-testid="button-greeting-chat"
               >
                 <MessageCircle className="h-3 w-3 mr-1" />
@@ -444,14 +462,14 @@ export default function DemoBotPage() {
 
   if (isBotLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="h-96 bg-gray-200 animate-pulse" />
+      <div className="min-h-screen bg-[#0A0A0F]">
+        <div className="h-96 bg-[#12151A] animate-pulse" />
         <div className="max-w-6xl mx-auto px-4 py-12">
-          <Skeleton className="h-8 w-64 mb-4" />
-          <Skeleton className="h-4 w-96 mb-8" />
+          <Skeleton className="h-8 w-64 mb-4 bg-white/10" />
+          <Skeleton className="h-4 w-96 mb-8 bg-white/10" />
           <div className="grid md:grid-cols-3 gap-6">
             {[1, 2, 3].map(i => (
-              <Skeleton key={i} className="h-48 w-full rounded-xl" />
+              <Skeleton key={i} className="h-48 w-full rounded-xl bg-white/10" />
             ))}
           </div>
         </div>
@@ -461,17 +479,17 @@ export default function DemoBotPage() {
 
   if (error || !botConfig) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <div className="min-h-screen bg-[#0A0A0F] flex items-center justify-center p-4">
+        <div className="bg-[#12151A] rounded-2xl shadow-xl border border-white/10 p-8 max-w-md text-center">
+          <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <X className="h-8 w-8 text-red-500" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Bot Not Found</h2>
-          <p className="text-gray-600 mb-6">
+          <h2 className="text-xl font-bold text-white mb-2">Bot Not Found</h2>
+          <p className="text-white/60 mb-6">
             The requested demo bot could not be found.
           </p>
           <Link href="/demos">
-            <Button data-testid="button-back-to-demos" className="w-full">
+            <Button data-testid="button-back-to-demos" className="w-full bg-cyan-600 hover:bg-cyan-700 text-white">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Demos
             </Button>
