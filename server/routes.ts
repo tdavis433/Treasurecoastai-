@@ -3860,10 +3860,42 @@ These suggestions should be relevant to what was just discussed and help guide t
         userAgent,
       });
 
-      res.json({ 
-        success: true, 
-        message: "Password changed successfully",
-        redirect: user.role === 'super_admin' ? '/super-admin' : '/client/dashboard'
+      // Session invalidation: destroy all other sessions for this user
+      // The session table stores sess as JSON with userId inside
+      const currentSessionId = req.sessionID;
+      try {
+        await db.execute(sql`
+          DELETE FROM session 
+          WHERE sid != ${currentSessionId} 
+          AND (sess::json->>'userId')::int = ${user.id}
+        `);
+        console.log(`Invalidated other sessions for user ${user.id} after password change`);
+      } catch (sessionErr) {
+        // Don't fail the password change if session cleanup fails
+        console.warn("Failed to invalidate other sessions:", sessionErr);
+      }
+
+      // Regenerate current session for security
+      req.session.regenerate((regenErr) => {
+        if (regenErr) {
+          console.warn("Session regeneration failed:", regenErr);
+        }
+        // Restore session data after regeneration
+        req.session.userId = user.id;
+        req.session.username = user.username;
+        req.session.userRole = user.role;
+        req.session.clientId = user.clientId || null;
+        
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.warn("Session save after regeneration failed:", saveErr);
+          }
+          res.json({ 
+            success: true, 
+            message: "Password changed successfully",
+            redirect: user.role === 'super_admin' ? '/super-admin' : '/client/dashboard'
+          });
+        });
       });
     } catch (error) {
       if (error instanceof z.ZodError) {

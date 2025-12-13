@@ -12,8 +12,10 @@ import { Pool } from "@neondatabase/serverless";
 import helmet from "helmet";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
+import cookieParser from "cookie-parser";
 
 import { registerRoutes } from "./routes";
+import { createCsrfMiddleware, csrfTokenEndpoint } from "./csrfMiddleware";
 
 const pgPool = new Pool({ connectionString: process.env.DATABASE_URL });
 const PgStore = connectPgSimple(session);
@@ -252,9 +254,19 @@ app.use(session({
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    maxAge: 7 * 24 * 60 * 60 * 1000
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    sameSite: 'lax' // Prevent CSRF while allowing normal navigation
   }
 }));
+
+// Cookie parser for CSRF tokens
+app.use(cookieParser());
+
+// CSRF token endpoint (must be before CSRF protection middleware)
+app.get('/api/csrf-token', csrfTokenEndpoint);
+
+// CSRF protection for state-changing requests (skip public endpoints)
+app.use(createCsrfMiddleware());
 
 app.use((req, res, next) => {
   const start = Date.now();
