@@ -769,28 +769,118 @@ class ConversationOrchestrator {
     } catch (error: any) {
       console.error('[Orchestrator] Error processing message:', error);
       
-      // Check for OpenAI rate limit errors
+      // Check for OpenAI rate limit or transient errors
       const isRateLimitError = error?.status === 429 || 
         error?.code === 'rate_limit_exceeded' ||
         error?.message?.includes('Rate limit') ||
         error?.message?.includes('rate_limit') ||
         error?.message?.includes('429');
       
-      if (isRateLimitError) {
-        console.error('[Orchestrator] OpenAI rate limit exceeded - returning friendly message as normal reply');
+      const isTransientError = isRateLimitError || 
+        error?.code === 'ETIMEDOUT' ||
+        error?.code === 'ECONNRESET' ||
+        error?.message?.includes('timeout') ||
+        error?.message?.includes('network');
+      
+      if (isTransientError) {
+        console.error('[Orchestrator] OpenAI error (non-streaming) - attempting resilient lead/booking capture');
         
-        // Even during rate limiting, check if user has booking intent and external booking is configured
-        const lastUserMessage = request.messages[request.messages.length - 1]?.content || '';
-        const bookingKeywords = /\b(book|appointment|schedule|reserve|booking|consultation)\b/i;
-        const hasBookingIntent = bookingKeywords.test(lastUserMessage);
+        // RESILIENT PERSISTENCE: Extract and save contact info even when OpenAI fails
+        let savedLead = false;
+        let savedBooking = false;
         
-        // Try to get client settings for external booking URL with failsafe validation
+        try {
+          const lastMsg = request.messages[request.messages.length - 1];
+          const extracted = extractContactAndBookingFromMessages(request.messages, lastMsg?.content || '');
+          
+          // Save lead if we have contact info
+          if (extracted.phone || extracted.email) {
+            const existingLead = await storage.getLeadBySessionId(request.sessionId, request.clientId);
+            
+            if (!existingLead) {
+              const newLead = await withRetry(
+                () => storage.createLead({
+                  clientId: request.clientId,
+                  botId: request.botId,
+                  sessionId: request.sessionId,
+                  name: extracted.name || null,
+                  email: extracted.email || null,
+                  phone: extracted.phone || null,
+                  status: 'new',
+                  priority: extracted.hasBookingIntent ? 'high' : 'medium',
+                  source: 'chat',
+                  notes: 'Lead captured during AI service interruption - needs follow-up',
+                }),
+                'createLead (resilient non-stream)'
+              );
+              savedLead = true;
+              
+              // Trigger lead_captured automations
+              triggerWorkflowByEvent(request.botId, 'lead_captured', {
+                clientId: request.clientId,
+                sessionId: request.sessionId,
+                leadId: newLead.id,
+                name: extracted.name,
+                email: extracted.email,
+                phone: extracted.phone,
+              }).catch(err => console.error('[Automation] Error triggering lead_captured:', err));
+              
+              console.log('[Orchestrator] Resilient lead saved (non-streaming) despite OpenAI error:', {
+                clientId: request.clientId, sessionId: request.sessionId, hasPhone: !!extracted.phone, hasEmail: !!extracted.email
+              });
+            }
+          }
+          
+          // Save booking if we have booking intent and contact info
+          if (extracted.hasBookingIntent && extracted.phone && extracted.name) {
+            const existingAppointment = await storage.getAppointmentBySessionId(request.sessionId, request.clientId);
+            
+            if (!existingAppointment) {
+              const newAppointment = await storage.createAppointment(request.clientId, {
+                name: extracted.name,
+                contact: extracted.phone,
+                email: extracted.email || null,
+                preferredTime: extracted.preferredTime || 'Pending - needs confirmation',
+                scheduledAt: extracted.scheduledAt ? new Date(extracted.scheduledAt) : null,
+                appointmentType: extracted.bookingType || 'tour',
+                notes: 'Booking created during AI service interruption - requires staff confirmation',
+                contactPreference: 'phone',
+                botId: request.botId,
+                sessionId: request.sessionId,
+              });
+              savedBooking = true;
+              
+              // Trigger appointment_booked automations
+              triggerWorkflowByEvent(request.botId, 'appointment_booked', {
+                clientId: request.clientId,
+                sessionId: request.sessionId,
+                appointmentId: newAppointment.id,
+                name: extracted.name,
+                phone: extracted.phone,
+                appointmentType: extracted.bookingType || 'tour',
+              }).catch(err => console.error('[Automation] Error triggering appointment_booked:', err));
+              
+              console.log('[Orchestrator] Resilient booking saved (non-streaming) despite OpenAI error:', {
+                clientId: request.clientId, sessionId: request.sessionId, bookingType: extracted.bookingType, name: extracted.name
+              });
+            }
+          }
+        } catch (saveError) {
+          console.error('[Orchestrator] Error saving resilient lead/booking (non-streaming):', saveError);
+        }
+        
+        // Check if external booking is configured - show booking button even during errors
         let fallbackBookingUrl: string | null = null;
         let fallbackBookingMode: 'internal' | 'external' = 'internal';
         let fallbackProviderName: string | null = null;
         let failsafeActivated = false;
+        let hasBookingIntent = false;
         
         try {
+          const lastMsg = request.messages[request.messages.length - 1]?.content || '';
+          const bookingKeywords = /\b(book|appointment|schedule|reserve|booking|consultation)\b/i;
+          hasBookingIntent = bookingKeywords.test(lastMsg);
+          
           const clientSettings = await configCache.getClientSettings(request.clientId);
           if (clientSettings?.bookingMode === 'external') {
             const candidateUrl = clientSettings.externalBookingUrl || null;
@@ -800,7 +890,7 @@ class ConversationOrchestrator {
               fallbackProviderName = clientSettings.externalBookingProviderName || null;
             } else {
               // FAILSAFE: Invalid/missing URL - stay internal
-              console.warn(`[Orchestrator] FAILSAFE in rate-limit handler: Invalid external URL for ${request.clientId}`);
+              console.warn(`[Orchestrator] FAILSAFE in error handler: Invalid external URL for ${request.clientId}`);
               failsafeActivated = true;
             }
           }
@@ -808,14 +898,21 @@ class ConversationOrchestrator {
           // Silently ignore - we'll just not show booking button
         }
         
-        // Show booking on external only if URL is valid, otherwise show internal form
-        const showBookingOnFallback = hasBookingIntent;
-        const effectiveBookingMode = fallbackBookingUrl ? fallbackBookingMode : 'internal';
+        const showBookingOnError = hasBookingIntent && fallbackBookingMode === 'external' && !!fallbackBookingUrl;
         
-        // Craft a more helpful message if booking intent detected
-        const friendlyMessage = showBookingOnFallback
-          ? "I apologize, but I'm experiencing high demand right now. However, you can still complete your booking by clicking the button below!"
-          : "I apologize, but I'm experiencing high demand right now. Please try again in a moment, or feel free to call us directly for immediate assistance.";
+        // Build appropriate friendly message based on what was saved
+        let friendlyMessage: string;
+        if (savedBooking) {
+          friendlyMessage = "I'm experiencing some delays right now, but I've saved your information and booking request! Our team will reach out shortly to confirm the details. Thank you for your patience!";
+        } else if (savedLead && showBookingOnError) {
+          friendlyMessage = "I'm experiencing some delays right now, but I've saved your contact information. You can complete your booking by clicking the button below!";
+        } else if (savedLead) {
+          friendlyMessage = "I'm experiencing some delays right now, but don't worry - I've saved your contact information. Our team will reach out to you soon. Thank you for your patience!";
+        } else if (showBookingOnError) {
+          friendlyMessage = "I apologize, but I'm experiencing high demand right now. However, you can still complete your booking by clicking the button below!";
+        } else {
+          friendlyMessage = "I apologize, but I'm experiencing high demand right now. Please try again in a moment, or feel free to call us directly for immediate assistance.";
+        }
         
         return {
           success: true,
@@ -825,12 +922,14 @@ class ConversationOrchestrator {
             botId: request.botId,
             sessionId: request.sessionId || `session_${Date.now()}`,
             responseTimeMs: Date.now() - startTime,
-            showBooking: showBookingOnFallback,
-            bookingMode: effectiveBookingMode,
-            externalBookingUrl: effectiveBookingMode === 'external' ? fallbackBookingUrl : null,
-            externalBookingProviderName: effectiveBookingMode === 'external' ? fallbackProviderName : null,
+            showBooking: showBookingOnError || hasBookingIntent,
+            bookingMode: fallbackBookingMode,
+            externalBookingUrl: showBookingOnError ? fallbackBookingUrl : null,
+            externalBookingProviderName: showBookingOnError ? fallbackProviderName : null,
             externalPaymentUrl: null,
-            suggestedReplies: showBookingOnFallback ? [] : ["When can I call you?", "What are your hours?"],
+            suggestedReplies: (showBookingOnError || hasBookingIntent) ? [] : ["When can I call you?", "What are your hours?"],
+            leadCaptured: savedLead,
+            bookingSaved: savedBooking,
             failsafeActivated,
           },
         };

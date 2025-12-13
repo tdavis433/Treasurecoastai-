@@ -11714,6 +11714,13 @@ These suggestions should be relevant to what was just discussed and help guide t
     externalBookingUrl: z.string().url().optional().or(z.literal("")),
     internalNotes: z.string().optional(),
     doNotSay: z.array(z.string()).optional(),
+    behaviorPreset: z.enum(['support_lead_focused', 'informational', 'sales_focused', 'minimal_proactive']).optional(),
+    styleConfig: z.object({
+      primaryColor: z.string().optional(),
+      accentColor: z.string().optional(),
+      theme: z.enum(['dark', 'light']).optional(),
+      logoUrl: z.string().optional(),
+    }).optional(),
   });
 
   // Generate Draft Setup - Creates workspace + bot in DRAFT mode
@@ -11911,6 +11918,40 @@ These suggestions should be relevant to what was just discussed and help guide t
 
       // Register client
       registerClient(clientId, intake.businessName, template.botType, botId, 'paused');
+
+      // Create clientSettings with behaviorPreset
+      await db.insert(clientSettings).values({
+        clientId,
+        businessName: intake.businessName,
+        tagline: template.description || "Welcome to our business",
+        primaryEmail: intake.primaryEmail || '',
+        primaryPhone: intake.primaryPhone || '',
+        websiteUrl: intake.websiteUrl || '',
+        status: "paused", // Draft mode
+        behaviorPreset: intake.behaviorPreset || 'support_lead_focused',
+        bookingMode: bookingMode,
+        externalBookingUrl: bookingMode === 'external' ? externalBookingUrl : null,
+        knowledgeBase: {
+          about: `Welcome to ${intake.businessName}.`,
+          requirements: "",
+          pricing: "",
+          application: "",
+        },
+        operatingHours: {
+          enabled: false,
+          timezone: "America/New_York",
+          schedule: {
+            monday: { open: "09:00", close: "17:00", enabled: true },
+            tuesday: { open: "09:00", close: "17:00", enabled: true },
+            wednesday: { open: "09:00", close: "17:00", enabled: true },
+            thursday: { open: "09:00", close: "17:00", enabled: true },
+            friday: { open: "09:00", close: "17:00", enabled: true },
+            saturday: { open: "09:00", close: "17:00", enabled: false },
+            sunday: { open: "09:00", close: "17:00", enabled: false },
+          },
+          afterHoursMessage: "We're currently closed. Please leave a message and we'll get back to you.",
+        },
+      });
 
       // Log audit event
       await logAuditEvent({
