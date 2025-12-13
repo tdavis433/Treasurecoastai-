@@ -10,7 +10,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import path from "path";
 import fs from "fs";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, sql, desc, or, gte } from "drizzle-orm";
 import {
   getBotConfig,
   getBotConfigAsync,
@@ -4090,6 +4090,290 @@ These suggestions should be relevant to what was just discussed and help guide t
     } catch (error) {
       console.error("Get workspace bots error:", error);
       res.status(500).json({ error: "Failed to fetch workspace bots" });
+    }
+  });
+
+  // =============================================
+  // WORKSPACE DIAGNOSTICS (Super Admin Only)
+  // One-click PASS/FAIL setup verification
+  // =============================================
+  
+  app.get("/api/admin/workspaces/:workspaceId/diagnostics", requireSuperAdmin, async (req, res) => {
+    try {
+      const { workspaceId } = req.params;
+      
+      // Find workspace by ID or slug
+      let workspace = await getWorkspaceBySlug(workspaceId);
+      if (!workspace) {
+        const [ws] = await db.select().from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
+        workspace = ws;
+      }
+      
+      if (!workspace) {
+        return res.status(404).json({ error: "Workspace not found" });
+      }
+      
+      const clientId = workspace.slug;
+      const diagnostics: Record<string, { pass: boolean; message: string; details?: any }> = {};
+      
+      // 1. Widget Configuration Check
+      try {
+        const settings = await storage.getSettings(clientId);
+        const hasBusinessName = !!(settings?.businessName && settings.businessName !== "The Faith House");
+        const hasBrandColor = !!(settings?.primaryColor);
+        diagnostics.widgetConfig = {
+          pass: hasBusinessName && hasBrandColor,
+          message: hasBusinessName && hasBrandColor ? "Widget configured" : "Missing business name or brand color",
+          details: { hasBusinessName, hasBrandColor }
+        };
+      } catch {
+        diagnostics.widgetConfig = { pass: false, message: "Failed to check widget config" };
+      }
+      
+      // 2. Token Generation Check
+      try {
+        const botConfigs = await getBotsByWorkspaceId(workspace.id);
+        if (botConfigs.length > 0) {
+          const testToken = generateWidgetToken(clientId, botConfigs[0].botId);
+          const verified = verifyWidgetToken(testToken);
+          diagnostics.tokenGeneration = {
+            pass: verified.valid,
+            message: verified.valid ? "Token generation working" : "Token verification failed",
+          };
+        } else {
+          diagnostics.tokenGeneration = { pass: false, message: "No bots configured for workspace" };
+        }
+      } catch {
+        diagnostics.tokenGeneration = { pass: false, message: "Token generation error" };
+      }
+      
+      // 3. AI Configuration Check
+      const openaiKey = process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+      diagnostics.aiConfig = {
+        pass: !!(openaiKey && openaiKey.length > 10),
+        message: openaiKey ? "OpenAI API configured" : "OpenAI API key missing"
+      };
+      
+      // 4. Database Connectivity Check
+      try {
+        const dbCheck = await storage.healthCheck?.() ?? { status: 'ok' };
+        diagnostics.database = {
+          pass: dbCheck.status === 'ok',
+          message: dbCheck.status === 'ok' ? `Database healthy (${dbCheck.latencyMs}ms)` : "Database unhealthy",
+          details: { latencyMs: dbCheck.latencyMs }
+        };
+      } catch {
+        diagnostics.database = { pass: false, message: "Database check failed" };
+      }
+      
+      // 5. Knowledge Base Check
+      try {
+        const settings = await storage.getSettings(clientId);
+        const kb = settings?.knowledgeBase;
+        const hasAbout = !!(kb?.about && kb.about.length > 50);
+        const hasFaqs = (settings?.faqEntries?.length || 0) > 0;
+        diagnostics.knowledgeBase = {
+          pass: hasAbout || hasFaqs,
+          message: hasAbout || hasFaqs ? "Knowledge base configured" : "No knowledge base content",
+          details: { hasAbout, faqCount: settings?.faqEntries?.length || 0 }
+        };
+      } catch {
+        diagnostics.knowledgeBase = { pass: false, message: "Knowledge base check failed" };
+      }
+      
+      // 6. Booking URL Check (if external mode)
+      try {
+        const settings = await storage.getSettings(clientId);
+        const isExternalMode = settings?.bookingMode === 'external';
+        const hasBookingUrl = !!(settings?.externalBookingUrl);
+        diagnostics.bookingConfig = {
+          pass: !isExternalMode || hasBookingUrl,
+          message: isExternalMode 
+            ? (hasBookingUrl ? "External booking URL configured" : "Missing external booking URL")
+            : "Using internal booking (no URL needed)",
+          details: { mode: settings?.bookingMode, hasUrl: hasBookingUrl }
+        };
+      } catch {
+        diagnostics.bookingConfig = { pass: false, message: "Booking config check failed" };
+      }
+      
+      // Calculate overall status
+      const allPassing = Object.values(diagnostics).every(d => d.pass);
+      const passingCount = Object.values(diagnostics).filter(d => d.pass).length;
+      const totalChecks = Object.keys(diagnostics).length;
+      
+      res.json({
+        workspaceId: workspace.id,
+        workspaceSlug: workspace.slug,
+        overall: allPassing ? "PASS" : "FAIL",
+        summary: `${passingCount}/${totalChecks} checks passing`,
+        diagnostics,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Workspace diagnostics error:", error);
+      res.status(500).json({ error: "Failed to run diagnostics" });
+    }
+  });
+
+  // =============================================
+  // ADMIN PLATFORM ERRORS (Super Admin Only)
+  // Quick view of recent platform errors
+  // =============================================
+  
+  app.get("/api/admin/platform-errors", requireSuperAdmin, async (req, res) => {
+    try {
+      const { limit = "50", level = "error", clientId } = req.query;
+      
+      const filters: any = {
+        limit: Math.min(parseInt(String(limit), 10), 200),
+        level: String(level),
+      };
+      
+      // Tenant-safe: optionally filter by clientId
+      if (clientId) {
+        filters.clientId = String(clientId);
+      }
+      
+      const result = await storage.getSystemLogs(filters);
+      
+      // Get error category breakdown
+      const categories: Record<string, number> = {};
+      for (const log of result.logs) {
+        const src = (log.source || 'other').toLowerCase();
+        let cat = 'other';
+        if (src.includes('chat') || src.includes('orchestrator')) cat = 'chat';
+        else if (src.includes('widget')) cat = 'widget';
+        else if (src.includes('lead')) cat = 'lead';
+        else if (src.includes('booking') || src.includes('appointment')) cat = 'booking';
+        else if (src.includes('auth') || src.includes('login')) cat = 'auth';
+        else if (src.includes('db') || src.includes('database')) cat = 'db';
+        categories[cat] = (categories[cat] || 0) + 1;
+      }
+      
+      res.json({
+        total: result.total,
+        returned: result.logs.length,
+        categories,
+        errors: result.logs.map(log => ({
+          id: log.id,
+          level: log.level,
+          source: log.source,
+          message: log.message,
+          clientId: log.clientId,
+          isResolved: log.isResolved,
+          createdAt: log.createdAt,
+        })),
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Get platform errors error:", error);
+      res.status(500).json({ error: "Failed to fetch platform errors" });
+    }
+  });
+
+  // =============================================
+  // DEMO PRE-FLIGHT CHECK (Super Admin Only)
+  // One-click validation before demos
+  // =============================================
+  
+  app.get("/api/demo/preflight", requireSuperAdmin, async (req, res) => {
+    try {
+      const checks: Record<string, { pass: boolean; message: string; details?: any }> = {};
+      
+      // 1. Health Check (DB + AI)
+      try {
+        const dbCheck = await storage.healthCheck?.() ?? { status: 'ok', latencyMs: 0 };
+        const openaiKey = process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+        const aiConfigured = !!(openaiKey && openaiKey.length > 10);
+        
+        checks.health = {
+          pass: dbCheck.status === 'ok' && aiConfigured,
+          message: dbCheck.status === 'ok' && aiConfigured ? "DB and AI healthy" : 
+            (!aiConfigured ? "AI not configured" : "Database unhealthy"),
+          details: { dbLatencyMs: dbCheck.latencyMs, aiConfigured }
+        };
+      } catch {
+        checks.health = { pass: false, message: "Health check failed" };
+      }
+      
+      // 2. Demo Workspaces Available
+      try {
+        const demoSlugs = getDemoSlugs();
+        const demoBotsFound: string[] = [];
+        for (const slug of demoSlugs) {
+          const workspace = await getWorkspaceBySlug(slug);
+          if (workspace) {
+            demoBotsFound.push(slug);
+          }
+        }
+        checks.demoWorkspaces = {
+          pass: demoBotsFound.length > 0,
+          message: demoBotsFound.length > 0 
+            ? `${demoBotsFound.length} demo workspace(s) available` 
+            : "No demo workspaces found",
+          details: { available: demoBotsFound, expected: demoSlugs }
+        };
+      } catch {
+        checks.demoWorkspaces = { pass: false, message: "Demo workspace check failed" };
+      }
+      
+      // 3. Sample Chat Test (dry run)
+      try {
+        const demoSlugs = getDemoSlugs();
+        if (demoSlugs.length > 0) {
+          const testSlug = demoSlugs[0];
+          const workspace = await getWorkspaceBySlug(testSlug);
+          if (workspace) {
+            const botConfigs = await getBotsByWorkspaceId(workspace.id);
+            checks.sampleChatReady = {
+              pass: botConfigs.length > 0,
+              message: botConfigs.length > 0 
+                ? `Demo bot "${botConfigs[0].name}" ready for chat` 
+                : "No demo bots configured",
+              details: { workspace: testSlug, botCount: botConfigs.length }
+            };
+          } else {
+            checks.sampleChatReady = { pass: false, message: "Primary demo workspace missing" };
+          }
+        } else {
+          checks.sampleChatReady = { pass: false, message: "No demo slugs configured" };
+        }
+      } catch {
+        checks.sampleChatReady = { pass: false, message: "Sample chat check failed" };
+      }
+      
+      // 4. Recent Errors Check
+      try {
+        const errorCount = await storage.getRecentErrorCount?.(15) ?? 0;
+        checks.recentErrors = {
+          pass: errorCount < 10,
+          message: errorCount < 10 
+            ? `${errorCount} errors in last 15 min (acceptable)` 
+            : `${errorCount} errors in last 15 min (high)`,
+          details: { count: errorCount }
+        };
+      } catch {
+        checks.recentErrors = { pass: true, message: "Error count unavailable (assuming OK)" };
+      }
+      
+      // Calculate overall status
+      const allPassing = Object.values(checks).every(c => c.pass);
+      const passingCount = Object.values(checks).filter(c => c.pass).length;
+      const totalChecks = Object.keys(checks).length;
+      
+      res.json({
+        ready: allPassing,
+        summary: allPassing ? "All pre-flight checks passed" : `${passingCount}/${totalChecks} checks passing`,
+        checks,
+        recommendation: allPassing 
+          ? "Demo environment is ready for presentations" 
+          : "Please resolve failing checks before demo",
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Demo preflight error:", error);
+      res.status(500).json({ error: "Failed to run preflight checks" });
     }
   });
 

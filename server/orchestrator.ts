@@ -39,6 +39,44 @@ import { checkMessageLimit, incrementMessageCount, incrementAutomationCount } fr
 import { getClientStatus } from './botConfig';
 import { addDays, addWeeks, setHours, setMinutes, startOfDay, format, getDay } from 'date-fns';
 
+/**
+ * SAFE RETRY WRAPPER FOR CRITICAL WRITES
+ * Retries once on transient DB errors to prevent data loss.
+ * Used for: createLead, logConversation, logBookingIntentEvent
+ */
+async function withRetry<T>(
+  operation: () => Promise<T>,
+  operationName: string,
+  maxRetries: number = 1
+): Promise<T> {
+  let lastError: Error | undefined;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error: any) {
+      lastError = error;
+      const isTransient = 
+        error?.code === 'ECONNRESET' ||
+        error?.code === 'ETIMEDOUT' ||
+        error?.code === 'ENOTFOUND' ||
+        error?.message?.includes('connection') ||
+        error?.message?.includes('timeout') ||
+        error?.message?.includes('temporarily unavailable');
+      
+      if (attempt < maxRetries && isTransient) {
+        console.warn(`[Orchestrator] ${operationName} failed (attempt ${attempt + 1}), retrying...`, error?.message);
+        await new Promise(resolve => setTimeout(resolve, 100 * (attempt + 1))); // Brief exponential backoff
+      } else {
+        console.error(`[Orchestrator] ${operationName} failed after ${attempt + 1} attempts:`, error?.message || error);
+        throw error;
+      }
+    }
+  }
+  
+  throw lastError;
+}
+
 function categorizeMessageTopic(content: string): string {
   const lower = content.toLowerCase();
   
@@ -928,18 +966,21 @@ class ConversationOrchestrator {
             const existingLead = await storage.getLeadBySessionId(sessionId, clientId);
             
             if (!existingLead) {
-              const newLead = await storage.createLead({
-                clientId,
-                botId,
-                sessionId,
-                name: extracted.name || null,
-                email: extracted.email || null,
-                phone: extracted.phone || null,
-                status: 'new',
-                priority: extracted.hasBookingIntent ? 'high' : 'medium',
-                source: 'chat',
-                notes: 'Lead captured during AI service interruption - needs follow-up',
-              });
+              const newLead = await withRetry(
+                () => storage.createLead({
+                  clientId,
+                  botId,
+                  sessionId,
+                  name: extracted.name || null,
+                  email: extracted.email || null,
+                  phone: extracted.phone || null,
+                  status: 'new',
+                  priority: extracted.hasBookingIntent ? 'high' : 'medium',
+                  source: 'chat',
+                  notes: 'Lead captured during AI service interruption - needs follow-up',
+                }),
+                'createLead (resilient)'
+              );
               savedLead = true;
               
               // Trigger lead_captured automations
@@ -1129,7 +1170,7 @@ class ConversationOrchestrator {
   }
 
   /**
-   * Generate AI response using OpenAI
+   * Generate AI response using OpenAI with timeout and graceful fallback
    */
   private async generateAIResponse(
     botConfig: BotConfig,
@@ -1141,7 +1182,7 @@ class ConversationOrchestrator {
       throw new Error('AI service not configured');
     }
 
-    // Get client settings for external URLs
+    // Get client settings for external URLs and contact info for fallback
     const clientSettings = await configCache.getClientSettings(clientId);
     
     // Inject external URLs into bot config for prompt building
@@ -1153,20 +1194,52 @@ class ConversationOrchestrator {
 
     const systemPrompt = buildSystemPromptFromConfig(botConfigWithUrls);
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...messages,
-      ],
-      max_completion_tokens: 500,
-    });
+    // Build graceful fallback message with business contact info
+    const businessPhone = clientSettings?.primaryPhone || botConfig.businessProfile?.phone;
+    const businessEmail = clientSettings?.primaryEmail || botConfig.businessProfile?.email;
+    const businessName = clientSettings?.businessName || botConfig.businessProfile?.businessName || 'our team';
+    
+    const contactDetails = [
+      businessPhone && `call us at ${businessPhone}`,
+      businessEmail && `email us at ${businessEmail}`,
+    ].filter(Boolean).join(' or ');
+    
+    const fallbackMessage = language === 'es'
+      ? `Disculpa, estoy teniendo dificultades técnicas. Por favor, comparte tu nombre y número de contacto para que ${businessName} pueda comunicarse contigo.${contactDetails ? ` También puedes ${contactDetails}.` : ''}`
+      : `I'm having a bit of trouble right now, but I'd love to help! Could you share your name and best contact number or email so ${businessName} can reach out to you?${contactDetails ? ` You can also ${contactDetails}.` : ''}`;
 
-    const defaultReply = language === 'es'
-      ? 'Estoy aquí para ayudar. ¿Cómo puedo asistirte hoy?'
-      : 'I\'m here to help. How can I assist you today?';
+    // 12 second timeout for OpenAI call
+    const AI_TIMEOUT_MS = 12000;
+    
+    try {
+      const completionPromise = openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...messages,
+        ],
+        max_completion_tokens: 500,
+      });
+      
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('AI_TIMEOUT')), AI_TIMEOUT_MS);
+      });
+      
+      const completion = await Promise.race([completionPromise, timeoutPromise]);
+      
+      const defaultReply = language === 'es'
+        ? 'Estoy aquí para ayudar. ¿Cómo puedo asistirte hoy?'
+        : 'I\'m here to help. How can I assist you today?';
 
-    return completion.choices[0]?.message?.content || defaultReply;
+      return completion.choices[0]?.message?.content || defaultReply;
+    } catch (error: any) {
+      if (error?.message === 'AI_TIMEOUT') {
+        console.warn(`[Orchestrator] OpenAI timeout after ${AI_TIMEOUT_MS}ms for client ${clientId}`);
+      } else {
+        console.error(`[Orchestrator] OpenAI error for client ${clientId}:`, error?.message || error);
+      }
+      return fallbackMessage;
+    }
   }
 
   /**
@@ -1272,17 +1345,20 @@ class ConversationOrchestrator {
           }
         } else {
           const priority = determinePriority(showBooking, contactInfo);
-          const newLead = await storage.createLead({
-            clientId,
-            botId,
-            sessionId: sessionData.sessionId,
-            name: contactInfo.name || null,
-            email: contactInfo.email || null,
-            phone: contactInfo.phone || null,
-            status: 'new',
-            priority,
-            source: 'chat',
-          });
+          const newLead = await withRetry(
+            () => storage.createLead({
+              clientId,
+              botId,
+              sessionId: sessionData.sessionId,
+              name: contactInfo.name || null,
+              email: contactInfo.email || null,
+              phone: contactInfo.phone || null,
+              status: 'new',
+              priority,
+              source: 'chat',
+            }),
+            'createLead'
+          );
           
           // Trigger lead_captured automations
           triggerWorkflowByEvent(botId, 'lead_captured', {
@@ -1415,20 +1491,26 @@ class ConversationOrchestrator {
 
     // Log to conversationAnalytics table for dashboard conversation counts
     const userCategory = categorizeMessageTopic(userMessage);
-    await storage.logConversation(sessionData.clientId, {
-      sessionId: sessionData.sessionId,
-      role: 'user',
-      content: userMessage.slice(0, 500), // Limit content size
-      category: userCategory,
-    });
+    await withRetry(
+      () => storage.logConversation(sessionData.clientId, {
+        sessionId: sessionData.sessionId,
+        role: 'user',
+        content: userMessage.slice(0, 500), // Limit content size
+        category: userCategory,
+      }),
+      'logConversation (user)'
+    );
     
     const botCategory = showBooking ? 'appointments' : categorizeMessageTopic(botReply);
-    await storage.logConversation(sessionData.clientId, {
-      sessionId: sessionData.sessionId,
-      role: 'assistant',
-      content: botReply.slice(0, 500), // Limit content size
-      category: botCategory,
-    });
+    await withRetry(
+      () => storage.logConversation(sessionData.clientId, {
+        sessionId: sessionData.sessionId,
+        role: 'assistant',
+        content: botReply.slice(0, 500), // Limit content size
+        category: botCategory,
+      }),
+      'logConversation (bot)'
+    );
 
     // Log analytics events
     await storage.logAnalyticsEvent({
