@@ -124,7 +124,7 @@ This script guides you through demonstrating the key features of Treasure Coast 
 ### Part 4: Widget Demo (3 minutes)
 
 **⚠️ NO PAYMENTS NOTICE:**
-This platform does NOT process payments. Booking requests track intent and redirect users to the client's external booking/payment platform.
+This platform is redirect-only for booking. Booking requests track intent and redirect users to the client's external booking platform.
 
 **Exact Click Path:**
 1. Navigate to widget demo page (or use Preview in bot settings)
@@ -234,7 +234,7 @@ A: "Multi-tenant isolation ensures each client's data is completely separate. HM
 A: "The AI detects lead intent naturally in conversation and collects contact information inline. Leads are saved automatically with AI quality scoring."
 
 **Q: Can it book appointments?**
-A: "Yes! The AI collects booking preferences and contact info, creates an internal record, then redirects users to the client's existing booking/payment platform. We don't process payments - we capture intent and hand off."
+A: "Yes! The AI collects booking preferences and contact info, creates an internal record, then redirects users to the client's existing booking platform. We capture intent and hand off to their system."
 
 **Q: Do you handle payments?**
 A: "No, payments are handled by the client's existing system. We capture the booking intent and redirect to their Square, Calendly, Acuity, or whatever they use. This keeps things simple and compliant."
