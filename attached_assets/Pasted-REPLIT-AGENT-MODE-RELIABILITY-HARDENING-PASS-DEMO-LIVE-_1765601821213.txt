@@ -1,0 +1,135 @@
+REPLIT AGENT MODE — RELIABILITY HARDENING PASS (DEMO + LIVE CLIENTS)
+“MAKE IT BORINGLY RELIABLE” — NO SURPRISES DURING DEMOS OR AFTER GO-LIVE
+
+GOAL
+Harden Treasure Coast AI for rock-solid stability during big in-person demos and long-term live client usage.
+Implement:
+1) A meaningful /api/health readiness check
+2) An Admin “Workspace Setup Check” (one-click PASS/FAIL diagnostics)
+3) Chat timeouts + graceful fallbacks (never hang UI)
+4) Safe retry for critical writes (conversations/leads/booking intent)
+5) Minimal Admin “Error Log Viewer” (last N errors, tenant-safe)
+All changes must keep NO PAYMENTS guardrail (redirect-only booking).
+
+NON-NEGOTIABLE
+- NO payment processing ever (no checkout, no Stripe/Square/PayPal code).
+- No secrets in logs/output (tokens, passwords, reset links).
+- Tenant isolation must remain enforced.
+- Friendly errors only (no stack traces in client/widget UI).
+
+========================================================
+PHASE 1 — UPGRADE /api/health INTO A REAL READINESS SIGNAL
+========================================================
+Update /api/health to return a structured readiness payload, fast (<250ms typical):
+- DB: connected + simple query works + latency ms
+- App: version/build timestamp (safe, no secrets)
+- AI: confirm OPENAI_API_KEY presence (do NOT call OpenAI in health unless you already have a safe lightweight ping)
+- Recent Errors: count of widget/chat/lead/booking/auth errors in last 15 minutes
+- Optional: queue/job status if applicable
+
+Return shape example:
+{
+  "ok": true,
+  "db": { "ok": true, "latencyMs": 12 },
+  "ai": { "configured": true },
+  "errorsLast15m": { "chat": 0, "widget": 0, "lead": 0, "booking": 0, "auth": 0 },
+  "build": { "env": "production", "version": "...", "timestamp": "..." }
+}
+
+========================================================
+PHASE 2 — ADMIN “WORKSPACE SETUP CHECK” (ONE CLICK)
+========================================================
+Add an admin-only button per workspace/client: “Run Setup Check”
+It should run the following checks and show PASS/FAIL + reason:
+1) Widget config fetch works for {clientId, botId}
+2) Widget token generation works (display token LENGTH only, never token)
+3) Chat responds within timeout (e.g. 10–15s) using a safe test prompt
+4) Lead capture endpoint works (create a clearly marked TEST lead, then auto-delete it)
+5) Booking redirect configured and valid (https only, external)
+6) Knowledge base minimum present (business name, hours, services, contact)
+7) Dashboard reads work (conversations/leads/bookings queries return without error)
+
+UI:
+- Green checks / red Xs
+- “Copy Results” button for demo prep
+- Must be tenant-safe and not leak other workspaces
+
+========================================================
+PHASE 3 — CHAT TIMEOUTS + GRACEFUL FALLBACKS (NEVER HANG)
+========================================================
+In server/orchestrator.ts (or wherever OpenAI calls happen):
+- Add a hard timeout for AI calls (ex: 12s)
+- If timeout or OpenAI error:
+  - Return a friendly fallback response:
+    “I’m having trouble right now, but I can help you get in touch. What’s your name and best contact number/email?”
+  - If business contact info exists, include it (phone/email/hours)
+- Ensure the widget never sits “loading” forever
+- Log errors safely (no PII/tokens)
+
+========================================================
+PHASE 4 — SAFE RETRY FOR CRITICAL WRITES (NO LOST DEMO DATA)
+========================================================
+Identify the critical writes:
+- conversation transcript save
+- lead capture save
+- booking intent + booking redirect event save
+
+Implement:
+- 1 immediate retry (small delay) on transient DB errors
+- If still failing:
+  - do NOT crash the user flow
+  - return response to user anyway (for chat)
+  - log the failure for admin review
+- Add idempotency/dedup where needed to avoid duplicates from retries
+
+========================================================
+PHASE 5 — MINIMAL ADMIN ERROR LOG VIEWER (LAST N ERRORS)
+========================================================
+Add an admin-only view/page/panel:
+- Shows last 50 errors (or last 24h) grouped by category:
+  widget, chat, lead, booking, auth, db
+- Each entry includes:
+  timestamp, category, workspace/clientId, route, safe message, request id (if you have it)
+- Must redact PII and never show tokens/passwords
+- Tenant-safe: super_admin can see all; workspace_admin sees only their workspace
+
+Implementation options:
+A) Lightweight DB table (preferred) e.g. platform_errors
+B) In-memory ring buffer if you want ultra-light (but DB is better for persistence)
+
+========================================================
+PHASE 6 — DEMO “PRE-FLIGHT” CHECKLIST BUTTON (OPTIONAL BUT GREAT)
+========================================================
+Add a single “Demo Pre-Flight” button for the demo workspace that runs:
+- /api/health
+- Setup Check
+- a widget-test flow (config + 1 chat)
+Then outputs “READY ✅ / NOT READY ❌” with reasons.
+
+========================================================
+PHASE 7 — VERIFICATION (MUST PASS)
+========================================================
+Run and confirm PASS:
+- bash ./scripts/guard-no-payments.sh
+- npx tsc --noEmit
+- npx vitest run
+- npm run build
+
+Manual smoke (quick):
+- /widget-test.html → open widget → send 1 msg → trigger lead capture → trigger booking redirect
+- Admin dashboard: verify new events appear
+- Client dashboard: verify transcript/lead/booking metrics show
+
+========================================================
+FINAL OUTPUT (STRICT)
+========================================================
+Provide:
+1) File paths changed + summary per file
+2) New routes/endpoints added (if any)
+3) Screenshots or short text proof of:
+   - /api/health response example
+   - Setup Check PASS/FAIL output example
+   - Error Log Viewer example
+4) Proof verification commands passed (guard-no-payments, tsc, vitest, build)
+
+START NOW.

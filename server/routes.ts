@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import express from "express";
 import crypto from "crypto";
 import { storage, db } from "./storage";
-import { insertAppointmentSchema, insertClientSettingsSchema, adminUsers, type AdminRole, bots, botSettings, leads, appointments, clientSettings, workspaces, workspaceMemberships, botRequests, insertBotRequestSchema, chatSessions, conversationMessages, chatAnalyticsEvents, dailyAnalytics, passwordResetTokens } from "@shared/schema";
+import { insertAppointmentSchema, insertClientSettingsSchema, adminUsers, type AdminRole, bots, botSettings, leads, appointments, clientSettings, workspaces, workspaceMemberships, botRequests, insertBotRequestSchema, chatSessions, conversationMessages, chatAnalyticsEvents, dailyAnalytics, passwordResetTokens, systemLogs } from "@shared/schema";
 import { emailService, getPendingResetTokens, clearPendingResetTokens } from "./emailService";
 import OpenAI from "openai";
 import bcrypt from "bcryptjs";
@@ -1332,22 +1332,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get('/api/health', async (_req, res) => {
     try {
-      // Check database connectivity
-      const dbCheck = await storage.healthCheck?.() ?? { status: 'ok' };
-      
+      // Check database connectivity with latency
+      const dbStart = Date.now();
+      let dbOk = false;
+      let dbLatencyMs = 0;
+      try {
+        const dbCheck = await storage.healthCheck?.() ?? { status: 'ok', latencyMs: 0 };
+        dbOk = dbCheck.status === 'ok';
+        dbLatencyMs = dbCheck.latencyMs || (Date.now() - dbStart);
+      } catch (dbError) {
+        dbOk = false;
+        dbLatencyMs = Date.now() - dbStart;
+      }
+
+      // Check AI configuration
+      const openaiKey = process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+      const aiConfigured = !!openaiKey && openaiKey.length > 10;
+
+      // Get error counts for last 15 minutes by category
+      let errorsLast15m: Record<string, number> = { chat: 0, widget: 0, lead: 0, booking: 0, auth: 0, db: 0, other: 0 };
+      try {
+        const recentLogs = await db.select()
+          .from(systemLogs)
+          .where(and(
+            or(eq(systemLogs.level, 'error'), eq(systemLogs.level, 'critical')),
+            gte(systemLogs.createdAt, new Date(Date.now() - 15 * 60 * 1000))
+          ));
+        
+        for (const log of recentLogs) {
+          const src = (log.source || 'other').toLowerCase();
+          if (src.includes('chat') || src.includes('orchestrator')) errorsLast15m.chat++;
+          else if (src.includes('widget')) errorsLast15m.widget++;
+          else if (src.includes('lead')) errorsLast15m.lead++;
+          else if (src.includes('booking') || src.includes('appointment')) errorsLast15m.booking++;
+          else if (src.includes('auth') || src.includes('login')) errorsLast15m.auth++;
+          else if (src.includes('db') || src.includes('database') || src.includes('storage')) errorsLast15m.db++;
+          else errorsLast15m.other++;
+        }
+      } catch {
+        // If error counting fails, leave zeros
+      }
+
+      const totalErrors = Object.values(errorsLast15m).reduce((a, b) => a + b, 0);
+      const overallOk = dbOk && totalErrors < 50; // Degrade if >50 errors in 15 mins
+
       res.json({
-        status: 'ok',
+        ok: overallOk,
         timestamp: new Date().toISOString(),
-        version: process.env.npm_package_version || '1.0.0',
-        uptime: process.uptime(),
-        database: dbCheck,
-        environment: process.env.NODE_ENV || 'development',
+        db: { ok: dbOk, latencyMs: dbLatencyMs },
+        ai: { configured: aiConfigured },
+        errorsLast15m,
+        build: {
+          env: process.env.NODE_ENV || 'development',
+          version: process.env.npm_package_version || '1.0.0',
+          uptime: Math.floor(process.uptime()),
+        },
       });
     } catch (error) {
       res.status(503).json({
-        status: 'error',
+        ok: false,
         timestamp: new Date().toISOString(),
         error: 'Health check failed',
+        db: { ok: false },
+        ai: { configured: false },
+        errorsLast15m: {},
+        build: { env: process.env.NODE_ENV || 'development' },
       });
     }
   });
