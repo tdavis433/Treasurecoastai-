@@ -193,10 +193,6 @@ const intakeFormSchema = z.object({
   externalBookingUrl: z.string().url().optional().or(z.literal("")),
   notes: z.string().optional(),
   doNotSay: z.string().optional(),
-  customFaqs: z.array(z.object({
-    question: z.string(),
-    answer: z.string(),
-  })).optional(),
 }).refine(
   (data) => data.primaryPhone || data.email,
   { message: "At least one contact method (phone or email) is required", path: ["email"] }
@@ -277,7 +273,6 @@ export default function AgencyOnboardingConsole() {
       externalBookingUrl: "",
       notes: "",
       doNotSay: "",
-      customFaqs: [],
     },
   });
 
@@ -426,9 +421,7 @@ export default function AgencyOnboardingConsole() {
         hours: kbHours,
       },
       websiteSuggestions: websiteSuggestions.filter(s => s.selected),
-      notification: notificationEnabled 
-        ? { recipient: notificationRecipient || intakeData.email || "" } 
-        : null,
+      notification: null,
     };
 
     generateDraftMutation.mutate(payload);
@@ -665,7 +658,6 @@ export default function AgencyOnboardingConsole() {
     const selectedBooking = importData.bookingLinks.find(b => b.selected);
     if (selectedBooking) {
       form.setValue("externalBookingUrl", selectedBooking.url);
-      form.setValue("bookingPreference", "external");
       appliedCount++;
     }
 
@@ -673,28 +665,6 @@ export default function AgencyOnboardingConsole() {
       title: "Suggestions Applied",
       description: `Applied ${appliedCount} items to the form and knowledge base.`,
     });
-  };
-
-  const handleSendTestNotification = async () => {
-    setTestNotificationStatus('sending');
-    try {
-      await apiRequest("POST", "/api/notifications/test", {
-        recipient: notificationRecipient || form.getValues("email"),
-        type: "lead_notification",
-      });
-      setTestNotificationStatus('sent');
-      toast({
-        title: "Test Sent",
-        description: "Check your inbox for the test notification.",
-      });
-    } catch (error) {
-      setTestNotificationStatus('error');
-      toast({
-        title: "Test Failed",
-        description: "Could not send test notification.",
-        variant: "destructive",
-      });
-    }
   };
 
   const copyEmbedCode = () => {
@@ -773,17 +743,21 @@ export default function AgencyOnboardingConsole() {
 
   const getFailsafeStatus = () => {
     const externalUrl = form.getValues("externalBookingUrl");
-    const isExternal = bookingPreference === "external";
     
-    if (!isExternal) return { status: "internal", message: "Using internal request capture" };
-    if (!externalUrl) return { status: "failsafe", message: "No URL set - will use internal fallback" };
+    // No external URL = using internal request capture (this is fine)
+    if (!externalUrl || externalUrl.trim() === "") {
+      return { status: "internal", message: "Using internal request capture" };
+    }
+    
+    // Validate the external URL
     try {
-      new URL(externalUrl);
-      if (!externalUrl.startsWith("https://")) {
-        return { status: "warning", message: "URL must be HTTPS for security" };
+      const parsed = new URL(externalUrl);
+      if (parsed.protocol !== "https:") {
+        return { status: "warning", message: "URL should be HTTPS for security" };
       }
       return { status: "ok", message: "External booking configured" };
     } catch {
+      // Invalid URL format - will fall back to internal
       return { status: "failsafe", message: "Invalid URL - will use internal fallback" };
     }
   };
@@ -827,6 +801,34 @@ export default function AgencyOnboardingConsole() {
                draftState.status === 'qa_pending' ? 'QA PENDING' : 'DRAFT'}
             </Badge>
           )}
+        </div>
+
+        {/* Launch Checklist */}
+        <div className="mb-6 p-4 rounded-lg border border-white/10 bg-white/3" data-testid="launch-checklist">
+          <div className="flex items-center gap-2 mb-3">
+            <CheckCircle className="h-5 w-5 text-cyan-400" />
+            <span className="font-medium">Launch Checklist</span>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {getLaunchChecklist().map((item) => (
+              <div 
+                key={item.id}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm ${
+                  item.status === 'pass' 
+                    ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40' 
+                    : item.status === 'warn'
+                    ? 'bg-amber-500/15 text-amber-400 border border-amber-500/40'
+                    : 'bg-rose-500/15 text-rose-400 border border-rose-500/40'
+                }`}
+                data-testid={`checklist-item-${item.id}`}
+              >
+                {item.status === 'pass' && <Check className="h-3 w-3" />}
+                {item.status === 'warn' && <AlertTriangle className="h-3 w-3" />}
+                {item.status === 'fail' && <X className="h-3 w-3" />}
+                <span>{item.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -969,28 +971,26 @@ export default function AgencyOnboardingConsole() {
                     )}
                   />
 
-                  {bookingPreference === "external" && (
-                    <FormField
-                      control={form.control}
-                      name="externalBookingUrl"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-1">
-                            <Link2 className="h-3 w-3" /> External Booking URL
-                          </FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="https://booking.example.com" 
-                              {...field} 
-                              data-testid="input-external-booking-url"
-                            />
-                          </FormControl>
-                          <FormDescription>Must be HTTPS</FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
+                  <FormField
+                    control={form.control}
+                    name="externalBookingUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-1">
+                          <Link2 className="h-3 w-3" /> External Booking URL (Optional)
+                        </FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="https://booking.example.com" 
+                            {...field} 
+                            data-testid="input-external-booking-url"
+                          />
+                        </FormControl>
+                        <FormDescription>Leave empty to use internal request capture</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <div className={`p-3 rounded-lg border ${
                     failsafeStatus.status === 'ok' ? 'border-emerald-500/40 bg-emerald-500/10' :
