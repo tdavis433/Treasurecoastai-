@@ -1,0 +1,284 @@
+REPLIT AGENT MODE — IMPLEMENTATION CHECKLIST / TICKETS
+Treasure Coast AI — Client Onboarding Wizard v1.0 (Industry-Aware + Demo-Proof + No-Payments + Failsafe)
+
+GOAL
+Break the Wizard Spec into clear engineering tickets so it’s easy to execute and verify.
+Deliver a wizard that makes ANY template “demo-ready” immediately with zero manual edits, with:
+- industry-specific CTAs + booking behavior + intake questions
+- per-client and per-appointment-type override (internal/external)
+- FAILSAFE: external booking URL missing/invalid → auto-pivot to internal request capture
+- readiness score + diagnostics integration so demos never “act funny”
+
+NON-NEGOTIABLE
+- NO payment processing ever (no checkout UI, no payment intents, no card fields).
+- External booking is redirect-only to client’s HTTPS provider.
+- Tenant isolation must remain enforced.
+- Don’t log/print passwords/tokens/reset links.
+
+============================================================
+EPIC 0 — DISCOVERY + BASELINE (DO FIRST)
+============================================================
+
+TICKET 0.1 — Locate current onboarding flow + settings pages
+Task:
+- Identify where “New Client” / “Create Workspace” currently lives (UI + server routes)
+- Identify current client_settings edit UI and how it persists
+Deliverables:
+- Short map: UI routes/components + server endpoints involved
+Acceptance:
+- You can create a workspace and edit client settings using current flows (baseline verified)
+
+TICKET 0.2 — Confirm template + demo bot pipelines
+Task:
+- Confirm bot_templates table is the source of truth for templates
+- Confirm how demo page is populated (API /api/demos + demo UI)
+- Confirm how “create bot from template” works
+Acceptance:
+- You can trace: templateId → created workspace/bot → bot config used by widget
+
+============================================================
+EPIC 1 — DATA CONTRACTS / TYPES (SHARED)
+============================================================
+
+TICKET 1.1 — Add/confirm BookingProfile + failsafe types
+Task:
+- Define a canonical BookingProfile type that matches the spec:
+  bookingProfile.defaultMode, ctas, appointmentTypes, failsafe, disclaimers
+- Add Zod schema validation for BookingProfile (fail fast if invalid)
+Files:
+- shared/schema.ts (types or columns if needed)
+- shared/types.ts or shared/validators.ts (if present)
+Acceptance:
+- TypeScript compile passes
+- Invalid bookingProfile data fails validation with friendly error (server-side)
+
+TICKET 1.2 — Standardize metadata structure in client_settings
+Task:
+- Ensure client_settings.metadata is jsonb NOT NULL default {}
+- Store:
+  metadata.templateId
+  metadata.industry (industry add-ons)
+  metadata.booking (failsafeEnabled, appointmentTypeMode overrides, externalUrlOverrides)
+Acceptance:
+- New clients have metadata present
+- No nullable drift
+
+============================================================
+EPIC 2 — TEMPLATE DEFAULTS (BOT_TEMPLATES)
+============================================================
+
+TICKET 2.1 — Create “Industry Behavior Profile” defaults for ALL active templates
+Task:
+- For each bot_templates row (isActive=true), ensure a bookingProfile exists with:
+  - defaultMode
+  - CTAs (industry labels)
+  - appointmentTypes (internal types + request_callback fallback type ALWAYS)
+  - failsafe: pivot_to_internal + pivotAppointmentTypeId=request_callback
+  - disclaimers where needed (law/medical/recovery)
+Acceptance:
+- No template missing bookingProfile
+- bookingProfile validates via schema
+
+TICKET 2.2 — Ensure appointmentTypesConfig + preIntakeConfig seed correctly on client creation
+Task:
+- Confirm template → created client_settings copies:
+  - bookingMode default from bookingProfile.defaultMode
+  - appointmentTypesConfig + preIntakeConfig (for internal and fallback)
+  - externalBookingUrl if provided (optional)
+Acceptance:
+- Creating a new client from any template yields usable defaults immediately
+
+============================================================
+EPIC 3 — WIZARD UI (STEPPER) + SAVE BEHAVIOR
+============================================================
+
+TICKET 3.1 — Wizard shell (stepper, state model, autosave)
+Task:
+- Build wizard scaffold with steps from spec:
+  1) Template selection
+  2) Business basics
+  3) Contact/location
+  4) Hours
+  5) Services/FAQs/About
+  6) Booking behavior (override + failsafe)
+  7) Industry add-ons (dynamic)
+  8) Notifications
+  9) Review + readiness + diagnostics
+- Implement autosave per step (server persists to client_settings/workspace)
+Acceptance:
+- You can leave/reload and wizard state persists
+- No broken navigation; no dead buttons
+
+TICKET 3.2 — Template preview panel (always visible)
+Task:
+- Show selected template summary:
+  - default bookingMode
+  - CTAs
+  - failsafe status
+  - disclaimer summary
+Acceptance:
+- Switching templates updates preview instantly
+
+TICKET 3.3 — Booking step UI (global toggle + external URL + advanced per-type override)
+Task:
+- Global bookingMode toggle internal/external
+- External URL field with HTTPS validation + “Test Link”
+- Advanced: per appointment type mode toggle + per-type URL override
+- FAILSAFE toggle (default ON; advanced to disable)
+Acceptance:
+- External + missing URL shows warning BUT still safe because failsafe is ON
+- Invalid URLs blocked (javascript/data/file/http)
+
+TICKET 3.4 — Industry add-ons step (dynamic fields)
+Task:
+- Based on templateId, render the short list of add-on fields (5–8 max)
+- Store in client_settings.metadata.industry
+Acceptance:
+- Required add-ons enforced
+- Persist after refresh
+
+============================================================
+EPIC 4 — READINESS SCORE + DIAGNOSTICS (DEMO-PROOF)
+============================================================
+
+TICKET 4.1 — Readiness scoring engine (server + UI)
+Task:
+- Compute readiness score (0–100) with GREEN/YELLOW/RED
+- Blockers:
+  businessName missing
+  no contact method
+  hours missing/invalid
+  bookingMode missing
+  bookingProfile invalid or failsafe disabled
+  widget config generation fails
+- Weighted checks: knowledge minimum, booking config, notifications, add-ons, diagnostics
+Acceptance:
+- Score updates live as fields are completed
+- Review step shows clear “What’s missing” list
+
+TICKET 4.2 — “Run Diagnostics” button integrated into wizard review step
+Task:
+- Reuse existing diagnostics endpoint (admin-only)
+- Show PASS/FAIL breakdown card in wizard
+Acceptance:
+- One click yields clear results and links to fix steps
+
+============================================================
+EPIC 5 — FAILSAFE BOOKING BEHAVIOR (RUNTIME GUARANTEE)
+============================================================
+
+TICKET 5.1 — Verify orchestrator pivot-to-internal failsafe is always applied
+Task:
+- Ensure runtime logic does:
+  If bookingMode is external AND URL missing/invalid:
+    - create internal “request_callback” request
+    - notify via sms/email if configured
+    - persist request + transcript
+    - return confirmation message
+Acceptance:
+- External templates never “do nothing” when URL missing
+- No internal appointment created when external URL is valid (redirect-only)
+
+TICKET 5.2 — Wizard ensures failsafe cannot be accidentally disabled for demos
+Task:
+- If failsafe toggle OFF:
+  - require super-admin confirmation / advanced-only guard
+  - show strong warning “Not recommended”
+Acceptance:
+- Default ON for all new clients
+
+============================================================
+EPIC 6 — DEMO PAGE TEMPLATE CORRECTNESS
+============================================================
+
+TICKET 6.1 — Validate demo bots map to correct templates
+Task:
+- Ensure each demo card is linked to a bot that has:
+  - matching templateId
+  - matching botType/industry
+  - correct bookingProfile behavior + CTAs
+- If drift exists, auto-fix mapping or re-seed demo bots from templates
+Deliverables:
+- DEMO_PAGE_TEMPLATE_MAPPING_REPORT.md
+Acceptance:
+- 100% demos validate
+
+============================================================
+EPIC 7 — TESTS + SCRIPTS (REGRESSION)
+============================================================
+
+TICKET 7.1 — Wizard unit/integration tests (vitest)
+Task:
+- Validate:
+  - booking URL validation
+  - readiness scoring
+  - required fields and add-ons
+  - per-type overrides persistence
+Acceptance:
+- Tests pass in CI/local
+
+TICKET 7.2 — Template + demo validation scripts (repeatable)
+Task:
+- Ensure scripts exist and run:
+  - scripts/validate-demo-templates.ts
+  - scripts/industry-template-sweep.ts
+- Add docs: how to run them
+Acceptance:
+- All templates PASS and demos PASS, producing reports
+
+TICKET 7.3 — Add wizard “happy path” smoke test steps in docs
+Task:
+- Document the fastest flow to create a demo-ready client
+Acceptance:
+- Anyone can follow without tribal knowledge
+
+============================================================
+EPIC 8 — DOCUMENTATION UPDATES
+============================================================
+
+TICKET 8.1 — Update RELEASE_RUNBOOK.md
+Task:
+- Add:
+  - “Wizard Readiness Score” section
+  - “Failsafe booking behavior” explanation
+  - “Industry add-ons” note (5–8 fields max)
+  - Commands:
+    npx tsc --noEmit
+    npx vitest run
+    npm run build
+    npx tsx scripts/validate-demo-templates.ts
+    npx tsx scripts/industry-template-sweep.ts
+Acceptance:
+- Runbook matches reality and contains no payment references except redirect-only policy
+
+============================================================
+FINAL ACCEPTANCE (GO/NO-GO)
+============================================================
+
+For each active template:
+- Create new client via wizard using only required fields
+- Confirm:
+  - widget loads
+  - CTAs show correctly
+  - booking behavior matches industry defaults
+  - external missing URL triggers internal request capture (failsafe)
+  - internal booking creates request + notification attempt
+  - readiness score becomes GREEN
+- Confirm all demo page bots map correctly to templates
+
+Quality Gates must PASS:
+- bash ./scripts/guard-no-payments.sh
+- npx tsc --noEmit
+- npx vitest run
+- npm run build
+- npx tsx scripts/validate-demo-templates.ts
+- npx tsx scripts/industry-template-sweep.ts
+
+OUTPUT REQUIRED
+- WIZARD_IMPLEMENTATION_REPORT.md
+  - list each ticket: PASS/FAIL
+  - file paths changed
+  - any follow-ups
+- Updated RELEASE_RUNBOOK.md section(s)
+
+START NOW: run EPIC 0 then proceed in order.
