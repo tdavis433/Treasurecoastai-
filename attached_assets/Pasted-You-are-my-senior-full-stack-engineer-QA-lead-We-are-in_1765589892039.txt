@@ -1,0 +1,127 @@
+You are my senior full-stack engineer + QA lead. We are in the final sprint for Treasure Coast AI. Your job is to implement and verify the fixes below, then produce a final ship/no-ship recommendation.
+
+Non-negotiables
+	•	Don’t guess. Use the codebase as source of truth.
+	•	For every fix: identify root cause → implement minimal safe patch → add/adjust tests → verify manually.
+	•	Keep changes small, reversible, and well-scoped.
+	•	Output must include exact file paths, diff-style summaries, and commands run.
+
+⸻
+
+Tasks (in order)
+
+1) Stop duplicate form submissions from bots
+
+Goal: Prevent repeated form posts (automated or accidental double-submit).
+Do:
+	•	Add server-side protection (don’t rely only on frontend):
+	•	Idempotency key OR request fingerprinting (email+timestamp window) OR DB uniqueness constraint (when appropriate).
+	•	Add rate limiting per IP/user/route (especially public form endpoints).
+	•	Add bot filtering (honeypot field, timing checks, and/or CAPTCHA if already supported).
+	•	Add client-side guard: disable submit button while pending + prevent double click.
+Deliverable: Clear explanation of chosen approach + where it’s enforced.
+
+2) Fix bot delete errors, update data
+
+Goal: Bot deletion works reliably and UI/state updates correctly.
+Do:
+	•	Reproduce the delete error and log the failing request/response.
+	•	Fix any of:
+	•	wrong route/method, auth/permissions, missing bot ID, DB constraint, cascade issues
+	•	mismatch between frontend state and backend response shape
+	•	Ensure UI removes bot immediately or re-fetches cleanly.
+Deliverable: Delete flow works end-to-end; no console/server errors.
+
+3) Fix server errors in routes file
+
+Goal: Eliminate runtime exceptions in routing layer.
+Do:
+	•	Find failing routes via logs / stack traces.
+	•	Fix common causes:
+	•	missing await, thrown errors not caught, invalid params, undefined env vars, bad imports
+	•	inconsistent response shapes, missing return, double-send responses
+	•	Add centralized error handler if absent.
+Deliverable: All routes load without 500s for normal usage; errors return consistent JSON.
+
+4) Fix form labels for better accessibility
+
+Goal: Every input has a correct label association.
+Do:
+	•	Ensure label htmlFor matches input id
+	•	Add aria-* where needed for errors/help text
+	•	Make sure required fields are announced properly
+Deliverable: Forms pass basic accessibility checks; no unlabeled controls.
+
+5) Fix blank page after logging out
+
+Goal: Logout reliably redirects and clears session without rendering a dead state.
+Do:
+	•	Identify whether it’s routing, auth guard, state hydration, or cached user state.
+	•	Ensure:
+	•	auth tokens/session cleared
+	•	user state reset
+	•	redirect to login/home
+	•	protected routes show a proper redirect/loading state
+Deliverable: Logout always lands on a real page; refresh doesn’t break.
+
+6) Fix business profile input problems
+
+Goal: Business profile fields save + validate correctly.
+Do:
+	•	Reproduce issues (typing lag, fields not saving, validation rejecting valid data, wrong types).
+	•	Fix controlled/uncontrolled input issues, schema validation, and API payload mapping.
+	•	Ensure update endpoint returns updated profile and UI reflects it.
+Deliverable: Profile edit is smooth; saves persist; reload shows correct values.
+
+7) Add notes field to bot requests
+
+Goal: Bot request form/API/DB supports an optional “notes” field.
+Do:
+	•	Add field to:
+	•	frontend form UI
+	•	request payload schema validation
+	•	backend handler
+	•	DB migration / model update (if stored)
+	•	admin/view page if applicable
+	•	Ensure backwards compatibility for existing records.
+Deliverable: Notes are saved, retrievable, and displayed where relevant.
+
+8) Run final tests on all fixes
+
+Goal: High confidence with repeatable checks.
+Do:
+	•	Run lint/format, typecheck, unit tests, integration/e2e (whatever exists)
+	•	Add missing tests for the above fixes where practical (especially duplicates + delete + logout).
+Deliverable: Provide exact commands and results.
+
+9) Final review and launch decision
+
+Goal: Decide ship/no-ship with receipts.
+Do:
+	•	Provide a release checklist:
+	•	critical flows verified
+	•	known issues (if any) + severity
+	•	rollback plan notes
+	•	Give a blunt recommendation: SHIP / DON’T SHIP and why.
+
+⸻
+
+Required output format
+
+Return results in this structure:
+	1.	Summary of changes (bullet list)
+	2.	Per-task report (1–9), each containing:
+
+	•	Root cause
+	•	Files changed (path/to/file)
+	•	Patch summary (diff-style bullet points)
+	•	Tests added/updated
+	•	How verified (manual steps + commands)
+	•	Remaining risks
+
+	3.	Final test report (commands + outputs)
+	4.	Launch decision (SHIP / DON’T SHIP) + reasons + next steps
+
+⸻
+
+Now start by locating the relevant routes, forms, and bot delete logic, reproduce the issues, then implement fixes in the order above.

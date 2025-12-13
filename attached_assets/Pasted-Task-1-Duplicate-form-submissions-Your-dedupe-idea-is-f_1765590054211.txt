@@ -1,0 +1,151 @@
+Task 1: Duplicate form submissions
+
+Your dedupe idea is fine only if you also make it idempotent per-request.
+
+Do this (server-side, mandatory):
+	•	Idempotency key (best): accept Idempotency-Key header (UUID generated client-side). Store it with the request record; if seen again, return the existing result.
+	•	If you won’t do idempotency keys, your “email+phone+30-min window” needs:
+	•	A DB-level unique constraint on a computed key (or a dedicated dedupe_hash) + time-bucket, otherwise concurrency will still allow duplicates.
+	•	Example: dedupe_hash = sha256(lower(email)|normalized_phone|form_type|date_bucket) and unique on (dedupe_hash). Date bucket could be hour/day depending on your business rules.
+
+Do this (client-side, nice but not sufficient):
+	•	Disable submit button + show spinner.
+	•	Ensure you prevent double-submit on Enter key + click spam (single in-flight request).
+
+Rate limiting:
+	•	Apply on the endpoint by IP + user agent (and maybe per normalized email) with a conservative default (e.g., 5/min + burst).
+	•	Add a honeypot field if this is a public form.
+
+Verification:
+	•	Fire 10 concurrent identical requests → you should end up with 1 record and 9 “already processed” responses.
+
+⸻
+
+Task 2: Bot delete 404 (cache not refreshed)
+
+Your root-cause hypothesis is plausible, but don’t patch around it—make delete authoritative.
+
+Best fix:
+	•	Delete must query the database directly by bot ID + workspace/owner constraints.
+	•	Cache can exist for reads, but writes (create/update/delete) must invalidate or bypass cache.
+
+Minimum safe approach:
+	•	Delete handler: DB lookup → delete → return success → trigger cache invalidation.
+	•	Ensure “getAllBotConfigs” is never used to decide existence for deletes.
+
+Verification:
+	•	Create bot → delete bot immediately → list bots → bot is gone without restart.
+
+⸻
+
+Task 3: routes.ts errors
+
+Don’t treat this as “LSP cleanup.” Treat it as “these type errors are telling you about runtime risk.”
+
+Do:
+	•	Pull full diagnostics and fix in priority order:
+	•	Missing await / promise misuse
+	•	Wrong return types for handlers
+	•	Response double-send and missing return
+	•	Params typed as optional but required
+	•	Add a single error boundary / middleware if missing to stop random 500s.
+
+Verification:
+	•	Build + typecheck passes
+	•	Hit all routes in a smoke script without 500s
+
+⸻
+
+Task 4: Form label accessibility
+
+Your checklist is right, add two more items that matter in real audits:
+	•	Ensure every input has unique id (no duplicates across dynamic lists).
+	•	Error messages must be linked via aria-describedby, and aria-invalid="true" when invalid.
+	•	If labels are visually hidden, use a proper “sr-only” pattern.
+
+Verification:
+	•	Run a basic a11y pass (even a quick Lighthouse/axe run if available)
+
+⸻
+
+Task 5: Post-logout blank page
+
+Redirecting on 401 is part of it, but blank pages usually come from auth state + routing guard deadlock.
+
+Do:
+	•	On logout:
+	•	Clear tokens/session
+	•	Clear cached user state (query cache, zustand, redux, etc.)
+	•	Navigate to login/home
+	•	In protected routes:
+	•	If auth is “unknown/loading” show a loading state (not null)
+	•	If unauthenticated, redirect
+	•	Avoid infinite redirect loops by whitelisting /login and /logout
+
+Verification:
+	•	Logout → redirected
+	•	Refresh on protected route while logged out → redirects (no white screen)
+
+⸻
+
+Task 6: Business profile input focus / controlled input issues
+
+This is usually a controlled/uncontrolled mismatch or rerenders nuking focus.
+
+Do:
+	•	Ensure inputs always have stable value (never switch between undefined and string)
+	•	Keep key props stable (don’t key by value)
+	•	Avoid recreating the entire form object on each keystroke (use local state per field or a form lib pattern)
+	•	Fix API payload mapping so UI state matches backend schema
+
+Verification:
+	•	Type fast → no focus drop
+	•	Save → reload → values persist
+
+⸻
+
+Task 7: Notes field for bot requests
+
+Good. Make it backwards compatible and migration-safe.
+
+Do:
+	•	DB: nullable notes (TEXT)
+	•	API schema: optional notes with length cap (e.g., 2k–10k)
+	•	UI: textarea with helper text + character count
+	•	Admin/view: display notes safely (escape HTML)
+
+Verification:
+	•	Old records still load
+	•	New notes save and display
+
+⸻
+
+Task 8: Final tests
+
+Don’t rely on “run E2E” unless you actually have E2E. Define a minimum gate:
+
+Minimum ship gates:
+	•	lint + typecheck + unit/integration tests pass
+	•	smoke test script hits:
+	•	bot request submit
+	•	bot delete
+	•	login/logout
+	•	business profile update
+
+⸻
+
+Task 9: Launch decision
+
+Your SHIP/NO-SHIP must be tied to P0 criteria:
+	•	No duplicate submissions possible via concurrency test
+	•	Delete works reliably and reflects immediately
+	•	No blank logout screen
+	•	No route 500s in smoke
+	•	Notes field end-to-end verified
+	•	Tests + build green
+
+⸻
+
+One big change I’d make to your plan
+
+For Task 1, don’t depend on a 30-minute window alone. That can block legitimate repeats and still fails under concurrency unless you enforce uniqueness/idempotency at the DB or request-key level. Add idempotency or a dedupe hash with a unique constraint.

@@ -1,0 +1,116 @@
+You are my senior engineer + QA lead. Your job is to produce a detailed, in-depth, actionable checklist of everything we need to retouch, review, fix, change, and polish to get Treasure Coast AI across the finish line and into a production-ready release.
+
+Project assumptions (use these unless the repo says otherwise)
+	•	App name: Treasure Coast AI
+	•	Likely components: frontend + backend/API + integrations + deployments
+	•	Goal: reliable, secure, fast, clean UX, maintainable, observable
+	•	Output must be specific (file paths, functions, components, exact commands)
+
+What you must do (no hand-waving)
+	1.	Scan the entire repository: frontend, backend, scripts, configs, infra, docs, tests.
+	2.	Map the architecture quickly (how data flows, main entry points, key modules).
+	3.	Run every check you can:
+	•	Install deps
+	•	Lint / format
+	•	Typecheck (if applicable)
+	•	Unit/integration tests
+	•	Build
+	•	Start the app locally (or in Replit) and hit key flows
+	4.	Identify:
+	•	Bugs
+	•	Edge-case failures
+	•	Security risks
+	•	Performance bottlenecks
+	•	UX papercuts
+	•	Code smells
+	•	Deployment footguns
+	5.	Prioritize into P0/P1/P2 and include effort + verification steps.
+
+Audit categories (be exhaustive)
+
+A) Core functionality & correctness
+	•	Broken flows, incomplete features, inconsistent behavior
+	•	Input validation, error handling, retries/timeouts
+	•	Data integrity (schema, migrations, state, caching)
+	•	Concurrency/race issues, idempotency for key endpoints
+
+B) UX/UI polish (if there’s a UI)
+	•	Loading/empty/error states everywhere
+	•	Form UX (validation messages, disabled states, keyboard nav)
+	•	Mobile responsiveness + accessibility (ARIA, contrast, focus)
+	•	Copy consistency, clarity, and “what happens next” confirmations
+
+C) Performance
+	•	Slow queries, N+1 patterns, heavy endpoints
+	•	Frontend re-render hotspots, bundle bloat, lazy loading
+	•	Caching, pagination, debouncing/throttling for search/chat
+	•	Image/font optimization, compression, CDN readiness
+
+D) Security & privacy (treat as high priority)
+	•	Auth/session handling, token storage, CSRF/XSS/SQLi
+	•	Secrets management, env vars, logging sensitive data
+	•	Dependency vulnerabilities, RBAC/permissions
+	•	Rate limiting / abuse prevention (especially for AI endpoints)
+
+E) AI-specific readiness (critical for this project)
+	•	Prompt safety: injection resistance, tool/function-call constraints
+	•	Output reliability: formatting guarantees, schema validation, fallbacks
+	•	Model/provider abstraction (swap models easily)
+	•	Cost controls: max tokens, caching, batching, streaming, quotas
+	•	Guardrails: banned content handling, sensitive data redaction
+	•	Evaluation: golden tests, regression suite, quality metrics
+
+F) Reliability & observability
+	•	Structured logs, useful error messages, correlation IDs
+	•	Health checks, graceful shutdown
+	•	Monitoring hooks (latency, error rate, token spend)
+	•	Alert-worthy conditions and what to log vs not log
+
+G) Testing
+	•	Missing unit/integration/e2e coverage of critical flows
+	•	Suggested minimum “ship suite”
+	•	Mocking strategy for AI + external APIs
+	•	Flaky tests or nondeterminism fixes
+
+H) Build, CI/CD, deployment readiness
+	•	Reproducible builds, lockfiles, pinned versions
+	•	Environment separation (dev/stage/prod)
+	•	Docker (if used), migrations on deploy, rollback strategy
+	•	CI gates: lint + typecheck + tests + build
+
+I) Documentation & DX
+	•	README: setup/run/test/deploy
+	•	Environment variables list (with examples)
+	•	API docs, architecture notes, scripts
+	•	“Common failures” troubleshooting section
+
+Required output format
+
+Deliver the audit in this exact structure:
+	1.	Executive summary (10–15 bullets)
+
+	•	Biggest shipping blockers + biggest quick wins
+
+	2.	Prioritized punch list
+
+	•	P0 (must fix before launch)
+	•	Item: …
+	•	Why it matters: …
+	•	Where: path/to/file (+ function/component)
+	•	Fix approach: …
+	•	Effort: S/M/L
+	•	Verification: exact command or steps
+	•	P1 (should fix soon after) …
+	•	P2 (nice-to-have polish) …
+
+	3.	Quick wins (≤2 hours each)
+	4.	High-leverage refactors (only if worth it)
+	5.	Minimum test plan + CI gates
+	6.	Launch checklist (security + perf + rollback)
+	7.	Top 5 unknowns (questions only if truly blocking)
+
+Extra instructions
+	•	Be blunt and practical. No generic advice.
+	•	If you can’t confirm something by running or searching the code, label it “needs verification” and explain how to verify.
+
+Now perform the full audit and generate the complete report for Treasure Coast AI.
