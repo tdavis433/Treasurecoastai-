@@ -68,6 +68,9 @@ import {
   ExternalLink,
   Tag,
   Zap,
+  Lock,
+  Shield,
+  KeyRound,
 } from "lucide-react";
 import {
   Select,
@@ -330,6 +333,13 @@ export default function ClientDashboard() {
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [leadsPage, setLeadsPage] = useState(1);
   const LEADS_PER_PAGE = 25;
+  
+  // Password change state
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   const { data: currentUser, isLoading: authLoading } = useQuery<AuthUser>({
     queryKey: ["/api/auth/me"],
@@ -687,6 +697,79 @@ export default function ClientDashboard() {
   const handleClickToCall = (phone: string) => {
     window.location.href = `tel:${phone}`;
   };
+
+  // Password change handler
+  const handleChangePassword = async () => {
+    setPasswordError(null);
+    
+    // Validate passwords match
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Passwords do not match");
+      return;
+    }
+    
+    // Validate password strength
+    if (newPassword.length < 8) {
+      setPasswordError("Password must be at least 8 characters");
+      return;
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+      setPasswordError("Password must contain at least one uppercase letter");
+      return;
+    }
+    if (!/[a-z]/.test(newPassword)) {
+      setPasswordError("Password must contain at least one lowercase letter");
+      return;
+    }
+    if (!/[0-9]/.test(newPassword)) {
+      setPasswordError("Password must contain at least one number");
+      return;
+    }
+    if (!/[^A-Za-z0-9]/.test(newPassword)) {
+      setPasswordError("Password must contain at least one special character");
+      return;
+    }
+    
+    try {
+      const response = await fetch("/api/client/account/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        setPasswordError(data.error || "Failed to change password");
+        return;
+      }
+      
+      toast({
+        title: "Password updated",
+        description: "Your password has been changed successfully.",
+      });
+      
+      // Reset form and close dialog
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordDialogOpen(false);
+    } catch (error) {
+      setPasswordError("An error occurred. Please try again.");
+    }
+  };
+
+  // Password requirements check
+  const passwordRequirements = [
+    { met: newPassword.length >= 8, text: "At least 8 characters" },
+    { met: /[A-Z]/.test(newPassword), text: "One uppercase letter" },
+    { met: /[a-z]/.test(newPassword), text: "One lowercase letter" },
+    { met: /[0-9]/.test(newPassword), text: "One number" },
+    { met: /[^A-Za-z0-9]/.test(newPassword), text: "One special character" },
+  ];
+  const allPasswordRequirementsMet = passwordRequirements.every(req => req.met);
+  const passwordsMatch = newPassword === confirmPassword && confirmPassword.length > 0;
 
   // Helper to normalize appointment types for consistent display and counting
   // Handles legacy data, NULL values, and various spellings
@@ -2645,6 +2728,139 @@ export default function ClientDashboard() {
           </GlassCardContent>
         </GlassCard>
       </div>
+
+      {/* Account Security Card */}
+      <GlassCard data-testid="card-account-security">
+        <GlassCardHeader>
+          <GlassCardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-green-400" />
+            Account Security
+          </GlassCardTitle>
+          <GlassCardDescription>
+            Manage your password and security settings
+          </GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent>
+          <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10">
+            <div className="flex items-center gap-3">
+              <Lock className="h-5 w-5 text-white/50" />
+              <div>
+                <p className="text-white font-medium">Password</p>
+                <p className="text-sm text-white/50">Change your account password</p>
+              </div>
+            </div>
+            <Button
+              onClick={() => {
+                setPasswordError(null);
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+                setPasswordDialogOpen(true);
+              }}
+              className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-white"
+              data-testid="button-change-password"
+            >
+              <KeyRound className="h-4 w-4 mr-2" />
+              Change Password
+            </Button>
+          </div>
+        </GlassCardContent>
+      </GlassCard>
+
+      {/* Password Change Dialog */}
+      <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+        <DialogContent className="bg-[#0d1117] border border-white/10 text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5 text-green-400" />
+              Change Password
+            </DialogTitle>
+            <DialogDescription className="text-white/60">
+              Enter your current password and choose a new secure password.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {passwordError && (
+              <div className="p-3 rounded-lg bg-red-500/10 border border-red-400/30 text-red-400 text-sm">
+                {passwordError}
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <Label htmlFor="currentPassword" className="text-white/80">Current Password</Label>
+              <Input
+                id="currentPassword"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Enter your current password"
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                data-testid="input-current-password"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="newPassword" className="text-white/80">New Password</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter your new password"
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                data-testid="input-new-password"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="confirmNewPassword" className="text-white/80">Confirm New Password</Label>
+              <Input
+                id="confirmNewPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm your new password"
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                data-testid="input-confirm-new-password"
+              />
+            </div>
+            
+            <div className="bg-white/5 rounded-lg p-3 space-y-2">
+              <p className="text-white/60 text-xs font-medium mb-2">Password Requirements:</p>
+              {passwordRequirements.map((req, index) => (
+                <div key={index} className="flex items-center gap-2 text-xs">
+                  <CheckCircle className={`w-3 h-3 ${req.met ? 'text-green-400' : 'text-white/20'}`} />
+                  <span className={req.met ? 'text-green-400' : 'text-white/40'}>{req.text}</span>
+                </div>
+              ))}
+              <div className="flex items-center gap-2 text-xs pt-2 border-t border-white/10 mt-2">
+                <CheckCircle className={`w-3 h-3 ${passwordsMatch ? 'text-green-400' : 'text-white/20'}`} />
+                <span className={passwordsMatch ? 'text-green-400' : 'text-white/40'}>Passwords match</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setPasswordDialogOpen(false)}
+              className="flex-1 border-white/10 text-white hover:bg-white/10"
+              data-testid="button-cancel-password"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleChangePassword}
+              disabled={!currentPassword || !allPasswordRequirementsMet || !passwordsMatch}
+              className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-white disabled:opacity-50"
+              data-testid="button-submit-password"
+            >
+              Update Password
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <GlassCard data-testid="card-widget-code">
         <GlassCardHeader>
