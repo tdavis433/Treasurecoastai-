@@ -1,0 +1,131 @@
+REPLIT AGENT MODE — ADD REAL TEST/GUARD SCRIPTS + MINIMAL SMOKE TEST + OPTIONAL PLAYWRIGHT E2E
+
+GOAL
+Make verification repeatable and match the runbook by adding:
+- npm test (Vitest)
+- npm run guard:no-payments (uses existing guard script)
+- npm run db:verify (runs scripts/verify-db-schema.sql)
+- npm run check (TypeScript noEmit)
+- npm run test:e2e (Playwright if installed; otherwise install + add minimal E2E)
+Also add a minimal Vitest smoke test that prevents regression of tenant isolation for /api/analytics/export (clientId must come from session only).
+
+NON-NEGOTIABLE RULES
+- NO PAYMENT PROCESSING EVER: Do not introduce Stripe/Square/PayPal/checkout/payment intents/tokens/webhooks/billing code.
+- Do NOT print secrets/tokens/passwords in output.
+- Keep changes minimal, boring, and stable. Prefer adding small helpers rather than refactoring the whole app.
+- Ensure docs remain truthful: the runbook commands must exist and succeed.
+
+CURRENT CONTEXT
+Existing package.json scripts:
+- dev, build, start, check, db:push
+Vitest is already installed (vitest + @vitest/coverage-v8).
+Existing scripts already in repo:
+- scripts/guard-no-payments.sh
+- scripts/verify-db-schema.sql
+
+========================================================
+PHASE 1 — UPDATE package.json SCRIPTS (MANDATORY)
+========================================================
+1) Update package.json scripts to include the following (preserve existing ones too):
+
+"check": "tsc --noEmit",
+"test": "vitest run",
+"test:watch": "vitest",
+"test:coverage": "vitest run --coverage",
+"guard:no-payments": "bash ./scripts/guard-no-payments.sh",
+"db:verify": "psql \"$DATABASE_URL\" -f scripts/verify-db-schema.sql",
+
+2) For E2E:
+A) If Playwright is already installed/configured, add:
+"test:e2e": "playwright test"
+
+B) If Playwright is NOT installed, then install it and add a minimal E2E suite:
+- npm i -D @playwright/test
+- npx playwright install --with-deps (only if needed in Replit)
+Then add:
+"test:e2e": "playwright test"
+
+If installing Playwright is not feasible in this environment, add a non-failing placeholder:
+"test:e2e": "node -e \"console.log('E2E not configured yet. Skipping.');\""
+…but ONLY use this fallback if you truly cannot install/configure Playwright. Prefer real E2E.
+
+========================================================
+PHASE 2 — ADD VITEST CONFIG + MINIMAL SMOKE TEST (MANDATORY)
+========================================================
+1) Create vitest.config.ts (if missing) with Node environment.
+2) Create a minimal test folder:
+- tests/
+
+3) Add tests/smoke.analytics-export.test.ts with a regression test that proves:
+- /api/analytics/export uses ONLY req.session.clientId
+- clientId from query params is ignored
+Because the handler is currently embedded in server/routes.ts, DO NOT refactor the entire routes file.
+Instead do ONE of these minimal approaches (choose best fit):
+
+OPTION 1 (preferred): Create a tiny pure helper function and test it
+- Create server/utils/tenantScope.ts exporting:
+  export function getExportClientId(sessionRole: string | undefined, sessionClientId: string | undefined): string | undefined
+  - For now it simply returns sessionClientId and ignores query overrides entirely.
+- In the export handler, use this helper.
+- Write vitest test asserting:
+  - returns sessionClientId for normal users
+  - returns undefined if missing sessionClientId
+
+OPTION 2: If the export handler can be imported/tested without heavy refactor, do that.
+But keep it minimal and stable.
+
+Test expectations:
+- When sessionClientId is present -> used
+- When sessionClientId missing -> handler should result in 400 (if integration style test) OR helper returns undefined (if unit test)
+
+========================================================
+PHASE 3 — PLAYWRIGHT E2E (IF INSTALLED) (RECOMMENDED)
+========================================================
+Create minimal Playwright tests (1 file) that validates the demo-critical guardrails:
+A) “No Payments / Redirect-only Booking” (if UI exposes Book Now)
+- Navigate to the demo page with widget preview or landing widget
+- Trigger booking intent
+- Click Book Now
+- Assert destination is EXTERNAL (not our domain)
+
+B) Basic Auth sanity
+- Login page loads
+- Client login works (DO NOT print password; use env vars or local test secrets)
+NOTE: Do not hardcode passwords into repo tests. Use environment variables for test credentials:
+E2E_ADMIN_USER, E2E_ADMIN_PASS, E2E_CLIENT_USER, E2E_CLIENT_PASS, E2E_BASE_URL
+
+If you cannot add real E2E now, skip this phase and ensure runbook states E2E is optional until configured.
+
+========================================================
+PHASE 4 — UPDATE RELEASE_RUNBOOK.md COMMANDS (MANDATORY)
+========================================================
+Update the runbook’s “Commands to Verify” section to the REAL scripts:
+- npm run guard:no-payments
+- npm run db:verify
+- npm run check
+- npm test
+- npm run test:e2e (only if real E2E exists; otherwise clearly labeled optional)
+
+========================================================
+PHASE 5 — VERIFY EVERYTHING WORKS (MANDATORY)
+========================================================
+Run these commands and ensure they pass:
+1) npm run guard:no-payments
+2) npm run check
+3) npm test
+4) npm run db:push
+5) npm run db:verify
+
+If Playwright added:
+6) npm run test:e2e
+
+========================================================
+FINAL OUTPUT (STRICT)
+========================================================
+In your final message, output:
+1) The updated package.json scripts block (only scripts section)
+2) List of files created/edited
+3) Confirmation that all required commands pass (with short results)
+4) If Playwright added: explain how to set E2E env vars (names only, no secrets)
+
+START NOW.

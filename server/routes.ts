@@ -84,6 +84,7 @@ import { scrapeWebsite, applyScrapedDataToBot } from './scraper';
 import { resetDemoWorkspace, seedAllDemoWorkspaces, getDemoSlugs, getDemoConfig } from './demoSeed';
 import { getWidgetEmbedCode, getEmbedInstructions, type WidgetEmbedOptions } from './embed';
 import { extractBookingInfoFromConversation, type ExtractedBookingInfo, type ChatMessage as OrchestratorChatMessage } from './orchestrator';
+import { requireExportClientId } from './utils/tenantScope';
 
 // =============================================
 // PHASE 2.4: SIGNED WIDGET TOKENS
@@ -3201,8 +3202,11 @@ These suggestions should be relevant to what was just discussed and help guide t
       // Only allow date range from query; tenant scope comes from the session.
       const { startDate, endDate } = queryValidation.data;
 
-      const clientId = req.session.clientId;
-      if (!clientId) {
+      // SECURITY: Use helper to enforce session-only clientId (no query override)
+      let clientId: string;
+      try {
+        clientId = requireExportClientId(req.session.clientId);
+      } catch {
         return res.status(400).json({ error: "Client ID required" });
       }
 
