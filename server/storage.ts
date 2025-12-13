@@ -67,6 +67,9 @@ import {
   knowledgeDocuments,
   knowledgeChunks,
   scrapedWebsites,
+  notificationLogs,
+  type InsertNotificationLog,
+  type NotificationLog,
 } from "@shared/schema";
 import * as schema from "@shared/schema";
 import { drizzle } from "drizzle-orm/neon-serverless";
@@ -251,6 +254,15 @@ export interface IStorage {
   getClientNotes(clientId: string): Promise<AdminNote[]>;
   addClientNote(note: { clientId: string; content: string; category?: string; createdBy: string }): Promise<AdminNote>;
   deleteClientNote(noteId: string): Promise<void>;
+  
+  // Notification Logs
+  createNotificationLog(log: InsertNotificationLog): Promise<NotificationLog>;
+  getNotificationLogs(clientId: string, filters?: {
+    type?: string;
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ logs: NotificationLog[]; total: number }>;
 }
 
 // Admin Notes type (stored in clients metadata or separate table)
@@ -2117,6 +2129,49 @@ export class DbStorage implements IStorage {
         return;
       }
     }
+  }
+
+  // =========================================
+  // NOTIFICATION LOGS
+  // =========================================
+  
+  async createNotificationLog(log: InsertNotificationLog): Promise<NotificationLog> {
+    const [created] = await db
+      .insert(notificationLogs)
+      .values(log as any)
+      .returning();
+    return created;
+  }
+
+  async getNotificationLogs(clientId: string, filters?: {
+    type?: string;
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ logs: NotificationLog[]; total: number }> {
+    const conditions = [eq(notificationLogs.clientId, clientId)];
+    
+    if (filters?.type) {
+      conditions.push(eq(notificationLogs.type, filters.type));
+    }
+    if (filters?.status) {
+      conditions.push(eq(notificationLogs.status, filters.status));
+    }
+
+    const [countResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(notificationLogs)
+      .where(and(...conditions));
+
+    const logs = await db
+      .select()
+      .from(notificationLogs)
+      .where(and(...conditions))
+      .orderBy(desc(notificationLogs.createdAt))
+      .limit(filters?.limit || 50)
+      .offset(filters?.offset || 0);
+
+    return { logs, total: Number(countResult?.count || 0) };
   }
 }
 

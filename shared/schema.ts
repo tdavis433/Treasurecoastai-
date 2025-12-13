@@ -2445,3 +2445,35 @@ export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTo
 
 export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+
+// Notification Logs - Track delivery attempts for email and SMS notifications
+export const notificationLogs = pgTable("notification_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  botId: varchar("bot_id"),
+  type: text("type").notNull(), // 'email' | 'sms'
+  recipient: text("recipient").notNull(),
+  status: text("status").notNull(), // 'sent' | 'failed' | 'skipped'
+  errorMessage: text("error_message"),
+  metadata: jsonb("metadata").$type<{
+    subject?: string;
+    appointmentId?: string;
+    leadId?: string;
+    isTest?: boolean;
+    responseData?: any;
+  }>().default({}),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  clientIdIdx: index("notification_logs_client_id_idx").on(table.clientId),
+  typeIdx: index("notification_logs_type_idx").on(table.type),
+  statusIdx: index("notification_logs_status_idx").on(table.status),
+  createdAtIdx: index("notification_logs_created_at_idx").on(table.createdAt),
+}));
+
+export const insertNotificationLogSchema = createInsertSchema(notificationLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertNotificationLog = z.infer<typeof insertNotificationLogSchema>;
+export type NotificationLog = typeof notificationLogs.$inferSelect;

@@ -1275,6 +1275,31 @@ ${preIntakeInfo}
   }
 }
 
+// Notification logging wrapper for tracking delivery
+async function logNotification(params: {
+  clientId: string;
+  botId?: string;
+  type: 'email' | 'sms';
+  recipient: string;
+  status: 'sent' | 'failed' | 'skipped';
+  errorMessage?: string;
+  metadata?: Record<string, any>;
+}): Promise<void> {
+  try {
+    await storage.createNotificationLog({
+      clientId: params.clientId,
+      botId: params.botId || null,
+      type: params.type,
+      recipient: params.recipient,
+      status: params.status,
+      errorMessage: params.errorMessage || null,
+      metadata: params.metadata || {},
+    });
+  } catch (error) {
+    console.error('[Notification Log] Failed to log notification:', error);
+  }
+}
+
 async function initStripe() {
   const databaseUrl = process.env.DATABASE_URL;
 
@@ -3502,9 +3527,43 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
-  app.post("/api/test-notification", requireSuperAdmin, async (req, res) => {
+  // Get notification service health status
+  app.get("/api/notification-status", requireAdminRole, async (req, res) => {
     try {
-      const { clientId: bodyClientId } = req.body;
+      const clientId = req.session.clientId;
+      const settings = clientId ? await storage.getSettings(clientId) : null;
+      
+      const resendConfigured = !!getResendApiKey();
+      const twilioConfigured = !!getTwilioConfig();
+      
+      const emailRecipientsConfigured = !!(settings?.notificationEmail || 
+        (settings?.notificationSettings?.staffEmails && settings.notificationSettings.staffEmails.length > 0));
+      const smsRecipientsConfigured = !!(settings?.notificationPhone ||
+        (settings?.notificationSettings?.staffPhones && settings.notificationSettings.staffPhones.length > 0));
+      
+      res.json({
+        email: {
+          serviceConfigured: resendConfigured,
+          recipientsConfigured: emailRecipientsConfigured,
+          enabled: settings?.enableEmailNotifications ?? false,
+          ready: resendConfigured && emailRecipientsConfigured && (settings?.enableEmailNotifications ?? false),
+        },
+        sms: {
+          serviceConfigured: twilioConfigured,
+          recipientsConfigured: smsRecipientsConfigured,
+          enabled: settings?.enableSmsNotifications ?? false,
+          ready: twilioConfigured && smsRecipientsConfigured && (settings?.enableSmsNotifications ?? false),
+        },
+      });
+    } catch (error) {
+      console.error("Notification status error:", error);
+      res.status(500).json({ error: "Failed to get notification status" });
+    }
+  });
+
+  app.post("/api/test-notification", requireAdminRole, async (req, res) => {
+    try {
+      const { clientId: bodyClientId, type = 'email' } = req.body;
       const clientId = bodyClientId || req.session.clientId;
       
       if (!clientId) {
@@ -3529,15 +3588,31 @@ These suggestions should be relevant to what was just discussed and help guide t
         timeline: "Immediately"
       };
 
-      const testSummary = "This is a test notification to verify your email configuration is working correctly.";
+      const testSummary = "This is a test notification to verify your notification configuration is working correctly.";
 
-      if (settings.enableEmailNotifications && settings.notificationEmail) {
+      if (type === 'email') {
+        if (!settings.notificationEmail) {
+          return res.status(400).json({ 
+            error: "No recipient email configured" 
+          });
+        }
+        
         const emailResult = await sendEmailNotification(
           settings.notificationEmail,
           testAppointment,
           testSummary,
           settings
         );
+        
+        // Log the notification attempt
+        await logNotification({
+          clientId,
+          type: 'email',
+          recipient: settings.notificationEmail,
+          status: emailResult.success ? 'sent' : 'failed',
+          errorMessage: emailResult.error,
+          metadata: { isTest: true, subject: `Test notification` },
+        });
         
         if (emailResult.success) {
           return res.json({ 
@@ -3549,14 +3624,66 @@ These suggestions should be relevant to what was just discussed and help guide t
             error: `Email failed: ${emailResult.error}` 
           });
         }
-      } else {
-        return res.status(400).json({ 
-          error: "Email notifications are not enabled or no recipient email configured" 
+      } else if (type === 'sms') {
+        if (!settings.notificationPhone) {
+          return res.status(400).json({ 
+            error: "No recipient phone configured" 
+          });
+        }
+        
+        const smsMessage = `[Test] New appointment request from Test User - ${new Date().toLocaleDateString()}`;
+        const smsResult = await sendSmsNotification(settings.notificationPhone, smsMessage);
+        
+        // Log the notification attempt
+        await logNotification({
+          clientId,
+          type: 'sms',
+          recipient: settings.notificationPhone,
+          status: smsResult.success ? 'sent' : 'failed',
+          errorMessage: smsResult.error,
+          metadata: { isTest: true },
         });
+        
+        if (smsResult.success) {
+          return res.json({ 
+            success: true, 
+            message: `Test SMS sent successfully to ${settings.notificationPhone}` 
+          });
+        } else {
+          return res.status(400).json({ 
+            error: `SMS failed: ${smsResult.error}` 
+          });
+        }
+      } else {
+        return res.status(400).json({ error: "Invalid notification type" });
       }
     } catch (error) {
       console.error("Test notification error:", error);
       res.status(500).json({ error: "Failed to send test notification" });
+    }
+  });
+  
+  // Get notification logs for a client
+  app.get("/api/notification-logs", requireAdminRole, async (req, res) => {
+    try {
+      const clientId = req.session.clientId;
+      if (!clientId) {
+        return res.status(400).json({ error: "Client ID required" });
+      }
+      
+      const { type, status, limit, offset } = req.query;
+      
+      const result = await storage.getNotificationLogs(clientId, {
+        type: type as string | undefined,
+        status: status as string | undefined,
+        limit: limit ? parseInt(limit as string) : 20,
+        offset: offset ? parseInt(offset as string) : 0,
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Get notification logs error:", error);
+      res.status(500).json({ error: "Failed to get notification logs" });
     }
   });
 

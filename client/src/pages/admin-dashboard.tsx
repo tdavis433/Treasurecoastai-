@@ -126,6 +126,21 @@ interface NotificationPreferences {
   };
 }
 
+interface NotificationStatus {
+  email: {
+    serviceConfigured: boolean;
+    recipientsConfigured: boolean;
+    enabled: boolean;
+    ready: boolean;
+  };
+  sms: {
+    serviceConfigured: boolean;
+    recipientsConfigured: boolean;
+    enabled: boolean;
+    ready: boolean;
+  };
+}
+
 const categoryLabels: Record<string, string> = {
   pricing: "Pricing Questions",
   availability: "Availability",
@@ -201,6 +216,30 @@ export default function AdminDashboard() {
 
   const { data: notificationsData, isLoading: notificationsLoading } = useQuery<NotificationPreferences>({
     queryKey: ["/api/client/notifications"],
+  });
+
+  const { data: notificationStatus } = useQuery<NotificationStatus>({
+    queryKey: ["/api/notification-status"],
+  });
+
+  const testNotificationMutation = useMutation({
+    mutationFn: async (type: 'email' | 'sms') => {
+      const response = await apiRequest("POST", "/api/test-notification", { type });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Test Sent",
+        description: data.message || "Test notification sent successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Test Failed",
+        description: error.message || "Failed to send test notification.",
+        variant: "destructive",
+      });
+    },
   });
 
   const passwordMutation = useMutation({
@@ -806,10 +845,75 @@ export default function AdminDashboard() {
                       data-testid="switch-sms-notifications"
                     />
                   </div>
-                  {(notificationsData?.enableEmailNotifications || notificationsData?.enableSmsNotifications) && (
-                    <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                      <Check className="h-4 w-4 text-emerald-400" />
-                      <span className="text-xs text-emerald-400">Notifications enabled</span>
+                  {/* Notification Health Status */}
+                  {notificationStatus && (
+                    <div className="space-y-2">
+                      {notificationsData?.enableEmailNotifications && !notificationStatus.email.serviceConfigured && (
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                          <AlertCircle className="h-4 w-4 text-amber-400" />
+                          <span className="text-xs text-amber-400">Email service not configured (missing API key)</span>
+                        </div>
+                      )}
+                      {notificationsData?.enableEmailNotifications && !notificationStatus.email.recipientsConfigured && (
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                          <AlertCircle className="h-4 w-4 text-amber-400" />
+                          <span className="text-xs text-amber-400">No email recipient configured</span>
+                        </div>
+                      )}
+                      {notificationsData?.enableSmsNotifications && !notificationStatus.sms.serviceConfigured && (
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                          <AlertCircle className="h-4 w-4 text-amber-400" />
+                          <span className="text-xs text-amber-400">SMS service not configured (missing Twilio credentials)</span>
+                        </div>
+                      )}
+                      {notificationsData?.enableSmsNotifications && !notificationStatus.sms.recipientsConfigured && (
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                          <AlertCircle className="h-4 w-4 text-amber-400" />
+                          <span className="text-xs text-amber-400">No SMS recipient configured</span>
+                        </div>
+                      )}
+                      {notificationStatus.email.ready && (
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                          <Check className="h-4 w-4 text-emerald-400" />
+                          <span className="text-xs text-emerald-400">Email notifications ready</span>
+                        </div>
+                      )}
+                      {notificationStatus.sms.ready && (
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                          <Check className="h-4 w-4 text-emerald-400" />
+                          <span className="text-xs text-emerald-400">SMS notifications ready</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Test Notification Buttons */}
+                  {(notificationStatus?.email.ready || notificationStatus?.sms.ready) && (
+                    <div className="flex gap-2 pt-2 border-t border-white/10">
+                      {notificationStatus.email.ready && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => testNotificationMutation.mutate('email')}
+                          disabled={testNotificationMutation.isPending}
+                          data-testid="button-test-email"
+                        >
+                          <Mail className="h-4 w-4 mr-1" />
+                          Test Email
+                        </Button>
+                      )}
+                      {notificationStatus.sms.ready && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => testNotificationMutation.mutate('sms')}
+                          disabled={testNotificationMutation.isPending}
+                          data-testid="button-test-sms"
+                        >
+                          <MessageSquare className="h-4 w-4 mr-1" />
+                          Test SMS
+                        </Button>
+                      )}
                     </div>
                   )}
                 </>

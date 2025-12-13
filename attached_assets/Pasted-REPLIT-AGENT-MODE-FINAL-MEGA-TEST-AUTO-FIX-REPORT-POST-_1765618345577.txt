@@ -1,0 +1,302 @@
+REPLIT AGENT MODE — FINAL “MEGA TEST + AUTO-FIX + REPORT” (POST-INTEGRATION)
+Treasure Coast AI — Full Platform Validation + Repair Pass
+
+GOAL
+When you finish implementing all features (Agency Onboarding Console, Website Import, Theme Match, Launch Checklist, Client Health/Errors, 24h Preview Link, QA Gate, No-Payments guard, tenant isolation hardening), run a full end-to-end “mega test” across the entire platform, aggressively try to break it like real humans + attackers, automatically fix what’s broken, re-test until stable, and then produce a huge summary report I can paste back to my ChatGPT so we can fine-tune anything remaining.
+
+ABSOLUTE GUARDRAILS (BLOCKERS)
+1) NO PAYMENT PROCESSING — EVER
+- No checkout UI, no card/ACH/wallet capture, no payment intents/tokens, no refunds/chargebacks/subscriptions/invoices.
+- External booking is allowed ONLY as HTTPS redirect off-domain after logging intent/redirect events.
+- Any payment provider integrations beyond outbound linking are BLOCKER.
+
+2) MULTI-TENANT ISOLATION
+- All reads/writes MUST be tenant/workspace scoped on the server.
+- UI hiding is not security.
+- Any IDOR / cross-tenant data leak is BLOCKER.
+
+3) DEMO QUALITY
+- No raw stack traces shown to end users.
+- Friendly errors only.
+- No dead buttons/placeholder pages exposed.
+
+SECURITY / PRIVACY RULES
+- Never print passwords or secrets in output.
+- Never commit credentials.
+- Redact any tokens and any PII in logs/reports.
+- If referencing credentials in the report, redact like a*****3 / d*****3.
+
+RUN CONTEXT
+Base URL:
+https://treasure-coast-ai-platform--mlgrushskill.replit.app
+
+Known demo credentials (DO NOT PRINT PASSWORDS):
+- Admin username: admin (password redacted)
+- Demo client username: demo_faith_house (password redacted)
+
+IMPORTANT: If you need local test credentials, create temporary test users and delete them at end.
+
+=====================================================================
+PHASE 0 — PRE-FLIGHT (STOP IF FAIL)
+=====================================================================
+0.1 Build + Typecheck + Unit Tests + Guards (must pass)
+Run:
+- bash ./scripts/guard-no-payments.sh
+- npx tsc --noEmit
+- npx vitest run
+- npm run build
+
+If any fails: fix immediately, re-run until all pass.
+
+0.2 Health checks
+- GET /api/health (public)
+- GET /api/health/internal (super admin only) — must not leak without auth
+
+Confirm:
+- db ok + latency reasonable
+- ai configured
+- testModeAllowed behavior correct (noIframe dev gating if present)
+
+=====================================================================
+PHASE 1 — STATIC REPO SCAN (PAYMENTS/SECRETS/FOOTGUNS)
+=====================================================================
+1.1 No-payments deep scan (repo-wide)
+Search keywords:
+stripe, square, paypal, checkout, payment, payment_intent, client_secret, invoice, subscription, billing, refund, webhook
+Report each match with:
+- file path + line numbers
+- whether it violates guardrails
+Fix any violations by removal or hard-disable with 501 + documentation.
+
+1.2 Secrets + unsafe logging scan
+Search for:
+OPENAI_API_KEY, DATABASE_URL, SECRET, TOKEN, PASSWORD, AUTH, SESSION, COOKIE, PRIVATE KEY
+Ensure:
+- nothing is logged
+- nothing is committed
+- error logs redact emails/phones/tokens
+
+Fix any leaks.
+
+=====================================================================
+PHASE 2 — ROUTE + RBAC + TENANT ISOLATION PROOF
+=====================================================================
+2.1 Route inventory
+Print a categorized list of all routes found in server/routes.ts and any other route files:
+- public
+- widget
+- auth
+- client dashboard
+- admin
+- super-admin
+- analytics/export
+- health/diagnostics
+- preview link routes
+
+2.2 RBAC tests (must be explicit)
+Test:
+- unauthenticated access to protected routes → 401/403
+- client user cannot access super-admin routes → 403
+- super-admin can access all super-admin routes → 200
+
+2.3 Tenant isolation (IDOR tests)
+Perform at least 5 attempted cross-tenant attacks:
+- modify IDs in URL params
+- modify query params
+- replay API calls with different workspaceId/clientId/botId
+Expected:
+- 401/403 or empty response, NO data leak
+If any leak: fix server-side query scoping (NOT UI).
+
+=====================================================================
+PHASE 3 — AGENCY ONBOARDING CONSOLE (CORE FLOW TEST)
+=====================================================================
+Simulate real agency onboarding (admin-led):
+3.1 Create a NEW test workspace draft
+- Business Name: “Test Client — Mega Test”
+- Website URL: use a stable public site (or demo site)
+- Add 3 custom notes
+- Set booking mode:
+  A) External booking with known-good HTTPS URL
+  B) Internal booking with notifications enabled (if supported)
+
+3.2 Website import behavior
+- Run scan
+- Confirm suggestions appear with provenance
+- Confirm NOTHING overwrites admin-entered values automatically
+- Merge selected (append+dedupe)
+- Confirm saved after refresh
+
+3.3 Match Website Theme
+- Click “Match Website Theme”
+- Confirm primary/accent/theme/logo update OR safe failure
+- Confirm manual override works
+
+3.4 Launch checklist behavior
+- Confirm checklist updates live (PASS/WARN/FAIL)
+- Each item has a direct “Fix” link and is accurate
+
+3.5 Run QA Gate
+Verify PASS report includes:
+- widget config ok
+- test chat ok
+- transcript saved
+- lead saved (dedupe correct)
+- booking intent logged
+- redirect logged (if external) OR request created (if internal)
+- notification attempt logged (if configured)
+
+3.6 Go Live + Copy Embed
+- Confirm status switches to active
+- Embed snippet contains NO secrets
+- Verify embed loads on /widget-test.html (and ?noIframe=1 in dev if present)
+
+=====================================================================
+PHASE 4 — WIDGET + CHAT “REAL HUMAN” STRESS
+=====================================================================
+Test widget on:
+- desktop
+- mobile viewport (375px)
+- slow network simulation (if possible)
+
+4.1 Basic Q&A (should be helpful, support-first)
+Ask:
+- services
+- hours
+- service area
+Expect: accurate and short.
+
+4.2 Stress tests
+- long message
+- emojis/unicode
+- rapid-fire 10 sends
+Expect: no crash; friendly rate limit if triggered.
+
+4.3 Lead capture
+Submit valid and invalid inputs:
+- invalid email
+- blank required field
+- double submit spam
+Expect: friendly validation; no duplicate corruption.
+
+4.4 Booking behavior (CRITICAL)
+- Trigger booking intent
+- Confirm Book Now only redirects externally (HTTPS off-domain)
+- Confirm internal request flow creates an appointment/request and logs notifications
+Any on-domain payment UI = BLOCKER.
+
+=====================================================================
+PHASE 5 — PREVIEW LINK (24H TOKEN) TEST
+=====================================================================
+5.1 Generate preview link (24h)
+Open in incognito:
+- works without login
+- shows “expires in 24 hours”
+- runs correct template/bot
+- respects booking behavior
+
+5.2 Security
+- wrong/expired token fails
+- token scoped to workspace+bot
+- rate limited (best effort)
+
+=====================================================================
+PHASE 6 — DASHBOARDS + EXPORTS + DATA CONSISTENCY
+=====================================================================
+6.1 Client dashboard (view-only)
+Login as the new test client user (created during onboarding)
+Verify:
+- overview loads
+- conversations transcript displays message bodies
+- leads show correct record
+- bookings show correct intent/request
+
+6.2 Admin parity
+Check admin dashboards show exact matching counts for same workspace/time window.
+
+6.3 Analytics export
+- Ensure tenant isolation: export uses session clientId only
+- Sanitize filename and CSV content
+- Verify no CSV injection vulnerabilities (prefix = + - @ with apostrophe)
+
+Fix if needed.
+
+=====================================================================
+PHASE 7 — RELIABILITY + ERROR HANDLING + RECOVERY
+=====================================================================
+7.1 Friendly errors
+Force:
+- wrong login
+- invalid payload to an endpoint
+Expect: friendly, no stack traces.
+
+7.2 Timeouts/fallback
+Simulate AI timeout:
+- verify fallback message
+- verify lead capture fallback works
+
+7.3 Retry logic
+Verify critical writes retry once (lead + transcript) on transient errors without duplicates.
+
+7.4 Client Health/Errors card
+Confirm it displays correct:
+- last activity
+- last errors (redacted)
+- notification last attempt
+
+=====================================================================
+PHASE 8 — CLEANUP (REQUIRED)
+=====================================================================
+Delete ONLY the test workspace created:
+- “Test Client — Mega Test”
+Confirm:
+- test client login no longer works
+- workspace is gone
+- no other tenants affected
+
+=====================================================================
+AUTOMATION REQUIREMENTS (MUST IMPLEMENT IF MISSING)
+=====================================================================
+A) Create scripts/final-mega-test.sh
+- runs the full command suite:
+  - guard-no-payments
+  - tsc
+  - vitest
+  - build
+  - widget-e2e-test.sh (if present)
+  - route smoke tests via curl (RBAC + health)
+- exits non-zero on failure
+
+B) Ensure scripts produce clean logs and redact sensitive data.
+
+=====================================================================
+FINAL REPORT (PASTEABLE OUTPUT)
+=====================================================================
+Create a single file:
+MEGA_TEST_REPORT.md
+
+Must include:
+1) GO/NO-GO
+2) All commands run + PASS outputs
+3) Full checklist PASS/FAIL per phase
+4) Findings by severity (BLOCKER/HIGH/MED/LOW) with:
+   - exact route/page
+   - reproduction steps
+   - expected vs actual
+   - fix applied (file path + line numbers)
+5) No Payments compliance proof
+6) Tenant isolation proof (5 attack attempts + outcomes)
+7) “Safe Demo Path” (exact clicks + 5 questions)
+8) What to re-test after changes
+
+Then print a short summary in console:
+- total issues found
+- total fixed
+- remaining open (if any)
+
+START NOW AFTER ALL FEATURE WORK IS MERGED.
+Do not stop until:
+- all gates pass
+- mega test passes
+- report is generated
+- test workspace cleanup done
