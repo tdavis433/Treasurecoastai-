@@ -1,0 +1,294 @@
+REPLIT AGENT MODE — TREASURE COAST AI — FIX & VERIFY PROMPT (BASED ON AUDIT)
+
+ROLE
+You are the lead full-stack engineer + QA who will fix the issues found in the latest “Full-Platform Finishing Audit (Go/No-Go)” and then re-test the platform end-to-end until it is demo-ready and production-ready.
+
+NON-NEGOTIABLE PRODUCT GUARDRAILS
+1) NO PAYMENT PROCESSING — EVER
+- Do NOT add Stripe/Square/PayPal, checkout UI, payment tokens, payment intents, webhooks for payments, invoices, subscriptions, refunds, chargebacks, or any payment collection.
+- “Book Now” is allowed ONLY as:
+  (a) Log booking intent internally (for dashboards/analytics), then
+  (b) Redirect the visitor to the CLIENT’S external booking/payment platform to finalize.
+- If you find ANY payment-processing code beyond outbound redirect: REMOVE IT and report file paths + line numbers.
+
+2) MULTI-TENANT ISOLATION
+- All reads/writes MUST be tenant/workspace scoped server-side.
+- UI hiding is not security. Enforce scoping in API routes + DB queries.
+- Any IDOR/cross-tenant exposure is a BLOCKER.
+
+3) DEMO-READINESS
+- No dead buttons, placeholders, broken flows, or demos that “look broken.”
+- Friendly failures, no raw stack traces.
+
+TARGET ENVIRONMENT / ACCESS
+Base URL:
+https://treasure-coast-ai-platform--mlgrushskill.replit.app
+
+Credentials (DO NOT COMMIT; DO NOT PRINT PASSWORDS IN OUTPUT):
+- Super Admin: username admin | password a*****3 (use provided secret in actual login)
+- Client User: username demo_faith_house | password d*****3 (use provided secret in actual login)
+
+IMPORTANT: Never commit credentials. Never log passwords. If you must reference them in output, redact.
+
+================================================================================
+INPUT: AUDIT REPORT (SOURCE OF TRUTH)
+================================================================================
+Below is the audit summary you must treat as authoritative and convert into engineering tasks + fixes.
+
+AUDIT SUMMARY (12 Dec 2025):
+- Landing page loads correctly. Auth sanity passes.
+- No evidence of payment processing (good).
+- RBAC / tenant isolation appears okay from UI tests.
+- CRITICAL: Conversation transcripts are NOT viewable in client dashboard (only “Assistant” placeholders).
+- CRITICAL/HIGH: Admin “View” conversation link from “Needs Your Review” shows 0 conversations even when leads exist.
+- HIGH: Lead dedup confusion — dedup merges by phone and can overwrite name unexpectedly.
+- MEDIUM: Booking redirect not present (no “Book Now” button); intents logged but no external redirect step.
+- LOW/HIGH-for-demos: Several demo assistants respond with “high demand right now” to everything (demos unusable).
+- LOW: No visible in-dashboard password reset/change.
+- LOW: No obvious rate limiting for chat/leads; abuse risk.
+
+================================================================================
+OBJECTIVE
+================================================================================
+1) Fix the blockers and high-priority issues so:
+- Client and admin can view FULL conversation transcripts (message content + roles + timestamps).
+- Admin inbox / “View conversation” reliably shows conversations for selected workspace.
+- Lead dedup logic is predictable and does not silently overwrite identity.
+- Booking intent + external redirect works (NO payments on our platform).
+- Demos respond normally (no constant “high demand” unless truly rate-limited).
+2) Prove fixes with verification:
+- Manual verification steps + screenshots.
+- Add automated tests (Playwright recommended) for demo-critical paths.
+3) Produce final “Go/No-Go” checklist and confirm PASS for all demo-critical scenarios.
+
+================================================================================
+PHASE 1 — REPRODUCE & DIAGNOSE (DO THIS FIRST)
+================================================================================
+A) Reproduce “Client transcript not viewable”
+1. Log in as client demo_faith_house.
+2. Go to Conversations.
+3. Open a conversation (preferably the newest).
+Expected: full chat transcript with user + assistant messages.
+Actual: placeholders / collapsed “Assistant” rows; message bodies not visible.
+
+Collect evidence:
+- Screenshot(s)
+- Console logs (if any)
+- Network requests that should fetch transcript (endpoint, payload, response)
+- Identify the exact UI component responsible (file path).
+
+B) Reproduce “Admin View shows 0 conversations”
+1. Log in as admin.
+2. From Command Center → “Needs Your Review” (or any workspace tile) click View.
+Expected: inbox shows existing conversations.
+Actual: empty list (0 conversations).
+
+Collect evidence:
+- Screenshot(s)
+- Network requests and responses
+- Identify filtering conditions (workspaceId, assistantId, date ranges) causing empty results.
+- Confirm correct workspace scope is being passed to API.
+
+C) Reproduce lead dedup confusion
+1. Submit a lead from a demo with a phone number that already exists.
+2. Observe whether name changes, merges, or overwrites.
+Expected: either (a) keep existing contact but append new info safely, or (b) update contact with clear rules, or (c) allow multiple leads per phone with disambiguation.
+Actual: merges into existing name unexpectedly.
+
+Collect evidence:
+- DB rows before/after or API payloads
+- Identify dedup logic location (server-side preferred).
+
+D) Confirm booking intent and redirect behavior requirement
+- Verify current “Book Now” experience on at least one demo.
+- Confirm there is NO payment UI (should remain true).
+- Identify where booking intent is recorded (DB table/model + API route).
+- Identify where redirect should be implemented.
+
+================================================================================
+PHASE 2 — IMPLEMENT FIXES (IN ORDER)
+================================================================================
+PRIORITY ORDER (do NOT skip):
+1) BLOCKER: Client conversation transcript viewer
+2) HIGH: Admin inbox / “View conversation” shows 0 conversations
+3) HIGH: Lead dedup logic predictable + safe
+4) MEDIUM: External booking redirect button + tracking events
+5) LOW/HIGH-for-demos: Fix demo assistants falling back to “high demand”
+6) MEDIUM: Add in-dashboard password change (optional if reset exists, but recommended)
+7) LOW: Rate limiting + basic abuse controls
+
+---------------------------------------
+FIX 1: Client transcript viewer
+---------------------------------------
+Goal:
+- Render full transcript (message role, text, timestamp).
+- Support long conversations (scroll, virtualization if needed).
+- No placeholder-only UI.
+
+Tasks:
+- Identify the data source: Are messages stored? Are they returned by API? Are they being transformed incorrectly?
+- Ensure the client conversations API returns message bodies (not just metadata).
+- Ensure UI maps the returned data correctly.
+- Add empty/loading/error states that are friendly (no stack traces).
+- Confirm “View Chat” from bookings deep-links to the correct conversation and shows full transcript.
+
+Acceptance criteria:
+- A conversation opened in client dashboard shows:
+  - chronological messages
+  - correct sender labels (Visitor/User vs Assistant)
+  - complete text, no truncation except with “expand” control if needed
+  - timestamps visible (or on hover)
+- Works on mobile width (375px).
+
+---------------------------------------
+FIX 2: Admin inbox “View conversation” empty
+---------------------------------------
+Goal:
+- Admin can reliably view conversations per workspace/assistant.
+- No incorrect filters cause “0 conversations” when data exists.
+
+Tasks:
+- Trace “View” click → route params/state → API call.
+- Validate workspaceId/clientId passed into query.
+- Ensure API includes correct tenant/workspace scoping for admin view (admin may pass clientId/workspaceId explicitly).
+- Check date filters, pagination defaults, and assistantId filters.
+- Ensure the seed/demo workspace mapping (faith_house vs faith_house_demo) is not mismatched.
+
+Acceptance criteria:
+- Admin clicking “View” for a workspace shows same conversation list as the client (scoped to that workspace), plus any admin-only fields.
+
+---------------------------------------
+FIX 3: Lead dedup logic
+---------------------------------------
+Goal:
+- Dedup should not confuse identity or silently overwrite names.
+
+Implement one of these (preferred order):
+Option A (best): If phone exists and name differs materially, prompt/flag “Possible duplicate” and:
+  - keep existing canonical lead
+  - attach a new “interaction” or “submission” record with submitted name/email/time
+Option B: Update name only if existing name is empty OR the new submission is more complete; always preserve prior name(s) in an alias/history field.
+Option C: Dedup by (phone + email) rather than phone-only; or allow multiple leads but group them.
+
+Also:
+- Make dedup behavior visible in UI (e.g., “Merged into existing lead #ID”).
+- Ensure dedup is tenant-scoped (never across tenants).
+
+Acceptance criteria:
+- Submitting the same phone number with a different name does NOT result in confusing identity swaps without any audit trail.
+- Leads list shows correct latest info and a clear merge/duplicate indication.
+
+---------------------------------------
+FIX 4: Booking intent + external redirect (NO payments)
+---------------------------------------
+Goal:
+- Add/restore a “Book Now” button or link where appropriate that:
+  1) Logs booking intent (and “booking_redirect” when clicked),
+  2) Redirects to external booking URL configured for that workspace/client.
+
+Rules:
+- Never collect payment details on our platform.
+- Redirect can go to Calendly, Square booking page, client website booking page, etc.
+- Add attribution (UTMs) and log event fields: timestamp, workspaceId, assistantId, destinationUrl/provider, service/type, sessionId/leadId if available.
+
+Acceptance criteria:
+- Clicking “Book Now” ALWAYS opens external booking URL (same tab or new tab is OK).
+- Internal dashboards increment:
+  - booking intents (when user expresses booking intent),
+  - booking redirects (when they click the outbound link)
+- No payment fields exist on our platform.
+
+---------------------------------------
+FIX 5: Demo assistants stuck on “high demand” fallback
+---------------------------------------
+Goal:
+- Demos should be demoable. If OpenAI rate limits occur, fallback should still be helpful and not trigger instantly for every message.
+
+Tasks:
+- Determine why specific demos always fall back (missing API key? misconfigured assistant? wrong bot id? model config?).
+- Ensure each demo has:
+  - correct assistant config
+  - knowledge base seeded
+  - correct bot/workspace bindings
+- Adjust fallback logic to trigger ONLY on actual upstream errors, not normal paths.
+- Provide a demo-safe fallback response that still answers basics from static FAQs if upstream fails.
+
+Acceptance criteria:
+- At least 3 demos (Faith House + 2 others) respond meaningfully to basic questions and booking/lead flows.
+
+---------------------------------------
+FIX 6: Password change inside dashboard (recommended)
+---------------------------------------
+Goal:
+- Logged-in clients can change their password from Settings.
+- Must be secure (current password confirmation, password rules).
+- Do not expose tokens in logs in production.
+
+Acceptance criteria:
+- Password change works end-to-end.
+- Session invalidation behavior is sensible (log out other sessions).
+
+---------------------------------------
+FIX 7: Rate limiting / abuse controls
+---------------------------------------
+Goal:
+- Protect chat, lead capture, forgot password endpoints from spamming.
+
+Tasks:
+- Add per-IP and per-session rate limits.
+- Add basic bot protection for lead capture if needed (honeypot/captcha optional).
+- Ensure friendly error messages.
+
+Acceptance criteria:
+- Rapid spam attempts do not crash the app.
+- Users see friendly “slow down” messages.
+
+================================================================================
+PHASE 3 — ADD AUTOMATED TESTS (PLAYWRIGHT PREFERRED)
+================================================================================
+Create an E2E suite that covers “Demo Critical Path”:
+1) Load landing page → open widget → ask FAQ
+2) Go to at least one demo page → open widget → trigger lead capture → submit lead
+3) Verify lead appears in client dashboard
+4) Verify transcript is viewable in client dashboard (assert message text exists)
+5) Trigger booking intent → click Book Now → assert external redirect URL (and NOT checkout on our domain)
+6) Login admin → open workspace inbox → assert conversations exist
+
+Also include:
+- RBAC test: client cannot access /super-admin
+- Tenant isolation test: attempt to query another workspace’s conversation id and assert 401/403/empty
+
+================================================================================
+PHASE 4 — FINAL OUTPUT REQUIRED (STRICT FORMAT)
+================================================================================
+When done, output:
+
+1) Executive Summary
+- Demo-ready? YES/NO
+- Production-ready? YES/NO
+- Top risks remaining
+
+2) Fixes Applied (with code pointers)
+For each fix:
+- What changed
+- File paths
+- How to test manually
+- Screenshot evidence
+
+3) No-Payment Compliance Confirmation
+- Show where redirect is implemented (code locations)
+- Confirm no payment collection exists
+
+4) Tenant Isolation/RBAC Confirmation
+- Enforcement points in code (middleware, DB where clauses, etc.)
+- At least 3 attempted cross-tenant access tests + outcomes
+
+5) Test Results
+- Playwright run output summary (pass/fail)
+- Manual checklist pass/fail
+
+START NOW
+- Begin by reproducing FIX 1 and FIX 2 issues and identifying the exact root causes in code.
+- Then implement fixes in priority order.
+- Re-run manual checks + automated suite.
+- Do NOT stop until blockers are eliminated or you can prove why a blocker cannot be fixed with a precise explanation and next steps.
