@@ -18,9 +18,6 @@ Set these in the Replit Secrets tab:
 | `TWILIO_ACCOUNT_SID` | No | SMS notifications via Twilio |
 | `TWILIO_AUTH_TOKEN` | No | Twilio authentication |
 | `TWILIO_PHONE_NUMBER` | No | Twilio sender number |
-| `STRIPE_SECRET_KEY` | No | Stripe billing integration |
-| `STRIPE_WEBHOOK_SECRET` | No | Stripe webhook verification |
-| `VITE_STRIPE_PUBLIC_KEY` | No | Stripe public key for frontend |
 
 ### Database Setup
 

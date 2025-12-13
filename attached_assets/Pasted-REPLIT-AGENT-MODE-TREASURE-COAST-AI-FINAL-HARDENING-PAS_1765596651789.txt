@@ -1,0 +1,145 @@
+REPLIT AGENT MODE — TREASURE COAST AI — FINAL HARDENING PASS (DEMO + PROD)
+Goal: Do a zero-surprises finishing pass. Validate everything the agent previously changed, eliminate any remaining “payments” references, ensure booking is redirect-only, ensure db:push is non-destructive, and produce copy/paste-ready proof in the chat.
+
+ABSOLUTE GUARDRAILS (BLOCKER IF VIOLATED)
+1) NO PAYMENT PROCESSING — EVER
+- Do NOT implement Stripe/Square/PayPal or any checkout UI.
+- Do NOT store/collect/transmit card/ACH/wallet data.
+- Do NOT add payment tokens/intents/webhooks/subscriptions/invoices/refunds/chargebacks.
+- Booking is allowed ONLY as:
+  (a) log booking intent + redirect event internally, then
+  (b) redirect externally to the CLIENT’S booking/payment provider.
+
+2) MULTI-TENANT ISOLATION
+- All reads/writes must be workspace/tenant scoped on server+DB.
+- Any IDOR or cross-tenant leak is a BLOCKER.
+
+3) DEMO READY
+- No dead buttons / “coming soon” visible to prospects/clients.
+- Friendly errors only, never stack traces in UI.
+- No flaky “high demand” behavior on demo-critical path.
+
+DO NOT LEAK SECRETS
+- Do not print passwords/tokens/reset links in output.
+- Redact if referenced.
+
+========================================================
+PHASE 1 — VERIFY CURRENT STATE (NO CHANGES YET)
+========================================================
+1) Show the list of files changed/created from the last work:
+- DEMO_SCRIPT.md
+- RELEASE_RUNBOOK.md
+- scripts/verify-db-schema.sql
+- scripts/guard-no-payments.sh
+- any test files added
+
+2) Print the FIRST 50 LINES of:
+- DEMO_SCRIPT.md
+- RELEASE_RUNBOOK.md
+
+3) Confirm the “Safe Demo Path” exists in BOTH docs and is accurate.
+
+========================================================
+PHASE 2 — FIX THE LAST 2 KNOWN ISSUES (IF PRESENT)
+========================================================
+A) Remove Stripe wording completely
+Search the entire repo for ANY Stripe/payment-enabling language:
+- STRIPE_SECRET_KEY
+- “Stripe disabled”
+- “payments disabled”
+- “payments enabled”
+- “enable payments”
+- “Stripe integration”
+
+Command examples:
+grep -RIn "STRIPE_SECRET_KEY\|stripe\|Stripe\|payments enabled\|enable payments\|disabled by design" .
+
+RULE:
+- If found: REMOVE or rewrite.
+- Replace with this exact policy wording everywhere:
+  “Payments are not supported by design. The platform never processes payments. Booking is redirect-only to the client’s external booking/payment provider.”
+
+B) Fix command typos in docs/scripts
+Search for the wrong command:
+- “npm run test: e2e” (with a space)
+Fix to:
+- “npm run test:e2e”
+
+========================================================
+PHASE 3 — VALIDATE “NO PAYMENTS” COMPLIANCE (PROOF)
+========================================================
+1) Run the no-payments guard:
+./scripts/guard-no-payments.sh
+
+2) Ensure the guard ignores false positives (icon names like MessageSquare, CSS like aspect-square) and only flags real payment integrations.
+If it still false-positives:
+- refine regex with word boundaries
+- ignore node_modules, build output, lockfiles, .next/dist, etc.
+
+3) Prove booking is redirect-only:
+- Find the “Book Now” implementation (UI + backend).
+- Confirm it NEVER routes to a checkout/payment page on our domain.
+- Confirm it logs booking_intent and booking_redirect events internally.
+- Print the file paths + key functions (no secrets).
+
+========================================================
+PHASE 4 — DB DRIFT PREVENTION VERIFICATION (PROOF)
+========================================================
+1) Run DB schema verification:
+psql "$DATABASE_URL" -f scripts/verify-db-schema.sql
+
+2) Confirm these are true:
+- client_settings.metadata exists, is jsonb, NOT NULL, default {}
+- constraints exist with Drizzle-aligned names:
+  - bot_templates_template_id_unique
+  - session_states_session_id_unique
+  - widget_settings_bot_id_unique
+  - flow_sessions_conversation_id_unique
+- bot_requests.dedupe_hash is enforced properly (no duplicate null issues)
+
+3) Confirm drizzle sync is safe:
+npm run db:push
+- DO NOT accept destructive operations.
+- If interactive prompts appear, stop and report the prompt text + explain.
+
+========================================================
+PHASE 5 — TESTS + SMOKE DEMO (MANDATORY)
+========================================================
+1) TypeScript:
+npx tsc --noEmit
+
+2) E2E tests:
+npm run test:e2e
+(If the project uses a different command, print available scripts and run the correct one.)
+
+3) Live demo smoke test checklist (run manually or via Playwright if exists):
+- Landing page loads (no console errors)
+- Widget opens, responds to 2 questions
+- Lead capture submits successfully
+- Booking intent logs + Book Now redirects externally
+- Client dashboard shows the new lead/conversation/booking intent
+- Admin dashboard shows parity for same workspace
+
+========================================================
+PHASE 6 — FINAL OUTPUT (STRICT)
+========================================================
+In your final response, provide:
+
+1) GO / NO-GO for demo
+2) A short checklist of PASS/FAIL for:
+- No payments (redirect-only)
+- Booking redirect proof
+- DB drift proof
+- TypeScript compile
+- E2E tests
+- Widget basic flow
+
+3) Copy/paste excerpts (exact text) for verification:
+- The “No Payments Policy” section from RELEASE_RUNBOOK.md
+- The 60-second Safe Demo Path section from DEMO_SCRIPT.md
+
+4) If any changes were made:
+- List each file edited + why
+- Show the exact diff for the key lines you changed
+
+START NOW.
