@@ -796,7 +796,110 @@ FORBIDDEN LANGUAGE:
 `;
   }
   
-  return prompt + '\n\n' + businessInfo + faqInfo + personalityInfo + bookingInfo;
+  // Add industry-specific disclaimers based on business type
+  const industryDisclaimers = buildIndustryDisclaimers(bp.type);
+  
+  // Add low-confidence fallback instructions
+  const lowConfidenceFallback = `
+
+LOW-CONFIDENCE RESPONSE GUIDELINES:
+When you are uncertain about information or cannot find a specific answer:
+1. Be honest - Say "I'm not certain about that" or "I don't have that specific information"
+2. Offer alternatives - Suggest contacting the business directly for accurate details
+3. Never make up information - Guessing can harm the business's reputation
+4. For pricing/availability - Always recommend confirming with staff
+5. For complex questions - Offer to have someone follow up
+
+Example phrases when uncertain:
+- "I'd recommend confirming that directly with our team at [phone/email]"
+- "I don't have the latest details on that - our staff can give you accurate information"
+- "That's a great question! Let me note it so someone can get back to you with specifics"
+`;
+
+  return prompt + '\n\n' + businessInfo + faqInfo + personalityInfo + bookingInfo + industryDisclaimers + lowConfidenceFallback;
+}
+
+function buildIndustryDisclaimers(businessType: string | undefined): string {
+  if (!businessType) return '';
+  
+  const type = businessType.toLowerCase();
+  const disclaimers: string[] = [];
+  
+  // Healthcare/Medical
+  if (type.includes('health') || type.includes('medical') || type.includes('clinic') || 
+      type.includes('doctor') || type.includes('therapy') || type.includes('dental') ||
+      type.includes('hospital') || type.includes('wellness')) {
+    disclaimers.push(`
+HEALTHCARE DISCLAIMER - CRITICAL:
+- You are NOT a medical professional and cannot provide medical advice
+- NEVER diagnose conditions or recommend treatments
+- For medical emergencies, always direct users to call 911 or go to the ER
+- Remind users that information provided is general and not a substitute for professional medical advice
+- Always recommend consulting with a qualified healthcare provider for health concerns`);
+  }
+  
+  // Legal
+  if (type.includes('law') || type.includes('legal') || type.includes('attorney') || 
+      type.includes('lawyer')) {
+    disclaimers.push(`
+LEGAL DISCLAIMER - CRITICAL:
+- You are NOT a lawyer and cannot provide legal advice
+- Information is for general educational purposes only
+- Always recommend consulting with a licensed attorney for legal matters
+- Do not interpret laws, contracts, or legal documents
+- Remind users that legal situations are complex and require professional counsel`);
+  }
+  
+  // Financial
+  if (type.includes('financ') || type.includes('invest') || type.includes('bank') || 
+      type.includes('insurance') || type.includes('tax') || type.includes('accounting')) {
+    disclaimers.push(`
+FINANCIAL DISCLAIMER - CRITICAL:
+- You are NOT a financial advisor and cannot provide investment or financial advice
+- Do not recommend specific investments, insurance products, or financial strategies
+- Tax situations vary - always recommend consulting a licensed CPA or tax professional
+- Remind users that financial decisions should be made with qualified professionals
+- Past performance does not guarantee future results`);
+  }
+  
+  // Real Estate
+  if (type.includes('real estate') || type.includes('property') || type.includes('realty') ||
+      type.includes('housing')) {
+    disclaimers.push(`
+REAL ESTATE DISCLAIMER:
+- Property details and pricing may change without notice
+- All listings should be verified independently
+- This is not a binding offer or contract
+- Recommend viewing properties in person before making decisions
+- Consult with licensed real estate professionals for transactions`);
+  }
+  
+  // Faith-based/Religious
+  if (type.includes('church') || type.includes('faith') || type.includes('religious') ||
+      type.includes('ministry') || type.includes('temple') || type.includes('mosque') ||
+      type.includes('synagogue')) {
+    disclaimers.push(`
+SPIRITUAL GUIDANCE NOTICE:
+- For spiritual emergencies or crises, recommend speaking with clergy/pastoral staff
+- You cannot provide spiritual counseling or pastoral care
+- Direct serious personal issues to trained pastoral counselors
+- If someone expresses thoughts of self-harm, provide crisis resources immediately`);
+  }
+  
+  // Food/Restaurant
+  if (type.includes('restaurant') || type.includes('food') || type.includes('cafe') ||
+      type.includes('catering') || type.includes('bakery')) {
+    disclaimers.push(`
+FOOD SERVICE NOTICE:
+- Menu items and prices may change without notice
+- For allergy and dietary concerns, recommend confirming with staff before ordering
+- Cannot guarantee ingredient information is current
+- Recommend informing staff of any food allergies when ordering`);
+  }
+  
+  if (disclaimers.length === 0) return '';
+  
+  return '\n\nINDUSTRY-SPECIFIC GUIDELINES:' + disclaimers.join('\n');
 }
 
 export async function saveBotConfigAsync(botId: string, updates: Partial<BotConfig>): Promise<boolean> {
