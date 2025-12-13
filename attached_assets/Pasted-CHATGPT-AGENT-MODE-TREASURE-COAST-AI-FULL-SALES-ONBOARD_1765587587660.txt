@@ -1,0 +1,428 @@
+CHATGPT AGENT MODE — TREASURE COAST AI — FULL SALES → ONBOARDING → QA → CLEANUP
+FINAL “TRY TO BREAK IT” END-TO-END PROMPT (GO/NO-GO)
+
+GOAL
+You are a ruthless Principal QA Lead + Security Engineer + Product Acceptance Auditor. Run the entire real-world workflow end-to-end the way a real agency would, and try to break it. Assume anything not explicitly verified is broken. Test like real humans: typos, spam clicks, bad inputs, slow networks, refresh mid-submit, mobile quirks, and returning later.
+
+TARGET
+Base URL:
+https://treasure-coast-ai-platform--mlgrushskill.replit.app
+
+Credentials (DO NOT PRINT PASSWORDS IN OUTPUT; redact if referenced):
+Super Admin:
+- username: admin
+- password: admin123
+Client demo account:
+- username: demo_faith_house
+- password: demo123
+
+SECURITY / PRIVACY RULES
+- Never commit credentials or secrets.
+- Never echo passwords in output/logs.
+- Do not paste full reset tokens in output.
+- If you must reference credentials, redact (a*****3 / d*****3).
+- When deleting, confirm you are deleting ONLY the test tenant you created.
+
+NON-NEGOTIABLE GUARDRAILS (ANY VIOLATION = BLOCKER)
+1) NO PAYMENT PROCESSING — EVER
+- No checkout UI, no card/ACH/wallet capture, no payment tokens/intents, no refunds/chargebacks.
+- “Book Now” MUST only:
+  (a) log booking intent/redirect internally, then
+  (b) redirect externally to the client’s booking/payment platform to complete there.
+2) MULTI-TENANT ISOLATION
+- No cross-tenant data exposure. All reads/writes must be tenant/workspace scoped server-side.
+- UI hiding is not security.
+3) DEMO-READINESS
+- No “coming soon”, placeholders, dead buttons, broken screens exposed to prospects/clients.
+- Friendly error messages only; never show stack traces to end users.
+
+OUTPUT FORMAT (STRICT)
+You must produce:
+1) GO / NO-GO (final)
+2) Full checklist results with PASS/FAIL for every step below
+3) Findings by severity: BLOCKER / HIGH / MEDIUM / LOW
+   For each finding include:
+   - exact page/route
+   - steps to reproduce (exact clicks/inputs)
+   - expected vs actual
+   - why it matters for demos
+   - suggested fix (and file path + line numbers if code is available)
+4) “No Payments Compliance” proof section
+5) “Tenant Isolation Proof” section (3+ attempted attacks + responses)
+6) A “Safe Demo Path” script (shortest click+talk track that never fails)
+
+IMPORTANT META-RULE
+If any step errors or behaves oddly:
+- Repeat the same step in an incognito/private session, AND
+- Repeat it in mobile viewport (375px width),
+Then classify the bug as:
+- persistent (always)
+- session-specific
+- mobile-only
+- flaky (intermittent)
+
+===========================================================
+PART 1 — PROSPECT INTAKE (INTERESTED / CONTACT FORM)
+===========================================================
+A1) Fresh session (incognito if possible)
+- Load landing page.
+- Check console for obvious errors.
+
+A2) Submit Interested form (or equivalent lead intake form)
+Submit a NEW TEST PROSPECT:
+- Business Name: “Test Client — Demo Build”
+- Contact Name: “Tyler Demo”
+- Email: demo+tyler@testmail.com
+- Phone: 555-000-1111
+- Industry: choose any
+- Notes: “Agent Mode E2E Setup + Delete After”
+
+PASS:
+- Form submits successfully with a clear confirmation.
+- No stack traces or scary errors.
+
+A3) Idempotency check (spam click)
+- Submit the same form 2–3 times quickly (or reload mid-submit once).
+PASS:
+- Either creates one lead (preferred) OR clearly groups duplicates without corrupting data.
+
+===========================================================
+PART 2 — ADMIN RECEIVES LEAD → CONTACTS → CREATES CLIENT
+===========================================================
+B1) Admin login
+- Login as admin.
+PASS:
+- Admin dashboard loads; no broken nav.
+
+B2) Find the new prospect lead
+- Locate where new inbound leads appear (pipeline/leads/inbox).
+- Find “Test Client — Demo Build” lead.
+
+B3) Mark as contacted
+- Change status to “Contacted” (or equivalent).
+- Add note: “Test run started.”
+- Refresh page.
+PASS:
+- Status + note persist after refresh and show consistent across relevant views.
+
+B4) Create new client workspace (full setup)
+- Start “New Client” / onboarding wizard.
+Create the test client:
+- Workspace Name: “Test Client — Demo Build”
+- Slug: test-client-demo-build
+- Client login username/email: demo_test_client
+- Client login password: choose a temp password (DO NOT PRINT IT)
+
+Set booking redirect URL:
+- Use any SAFE external URL (must not be on your domain). Example: https://example.com/book
+(If platform requires a real provider URL, use a real external booking page, still not on your domain.)
+
+PASS:
+- Workspace is created successfully.
+- Client login works.
+- No partial setup state.
+
+===========================================================
+PART 3 — KNOWLEDGE BASE + EXTERNAL LINKS + AUTOMATIONS (FILL EVERYTHING)
+===========================================================
+C1) Business profile settings
+Fill in:
+- Services (at least 8)
+- Service areas
+- Hours (include weekend hours)
+- Phone/email/address
+- FAQs (at least 10)
+- Policies (cancellations, no payments on platform, etc.)
+
+PASS:
+- Save works and persists after refresh.
+
+C2) External links
+Add:
+- Website URL (can be placeholder)
+- Booking URL (EXTERNAL)
+- Social links
+- Map link (optional)
+Test each link opens correctly.
+
+PASS:
+- Links are stored correctly and used by the assistant when asked.
+
+C3) Knowledge base ingestion (if supported)
+- Add a KB entry via text/paste.
+- If uploads exist:
+  - upload a small allowed file
+  - attempt a disallowed file type
+  - attempt a near-limit size file
+PASS:
+- Good files ingest; bad files rejected with friendly messaging; large file handled gracefully.
+
+C4) Automations configuration (if present)
+Enable/configure everything that exists and is safe:
+- lead notify
+- booking intent notify
+- daily summary
+- review flags
+Confirm tenant-scoped settings.
+
+PASS:
+- Automations persist after refresh and are scoped only to this workspace.
+
+C5) Notification delivery proof (if email/SMS exists)
+Trigger:
+- a lead capture notification
+- a booking intent notification
+Verify:
+- right recipients
+- no secrets/tokens in messages
+
+PASS:
+- Notifications arrive correctly and safely.
+
+===========================================================
+PART 4 — EMBED TEST (REAL WIDGET INSTALL)
+===========================================================
+D1) Get embed snippet
+- Locate embed code for the new client.
+Verify:
+- uses https
+- contains only public identifiers
+- no secrets in snippet
+
+D2) Install embed snippet on a test page
+- Use platform demo embed preview (if exists) OR a simple HTML test page.
+Load it.
+
+PASS:
+- Widget loads.
+- Branding appears (if configured).
+- No console errors.
+
+D3) Browser compatibility quick pass
+Run the widget open/send flow on:
+- Chrome
+- Mobile Safari simulation (or closest available)
+- Incognito with stricter cookie settings (if possible)
+
+PASS:
+- Widget still loads, responds, and doesn’t break auth.
+
+===========================================================
+PART 5 — LIVE CHATBOT TESTS (HUMAN-LIKE + EDGE CASES)
+===========================================================
+E1) FAQ accuracy
+Ask:
+- “What services do you offer?”
+- “What are your weekend hours?”
+- Typo: “wht time yall close?”
+PASS:
+- Correct answers from KB.
+
+E2) Stress / input chaos
+Send:
+- very long multi-paragraph message
+- emojis + unicode
+- rapid-fire 8 messages quickly
+PASS:
+- No crash; rate limiting is friendly if triggered.
+
+E3) Lead capture (CRITICAL)
+Trigger “contact me” flow. Submit:
+- valid name/email/phone
+Then try:
+- invalid email once
+- empty required field once
+- special characters in name
+PASS:
+- Friendly validation
+- Exactly-once lead record OR documented grouping/dedup that doesn’t overwrite identity silently.
+
+E4) Booking intent + Book Now redirect (CRITICAL)
+Trigger booking request:
+- “I want to book now.”
+Confirm:
+- booking intent logged
+- “Book Now” exists and works
+Click “Book Now”:
+- MUST redirect externally
+- MUST NOT show payment UI on our domain
+
+PASS:
+- Redirect always external
+- Internal tracking increments booking intent + booking redirect
+- No payment collection exists on platform
+
+E5) Refresh + multi-tab resilience
+- Refresh mid-chat
+- Open widget in two tabs
+PASS:
+- Predictable behavior; no data corruption.
+
+E6) Disaster handling
+Simulate (if possible):
+- offline
+- slow 3G
+PASS:
+- Friendly fallback, no stack traces.
+
+===========================================================
+PART 6 — DASHBOARD VERIFICATION (CLIENT + ADMIN PARITY)
+===========================================================
+F1) Client login (new client created in Part 2)
+- Login as the newly created client.
+Verify sections:
+- Overview
+- Conversations (transcript viewer must show message bodies)
+- Leads
+- Bookings
+- Settings
+
+PASS:
+- Everything loads on desktop + mobile.
+
+F2) Transcript integrity (CRITICAL)
+- Open the exact conversation you just had.
+Verify:
+- user and assistant messages visible
+- correct ordering
+- timestamps reasonable
+- no “Assistant only placeholders”
+
+PASS:
+- Full transcript visible.
+
+F3) Booking metrics + redirect metrics
+- Confirm booking intent count incremented.
+- Confirm booking redirect count incremented after clicking Book Now.
+
+PASS:
+- Numbers match expected.
+
+F4) Dashboard search + filters
+- Leads: search by name/phone/email; filter by status/date
+- Conversations: search; filter
+- Bookings: filter by date/status
+Refresh the page and confirm filters persist (or clearly reset).
+
+PASS:
+- Search/filters correct, stable, and trustworthy.
+
+F5) Export (if available)
+If export/download exists:
+- export leads list (or conversations)
+PASS:
+- Export matches on-screen filtered data.
+
+F6) Password change (if present)
+- Change password from Settings (current password required)
+- Log out and log back in
+PASS:
+- Works; tokens not exposed; session behavior sensible.
+
+F7) Logout + back button
+PASS:
+- Protected pages don’t load after logout.
+
+F8) Timezone + date sanity (demo killer check)
+- Create booking intent for today / tomorrow / next week
+Verify:
+- chat confirmation language
+- bookings table date
+- “today/last 7 days” metrics alignment
+PASS:
+- No off-by-one or timezone drift.
+
+===========================================================
+PART 7 — ADMIN PARITY + “VIEW AS CLIENT”
+===========================================================
+G1) Admin login
+- Back to admin account.
+
+G2) Find the new test client workspace
+Verify:
+- workspace exists
+- shows activity
+
+G3) Admin Inbox / Conversations
+- Open workspace conversations.
+PASS:
+- Conversations visible (not empty if data exists).
+
+G4) Metrics parity
+Compare admin vs client for same workspace and time window:
+- leads
+- conversations
+- booking intents
+- booking redirects
+PASS:
+- Exact match OR documented, justified difference.
+
+G5) “View as client” (if present)
+- Use it
+- Verify it scopes correctly and can be exited cleanly
+PASS:
+- No cross-tenant bleed, no sticky impersonation.
+
+===========================================================
+PART 8 — SECURITY STRIKES (MUST DO)
+===========================================================
+H1) RBAC attack
+While logged in as a client:
+- attempt to access admin routes directly (e.g. /super-admin)
+PASS:
+- 401/403/redirect with no data.
+
+H2) IDOR attempts
+If any leadId/convoId/bookingId appears in URL:
+- try changing it
+PASS:
+- blocked or empty, no cross-tenant data.
+
+H3) XSS attempts
+Use:
+<script>alert(1)</script>
+in:
+- chat message
+- lead form fields
+PASS:
+- sanitized/escaped, no execution.
+
+H4) Abuse / rate limiting
+- spam 10–20 chat sends fast
+- spam lead submit
+- spam password reset (if exists)
+PASS:
+- throttling or safe degradation; app remains stable.
+
+H5) Logging + privacy check
+- Ensure transcripts do not store passwords/secrets.
+- Ensure analytics events do not contain raw tokens.
+PASS:
+- Safe logs; no secret leaks.
+
+===========================================================
+PART 9 — CLEANUP (DELETE TEST CLIENT SAFELY)
+===========================================================
+I1) Confirm target
+- Confirm you are deleting ONLY:
+  Workspace/Client: “Test Client — Demo Build”
+  Slug: test-client-demo-build
+
+I2) Delete the test client/workspace
+- Delete workspace and associated data (leads, convos, bookings, automations) if supported.
+PASS:
+- Workspace disappears.
+- Test client login no longer works.
+- Widget no longer loads for that workspace identifier.
+- No other tenants affected.
+
+===========================================================
+FINAL DELIVERABLES (STRICT)
+===========================================================
+1) GO / NO-GO
+2) Full PASS/FAIL checklist for Parts 1–9 with evidence
+3) Findings by severity with reproduction steps and fixes
+4) No Payments Compliance proof
+5) Tenant Isolation proof (3+ attacks + outcomes)
+6) A “Safe Demo Path” (exact clicks + exact 5 questions to ask that never fail)
+START NOW.
