@@ -289,9 +289,16 @@ export const clientSettings = pgTable("client_settings", {
   
   // Behavior preset for AI conversation style and lead capture behavior
   // - "support_lead_focused": Helpful support with proactive lead capture (default)
+  // - "sales_focused_soft": Slightly more proactive CTA but never pushy
+  // - "support_only": Focus on answers; only capture lead if asked
   // - "compliance_strict": Conservative responses, minimal assumptions
   // - "sales_heavy": Aggressive lead capture and conversion focus
   behaviorPreset: text("behavior_preset").notNull().default("support_lead_focused"),
+  
+  // Lead capture settings (admin-controlled)
+  leadCaptureEnabled: boolean("lead_capture_enabled").notNull().default(true),
+  leadDetectionSensitivity: text("lead_detection_sensitivity").notNull().default("medium"), // 'low' | 'medium' | 'high'
+  fallbackLeadCaptureEnabled: boolean("fallback_lead_capture_enabled").notNull().default(true),
   
   // Metadata for extensible storage (admin notes, etc.)
   metadata: jsonb("metadata").$type<Record<string, any>>().notNull().default({}),
@@ -309,12 +316,23 @@ export type InsertClientSettings = z.infer<typeof insertClientSettingsSchema>;
 export type ClientSettings = typeof clientSettings.$inferSelect;
 
 // Behavior preset types for AI conversation and lead capture behavior
-export type BehaviorPreset = 'support_lead_focused' | 'compliance_strict' | 'sales_heavy';
+export type BehaviorPreset = 'support_lead_focused' | 'sales_focused_soft' | 'support_only' | 'compliance_strict' | 'sales_heavy';
+
+// Lead detection sensitivity type
+export type LeadDetectionSensitivity = 'low' | 'medium' | 'high';
 
 export const BEHAVIOR_PRESETS = {
   support_lead_focused: {
     name: 'Support + Lead Focused',
     description: 'Helpful support with proactive lead capture. Answers directly, max 1 clarifying question, offers callback when uncertain.',
+  },
+  sales_focused_soft: {
+    name: 'Sales Focused (Soft)',
+    description: 'Slightly more proactive with CTAs but never pushy. Still factual and KB-driven.',
+  },
+  support_only: {
+    name: 'Support Only',
+    description: 'Focus on answering questions. Only capture leads if explicitly requested or clearly necessary.',
   },
   compliance_strict: {
     name: 'Compliance Strict',
