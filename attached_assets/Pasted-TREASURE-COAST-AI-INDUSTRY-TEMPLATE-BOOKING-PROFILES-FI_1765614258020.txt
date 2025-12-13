@@ -1,0 +1,82 @@
+TREASURE COAST AI — INDUSTRY TEMPLATE BOOKING PROFILES
+FINAL VERIFICATION / PROOF BLOCK (NO SECRETS)
+
+✅ COMPLETED WORK
+1) BookingProfile schema + failsafe contract
+- Added BookingProfile schema types into shared/schema.ts
+- Includes FAILSAFE rule:
+  If booking is set to EXTERNAL but external URL is missing/invalid → auto-pivot to INTERNAL request flow.
+
+2) Industry booking profiles (15+ industries)
+- Each industry has correct:
+  - defaultMode (external vs internal)
+  - industry-specific CTAs
+  - failsafe configuration (pivot_to_internal + request_callback type)
+
+3) Client overrides
+- Added per-appointment-type override support (appointmentTypeMode) in client settings
+- Allows easy switching INTERNAL/EXTERNAL per client and even per appointment type.
+
+4) Orchestrator failsafe runtime logic
+- Auto-pivots to internal request when external URL is missing/invalid
+- External URL validation blocks: javascript:, data:, file:, http: (HTTPS-only)
+
+5) Demo page template correctness
+- Demo template validation script confirms each demo bot uses the correct template + correct behavior.
+
+✅ RESULTS
+- Demo template validation: 16/16 demos validated PASS
+- Industry template sweep: 197/197 tests passed PASS
+- URL security: PASS (unsafe protocols blocked)
+- Failsafe coverage: PASS
+- CTA references: PASS
+
+BOOKING MODE SUMMARY (DEFAULTS)
+EXTERNAL default (redirect-only):
+- barbershop
+- med_spa
+- boutique_hotel
+- pet_grooming
+- dental
+- tattoo
+
+INTERNAL default (request-based + notifications):
+- recovery
+- wedding
+- auto
+- fitness
+- home_services
+- real_estate
+- law_firm
+- restaurant
+- roofing
+
+NO PAYMENTS POLICY (HARD RULE)
+- Platform does NOT collect/store/process payments.
+- EXTERNAL booking = redirect-only to client’s booking/payment provider (HTTPS only).
+- INTERNAL booking = request capture + appointment request record + notification attempt (SMS/email if configured).
+
+SCRIPTS ADDED (WHERE)
+- scripts/validate-demo-templates.ts
+- scripts/industry-template-sweep.ts
+
+HOW TO RUN (LOCAL/REPLIT)
+Run these from project root:
+
+1) Validate demo page bots map to correct templates
+- npx tsx scripts/validate-demo-templates.ts
+
+2) Sweep all industry templates (full regression)
+- npx tsx scripts/industry-template-sweep.ts
+
+QUALITY GATES (REQUIRED)
+- bash ./scripts/guard-no-payments.sh
+- npx tsc --noEmit
+- npx vitest run
+- npm run build
+
+EXPECTED OUTCOME
+- All scripts PASS
+- All templates behave correctly out-of-the-box
+- Any EXTERNAL template without a valid URL pivots safely to INTERNAL request flow (never “does nothing”)
+- Demo page bots all match correct templates
