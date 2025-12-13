@@ -88,6 +88,7 @@ import { requireExportClientId } from './utils/tenantScope';
 import { logAuditEvent, createAuditHelper, getAuditLogs } from './auditLogger';
 import { retryFetch, createNotificationRetryLogger } from './retryUtils';
 import { exportClientData, deleteClientData, getRetentionConfig, purgeOldData } from './dataLifecycle';
+import { INDUSTRY_TEMPLATES, type IndustryTemplate } from './industryTemplates';
 
 // =============================================
 // PHASE 2.4: SIGNED WIDGET TOKENS
@@ -11504,6 +11505,567 @@ These suggestions should be relevant to what was just discussed and help guide t
     } catch (error) {
       console.error("Data purge error:", error);
       res.status(500).json({ error: "Failed to purge old data" });
+    }
+  });
+
+  // =============================================
+  // AGENCY ONBOARDING CONSOLE ENDPOINTS
+  // =============================================
+
+  const agencyOnboardingIntakeSchema = z.object({
+    businessName: z.string().min(1, "Business name is required"),
+    industryTemplate: z.string().min(1, "Industry template is required"),
+    websiteUrl: z.string().url().optional().or(z.literal("")),
+    primaryPhone: z.string().optional(),
+    primaryEmail: z.string().email().optional().or(z.literal("")),
+    serviceArea: z.string().optional(),
+    primaryCTA: z.enum(['tour', 'consult', 'book', 'reserve', 'estimate', 'call']).optional(),
+    bookingPreference: z.enum(['internal', 'external']).optional(),
+    externalBookingUrl: z.string().url().optional().or(z.literal("")),
+    internalNotes: z.string().optional(),
+    doNotSay: z.array(z.string()).optional(),
+  });
+
+  // Generate Draft Setup - Creates workspace + bot in DRAFT mode
+  app.post("/api/agency-onboarding/generate-draft-setup", requireSuperAdmin, async (req, res) => {
+    try {
+      const validation = agencyOnboardingIntakeSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: "Validation failed", 
+          details: validation.error.errors 
+        });
+      }
+
+      const intake = validation.data;
+      const template = INDUSTRY_TEMPLATES[intake.industryTemplate];
+      
+      if (!template) {
+        return res.status(400).json({ error: `Unknown industry template: ${intake.industryTemplate}` });
+      }
+
+      // Generate slugified client/workspace ID
+      const clientId = intake.businessName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_|_$/g, '')
+        .substring(0, 50) + '_' + Date.now().toString(36);
+      
+      const botId = `${clientId}_bot`;
+
+      // Step 1: Create workspace in DRAFT status
+      const workspace = await createWorkspace({
+        name: intake.businessName,
+        slug: clientId,
+        ownerId: req.session.userId?.toString() || 'admin',
+        plan: 'starter',
+        status: 'draft', // DRAFT mode - not active yet
+        settings: {
+          onboardingData: intake,
+          createdViaOnboarding: true,
+        },
+      });
+
+      // Step 2: Build bot configuration from template + intake
+      let scrapedData: any = null;
+      let websiteSuggestions: any[] = [];
+      
+      // If website URL provided, run scraper
+      if (intake.websiteUrl) {
+        try {
+          const scrapeResult = await scrapeWebsite(intake.websiteUrl, clientId, botId);
+          if (scrapeResult.success) {
+            const scrape = await storage.getScrapedWebsiteById(scrapeResult.scrapeId);
+            if (scrape?.extractedData) {
+              scrapedData = scrape.extractedData;
+              
+              // Build website suggestions with confidence scores
+              const extracted = scrape.extractedData as any;
+              if (extracted.services?.length) {
+                websiteSuggestions.push({
+                  type: 'services',
+                  label: 'Services',
+                  items: extracted.services,
+                  sourceUrl: intake.websiteUrl,
+                  confidence: 0.85,
+                  selected: true,
+                });
+              }
+              if (extracted.faqs?.length) {
+                websiteSuggestions.push({
+                  type: 'faqs',
+                  label: 'FAQs',
+                  items: extracted.faqs,
+                  sourceUrl: intake.websiteUrl,
+                  confidence: 0.80,
+                  selected: true,
+                });
+              }
+              if (extracted.contactInfo) {
+                websiteSuggestions.push({
+                  type: 'contact',
+                  label: 'Contact Info',
+                  items: [extracted.contactInfo],
+                  sourceUrl: intake.websiteUrl,
+                  confidence: 0.90,
+                  selected: true,
+                });
+              }
+              if (extracted.hours || extracted.contactInfo?.hours) {
+                websiteSuggestions.push({
+                  type: 'hours',
+                  label: 'Business Hours',
+                  items: [extracted.hours || extracted.contactInfo?.hours],
+                  sourceUrl: intake.websiteUrl,
+                  confidence: 0.75,
+                  selected: true,
+                });
+              }
+            }
+          }
+        } catch (scrapeError) {
+          console.error('[Agency Onboarding] Scrape failed:', scrapeError);
+          // Continue without scraped data
+        }
+      }
+
+      // Step 3: Merge template defaults + scraped data + intake for KB draft
+      const mergedServices = [
+        ...template.defaultConfig.businessProfile.services,
+        ...(scrapedData?.services?.map((s: any) => s.name) || []),
+      ].filter((s, i, arr) => arr.indexOf(s) === i); // Deduplicate
+
+      const mergedFaqs = [
+        ...template.defaultConfig.faqs,
+        ...(scrapedData?.faqs || []),
+      ].filter((faq, i, arr) => 
+        arr.findIndex(f => f.question.toLowerCase() === faq.question.toLowerCase()) === i
+      ); // Deduplicate by question
+
+      // Step 4: Determine booking behavior with FAILSAFE
+      let bookingMode = intake.bookingPreference || template.bookingProfile.mode;
+      let externalBookingUrl = intake.externalBookingUrl || '';
+      let failsafeActive = false;
+
+      // FAILSAFE: If external mode but no valid HTTPS URL, fallback to internal
+      if (bookingMode === 'external') {
+        if (!externalBookingUrl || !externalBookingUrl.startsWith('https://')) {
+          bookingMode = 'internal';
+          failsafeActive = true;
+          console.log(`[Agency Onboarding] FAILSAFE ACTIVATED: External booking URL missing/invalid, falling back to internal request_callback`);
+        }
+      }
+
+      // Step 5: Create bot config
+      const botConfig: BotConfig = {
+        botId,
+        clientId,
+        name: `${intake.businessName} Assistant`,
+        description: template.description,
+        systemPrompt: template.defaultConfig.systemPromptIntro,
+        businessProfile: {
+          businessName: intake.businessName,
+          type: template.defaultConfig.businessProfile.type,
+          location: intake.serviceArea || '',
+          phone: intake.primaryPhone || '',
+          email: intake.primaryEmail || '',
+          website: intake.websiteUrl || '',
+          hours: scrapedData?.contactInfo?.hours || {},
+          services: mergedServices,
+        },
+        faqs: mergedFaqs,
+        rules: {
+          allowedTopics: [],
+          forbiddenTopics: intake.doNotSay || [],
+          crisisHandling: {
+            onCrisisKeywords: ['suicide', 'self-harm', 'emergency', '911'],
+            responseTemplate: 'If you are in crisis, please call 911 or a crisis hotline immediately.',
+          },
+        },
+        personality: {
+          formality: template.defaultConfig.personality.formality,
+          enthusiasm: 50,
+          warmth: 50,
+          humor: 20,
+          responseLength: 'medium',
+        },
+        quickActions: template.ctaButtons,
+        automations: {
+          leadCapture: {
+            enabled: true,
+            collectFields: ['name', 'phone', 'email'],
+            confirmationMessage: 'Thank you! Someone will be in touch soon.',
+          },
+          bookingCapture: {
+            enabled: true,
+            mode: bookingMode,
+            externalUrl: bookingMode === 'external' ? externalBookingUrl : undefined,
+            failsafeEnabled: template.bookingProfile.failsafeEnabled,
+            failsafeActive,
+          },
+        },
+        metadata: {
+          isDemo: false,
+          industryTemplate: intake.industryTemplate,
+          createdViaOnboarding: true,
+          disclaimer: template.disclaimer,
+          onboardingStatus: 'draft',
+        },
+      };
+
+      // Save bot config
+      const success = await saveBotConfigAsync(botId, botConfig);
+      if (!success) {
+        throw new Error('Failed to save bot configuration');
+      }
+
+      // Register client
+      registerClient(clientId, intake.businessName, template.botType, botId, 'paused');
+
+      // Log audit event
+      await logAuditEvent({
+        action: 'onboarding_draft_created',
+        userId: req.session.userId!,
+        username: req.session.username || 'admin',
+        resourceType: 'workspace',
+        resourceId: clientId,
+        details: {
+          businessName: intake.businessName,
+          industryTemplate: intake.industryTemplate,
+          failsafeActive,
+          websiteScraped: !!scrapedData,
+        },
+        ipAddress: req.ip || 'unknown',
+        userAgent: req.headers['user-agent'] || 'unknown',
+      });
+
+      res.json({
+        success: true,
+        clientId,
+        botId,
+        workspaceId: workspace.id,
+        websiteSuggestions,
+        kbDraft: {
+          services: mergedServices,
+          faqs: mergedFaqs,
+          policies: template.disclaimer,
+          hours: scrapedData?.contactInfo?.hours || {},
+        },
+        bookingConfig: {
+          mode: bookingMode,
+          primaryCTA: intake.primaryCTA || template.bookingProfile.primaryCTA,
+          externalUrl: externalBookingUrl,
+          failsafeActive,
+          failsafeEnabled: template.bookingProfile.failsafeEnabled,
+        },
+        ctaButtons: template.ctaButtons,
+        widgetTheme: template.defaultConfig.theme,
+      });
+    } catch (error) {
+      console.error('[Agency Onboarding] Generate draft error:', error);
+      res.status(500).json({ error: 'Failed to generate draft setup' });
+    }
+  });
+
+  // Get industry templates list
+  app.get("/api/agency-onboarding/templates", requireSuperAdmin, (_req, res) => {
+    try {
+      const templates = Object.values(INDUSTRY_TEMPLATES).map(t => ({
+        id: t.id,
+        name: t.name,
+        icon: t.icon,
+        description: t.description,
+        bookingProfile: t.bookingProfile,
+        primaryCTA: t.bookingProfile.primaryCTA,
+      }));
+      res.json(templates);
+    } catch (error) {
+      console.error('[Agency Onboarding] Get templates error:', error);
+      res.status(500).json({ error: 'Failed to get templates' });
+    }
+  });
+
+  // Run QA Gate - Validates bot is ready for launch
+  app.post("/api/agency-onboarding/run-qa-gate", requireSuperAdmin, async (req, res) => {
+    try {
+      const { clientId, botId } = req.body;
+      
+      if (!clientId || !botId) {
+        return res.status(400).json({ error: 'clientId and botId are required' });
+      }
+
+      const checks: Array<{ name: string; status: 'pass' | 'fail' | 'warn'; message: string }> = [];
+      let allPassed = true;
+
+      // Check 1: Widget config fetch
+      try {
+        const botConfig = await getBotConfigByBotIdAsync(botId);
+        if (botConfig) {
+          checks.push({ name: 'Widget Config', status: 'pass', message: 'Bot configuration loaded successfully' });
+        } else {
+          checks.push({ name: 'Widget Config', status: 'fail', message: 'Bot configuration not found' });
+          allPassed = false;
+        }
+      } catch {
+        checks.push({ name: 'Widget Config', status: 'fail', message: 'Failed to load bot configuration' });
+        allPassed = false;
+      }
+
+      // Check 2: Test chat response (simulate)
+      try {
+        const botConfig = await getBotConfigByBotIdAsync(botId);
+        if (botConfig?.systemPrompt && botConfig.systemPrompt.length > 10) {
+          checks.push({ name: 'Chat Response', status: 'pass', message: 'System prompt configured correctly' });
+        } else {
+          checks.push({ name: 'Chat Response', status: 'warn', message: 'System prompt may need enhancement' });
+        }
+      } catch {
+        checks.push({ name: 'Chat Response', status: 'fail', message: 'Chat configuration error' });
+        allPassed = false;
+      }
+
+      // Check 3: Lead capture configuration
+      try {
+        const botConfig = await getBotConfigByBotIdAsync(botId);
+        const leadCapture = (botConfig as any)?.automations?.leadCapture;
+        if (leadCapture?.enabled) {
+          checks.push({ name: 'Lead Capture', status: 'pass', message: 'Lead capture automation enabled' });
+        } else {
+          checks.push({ name: 'Lead Capture', status: 'warn', message: 'Lead capture not enabled' });
+        }
+      } catch {
+        checks.push({ name: 'Lead Capture', status: 'fail', message: 'Lead capture check failed' });
+      }
+
+      // Check 4: Booking behavior
+      try {
+        const botConfig = await getBotConfigByBotIdAsync(botId);
+        const bookingCapture = (botConfig as any)?.automations?.bookingCapture;
+        if (bookingCapture?.enabled) {
+          if (bookingCapture.mode === 'external' && !bookingCapture.externalUrl) {
+            checks.push({ name: 'Booking Flow', status: 'warn', message: 'External booking configured but URL missing - failsafe active' });
+          } else {
+            checks.push({ name: 'Booking Flow', status: 'pass', message: `Booking mode: ${bookingCapture.mode}` });
+          }
+        } else {
+          checks.push({ name: 'Booking Flow', status: 'warn', message: 'Booking capture not enabled' });
+        }
+      } catch {
+        checks.push({ name: 'Booking Flow', status: 'fail', message: 'Booking configuration error' });
+      }
+
+      // Check 5: Business info completeness
+      try {
+        const botConfig = await getBotConfigByBotIdAsync(botId);
+        const bp = botConfig?.businessProfile;
+        const hasName = !!bp?.businessName;
+        const hasContact = !!(bp?.phone || bp?.email);
+        
+        if (hasName && hasContact) {
+          checks.push({ name: 'Business Info', status: 'pass', message: 'Business profile complete' });
+        } else if (hasName) {
+          checks.push({ name: 'Business Info', status: 'warn', message: 'Missing contact information' });
+        } else {
+          checks.push({ name: 'Business Info', status: 'fail', message: 'Business profile incomplete' });
+          allPassed = false;
+        }
+      } catch {
+        checks.push({ name: 'Business Info', status: 'fail', message: 'Business profile check failed' });
+        allPassed = false;
+      }
+
+      // Generate CLIENT_LAUNCH_REPORT
+      const reportDate = new Date().toISOString();
+      const botConfig = await getBotConfigByBotIdAsync(botId);
+      const launchReport = `# CLIENT LAUNCH REPORT
+Generated: ${reportDate}
+
+## Client Details
+- **Client ID:** ${clientId}
+- **Bot ID:** ${botId}
+- **Business Name:** ${botConfig?.businessProfile?.businessName || 'Unknown'}
+- **Industry:** ${(botConfig?.metadata as any)?.industryTemplate || 'Unknown'}
+
+## QA Gate Results
+${checks.map(c => `- **${c.name}:** ${c.status.toUpperCase()} - ${c.message}`).join('\n')}
+
+## Overall Status
+${allPassed ? 'READY FOR LAUNCH' : 'ISSUES FOUND - Review required'}
+
+## Configuration Summary
+- **Booking Mode:** ${(botConfig as any)?.automations?.bookingCapture?.mode || 'Not configured'}
+- **Lead Capture:** ${(botConfig as any)?.automations?.leadCapture?.enabled ? 'Enabled' : 'Disabled'}
+- **FAQs:** ${botConfig?.faqs?.length || 0} configured
+- **Services:** ${botConfig?.businessProfile?.services?.length || 0} listed
+
+---
+*This report was generated by the Agency Onboarding Console*
+`;
+
+      res.json({
+        success: true,
+        allPassed,
+        checks,
+        launchReport,
+        readyForGoLive: allPassed,
+      });
+    } catch (error) {
+      console.error('[Agency Onboarding] QA Gate error:', error);
+      res.status(500).json({ error: 'Failed to run QA gate' });
+    }
+  });
+
+  // Go Live - Activate workspace and generate embed code
+  app.post("/api/agency-onboarding/go-live", requireSuperAdmin, async (req, res) => {
+    try {
+      const { clientId, botId } = req.body;
+      
+      if (!clientId || !botId) {
+        return res.status(400).json({ error: 'clientId and botId are required' });
+      }
+
+      // Update workspace status to active
+      const workspace = await getWorkspaceBySlug(clientId);
+      if (workspace) {
+        await updateWorkspace(workspace.id, { status: 'active' });
+      }
+
+      // Update client status to active
+      updateClientStatus(clientId, 'active');
+
+      // Update bot metadata to mark as live
+      const botConfig = await getBotConfigByBotIdAsync(botId);
+      if (botConfig) {
+        const updatedConfig = {
+          ...botConfig,
+          metadata: {
+            ...(botConfig.metadata || {}),
+            onboardingStatus: 'live',
+            goLiveDate: new Date().toISOString(),
+          },
+        };
+        await saveBotConfigAsync(botId, updatedConfig);
+      }
+
+      // Generate embed code (NO secrets included)
+      const embedCode = getWidgetEmbedCode({
+        workspaceSlug: clientId,
+        botId,
+        primaryColor: botConfig?.businessProfile?.website ? '#00E5CC' : '#00E5CC',
+        businessName: botConfig?.businessProfile?.businessName || 'AI Assistant',
+        businessSubtitle: 'Powered by TCAI',
+      });
+
+      const minimalEmbed = `<script src="/widget/embed.js" data-client-id="${clientId}" data-bot-id="${botId}"></script>`;
+
+      // Log audit event
+      await logAuditEvent({
+        action: 'onboarding_go_live',
+        userId: req.session.userId!,
+        username: req.session.username || 'admin',
+        resourceType: 'workspace',
+        resourceId: clientId,
+        details: {
+          botId,
+          businessName: botConfig?.businessProfile?.businessName,
+        },
+        ipAddress: req.ip || 'unknown',
+        userAgent: req.headers['user-agent'] || 'unknown',
+      });
+
+      res.json({
+        success: true,
+        status: 'live',
+        clientId,
+        botId,
+        embedCode,
+        minimalEmbed,
+        instructions: getEmbedInstructions(),
+      });
+    } catch (error) {
+      console.error('[Agency Onboarding] Go Live error:', error);
+      res.status(500).json({ error: 'Failed to go live' });
+    }
+  });
+
+  // Update draft setup - Allows editing KB, CTAs, etc before go-live
+  app.put("/api/agency-onboarding/draft/:clientId/:botId", requireSuperAdmin, async (req, res) => {
+    try {
+      const { clientId, botId } = req.params;
+      const updates = req.body;
+
+      const botConfig = await getBotConfigByBotIdAsync(botId);
+      if (!botConfig) {
+        return res.status(404).json({ error: 'Bot not found' });
+      }
+
+      // Merge updates with existing config
+      const updatedConfig: BotConfig = {
+        ...botConfig,
+        faqs: updates.faqs || botConfig.faqs,
+        businessProfile: {
+          ...botConfig.businessProfile,
+          services: updates.services || botConfig.businessProfile?.services,
+          hours: updates.hours || botConfig.businessProfile?.hours,
+        },
+        quickActions: updates.ctaButtons || botConfig.quickActions,
+        automations: {
+          ...((botConfig as any).automations || {}),
+          bookingCapture: updates.bookingConfig 
+            ? { ...((botConfig as any).automations?.bookingCapture || {}), ...updates.bookingConfig }
+            : (botConfig as any).automations?.bookingCapture,
+        },
+      };
+
+      const success = await saveBotConfigAsync(botId, updatedConfig);
+      
+      if (success) {
+        res.json({ success: true, config: updatedConfig });
+      } else {
+        res.status(500).json({ error: 'Failed to save updates' });
+      }
+    } catch (error) {
+      console.error('[Agency Onboarding] Update draft error:', error);
+      res.status(500).json({ error: 'Failed to update draft' });
+    }
+  });
+
+  // Get draft status
+  app.get("/api/agency-onboarding/draft/:clientId/:botId", requireSuperAdmin, async (req, res) => {
+    try {
+      const { clientId, botId } = req.params;
+
+      const botConfig = await getBotConfigByBotIdAsync(botId);
+      if (!botConfig) {
+        return res.status(404).json({ error: 'Bot not found' });
+      }
+
+      const workspace = await getWorkspaceBySlug(clientId);
+      const template = INDUSTRY_TEMPLATES[(botConfig.metadata as any)?.industryTemplate];
+
+      res.json({
+        clientId,
+        botId,
+        status: (botConfig.metadata as any)?.onboardingStatus || 'draft',
+        workspaceStatus: workspace?.status || 'unknown',
+        businessName: botConfig.businessProfile?.businessName,
+        industryTemplate: (botConfig.metadata as any)?.industryTemplate,
+        kbDraft: {
+          services: botConfig.businessProfile?.services || [],
+          faqs: botConfig.faqs || [],
+          policies: (botConfig.metadata as any)?.disclaimer || template?.disclaimer || '',
+          hours: botConfig.businessProfile?.hours || {},
+        },
+        bookingConfig: (botConfig as any).automations?.bookingCapture,
+        ctaButtons: botConfig.quickActions || template?.ctaButtons || [],
+        widgetTheme: {
+          primaryColor: template?.defaultConfig.theme.primaryColor || '#00E5CC',
+          welcomeMessage: template?.defaultConfig.theme.welcomeMessage || 'Hello! How can I help?',
+        },
+      });
+    } catch (error) {
+      console.error('[Agency Onboarding] Get draft error:', error);
+      res.status(500).json({ error: 'Failed to get draft' });
     }
   });
 
