@@ -87,6 +87,7 @@ import { extractBookingInfoFromConversation, type ExtractedBookingInfo, type Cha
 import { requireExportClientId } from './utils/tenantScope';
 import { logAuditEvent, createAuditHelper, getAuditLogs } from './auditLogger';
 import { retryFetch, createNotificationRetryLogger } from './retryUtils';
+import { exportClientData, deleteClientData, getRetentionConfig, purgeOldData } from './dataLifecycle';
 
 // =============================================
 // PHASE 2.4: SIGNED WIDGET TOKENS
@@ -11419,6 +11420,90 @@ These suggestions should be relevant to what was just discussed and help guide t
     } catch (error) {
       console.error('Widget full config error:', error);
       res.status(500).json({ error: 'Failed to load widget configuration' });
+    }
+  });
+
+  // =============================================
+  // DATA LIFECYCLE ENDPOINTS (Phase 8.8)
+  // =============================================
+
+  // Client data export (GDPR-style)
+  app.get("/api/client/data/export", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      const data = await exportClientData(clientId);
+      
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="data_export_${clientId}_${Date.now()}.json"`);
+      res.json(data);
+    } catch (error) {
+      console.error("Data export error:", error);
+      res.status(500).json({ error: "Failed to export data" });
+    }
+  });
+
+  // Client data deletion (right to be forgotten)
+  app.delete("/api/client/data", requireClientAuth, requireWriteAccess, async (req, res) => {
+    try {
+      const clientId = (req as any).effectiveClientId;
+      const { deleteLeads, deleteAppointments, deleteChatSessions, deleteAnalytics } = req.body;
+      
+      const result = await deleteClientData(clientId, {
+        deleteLeads: deleteLeads !== false,
+        deleteAppointments: deleteAppointments !== false,
+        deleteChatSessions: deleteChatSessions !== false,
+        deleteAnalytics: deleteAnalytics !== false,
+      });
+      
+      await logAuditEvent({
+        action: 'data_delete',
+        userId: req.session.userId!,
+        username: req.session.username || 'unknown',
+        resourceType: 'client_data',
+        resourceId: clientId,
+        details: { deletedCounts: result.deletedCounts },
+        ipAddress: req.ip || 'unknown',
+        userAgent: req.headers['user-agent'] || 'unknown',
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Data deletion error:", error);
+      res.status(500).json({ error: "Failed to delete data" });
+    }
+  });
+
+  // Super admin: view retention config
+  app.get("/api/super-admin/retention/config", requireSuperAdmin, async (_req, res) => {
+    try {
+      const config = getRetentionConfig();
+      res.json(config);
+    } catch (error) {
+      console.error("Get retention config error:", error);
+      res.status(500).json({ error: "Failed to get retention config" });
+    }
+  });
+
+  // Super admin: trigger data purge
+  app.post("/api/super-admin/retention/purge", requireSuperAdmin, async (req, res) => {
+    try {
+      const result = await purgeOldData();
+      
+      await logAuditEvent({
+        action: 'data_purge',
+        userId: req.session.userId!,
+        username: req.session.username || 'unknown',
+        resourceType: 'system',
+        resourceId: 'retention_purge',
+        details: { purgedCounts: result.purgedCounts },
+        ipAddress: req.ip || 'unknown',
+        userAgent: req.headers['user-agent'] || 'unknown',
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Data purge error:", error);
+      res.status(500).json({ error: "Failed to purge old data" });
     }
   });
 
