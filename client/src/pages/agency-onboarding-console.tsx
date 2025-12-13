@@ -1559,12 +1559,6 @@ export default function AgencyOnboardingConsole() {
                       rows={4}
                       data-testid="input-policies"
                     />
-                    {selectedTemplate?.disclaimer && (
-                      <div className="mt-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
-                        <p className="text-xs text-amber-400 font-medium mb-1">Industry Default Disclaimer:</p>
-                        <p className="text-xs text-white/60 whitespace-pre-line">{selectedTemplate.disclaimer}</p>
-                      </div>
-                    )}
                   </div>
                 </TabsContent>
 
@@ -1736,21 +1730,21 @@ export default function AgencyOnboardingConsole() {
                       <div className="p-4 space-y-3 bg-slate-950">
                         <div className="bg-white/10 rounded-2xl rounded-tl-md p-3 max-w-[80%]">
                           <p className="text-sm text-white/90">
-                            {selectedTemplate?.defaultConfig?.theme?.welcomeMessage || "Hello! How can I help you today?"}
+                            Hello! How can I help you today?
                           </p>
                         </div>
                         
                         <div className="flex flex-wrap gap-2">
-                          {selectedTemplate?.ctaButtons?.slice(0, 3).map((cta) => (
+                          {CTA_OPTIONS.slice(0, 3).map((cta) => (
                             <button
-                              key={cta.id}
+                              key={cta.value}
                               className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                                cta.isPrimary 
+                                cta.value === form.getValues("primaryCTA")
                                   ? 'text-white' 
                                   : 'bg-white/10 text-white/80 hover:bg-white/20'
                               }`}
-                              style={cta.isPrimary ? { 
-                                background: selectedTemplate?.defaultConfig?.theme?.primaryColor || '#00E5CC' 
+                              style={cta.value === form.getValues("primaryCTA") ? { 
+                                background: styleConfig.primaryColor 
                               } : undefined}
                             >
                               {cta.label}
@@ -1769,7 +1763,7 @@ export default function AgencyOnboardingConsole() {
                           />
                           <button 
                             className="w-8 h-8 rounded-full flex items-center justify-center"
-                            style={{ background: selectedTemplate?.defaultConfig?.theme?.primaryColor || '#00E5CC' }}
+                            style={{ background: styleConfig.primaryColor }}
                           >
                             <Send className="h-4 w-4 text-white" />
                           </button>
