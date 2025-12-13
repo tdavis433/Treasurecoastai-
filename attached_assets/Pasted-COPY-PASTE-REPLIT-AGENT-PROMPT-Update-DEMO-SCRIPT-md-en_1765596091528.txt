@@ -1,0 +1,250 @@
+COPY/PASTE — REPLIT AGENT PROMPT
+Update DEMO_SCRIPT.md + enforce “No Payments” language + add backup 60-second demo + runbook TODOs
+
+GOAL
+1) Update DEMO_SCRIPT.md so it’s demo-safe, accurate, and matches platform guardrails:
+   - NO PAYMENT PROCESSING (redirect-only booking)
+   - “Book Now” redirects externally to the client’s booking/payment provider
+   - No “books appointments inline” language unless it truly creates internal appointments without payments
+2) Add a 60-second “Safe Demo Path” backup script (if anything gets flaky live).
+3) Apply the 5 recommended runbook improvements:
+   - remove Stripe mentions entirely
+   - add a strong “no --force on prod” gate
+   - add a repeatable DB schema verification script
+   - add an automated “No Payments” guard test (keyword scan + redirect test)
+   - add a short “Safe Demo Path” section at the top of RELEASE_RUNBOOK.md
+
+NON-NEGOTIABLE GUARDRAILS
+- NO payment processing ever (no Stripe/Square/PayPal, no checkout UI, no payment intents/tokens).
+- Booking must be redirect-only: log booking intent + redirect event → external booking/payment platform.
+- Do NOT print or store secrets in docs; passwords may be mentioned only as placeholders (or label as “demo credentials” but do not encourage reuse).
+
+TASKS (DO IN ORDER)
+
+PHASE 1 — UPDATE DEMO_SCRIPT.md (15–20 MINUTE SCRIPT)
+1) Replace any wording that implies payments or hosted checkout.
+2) Replace “Books appointments inline” with:
+   - “Tracks booking intent and redirects externally to the client’s booking/payment platform.”
+   - If internal appointments exist, phrase carefully: “Can create an internal appointment request / booking record (no payments), then redirect externally if required.”
+3) Add a clear “No Payments” callout inside the Widget Demo section.
+4) Add exact “demo questions” and exact click paths for:
+   - admin dashboard
+   - assistants/bot settings
+   - widget preview
+   - client dashboard
+5) Add a “What to avoid during live demo” section (risky edge cases).
+
+PHASE 2 — ADD A 60-SECOND SAFE DEMO PATH (NEW SECTION)
+Add at the top of DEMO_SCRIPT.md:
+- 60-second fast demo script (click-by-click + exact 2–3 questions + show dashboards quickly)
+- A fallback talk-track if OpenAI rate limits / “high demand” occurs
+
+PHASE 3 — UPDATE RELEASE_RUNBOOK.md (SAFETY + DRIFT PROOF)
+Apply these edits:
+A) Remove ALL Stripe references
+- Remove STRIPE_SECRET_KEY env var
+- Remove “Stripe disabled” limitation lines
+- Replace with: “Payments are not supported by design.”
+
+B) Add “NO --force on production DB” gate
+- State: db:push --force only allowed on disposable dev DBs
+- Require backup + rollback plan before any destructive operation
+
+C) Add DB schema verification script
+Create: scripts/verify-db-schema.sql
+Include checks for:
+- client_settings.metadata is jsonb NOT NULL DEFAULT {}
+- constraint naming alignment entries (list the expected constraint names)
+- bot_requests.dedupe_hash constraint existence
+Add runbook command:
+psql "$DATABASE_URL" -f scripts/verify-db-schema.sql
+
+D) Add automated No-Payments guard
+Add a CI or npm script that fails if repo contains:
+stripe|square|paypal|checkout|payment_intent|client_secret|chargeback|refund|subscription|billing
+Also add/ensure an E2E test that asserts:
+- “Book Now” redirect target is EXTERNAL (not our domain)
+
+E) Add “Safe Demo Path” at top of runbook
+- Short 5-step smoke demo path with exact questions + redirect check
+
+PHASE 4 — OUTPUT (REQUIRED)
+1) Commit updated DEMO_SCRIPT.md
+2) Commit updated RELEASE_RUNBOOK.md
+3) Add scripts/verify-db-schema.sql
+4) Add/confirm npm scripts for:
+   - guard:no-payments (keyword scan)
+   - test:e2e (redirect assertion)
+5) Provide a short summary:
+   - what changed
+   - files touched
+   - exact commands to run to verify
+
+NOW: UPDATE DEMO_SCRIPT.md USING THE CONTENT BELOW AS INPUT
+(Use this as the base; rewrite it to be accurate and stronger for live demos.)
+
+--- CURRENT DEMO_SCRIPT.md INPUT START ---
+# Treasure Coast AI - Demo Script
+
+**Duration:** 15-20 minutes
+**Last Updated:** December 13, 2025
+
+---
+
+## Demo Overview
+
+This script guides you through demonstrating the key features of Treasure Coast AI, an agency-first AI assistant platform for local businesses.
+
+---
+
+## Pre-Demo Setup
+
+1. [ ] Application running at https://[your-replit-url].replit.app
+2. [ ] OpenAI API key configured (for live AI responses)
+3. [ ] Demo accounts ready:
+- Super Admin: admin / admin123
+- Client: demo_faith_house / demo123
+
+---
+
+## Demo Script
+
+### Part 1: Introduction (2 minutes)
+
+**Talking Points:**
+- "Treasure Coast AI helps agencies deploy custom AI assistants for their clients"
+- "24/7 lead capture, appointment booking, and customer support"
+- "Two-sided platform: Agency dashboard + Client analytics"
+
+### Part 2: Super Admin Dashboard (5 minutes)
+
+**Steps:**
+1. Navigate to /login
+2. Login as admin / admin123
+3. Show the Super Admin Dashboard
+
+**Highlight:**
+- "This is the agency command center"
+- "See all clients, assistants, and platform analytics"
+- "Dark luxury design with glassmorphism accents"
+
+**Navigate to:**
+- **Clients Section:** Show client management
+- **Assistants:** Show bot configuration options
+- **Analytics:** Show platform-wide metrics
+
+### Part 3: Bot Builder (4 minutes)
+
+**Steps:**
+1. Navigate to Assistants/Bots section
+2. Select or create an assistant
+3. Show configuration options
+
+**Highlight:**
+- "Define AI personality and knowledge base"
+- "Configure FAQs and automated responses"
+- "Set up lead capture and booking flows"
+- "Customize widget appearance"
+
+### Part 4: Widget Demo (3 minutes)
+
+**Steps:**
+1. Navigate to widget demo page
+2. Show the chat widget
+3. Demonstrate a conversation
+
+**Highlight:**
+- "Fully themeable, matches client branding"
+- "Mobile responsive"
+- "Captures leads automatically"
+- "Books appointments inline"
+
+**Sample Conversation:**
+
+User: "Hi, I'd like to learn more about your services"
+Bot: [Responds with business info from knowledge base]
+User: "Can I schedule a consultation?"
+Bot: [Collects booking information]
+
+### Part 5: Client Dashboard (3 minutes)
+
+**Steps:**
+1. Logout from admin
+2. Login as demo_faith_house / demo123
+3. Show client dashboard
+
+**Highlight:**
+- "Clients get view-only access to their data"
+- "See all conversations and leads"
+- "Track bookings and appointments"
+- "Simple, focused analytics"
+
+**Navigate to:**
+- **Conversations:** Show conversation history
+- **Leads:** Show captured leads
+- **Bookings:** Show appointments
+
+### Part 6: Key Differentiators (2 minutes)
+
+**Talking Points:**
+- "ONE BRAIN, ONE BEHAVIOR - Consistent AI across all touchpoints"
+- "Multi-tenant isolation - Each client's data is secure"
+- "Agency-managed - Clients don't need to configure anything"
+- "White-label ready - Customizable to your brand"
+
+---
+
+## Q&A Preparation
+
+### Common Questions
+
+**Q: How is the AI trained?**
+A: "The AI uses GPT-4 with a knowledge base you configure. Website scraping, FAQs, and custom responses."
+
+**Q: Can clients modify their bot?**
+A: "Clients have view-only access. Agencies maintain full control over bot configuration."
+
+**Q: What about data security?**
+A: "Multi-tenant isolation ensures each client's data is completely separate. HMAC-signed tokens protect widget access."
+
+**Q: How are leads captured?**
+A: "The AI detects lead intent and collects contact information inline. Leads are saved automatically with AI quality scoring."
+
+**Q: Can it book appointments?**
+A: "Yes! The AI can collect booking information and create appointments directly in the system."
+
+---
+
+## Demo Troubleshooting
+
+### Widget not loading?
+- Check WIDGET_TOKEN_SECRET is configured
+- Verify domain is in allowlist
+- Check browser console for errors
+
+### AI not responding?
+- Verify OPENAI_API_KEY is valid
+- Check server logs for API errors
+- May need to refresh the page
+
+### Login issues?
+- Super Admin: admin / admin123
+- Client: demo_faith_house / demo123
+- Check if account is locked (wait 15 minutes)
+
+---
+
+## Post-Demo Follow-Up
+
+- [ ] Share platform access for trial
+- [ ] Discuss implementation timeline
+- [ ] Review pricing and packages
+- [ ] Schedule technical deep-dive if needed
+
+---
+
+*Document generated as part of platform release process.*
+--- CURRENT DEMO_SCRIPT.md INPUT END ---
+
+START NOW:
+Implement all phases, commit changes, and output final summary + commands to verify.
