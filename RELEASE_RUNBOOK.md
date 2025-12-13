@@ -189,6 +189,30 @@ npm run build                         # Production build
 
 ---
 
+## Replit Environment Note: Verification Commands
+
+In this Replit environment, `package.json` scripts may be restricted/immutable.
+For consistent verification, use the direct commands below (source of truth), even if `npm run check` exists.
+
+```bash
+# TypeScript compilation check (source of truth)
+npx tsc --noEmit
+
+# Unit + integration tests
+npx vitest run
+
+# No-payments guard
+bash ./scripts/guard-no-payments.sh
+
+# Production build
+npm run build
+
+# Optional: Database schema verification (requires psql)
+psql "$DATABASE_URL" -f scripts/verify-db-schema.sql
+```
+
+---
+
 ## Deployment Steps
 
 ### Step 1: Pre-Deployment Verification
