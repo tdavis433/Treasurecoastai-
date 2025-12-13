@@ -646,6 +646,44 @@ Response:
 
 ---
 
+## AI Behavior Presets
+
+### Overview
+
+Behavior presets control how the AI assistant interacts with visitors around lead capture, sales behavior, and support focus. Settings are configured per-client in the Super Admin dashboard.
+
+### Available Presets
+
+| Preset | Key | Description |
+|--------|-----|-------------|
+| Support + Lead Focused | `support_lead_focused` | Balanced default - helpful support with proactive lead capture |
+| Sales Focused (Soft) | `sales_focused_soft` | Gently guides toward booking/contact without pressure |
+| Support Only | `support_only` | Pure support mode - no lead collection prompts |
+| Compliance Strict | `compliance_strict` | Strict compliance with minimal deviation from knowledge base |
+| Sales Heavy | `sales_heavy` | Aggressive sales focus for maximum conversion |
+
+### Configuration
+
+1. Navigate to `/super-admin/clients/:slug`
+2. Click "Settings" tab
+3. Adjust in "AI Behavior Settings" card
+
+### API Endpoints
+
+```bash
+# Get behavior settings (requires super_admin auth)
+GET /api/super-admin/clients/:clientId/behavior
+
+# Update behavior settings (requires super_admin auth)
+PATCH /api/super-admin/clients/:clientId/behavior
+```
+
+**Widget Failsafe:** Widget config endpoint includes behavior settings with safe defaults if client settings unavailable.
+
+See `BEHAVIOR_PRESETS.md` for full documentation.
+
+---
+
 ## Release Notes
 
 ### Version 1.2 (December 2025)
@@ -658,6 +696,7 @@ Response:
 - Redirect-only external booking (no payment processing)
 - Customizable chat widgets
 - Real-time analytics
+- **AI Behavior Presets** - Configurable AI personality per client
 
 **Known Limitations:**
 - Email features require SMTP setup
