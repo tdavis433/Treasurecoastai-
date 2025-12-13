@@ -1,0 +1,242 @@
+REPLIT AGENT MODE — INDUSTRY TEMPLATE BEHAVIOR PROFILES + CLIENT OVERRIDES + DEMO PAGE TEMPLATE VALIDATION
+(+ FAILSAFE: if EXTERNAL booking URL missing/invalid → auto-pivot to INTERNAL “Request Callback/Request Appointment”)
+
+GOAL
+We have 15+ industry templates and a demo page listing demo bots. I need:
+1) Every template to behave correctly “out of the box” with ZERO manual edits (industry-specific CTAs + booking flow).
+2) A simple per-client way to switch INTERNAL vs EXTERNAL booking, plus per-appointment-type switching when needed.
+3) Verify every demo bot shown on the demo page is actually running the correct template on the demo page.
+4) Enforce NO PAYMENTS. Booking is redirect-only externally where applicable; internal booking is request-only (no payment capture).
+5) FAILSAFE: If a template/client is set to EXTERNAL booking but the externalBookingUrl is missing/invalid, the assistant MUST NOT “do nothing” — it must automatically switch to an INTERNAL “Request Callback / Request Appointment” flow and notify the business (SMS/email if enabled), and persist the request.
+
+TARGET (runtime testing; DO NOT PRINT passwords in output)
+Base URL: https://treasure-coast-ai-platform--mlgrushskill.replit.app
+Super Admin: username=admin password=admin123
+Client Demo: username=demo_faith_house password=demo123
+
+SECURITY RULES
+- NEVER print passwords, tokens, reset links, or secrets in output/logs.
+- NO PAYMENT PROCESSING EVER: no checkout UI, no payment intents/tokens/webhooks, no card/ACH fields.
+- External booking must be HTTPS-only and must block javascript:/data:/file:/http:
+- Tenant isolation must remain enforced server-side.
+
+DATA FACTS (DON’T CHANGE THESE, BUILD ON THEM)
+- Templates stored in Postgres: bot_templates
+- Schema: shared/schema.ts (lines 752–795)
+- Access: server/botConfig.ts (getAllTemplates / getTemplateById)
+- Client settings already support: bookingMode, externalBookingUrl, appointmentTypesConfig, preIntakeConfig, operatingHours,
+  notificationEmail/Phone + enableEmailNotifications/enableSmsNotifications, etc.
+
+INDUSTRIES (CURRENT DEMO PAGE LIST)
+Law Firm, Dental Clinic, Boutique Hotel, Pet Grooming, Recovery Housing, Wedding Venue, Barbershop, Auto Shop,
+Fitness Center, Home Services, Med Spa, Real Estate, Restaurant, Tattoo Studio (+ any others currently active)
+
+========================================================
+PHASE 1 — DEFINE A SINGLE “INDUSTRY BEHAVIOR PROFILE” CONTRACT
+========================================================
+Create a standard JSON shape each template provides (stored in bot_templates and seeded into client_settings/bot config):
+
+bookingProfile: {
+  defaultMode: "internal" | "external",         // default behavior for that industry
+  ctas: [ { id, label, kind, appointmentTypeId? } ],
+  appointmentTypes: [
+    {
+      id: string,
+      label: string,
+      mode: "internal" | "external",
+      externalUrlOverride?: string,             // optional per-type external link
+      intakeFields: [ { key, label, required, type, options? } ],
+      confirmationMessage: string
+    }
+  ],
+  failsafe: {
+    externalMissingUrlBehavior: "pivot_to_internal",   // REQUIRED
+    pivotAppointmentTypeId: "request_callback"         // REQUIRED
+  },
+  disclaimers?: { enabled: boolean, text: string }
+}
+
+REQUIREMENT:
+- Every active template must have bookingProfile + failsafe configured.
+- Every template must include a universal INTERNAL fallback appointment type:
+  appointmentTypeId = "request_callback" (or "request_appointment" for medical/dental) that collects:
+    name, phone/email, preferred time (optional), message/notes
+  This is what the system pivots to when external URL is missing/invalid.
+
+========================================================
+PHASE 2 — SET DEFAULT BOOKING BEHAVIOR PER INDUSTRY (OUT-OF-BOX)
+========================================================
+Set these safe defaults, but ALWAYS include the INTERNAL failsafe appointment type.
+
+DEFAULT EXTERNAL (redirect-only; track intent+redirect; NO internal appointment created IF URL valid):
+- Barbershop: CTA “Book a Cut”
+- Med Spa: CTA “Book Treatment”
+- Boutique Hotel: CTA “Book a Stay” / “Check Availability”
+- Pet Grooming: CTA “Book Grooming”
+- Dental Clinic: CTA “Book Appointment”
+- Tattoo Studio: CTA “Book Consultation”
+IMPORTANT: if externalBookingUrl missing/invalid => FAILSAFE pivot_to_internal
+
+DEFAULT INTERNAL (create appointment REQUEST + notifications; no payments):
+- Recovery Housing: “Schedule a Tour” + “Schedule Phone Call”
+- Wedding Venue: “Schedule a Tour” + “Check Date”
+- Auto Shop: “Schedule Service” + “Request Estimate”
+- Fitness Center: “Schedule Consultation” + “Book Free Trial”
+- Home Services: “Request Estimate” + “Schedule Service”
+- Real Estate: “Schedule Showing” + “Request a Call”
+- Law Firm: “Schedule Consultation” + “Case Review Call”
+- Restaurant: “Reserve a Table” (internal unless external reservation link configured by client)
+
+For INTERNAL templates:
+- appointmentTypesConfig MUST include those industry types + required intakeFields
+- preIntakeConfig MUST collect minimum viable fields:
+  - Restaurant reservation: name, phone, date, time, party size
+  - Auto shop: name, phone, vehicle year/make/model, issue, preferred date/time
+  - Home services: name, phone, address/zip, service type, urgency, preferred window
+  - Recovery: name, phone, tour vs call, preferred time
+  - Law: name, phone/email, case type, brief summary, preferred time
+  - Real estate: name, phone/email, property/address, preferred time
+  - Fitness: name, phone/email, goals, preferred time
+
+Disclaimers defaults:
+- Law Firm: “General information only; not legal advice.”
+- Dental/Med Spa: “Not medical advice; for emergencies call 911.”
+
+========================================================
+PHASE 3 — ADD EASY CLIENT OVERRIDES (SWITCH INTERNAL/EXTERNAL PER CLIENT)
+========================================================
+In Client Settings UI (and Admin “New Client” wizard), implement:
+
+A) Global booking mode toggle:
+- External Redirect
+- Internal Request
+
+B) External booking URL field:
+- HTTPS-only validation
+- “Test Link” button
+- Clear warning if missing/invalid
+
+C) Advanced per-appointment-type toggle:
+- Each appointment type can be internal or external
+- If external, optional URL override
+
+D) FAILSAFE toggle (must default ON and should rarely be turned off):
+- “If external link missing, automatically collect request + notify us”
+- This should be ON by default for safety and demo stability.
+
+E) Notifications:
+- For internal requests: attempt SMS/email based on enable flags + recipients.
+- If no notification configured, still persist request and show confirmation.
+
+========================================================
+PHASE 4 — RUNTIME IMPLEMENTATION (CHAT + WIDGET) WITH FAILSAFE
+========================================================
+Update server/orchestrator.ts and booking handlers:
+
+When booking intent is detected:
+1) Load tenant bot config/client settings (tenant scoped).
+2) Determine active behavior:
+- If appointment type chosen has explicit mode, use it.
+- Else use client bookingMode override.
+- Else fall back to template bookingProfile.defaultMode.
+
+EXTERNAL FLOW (strict):
+- Validate final URL: externalUrlOverride OR externalBookingUrl
+- If URL valid (HTTPS-only):
+  - log booking_intent + booking_redirect
+  - return booking CTA button + redirect externally
+  - do NOT create internal appointment
+- If URL missing/invalid:
+  - FAILSAFE: automatically pivot_to_internal using appointmentTypeId = bookingProfile.failsafe.pivotAppointmentTypeId
+  - Collect minimal intake fields (name + phone/email + notes)
+  - Create appointment request (status requested/pending) OR booking request record (whichever your schema uses)
+  - Attempt notifications
+  - Show confirmation message: “We’ll reach out to confirm.”
+
+INTERNAL FLOW:
+- Ask intake questions from appointmentTypesConfig/preIntakeConfig
+- Create appointment request (status requested/pending)
+- Attempt notifications
+- Return confirmation message and persist transcript
+
+WIDGET CONFIG:
+Update /api/widget/config/:clientId/:botId so:
+- quickActions show correct CTAs per template/overrides
+- booking CTA label matches industry/type
+- never returns secrets
+
+========================================================
+PHASE 5 — ENSURE DEMO PAGE BOTS MATCH THEIR TEMPLATE (MANDATORY)
+========================================================
+We must guarantee each industry card on the demo page is mapped to the correct template + correct behavior.
+
+Tasks:
+1) Identify how demo page is built:
+- /api/demos and /api/demo/:botIdOrSlug exist. Find the source.
+2) Make demo page data-driven and correct:
+- Each demo entry must include:
+  templateId (bot_templates.templateId), botId/slug, botType, display name, icon
+- The demo bot must be seeded from that template profile.
+3) Add DEMO VALIDATION CHECK:
+- For every demo card:
+  - bot exists
+  - bot.templateId matches intended templateId
+  - botType matches industry label
+  - bookingProfile.defaultMode + CTAs match expected
+  - FAILSAFE present and ON
+4) Auto-fix drift:
+- If demo bots don’t match templateId or behavior:
+  - re-seed demo bot from template defaults OR update mapping
+  - confirm widget behavior matches that industry
+
+========================================================
+PHASE 6 — AUTOMATED SWEEP TEST (TEMPLATES + DEMO BOTS) INCLUDING FAILSAFE
+========================================================
+Create scripts/industry-template-sweep.ts that:
+A) Loads all active templates (getAllTemplates)
+B) For each template:
+- Create temp workspace/bot from template
+- Contract checks:
+  - bookingProfile exists
+  - failsafe.externalMissingUrlBehavior == pivot_to_internal
+  - pivot appointment type exists and is internal
+- Booking simulation:
+  - Send booking intent phrase appropriate to industry
+  - Assert:
+    * If template is external AND URL valid => redirect CTA available AND NO appointment created
+    * If template is external AND URL missing/invalid => INTERNAL request created (failsafe) + notification attempt logged
+    * If template is internal => appointment request created + notification attempt logged
+- Cleanup temp workspace
+C) Demo page mapping validation:
+- Ensure each demo card uses correct templateId + behavior.
+
+Output:
+- TEMPLATE_INDUSTRY_BEHAVIOR_REPORT.md (PASS/FAIL per template + notes)
+- DEMO_PAGE_TEMPLATE_MAPPING_REPORT.md (PASS/FAIL per demo card)
+
+========================================================
+PHASE 7 — NO PAYMENTS + QUALITY GATES
+========================================================
+Run:
+- bash ./scripts/guard-no-payments.sh
+- npx tsc --noEmit
+- npx vitest run
+- npm run build
+- run the sweep runner(s)
+
+Any payment processing code beyond external redirect must be removed/disabled.
+
+========================================================
+FINAL OUTPUT (STRICT)
+========================================================
+Return:
+1) TEMPLATE_INDUSTRY_BEHAVIOR_REPORT.md (copy/paste)
+2) DEMO_PAGE_TEMPLATE_MAPPING_REPORT.md (copy/paste)
+3) Summary table per industry: defaultMode, CTAs, appointment types, failsafe behavior
+4) Proof for representative industries:
+- Barbershop (external) => redirect-only if URL valid; otherwise failsafe internal request created
+- Recovery (internal) => request created + notification attempt
+- Restaurant => reservation request created (or external if configured) + persisted
+5) Proof quality gates passed
+
+START NOW.

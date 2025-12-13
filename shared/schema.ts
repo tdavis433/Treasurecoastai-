@@ -3,6 +3,97 @@ import { pgTable, text, varchar, timestamp, boolean, integer, json, jsonb, index
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// ============================================================================
+// BOOKING PROFILE - Industry Template Behavior Contract
+// ============================================================================
+
+/**
+ * Intake field definition for appointment types
+ */
+export interface BookingIntakeField {
+  key: string;
+  label: string;
+  required: boolean;
+  type: 'text' | 'email' | 'phone' | 'date' | 'time' | 'select' | 'textarea' | 'number';
+  options?: Array<{ value: string; label: string }>;
+  placeholder?: string;
+}
+
+/**
+ * CTA (Call-To-Action) button definition
+ */
+export interface BookingCTA {
+  id: string;
+  label: string;
+  kind: 'primary' | 'secondary' | 'link';
+  appointmentTypeId?: string; // Links to specific appointment type
+  externalUrl?: string; // For external redirect CTAs
+}
+
+/**
+ * Appointment type definition with mode override support
+ */
+export interface BookingAppointmentType {
+  id: string;
+  label: string;
+  mode: 'internal' | 'external'; // Can be overridden per appointment type
+  externalUrlOverride?: string; // Optional per-type external link
+  intakeFields: BookingIntakeField[];
+  confirmationMessage: string;
+  description?: string;
+  durationMinutes?: number;
+}
+
+/**
+ * Failsafe configuration - REQUIRED for all templates
+ * If external booking URL is missing/invalid, auto-pivot to internal request
+ */
+export interface BookingFailsafe {
+  externalMissingUrlBehavior: 'pivot_to_internal'; // REQUIRED - always pivot
+  pivotAppointmentTypeId: string; // e.g., 'request_callback' or 'request_appointment'
+}
+
+/**
+ * Disclaimer configuration for regulated industries
+ */
+export interface BookingDisclaimer {
+  enabled: boolean;
+  text: string;
+}
+
+/**
+ * Complete booking profile for an industry template
+ * Every template MUST have this configured with failsafe
+ */
+export interface BookingProfile {
+  defaultMode: 'internal' | 'external';
+  ctas: BookingCTA[];
+  appointmentTypes: BookingAppointmentType[];
+  failsafe: BookingFailsafe;
+  disclaimers?: BookingDisclaimer;
+}
+
+// Universal fallback appointment type - ALWAYS included in every template
+export const UNIVERSAL_REQUEST_CALLBACK: BookingAppointmentType = {
+  id: 'request_callback',
+  label: 'Request Callback',
+  mode: 'internal',
+  intakeFields: [
+    { key: 'name', label: 'Your Name', required: true, type: 'text', placeholder: 'Full name' },
+    { key: 'phone', label: 'Phone Number', required: true, type: 'phone', placeholder: '(555) 123-4567' },
+    { key: 'email', label: 'Email (optional)', required: false, type: 'email', placeholder: 'you@example.com' },
+    { key: 'preferredTime', label: 'Preferred Time', required: false, type: 'text', placeholder: 'e.g., Weekday mornings' },
+    { key: 'notes', label: 'Message/Notes', required: false, type: 'textarea', placeholder: 'Any additional information...' },
+  ],
+  confirmationMessage: "Thank you! We've received your request and will reach out to you shortly.",
+  description: 'Request a callback from our team',
+  durationMinutes: 15,
+};
+
+// ============================================================================
+// DATABASE TABLES
+// ============================================================================
+
 export const appointments = pgTable("appointments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   clientId: varchar("client_id").notNull(),
@@ -168,6 +259,15 @@ export const clientSettings = pgTable("client_settings", {
   externalBookingUrl: text("external_booking_url"), // Client's existing booking system (Calendly, Acuity, etc.)
   externalBookingProviderName: text("external_booking_provider_name"), // e.g., "Square", "Acuity", "Vagaro" - shown in CTA
   externalPaymentUrl: text("external_payment_url"), // Client's existing payment page (Square, PayPal, etc.)
+  
+  // Per-appointment-type mode overrides (Phase 3 client overrides)
+  appointmentTypeModes: json("appointment_type_modes").$type<Record<string, {
+    mode: 'internal' | 'external';
+    externalUrlOverride?: string;
+  }>>().default({}),
+  
+  // Failsafe toggle - auto-pivot to internal if external URL missing (default ON)
+  enableBookingFailsafe: boolean("enable_booking_failsafe").notNull().default(true),
   
   // Webhook configuration for real-time event delivery to client's systems
   webhookUrl: text("webhook_url"), // Endpoint to receive webhook events
@@ -772,6 +872,7 @@ export const botTemplates = pgTable("bot_templates", {
     automations: Record<string, any>;
     theme: Record<string, any>;
     personality: Record<string, any>;
+    bookingProfile?: BookingProfile; // Industry booking behavior contract with failsafe
   }>().notNull(),
   
   // Template metadata
