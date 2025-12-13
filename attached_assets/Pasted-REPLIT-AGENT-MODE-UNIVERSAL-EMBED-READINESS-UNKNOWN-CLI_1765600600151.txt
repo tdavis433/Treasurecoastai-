@@ -1,0 +1,127 @@
+REPLIT AGENT MODE — UNIVERSAL EMBED READINESS (UNKNOWN CLIENT WEBSITE PLATFORM)
+Goal: Make the Treasure Coast AI widget embed work reliably on ANY common website platform (WordPress/Wix/Squarespace/Webflow/Shopify/custom), with strong security, friendly errors, and a simple “Embed Verification” checklist. Assume the client’s site platform is unknown.
+
+NON-NEGOTIABLE
+- NO payment processing ever. Booking is redirect-only to the client’s external booking/payment provider.
+- Never expose secrets in widget config or embed snippet.
+- Friendly errors only. No stack traces in browser.
+
+========================================================
+PHASE 1 — UNIVERSAL EMBED COMPATIBILITY AUDIT
+========================================================
+1) Confirm widget assets are HTTPS only (no mixed content):
+- JS bundle URLs
+- CSS
+- images/fonts (if any)
+
+2) CORS audit for widget endpoints used by public pages:
+- GET /api/widget/config/:clientId/:botId
+- Any chat endpoints called by the widget
+Rules:
+- If you allow many origins, DO NOT allow cookies/credentials.
+- Prefer token-based auth for widget (signed token), not session cookies.
+
+3) CSP compatibility:
+- Identify if the widget requires inline scripts/styles.
+- Minimize inline requirements.
+- Document the minimal CSP directives needed for common strict CSP sites.
+
+4) Cross-origin embed constraints:
+- Ensure widget still works when embedded via:
+  - script tag injection (most common)
+  - sites that wrap content in iframes (some builders)
+- Ensure no reliance on third-party cookies.
+
+========================================================
+PHASE 2 — DOMAIN ALLOWLIST (RECOMMENDED DEFAULT)
+========================================================
+Add optional per-workspace “allowedDomains” (array) with these rules:
+- If allowedDomains is empty/null => allow all origins (public) BUT never allow credentials.
+- If allowedDomains has entries => only allow those origins.
+- Always allow localhost for dev if NODE_ENV=development.
+
+Enforce allowlist at:
+- /api/widget/config/:clientId/:botId
+- widget chat endpoints (any endpoint callable from public site)
+
+Implementation requirements:
+- Validate Origin header and/or Referer (Origin preferred).
+- Return a friendly JSON error if blocked:
+  { error: "This domain is not authorized for this widget. Please contact support." }
+
+Important: Do NOT block requests when Origin is missing for server-to-server calls, but for browser widget calls require Origin unless you have a safe fallback.
+
+========================================================
+PHASE 3 — EMBED SNIPPET SAFETY
+========================================================
+1) Ensure embed snippet contains ONLY public identifiers (clientId, botId) and the widget script URL.
+2) Ensure it contains NO secrets, tokens, API keys, webhook secrets.
+3) Provide two embed snippet variants:
+A) Standard script embed (best for most builders)
+B) “No-inline-JS” compatible version (if possible) OR documented alternative approach for strict CSP sites
+
+========================================================
+PHASE 4 — CREATE/IMPROVE AN EMBED TESTER PAGE
+========================================================
+Enhance /widget-test.html (or add /embed-test) to help us validate any domain:
+- Input fields: clientId, botId
+- Button: “Load Widget”
+- Display:
+  - config fetch result (success/fail)
+  - token received (do NOT print full token; show token length only)
+  - chat send result (success/fail)
+  - booking redirect target (must be external)
+
+Add a “Copy Embed Snippet” button that generates the correct snippet for that client/bot.
+
+========================================================
+PHASE 5 — BOOKING REDIRECT HARDENING (DEMO + REAL USE)
+========================================================
+Ensure external booking URL validation everywhere it’s used:
+- must be https://
+- block javascript:, data:, file:
+- must not be our domain (if policy is external-only)
+If missing or invalid:
+- widget should show friendly message and fallback CTA (call/email)
+- still log booking intent attempt (optional)
+
+========================================================
+PHASE 6 — FINAL OUTPUT: UNIVERSAL INSTALL CHECKLIST DOC
+========================================================
+Create a short doc (or add section to RELEASE_RUNBOOK.md) called:
+“Client Website Embed Checklist (Works for any platform)”
+Include:
+1) Where to paste the embed snippet on WordPress/Wix/Squarespace/Webflow/Shopify (high-level, not platform-specific steps)
+2) The verification steps:
+   - widget appears
+   - ask 2 questions
+   - submit lead
+   - click Book Now → external redirect
+   - confirm activity appears in client dashboard
+3) Troubleshooting:
+   - CORS/Origin blocked message
+   - strict CSP sites (what to ask the client’s dev to allow)
+   - mixed content errors
+   - ad blockers blocking scripts
+
+========================================================
+PHASE 7 — VERIFY
+========================================================
+Run:
+- bash ./scripts/guard-no-payments.sh
+- npx tsc --noEmit
+- npx vitest run
+- npm run build
+
+Then do a manual browser test:
+- open widget-test page
+- load widget for a known client/bot
+- send a message
+- verify booking redirect points external
+- confirm no console errors
+
+DELIVERABLES
+- File paths for all changes
+- A final embed snippet example (no secrets)
+- The new “Client Website Embed Checklist”
+- Proof that widget endpoints enforce allowlist rules correctly without breaking local dev
