@@ -2157,16 +2157,16 @@ export default function SuperAdmin() {
                                       size="sm"
                                       variant="outline"
                                       className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
-                                      disabled={resetDemoMutation.isPending && resettingDemoSlug === demoWorkspace.slug}
+                                      disabled={resetDemoBySlugMutation.isPending && resettingDemoSlug === demoWorkspace.slug}
                                       onClick={() => {
                                         if (confirm(`Reset all conversations, leads, bookings, and analytics for ${demoWorkspace.name}? This cannot be undone.`)) {
                                           setResettingDemoSlug(demoWorkspace.slug);
-                                          resetDemoMutation.mutate(demoWorkspace.slug);
+                                          resetDemoBySlugMutation.mutate(demoWorkspace.slug);
                                         }
                                       }}
                                       data-testid={`demo-reset-${demoWorkspace.slug}`}
                                     >
-                                      <RefreshCw className={`h-3 w-3 mr-1 ${resetDemoMutation.isPending && resettingDemoSlug === demoWorkspace.slug ? 'animate-spin' : ''}`} />
+                                      <RefreshCw className={`h-3 w-3 mr-1 ${resetDemoBySlugMutation.isPending && resettingDemoSlug === demoWorkspace.slug ? 'animate-spin' : ''}`} />
                                       Reset Data
                                     </Button>
                                   </div>
