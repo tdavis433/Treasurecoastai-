@@ -16,6 +16,8 @@ import cookieParser from "cookie-parser";
 
 import { registerRoutes } from "./routes";
 import { createCsrfMiddleware, csrfTokenEndpoint } from "./csrfMiddleware";
+import { requestIdMiddleware } from "./requestId";
+import { structuredLogger, redactPII } from "./structuredLogger";
 
 const pgPool = new Pool({ connectionString: process.env.DATABASE_URL });
 const PgStore = connectPgSimple(session);
@@ -66,6 +68,9 @@ app.use(helmet({
   },
   crossOriginEmbedderPolicy: false, // Allow widget embedding
 }));
+
+// Request ID middleware - generates unique ID per request for tracing
+app.use(requestIdMiddleware);
 
 // Stripe webhook MUST come before json body parser (needs raw body)
 app.post(
@@ -282,16 +287,17 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
+      const level = res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info';
+      const logMethod = level === 'error' ? structuredLogger.error : level === 'warn' ? structuredLogger.warn : structuredLogger.info;
+      
+      logMethod(`${req.method} ${path} ${res.statusCode}`, {
+        requestId: req.requestId,
+        duration,
+        method: req.method,
+        path: redactPII(path),
+        statusCode: res.statusCode,
+        userId: (req.session as any)?.userId,
+      });
     }
   });
 
@@ -303,12 +309,18 @@ export default async function runApp(
 ) {
   const server = await registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
+    structuredLogger.error('Unhandled error', {
+      requestId: req.requestId,
+      statusCode: status,
+      error: message,
+      stack: err.stack?.split('\n').slice(0, 5).join('\n'),
+    });
+
     res.status(status).json({ message });
-    throw err;
   });
 
   // importantly run the final setup after setting up all the other routes so
