@@ -55,10 +55,11 @@ All critical path E2E tests **PASSED**. The platform is functional for demo purp
 - **Cause:** SPA routing behavior
 - **Recommendation:** No action needed
 
-### 2. Server Log Warnings
-- **Issue:** Non-blocking DB warnings for metadata column
-- **Impact:** None - functionality not affected
-- **Recommendation:** Run `npm run db:push` to sync schema
+### 2. Server Log Warnings - FIXED
+- **Issue:** Missing `metadata` column in client_settings table
+- **Impact:** Chat endpoint returned 404 errors
+- **Resolution:** Added column via SQL: `ALTER TABLE client_settings ADD COLUMN metadata jsonb DEFAULT '{}'`
+- **Status:** RESOLVED - Chat now working correctly
 
 ---
 

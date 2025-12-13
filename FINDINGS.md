@@ -155,7 +155,7 @@ None identified.
 
 ### Minor Issues Noted
 1. **SPA Routing:** One waitForNavigation timeout on Conversations click (view loaded correctly)
-2. **Server Logs:** Non-blocking DB warnings for metadata column (schema sync recommended)
+2. **Database Schema:** Missing `metadata` column in client_settings - FIXED via direct SQL
 
 ### Verification Gaps
 - CSV Export functionality not exercised
