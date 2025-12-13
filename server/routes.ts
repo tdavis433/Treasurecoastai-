@@ -80,7 +80,7 @@ import {
   getStaffCredentials
 } from './env';
 
-import { scrapeWebsite, applyScrapedDataToBot } from './scraper';
+import { scrapeWebsite, applyScrapedDataToBot, importWebsite, type WebsiteImportSuggestions } from './scraper';
 import { resetDemoWorkspace, seedAllDemoWorkspaces, getDemoSlugs, getDemoConfig } from './demoSeed';
 import { getWidgetEmbedCode, getEmbedInstructions, type WidgetEmbedOptions } from './embed';
 import { extractBookingInfoFromConversation, type ExtractedBookingInfo, type ChatMessage as OrchestratorChatMessage } from './orchestrator';
@@ -5582,6 +5582,50 @@ These suggestions should be relevant to what was just discussed and help guide t
     } catch (error) {
       console.error("Delete scraped website error:", error);
       res.status(500).json({ error: "Failed to delete scraped website" });
+    }
+  });
+
+  // Website Import - Multi-page crawl with structured suggestions
+  app.post("/api/admin/website-import", requireSuperAdmin, async (req, res) => {
+    try {
+      const { url, maxPages, maxDepth } = req.body;
+      
+      if (!url || typeof url !== 'string') {
+        return res.status(400).json({ error: "URL is required" });
+      }
+
+      // Validate URL format
+      const urlPattern = /^https?:\/\/.+/i;
+      let normalizedUrl = url.trim();
+      if (!urlPattern.test(normalizedUrl)) {
+        normalizedUrl = `https://${normalizedUrl}`;
+      }
+
+      console.log(`[Website Import] Starting import for: ${normalizedUrl}`);
+      
+      const options: { maxPages?: number; maxDepth?: number } = {};
+      if (typeof maxPages === 'number' && maxPages > 0 && maxPages <= 20) {
+        options.maxPages = maxPages;
+      }
+      if (typeof maxDepth === 'number' && maxDepth >= 0 && maxDepth <= 3) {
+        options.maxDepth = maxDepth;
+      }
+
+      const suggestions = await importWebsite(normalizedUrl, options);
+      
+      console.log(`[Website Import] Completed: ${suggestions.pagesScanned} pages, ${suggestions.services.length} services, ${suggestions.faqs.length} FAQs`);
+      
+      res.json({
+        success: true,
+        suggestions,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      console.error("[Website Import] Error:", errorMessage);
+      res.status(500).json({ 
+        success: false,
+        error: `Failed to import website: ${errorMessage}` 
+      });
     }
   });
 

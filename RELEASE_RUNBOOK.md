@@ -489,6 +489,86 @@ Access via: Super Admin Dashboard → System Logs → "Run Self-Check" button
 
 ---
 
+## Website Import Feature (Admin Only)
+
+### Overview
+
+The Website Import feature allows admins to automatically extract business information from a client's website, including:
+- **Services** - Business services with descriptions and pricing
+- **FAQs** - Frequently asked questions and answers
+- **Contact Info** - Phone, email, address, business hours
+- **Booking Links** - External booking platform URLs (Calendly, Acuity, OpenTable, etc.)
+- **Social Links** - Social media profile URLs
+- **Policies** - Privacy policy, terms of service, cancellation policy
+
+### How to Use
+
+1. Navigate to **Agency Console** → **Onboarding** or **Clients** → **Edit Client**
+2. Enter the client's website URL in the "Website URL" field
+3. Click **"Scan Website"** to initiate the import
+4. Review the extracted suggestions organized by category
+5. Select desired items and click **"Apply Selected"** to merge into client settings
+
+### Security Features
+
+- **HTTPS-only booking links** - Blocks javascript:, data:, file: protocols
+- **Payment URL blocking** - Booking links to payment processors (Stripe, PayPal, etc.) are blocked
+- **Same-domain crawling** - Multi-page crawl stays within the target domain
+- **Rate limiting** - API endpoint is rate-limited to prevent abuse
+
+### Merge Behavior
+
+- **Services/FAQs:** Deduplicated against existing data (Jaccard similarity threshold: 0.7 for services, 0.6 for FAQs)
+- **Contact Info:** Fill-only mode - existing values are never overwritten
+- **Policies:** Categorized and deduplicated by type
+- **Provenance Tracking:** All imported data is tracked in `client_settings.metadata.sources.websiteScan`
+
+### Booking Provider Detection
+
+The following booking platforms are automatically detected:
+- Calendly, Acuity Scheduling, Booksy, Vagaro
+- Square Appointments, OpenTable, Resy
+- ZocDoc, Schedulicity, Mindbody
+- Fresha, GlossGenius, Jane App, and more
+
+### Social Platform Detection
+
+Detected platforms: Facebook, Instagram, Twitter/X, LinkedIn, YouTube, TikTok, Pinterest, Yelp, Google Maps, TripAdvisor, Nextdoor
+
+### API Endpoint
+
+```
+POST /api/admin/website-import
+Authorization: Super Admin required
+
+Request:
+{
+  "url": "https://example.com",
+  "maxPages": 5  // optional, default 5, max 10
+}
+
+Response:
+{
+  "success": true,
+  "data": {
+    "services": [...],
+    "faqs": [...],
+    "contact": [...],
+    "bookingLinks": [...],
+    "socialLinks": [...],
+    "policies": [...],
+    "sourceUrls": [...]
+  }
+}
+```
+
+### Test Coverage
+
+- **URL Validation Tests:** 34 tests covering security, protocol validation, provider detection
+- **Merge Engine Tests:** 22 tests covering deduplication, normalization, merge behavior
+
+---
+
 ## Release Notes
 
 ### Version 1.2 (December 2025)

@@ -107,6 +107,70 @@ interface WebsiteSuggestion {
   selected: boolean;
 }
 
+interface ServiceSuggestion {
+  name: string;
+  description?: string;
+  price?: string;
+  sourcePageUrl: string;
+  confidence: number;
+  selected: boolean;
+}
+
+interface FaqSuggestion {
+  question: string;
+  answer: string;
+  sourcePageUrl: string;
+  confidence: number;
+  selected: boolean;
+}
+
+interface ContactSuggestion {
+  type: 'phone' | 'email' | 'address' | 'hours';
+  value: string;
+  sourcePageUrl: string;
+  confidence: number;
+  selected: boolean;
+}
+
+interface BookingLinkSuggestion {
+  url: string;
+  provider?: string;
+  sourcePageUrl: string;
+  confidence: number;
+  selected: boolean;
+}
+
+interface SocialLinkSuggestion {
+  platform: string;
+  url: string;
+  sourcePageUrl: string;
+  confidence: number;
+  selected: boolean;
+}
+
+interface PolicySuggestion {
+  value: string;
+  category: string;
+  sourcePageUrl: string;
+  confidence: number;
+  selected: boolean;
+}
+
+interface WebsiteImportData {
+  businessName?: string;
+  tagline?: string;
+  description?: string;
+  services: ServiceSuggestion[];
+  faqs: FaqSuggestion[];
+  contact: ContactSuggestion[];
+  bookingLinks: BookingLinkSuggestion[];
+  socialLinks: SocialLinkSuggestion[];
+  policies: PolicySuggestion[];
+  pagesScanned: number;
+  scanDuration: number;
+  sourceUrls: string[];
+}
+
 interface DraftState {
   clientId: string;
   botId: string;
@@ -170,6 +234,7 @@ export default function AgencyOnboardingConsole() {
   const [activeTab, setActiveTab] = useState("suggestions");
   const [draftState, setDraftState] = useState<DraftState | null>(null);
   const [websiteSuggestions, setWebsiteSuggestions] = useState<WebsiteSuggestion[]>([]);
+  const [importData, setImportData] = useState<WebsiteImportData | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [notificationEnabled, setNotificationEnabled] = useState(true);
   const [notificationRecipient, setNotificationRecipient] = useState("");
@@ -376,41 +441,61 @@ export default function AgencyOnboardingConsole() {
     
     setIsScanning(true);
     try {
-      const response = await apiRequest("POST", "/api/scraper/analyze", { url: websiteUrl }) as {
+      const response = await apiRequest("POST", "/api/admin/website-import", { url: websiteUrl }) as {
         businessName?: string;
-        phone?: string;
-        email?: string;
-        services?: string[];
-        faqs?: Array<{ question: string; answer: string }>;
+        tagline?: string;
+        description?: string;
+        services: Array<{ name: string; description?: string; price?: string; sourcePageUrl: string; confidence: number }>;
+        faqs: Array<{ question: string; answer: string; sourcePageUrl: string; confidence: number }>;
+        contact: Array<{ type: 'phone' | 'email' | 'address' | 'hours'; value: string; sourcePageUrl: string; confidence: number }>;
+        bookingLinks: Array<{ url: string; provider?: string; sourcePageUrl: string; confidence: number }>;
+        socialLinks: Array<{ platform: string; url: string; sourcePageUrl: string; confidence: number }>;
+        policies: Array<{ value: string; category: string; sourcePageUrl: string; confidence: number }>;
+        pagesScanned: number;
+        scanDuration: number;
+        sourceUrls: string[];
       };
-      const suggestions: WebsiteSuggestion[] = [];
       
+      // Transform response into structured import data with selection state
+      const importResult: WebsiteImportData = {
+        businessName: response.businessName,
+        tagline: response.tagline,
+        description: response.description,
+        services: (response.services || []).map(s => ({ ...s, selected: true })),
+        faqs: (response.faqs || []).map(f => ({ ...f, selected: true })),
+        contact: (response.contact || []).map(c => ({ ...c, selected: true })),
+        bookingLinks: (response.bookingLinks || []).map(b => ({ ...b, selected: true })),
+        socialLinks: (response.socialLinks || []).map(s => ({ ...s, selected: false })),
+        policies: (response.policies || []).map(p => ({ ...p, selected: true })),
+        pagesScanned: response.pagesScanned || 0,
+        scanDuration: response.scanDuration || 0,
+        sourceUrls: response.sourceUrls || [],
+      };
+      
+      setImportData(importResult);
+      
+      // Also populate legacy websiteSuggestions for backwards compatibility
+      const legacySuggestions: WebsiteSuggestion[] = [];
       if (response.businessName) {
-        suggestions.push({ field: "businessName", value: response.businessName, sourceUrl: websiteUrl, confidence: 0.9, selected: true });
+        legacySuggestions.push({ field: "businessName", value: response.businessName, sourceUrl: websiteUrl, confidence: 0.9, selected: true });
       }
-      if (response.phone) {
-        suggestions.push({ field: "phone", value: response.phone, sourceUrl: websiteUrl, confidence: 0.85, selected: true });
-      }
-      if (response.email) {
-        suggestions.push({ field: "email", value: response.email, sourceUrl: websiteUrl, confidence: 0.85, selected: true });
-      }
-      if (response.services?.length) {
-        response.services.forEach((s: string) => {
-          suggestions.push({ field: "service", value: s, sourceUrl: websiteUrl, confidence: 0.75, selected: true });
-        });
-      }
-      if (response.faqs?.length) {
-        response.faqs.forEach((faq: { question: string; answer: string }) => {
-          suggestions.push({ field: "faq", value: JSON.stringify(faq), sourceUrl: websiteUrl, confidence: 0.7, selected: true });
-        });
-      }
+      response.contact?.forEach(c => {
+        if (c.type === 'phone') {
+          legacySuggestions.push({ field: "phone", value: c.value, sourceUrl: c.sourcePageUrl, confidence: c.confidence, selected: true });
+        } else if (c.type === 'email') {
+          legacySuggestions.push({ field: "email", value: c.value, sourceUrl: c.sourcePageUrl, confidence: c.confidence, selected: true });
+        }
+      });
+      setWebsiteSuggestions(legacySuggestions);
       
-      setWebsiteSuggestions(suggestions);
       setActiveTab("suggestions");
+      
+      const totalItems = importResult.services.length + importResult.faqs.length + 
+        importResult.contact.length + importResult.bookingLinks.length + importResult.policies.length;
       
       toast({
         title: "Website Scanned",
-        description: `Found ${suggestions.length} suggestions to review.`,
+        description: `Scanned ${response.pagesScanned} pages, found ${totalItems} suggestions to review.`,
       });
     } catch (error: any) {
       toast({
@@ -424,34 +509,96 @@ export default function AgencyOnboardingConsole() {
   };
 
   const handleApplySuggestions = () => {
-    const selected = websiteSuggestions.filter(s => s.selected);
-    
-    selected.forEach(suggestion => {
-      switch (suggestion.field) {
-        case "businessName":
-          form.setValue("businessName", suggestion.value);
+    if (!importData) {
+      // Legacy path for backwards compatibility
+      const selected = websiteSuggestions.filter(s => s.selected);
+      selected.forEach(suggestion => {
+        switch (suggestion.field) {
+          case "businessName":
+            form.setValue("businessName", suggestion.value);
+            break;
+          case "phone":
+            form.setValue("primaryPhone", suggestion.value);
+            break;
+          case "email":
+            form.setValue("email", suggestion.value);
+            break;
+        }
+      });
+      toast({
+        title: "Suggestions Applied",
+        description: `Applied ${selected.length} suggestions to the form.`,
+      });
+      return;
+    }
+
+    let appliedCount = 0;
+
+    // Apply business name
+    if (importData.businessName) {
+      form.setValue("businessName", importData.businessName);
+      appliedCount++;
+    }
+
+    // Apply contact info
+    importData.contact.filter(c => c.selected).forEach(c => {
+      switch (c.type) {
+        case 'phone':
+          form.setValue("primaryPhone", c.value);
+          appliedCount++;
           break;
-        case "phone":
-          form.setValue("primaryPhone", suggestion.value);
-          break;
-        case "email":
-          form.setValue("email", suggestion.value);
-          break;
-        case "service":
-          setKbServices(prev => [...prev, { name: suggestion.value, description: "" }]);
-          break;
-        case "faq":
-          try {
-            const faq = JSON.parse(suggestion.value);
-            setKbFaqs(prev => [...prev, faq]);
-          } catch {}
+        case 'email':
+          form.setValue("email", c.value);
+          appliedCount++;
           break;
       }
     });
-    
+
+    // Apply services (merge with existing, avoid duplicates)
+    const selectedServices = importData.services.filter(s => s.selected);
+    if (selectedServices.length > 0) {
+      setKbServices(prev => {
+        const existingNames = new Set(prev.map(s => s.name.toLowerCase()));
+        const newServices = selectedServices
+          .filter(s => !existingNames.has(s.name.toLowerCase()))
+          .map(s => ({ name: s.name, description: s.description || "" }));
+        return [...prev, ...newServices];
+      });
+      appliedCount += selectedServices.length;
+    }
+
+    // Apply FAQs (merge with existing, avoid duplicates)
+    const selectedFaqs = importData.faqs.filter(f => f.selected);
+    if (selectedFaqs.length > 0) {
+      setKbFaqs(prev => {
+        const existingQuestions = new Set(prev.map(f => f.question.toLowerCase().trim()));
+        const newFaqs = selectedFaqs
+          .filter(f => !existingQuestions.has(f.question.toLowerCase().trim()))
+          .map(f => ({ question: f.question, answer: f.answer }));
+        return [...prev, ...newFaqs];
+      });
+      appliedCount += selectedFaqs.length;
+    }
+
+    // Apply policies
+    const selectedPolicies = importData.policies.filter(p => p.selected);
+    if (selectedPolicies.length > 0) {
+      const policyText = selectedPolicies.map(p => p.value).join("\n\n");
+      setKbPolicies(prev => prev ? `${prev}\n\n${policyText}` : policyText);
+      appliedCount += selectedPolicies.length;
+    }
+
+    // Apply external booking URL if available
+    const selectedBooking = importData.bookingLinks.find(b => b.selected);
+    if (selectedBooking) {
+      form.setValue("externalBookingUrl", selectedBooking.url);
+      form.setValue("bookingPreference", "external");
+      appliedCount++;
+    }
+
     toast({
       title: "Suggestions Applied",
-      description: `Applied ${selected.length} suggestions to the form.`,
+      description: `Applied ${appliedCount} items to the form and knowledge base.`,
     });
   };
 
@@ -942,14 +1089,14 @@ export default function AgencyOnboardingConsole() {
                 </TabsList>
 
                 <TabsContent value="suggestions" className="space-y-4" data-testid="content-suggestions">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <div>
                       <h3 className="font-semibold">Website Suggestions</h3>
                       <p className="text-sm text-muted-foreground">
                         Review AI-extracted data from the business website
                       </p>
                     </div>
-                    {websiteSuggestions.length > 0 && (
+                    {importData && (
                       <Button
                         size="sm"
                         onClick={handleApplySuggestions}
@@ -961,61 +1108,237 @@ export default function AgencyOnboardingConsole() {
                     )}
                   </div>
 
-                  {websiteSuggestions.length === 0 ? (
+                  {!importData ? (
                     <div className="text-center py-12 text-muted-foreground">
                       <Globe className="h-12 w-12 mx-auto mb-4 opacity-40" />
                       <p>No website scanned yet</p>
                       <p className="text-sm">Enter a URL and click scan to extract business info</p>
                     </div>
                   ) : (
-                    <div className="space-y-2">
-                      {websiteSuggestions.map((suggestion, index) => (
-                        <div 
-                          key={index}
-                          className="flex items-start gap-3 p-3 rounded-lg border border-white/10 bg-white/3"
-                        >
-                          <Checkbox
-                            checked={suggestion.selected}
-                            onCheckedChange={(checked) => {
-                              setWebsiteSuggestions(prev => 
-                                prev.map((s, i) => i === index ? { ...s, selected: !!checked } : s)
-                              );
-                            }}
-                            data-testid={`checkbox-suggestion-${index}`}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs">
-                                {suggestion.field}
-                              </Badge>
-                              <Badge 
-                                variant="secondary" 
-                                className={
-                                  suggestion.confidence >= 0.8 ? 'bg-emerald-500/20 text-emerald-400' :
-                                  suggestion.confidence >= 0.6 ? 'bg-amber-500/20 text-amber-400' :
-                                  'bg-rose-500/20 text-rose-400'
-                                }
-                              >
-                                {Math.round(suggestion.confidence * 100)}%
-                              </Badge>
-                            </div>
-                            <p className="text-sm mt-1 truncate">
-                              {suggestion.field === 'faq' 
-                                ? JSON.parse(suggestion.value).question 
-                                : suggestion.value}
-                            </p>
-                            <a 
-                              href={suggestion.sourceUrl} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-xs text-cyan-400 hover:underline flex items-center gap-1 mt-1"
+                    <div className="space-y-6 max-h-[500px] overflow-y-auto pr-2">
+                      {/* Scan Summary */}
+                      <div className="p-3 rounded-lg bg-cyan-500/10 border border-cyan-500/30">
+                        <div className="flex items-center gap-2 text-sm">
+                          <CheckCircle className="h-4 w-4 text-cyan-400" />
+                          <span>Scanned {importData.pagesScanned} pages in {(importData.scanDuration / 1000).toFixed(1)}s</span>
+                        </div>
+                        {importData.businessName && (
+                          <p className="mt-1 font-medium">{importData.businessName}</p>
+                        )}
+                        {importData.tagline && (
+                          <p className="text-sm text-muted-foreground">{importData.tagline}</p>
+                        )}
+                      </div>
+
+                      {/* Services Section */}
+                      {importData.services.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Wrench className="h-4 w-4 text-cyan-400" />
+                            <h4 className="font-medium">Services ({importData.services.length})</h4>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="ml-auto text-xs h-6"
+                              onClick={() => setImportData(prev => prev ? {
+                                ...prev,
+                                services: prev.services.map(s => ({ ...s, selected: !prev.services.every(x => x.selected) }))
+                              } : null)}
+                              data-testid="button-toggle-all-services"
                             >
-                              <ExternalLink className="h-3 w-3" />
-                              Source
-                            </a>
+                              Toggle All
+                            </Button>
+                          </div>
+                          <div className="space-y-2">
+                            {importData.services.map((service, index) => (
+                              <div key={index} className="flex items-start gap-3 p-2 rounded-lg border border-white/10 bg-white/3">
+                                <Checkbox
+                                  checked={service.selected}
+                                  onCheckedChange={(checked) => {
+                                    setImportData(prev => prev ? {
+                                      ...prev,
+                                      services: prev.services.map((s, i) => i === index ? { ...s, selected: !!checked } : s)
+                                    } : null);
+                                  }}
+                                  data-testid={`checkbox-service-${index}`}
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-medium text-sm">{service.name}</span>
+                                    {service.price && <Badge variant="secondary" className="text-xs">{service.price}</Badge>}
+                                    <Badge variant="outline" className={`text-xs ${service.confidence >= 0.8 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                      {Math.round(service.confidence * 100)}%
+                                    </Badge>
+                                  </div>
+                                  {service.description && (
+                                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{service.description}</p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
-                      ))}
+                      )}
+
+                      {/* FAQs Section */}
+                      {importData.faqs.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <HelpCircle className="h-4 w-4 text-cyan-400" />
+                            <h4 className="font-medium">FAQs ({importData.faqs.length})</h4>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="ml-auto text-xs h-6"
+                              onClick={() => setImportData(prev => prev ? {
+                                ...prev,
+                                faqs: prev.faqs.map(f => ({ ...f, selected: !prev.faqs.every(x => x.selected) }))
+                              } : null)}
+                              data-testid="button-toggle-all-faqs"
+                            >
+                              Toggle All
+                            </Button>
+                          </div>
+                          <div className="space-y-2">
+                            {importData.faqs.map((faq, index) => (
+                              <div key={index} className="flex items-start gap-3 p-2 rounded-lg border border-white/10 bg-white/3">
+                                <Checkbox
+                                  checked={faq.selected}
+                                  onCheckedChange={(checked) => {
+                                    setImportData(prev => prev ? {
+                                      ...prev,
+                                      faqs: prev.faqs.map((f, i) => i === index ? { ...f, selected: !!checked } : f)
+                                    } : null);
+                                  }}
+                                  data-testid={`checkbox-faq-${index}`}
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm">{faq.question}</p>
+                                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{faq.answer}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Contact Info Section */}
+                      {importData.contact.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Phone className="h-4 w-4 text-cyan-400" />
+                            <h4 className="font-medium">Contact Info ({importData.contact.length})</h4>
+                          </div>
+                          <div className="space-y-2">
+                            {importData.contact.map((contact, index) => (
+                              <div key={index} className="flex items-center gap-3 p-2 rounded-lg border border-white/10 bg-white/3">
+                                <Checkbox
+                                  checked={contact.selected}
+                                  onCheckedChange={(checked) => {
+                                    setImportData(prev => prev ? {
+                                      ...prev,
+                                      contact: prev.contact.map((c, i) => i === index ? { ...c, selected: !!checked } : c)
+                                    } : null);
+                                  }}
+                                  data-testid={`checkbox-contact-${index}`}
+                                />
+                                <Badge variant="outline" className="text-xs capitalize">{contact.type}</Badge>
+                                <span className="text-sm flex-1 truncate">{contact.value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Booking Links Section */}
+                      {importData.bookingLinks.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Calendar className="h-4 w-4 text-cyan-400" />
+                            <h4 className="font-medium">Booking Links ({importData.bookingLinks.length})</h4>
+                          </div>
+                          <div className="space-y-2">
+                            {importData.bookingLinks.map((booking, index) => (
+                              <div key={index} className="flex items-center gap-3 p-2 rounded-lg border border-white/10 bg-white/3">
+                                <Checkbox
+                                  checked={booking.selected}
+                                  onCheckedChange={(checked) => {
+                                    setImportData(prev => prev ? {
+                                      ...prev,
+                                      bookingLinks: prev.bookingLinks.map((b, i) => i === index ? { ...b, selected: !!checked } : b)
+                                    } : null);
+                                  }}
+                                  data-testid={`checkbox-booking-${index}`}
+                                />
+                                {booking.provider && <Badge variant="secondary" className="text-xs">{booking.provider}</Badge>}
+                                <a 
+                                  href={booking.url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-sm text-cyan-400 hover:underline flex items-center gap-1 truncate flex-1"
+                                >
+                                  <Link2 className="h-3 w-3" />
+                                  {booking.url}
+                                </a>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Policies Section */}
+                      {importData.policies.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <FileText className="h-4 w-4 text-cyan-400" />
+                            <h4 className="font-medium">Policies ({importData.policies.length})</h4>
+                          </div>
+                          <div className="space-y-2">
+                            {importData.policies.map((policy, index) => (
+                              <div key={index} className="flex items-start gap-3 p-2 rounded-lg border border-white/10 bg-white/3">
+                                <Checkbox
+                                  checked={policy.selected}
+                                  onCheckedChange={(checked) => {
+                                    setImportData(prev => prev ? {
+                                      ...prev,
+                                      policies: prev.policies.map((p, i) => i === index ? { ...p, selected: !!checked } : p)
+                                    } : null);
+                                  }}
+                                  data-testid={`checkbox-policy-${index}`}
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <Badge variant="outline" className="text-xs capitalize mb-1">{policy.category}</Badge>
+                                  <p className="text-sm line-clamp-3">{policy.value}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Social Links (collapsed by default) */}
+                      {importData.socialLinks.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Globe className="h-4 w-4 text-cyan-400" />
+                            <h4 className="font-medium text-muted-foreground">Social Links ({importData.socialLinks.length})</h4>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {importData.socialLinks.map((social, index) => (
+                              <a
+                                key={index}
+                                href={social.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-cyan-400 hover:underline flex items-center gap-1 px-2 py-1 rounded bg-white/5"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                {social.platform}
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </TabsContent>
