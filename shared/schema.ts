@@ -342,7 +342,9 @@ export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({
 
 export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;
 export type AdminUser = typeof adminUsers.$inferSelect;
-export type AdminRole = 'super_admin' | 'client_admin';
+// Global admin roles: super_admin has full platform access, client_admin is a workspace owner
+// workspace_admin can manage a workspace, workspace_viewer has read-only access
+export type AdminRole = 'super_admin' | 'client_admin' | 'workspace_admin' | 'workspace_viewer';
 
 export const clients = pgTable("clients", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -641,7 +643,12 @@ export const BOT_TYPES = [
 export type BotType = typeof BOT_TYPES[number];
 
 // Workspace roles
-export const WORKSPACE_ROLES = ['owner', 'manager', 'staff', 'agent'] as const;
+// - owner: Full access, can manage workspace settings and all data
+// - manager: Can manage staff, bots, and view all data (no billing)
+// - staff: Can manage bots, leads, appointments (operational tasks)
+// - agent: Can handle conversations and leads assigned to them
+// - viewer: Read-only access to analytics and data (no modifications)
+export const WORKSPACE_ROLES = ['owner', 'manager', 'staff', 'agent', 'viewer'] as const;
 export type WorkspaceRole = typeof WORKSPACE_ROLES[number];
 
 // Workspaces table - Each business is a workspace

@@ -563,6 +563,30 @@ function requireAdminRole(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+// RBAC helper for write operations - blocks viewer role from state-changing actions
+// Use this middleware on routes that create, update, or delete data
+function requireWriteAccess(req: Request, res: Response, next: NextFunction) {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+  
+  // Check both global role and workspace membership role
+  const globalRole = req.session.userRole as string;
+  const membershipRole = (req as any).membershipRole as string | undefined;
+  
+  // Viewers cannot perform write operations
+  if (globalRole === "workspace_viewer") {
+    return res.status(403).json({ error: "Viewer access is read-only. Write operations require elevated permissions." });
+  }
+  
+  // Also check workspace membership role if set
+  if (membershipRole === "viewer") {
+    return res.status(403).json({ error: "Your workspace role is read-only. Contact an admin to modify data." });
+  }
+  
+  next();
+}
+
 /**
  * MULTI-TENANT ISOLATION MIDDLEWARE
  * 
