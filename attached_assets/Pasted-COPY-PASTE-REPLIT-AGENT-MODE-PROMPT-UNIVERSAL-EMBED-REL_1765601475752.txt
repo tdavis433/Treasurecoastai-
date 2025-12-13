@@ -1,0 +1,89 @@
+COPY/PASTE — REPLIT AGENT MODE PROMPT
+UNIVERSAL EMBED RELIABILITY (NO ALLOWLIST YET) + BOOKING URL FALLBACK + FINAL VERIFY
+
+GOAL
+Finalize lightweight “embed works everywhere” readiness for Treasure Coast AI, without adding domain allowlisting yet. Ensure:
+- Embed snippet contains NO secrets.
+- Widget works without third-party cookies.
+- HTTPS-only assets.
+- Friendly widget error UX with Retry.
+- Booking button is redirect-only and validates external HTTPS URLs safely.
+- If booking URL is invalid/missing, show a friendly fallback CTA (call/text/email) instead of silently hiding.
+- Provide /widget-test.html and clear client embed instructions in RELEASE_RUNBOOK.md.
+- Run full quality gates and confirm PASS.
+
+NON-NEGOTIABLE GUARDRAILS
+- NO PAYMENT PROCESSING EVER. Booking is redirect-only to client’s external booking/payment provider.
+- Do not expose secrets/tokens in widget config or embed snippet.
+- No stack traces shown to prospects/clients.
+- Do NOT print passwords/tokens in output.
+
+CURRENT STATUS (ALREADY DONE)
+- Added isValidBookingUrl(url) using URL parser + requires https:
+- showBookingButton() blocks invalid URLs (returns early)
+- Added Retry UX improvements
+- Added /widget-test.html
+- Added Client Website Embed Instructions in RELEASE_RUNBOOK.md
+- Verified:
+  - guard-no-payments.sh PASS
+  - tsc --noEmit PASS
+  - vitest PASS
+  - build PASS
+
+REQUEST (DO NOW)
+PHASE 1 — Make booking fallback user-friendly (small UI improvement)
+1) When bookingUrl is invalid/missing and showBookingButton() returns early:
+   - Instead of rendering nothing, display a small, friendly booking CTA in the widget, e.g.:
+     “To book, please call/text us at {phone} or email {email}.”
+   - Use business profile contact info if available (phone/email).
+   - If no contact info exists, show:
+     “Booking link not available. Please leave your info and we’ll reach out.”
+
+2) Ensure this fallback:
+   - DOES NOT collect payments
+   - Does not break layout on mobile
+   - Is accessible (readable, button/tap targets)
+
+PHASE 2 — Quiet logging cleanup (optional but recommended)
+- Replace console.warn messages that include attacker-controlled content (e.message) with a generic warning:
+  “Invalid booking URL blocked”
+Keep logs minimal and safe.
+
+PHASE 3 — Confirm embed snippet safety (final re-check)
+- Re-confirm embed snippet includes ONLY:
+  - script src to our hosted embed.js
+  - data-client-id, data-bot-id
+  - optional styling (primary color, business name)
+- Confirm NO secrets, API keys, tokens, webhook secrets are included.
+
+PHASE 4 — Verify widget reliability in failure modes
+Manually test:
+1) Config fetch failure (simulate by temporarily breaking endpoint or disconnect network)
+   - Widget shows friendly message + Retry
+   - Retry succeeds after restoring network
+2) Chat failure (simulate OpenAI failure / forced error)
+   - Widget shows fallback response, no blank UI
+3) Booking URL invalid:
+   - Booking button does NOT render
+   - Fallback CTA renders (call/text/email or leave info)
+
+PHASE 5 — Update docs (if needed)
+- Update RELEASE_RUNBOOK.md “Client Website Embed Instructions” to mention:
+  - If booking link is missing/invalid, widget shows contact fallback instead of Book Now.
+  - Book Now is redirect-only; no payments occur on our domain.
+
+PHASE 6 — Quality gates (MUST PASS)
+Run and confirm PASS:
+- bash ./scripts/guard-no-payments.sh
+- npx tsc --noEmit
+- npx vitest run
+- npm run build
+
+FINAL OUTPUT (STRICT)
+Return:
+1) File paths changed
+2) The final booking fallback UX text (exact user-facing copy)
+3) Confirmation the widget still redirects externally only (no payments)
+4) Proof all quality gates passed
+
+START NOW.

@@ -166,34 +166,39 @@
       
       // Only allow https: protocol (case-insensitive via URL parser)
       if (parsed.protocol !== 'https:') {
-        console.warn('Booking URL must use HTTPS protocol');
+        console.warn('Invalid booking URL blocked');
         return false;
       }
       
       // Ensure we have a valid hostname
       if (!parsed.hostname || parsed.hostname.length < 3) {
-        console.warn('Booking URL has invalid hostname');
+        console.warn('Invalid booking URL blocked');
         return false;
       }
       
       return true;
     } catch (e) {
       // URL constructor throws on invalid URLs (including javascript:, data:, etc.)
-      console.warn('Invalid booking URL:', e.message);
+      console.warn('Invalid booking URL blocked');
       return false;
     }
   }
 
   function showBookingButton(bookingUrl) {
-    // Remove any existing booking button
+    // Remove any existing booking button or fallback CTA
     var existingBtn = document.querySelector('.tcai-booking-btn');
     if (existingBtn) {
       existingBtn.remove();
     }
+    var existingFallback = document.querySelector('.tcai-booking-fallback');
+    if (existingFallback) {
+      existingFallback.remove();
+    }
     
     // Validate URL before rendering
     if (!isValidBookingUrl(bookingUrl)) {
-      console.warn('Invalid booking URL blocked');
+      // Show fallback CTA instead of silent failure
+      showBookingFallback();
       return;
     }
     
@@ -227,6 +232,53 @@
     ].join('');
     
     elements.messages.appendChild(bookingDiv);
+    elements.messages.scrollTop = elements.messages.scrollHeight;
+  }
+  
+  // Fallback CTA when booking URL is invalid or missing
+  function showBookingFallback() {
+    var fallbackDiv = document.createElement('div');
+    fallbackDiv.className = 'tcai-booking-fallback';
+    fallbackDiv.setAttribute('data-testid', 'booking-fallback-cta');
+    
+    var fallbackText = '';
+    var hasPhone = config.businessPhone && config.businessPhone.trim();
+    var hasEmail = config.businessEmail && config.businessEmail.trim();
+    
+    if (hasPhone && hasEmail) {
+      fallbackText = 'To book, please call/text us at ' + escapeHtml(config.businessPhone) + ' or email ' + escapeHtml(config.businessEmail) + '.';
+    } else if (hasPhone) {
+      fallbackText = 'To book, please call/text us at ' + escapeHtml(config.businessPhone) + '.';
+    } else if (hasEmail) {
+      fallbackText = 'To book, please email us at ' + escapeHtml(config.businessEmail) + '.';
+    } else {
+      fallbackText = 'Interested in booking? Share your contact info and we\'ll reach out!';
+    }
+    
+    fallbackDiv.innerHTML = [
+      '<div style="',
+      '  display: flex;',
+      '  align-items: center;',
+      '  gap: 8px;',
+      '  padding: 12px 16px;',
+      '  margin: 12px 16px;',
+      '  background: rgba(var(--tcai-primary-rgb), 0.1);',
+      '  border: 1px solid rgba(var(--tcai-primary-rgb), 0.3);',
+      '  border-radius: 8px;',
+      '  font-size: 14px;',
+      '  line-height: 1.4;',
+      '">',
+      '  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="' + config.primaryColor + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">',
+      '    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>',
+      '    <line x1="16" y1="2" x2="16" y2="6"></line>',
+      '    <line x1="8" y1="2" x2="8" y2="6"></line>',
+      '    <line x1="3" y1="10" x2="21" y2="10"></line>',
+      '  </svg>',
+      '  <span>' + fallbackText + '</span>',
+      '</div>'
+    ].join('');
+    
+    elements.messages.appendChild(fallbackDiv);
     elements.messages.scrollTop = elements.messages.scrollHeight;
   }
   

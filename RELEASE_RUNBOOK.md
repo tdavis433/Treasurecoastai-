@@ -405,7 +405,7 @@ git checkout [commit-hash]
 | Widget not appearing | Hard refresh (Ctrl+Shift+R / Cmd+Shift+R), check for JavaScript errors in browser console (F12) |
 | Widget blocked | Disable ad blockers temporarily; check if your site's CSP allows the widget origin |
 | "Something went wrong" error | Check internet connection, try clicking Retry button, verify bot is not paused |
-| Booking button not working | Verify external booking URL is configured and uses HTTPS |
+| Booking button not working | Verify external booking URL is configured and uses HTTPS. If URL is invalid, widget shows fallback CTA with contact info. |
 
 ### Security Notes
 
@@ -413,6 +413,7 @@ git checkout [commit-hash]
 - Widget uses **token-based auth** - no third-party cookies required
 - All assets served over **HTTPS only**
 - Booking links validated to **HTTPS only** (blocks javascript:, data:, file: schemes)
+- **Fallback CTA:** If booking URL is invalid/missing, widget shows a friendly fallback message with business contact info (phone/email) or a prompt to share contact info
 
 ---
 
