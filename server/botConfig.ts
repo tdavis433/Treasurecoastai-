@@ -22,6 +22,8 @@ export interface BotBusinessProfile {
     walkInsNote?: string;
   };
   membershipOptions?: string[];
+  logo?: string;
+  tagline?: string;
 }
 
 export interface BotRules {
@@ -113,6 +115,12 @@ export interface BotSecuritySettings {
   };
 }
 
+export interface BotWidgetSettings {
+  primaryColor?: string;
+  position?: 'bottom-right' | 'bottom-left';
+  theme?: 'light' | 'dark' | 'auto';
+}
+
 export interface BotConfig {
   clientId: string;
   botId: string;
@@ -126,6 +134,7 @@ export interface BotConfig {
   personality?: BotPersonality;
   quickActions?: BotQuickAction[];
   security?: BotSecuritySettings;
+  widgetSettings?: BotWidgetSettings;
   externalBookingUrl?: string;
   externalPaymentUrl?: string;
   metadata?: {

@@ -185,6 +185,34 @@ interface DraftState {
   embedCode?: string;
 }
 
+interface ClientHealthData {
+  clientId: string;
+  timestamp: string;
+  lastChatActivity: {
+    sessionId: string;
+    startedAt: string;
+    messageCount: number;
+  } | null;
+  errorsLast15m: {
+    count: number;
+    recent: Array<{
+      message: string;
+      source: string;
+      createdAt: string;
+    }>;
+  };
+  notificationStatus: {
+    emailEnabled: boolean;
+    smsEnabled: boolean;
+    lastAttempt?: string;
+  };
+  widgetStatus: {
+    configured: boolean;
+    botId?: string;
+    lastFetchable: boolean;
+  };
+}
+
 const intakeFormSchema = z.object({
   businessName: z.string().optional().default(""),
   websiteUrl: z.string().url("Please enter a valid URL").min(1, "Website URL is required"),
@@ -264,6 +292,19 @@ export default function AgencyOnboardingConsole() {
 
   const { data: templates, isLoading: templatesLoading } = useQuery<IndustryTemplate[]>({
     queryKey: ["/api/agency-onboarding/templates"],
+  });
+
+  // Client health data query - only fetch when we have a draft
+  const { data: clientHealth, refetch: refetchHealth } = useQuery<ClientHealthData>({
+    queryKey: ["/api/agency-onboarding/client-health", draftState?.clientId],
+    queryFn: async () => {
+      const res = await fetch(`/api/agency-onboarding/client-health/${draftState?.clientId}`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to fetch client health');
+      return res.json();
+    },
+    enabled: !!draftState?.clientId,
   });
 
   const form = useForm<IntakeFormData>({
@@ -1869,6 +1910,98 @@ export default function AgencyOnboardingConsole() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Health Glance Card - shows when we have a draft */}
+        {draftState?.clientId && clientHealth && (
+          <Card className="mt-6 bg-white/3 border-white/10" data-testid="card-client-health">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-cyan-400" />
+                  Client Health
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => refetchHealth()}
+                  data-testid="button-refresh-health"
+                >
+                  <Loader2 className="h-4 w-4" />
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {/* Widget Status */}
+                <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Globe className={clientHealth.widgetStatus.configured ? "h-4 w-4 text-emerald-400" : "h-4 w-4 text-amber-400"} />
+                    <span className="text-xs text-muted-foreground">Widget</span>
+                  </div>
+                  <p className="text-sm font-medium">
+                    {clientHealth.widgetStatus.configured ? "Configured" : "Not Set"}
+                  </p>
+                </div>
+
+                {/* Last Chat Activity */}
+                <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                  <div className="flex items-center gap-2 mb-1">
+                    <MessageSquare className={clientHealth.lastChatActivity ? "h-4 w-4 text-emerald-400" : "h-4 w-4 text-muted-foreground"} />
+                    <span className="text-xs text-muted-foreground">Last Chat</span>
+                  </div>
+                  <p className="text-sm font-medium">
+                    {clientHealth.lastChatActivity 
+                      ? new Date(clientHealth.lastChatActivity.startedAt).toLocaleDateString()
+                      : "No activity"}
+                  </p>
+                </div>
+
+                {/* Errors Last 15min */}
+                <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                  <div className="flex items-center gap-2 mb-1">
+                    <AlertCircle className={clientHealth.errorsLast15m.count > 0 ? "h-4 w-4 text-rose-400" : "h-4 w-4 text-emerald-400"} />
+                    <span className="text-xs text-muted-foreground">Errors (15m)</span>
+                  </div>
+                  <p className={`text-sm font-medium ${clientHealth.errorsLast15m.count > 0 ? "text-rose-400" : ""}`}>
+                    {clientHealth.errorsLast15m.count}
+                  </p>
+                </div>
+
+                {/* Notifications */}
+                <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Bell className={(clientHealth.notificationStatus.emailEnabled || clientHealth.notificationStatus.smsEnabled) ? "h-4 w-4 text-emerald-400" : "h-4 w-4 text-amber-400"} />
+                    <span className="text-xs text-muted-foreground">Notify</span>
+                  </div>
+                  <p className="text-sm font-medium">
+                    {clientHealth.notificationStatus.emailEnabled && clientHealth.notificationStatus.smsEnabled 
+                      ? "Email + SMS"
+                      : clientHealth.notificationStatus.emailEnabled 
+                        ? "Email"
+                        : clientHealth.notificationStatus.smsEnabled 
+                          ? "SMS"
+                          : "Disabled"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Recent Errors */}
+              {clientHealth.errorsLast15m.recent.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="text-xs font-medium text-rose-400 mb-2">Recent Errors</h4>
+                  <ul className="space-y-1 text-xs">
+                    {clientHealth.errorsLast15m.recent.map((err, i) => (
+                      <li key={i} className="flex items-start gap-2 text-muted-foreground">
+                        <span className="text-rose-400">[{err.source}]</span>
+                        <span className="truncate">{err.message}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {draftState?.qaResults && (
           <Card className="mt-6 bg-white/3 border-white/10" data-testid="card-qa-results">

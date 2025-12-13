@@ -12134,6 +12134,110 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
+  // Client Health Glance - Quick health metrics for onboarding console
+  app.get("/api/agency-onboarding/client-health/:clientId", requireSuperAdmin, async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      
+      if (!clientId) {
+        return res.status(400).json({ error: 'clientId is required' });
+      }
+
+      // Get last chat activity
+      let lastChatActivity: { sessionId: string; startedAt: string; messageCount: number } | null = null;
+      try {
+        const recentSession = await db.select()
+          .from(chatSessions)
+          .where(eq(chatSessions.clientId, clientId))
+          .orderBy(desc(chatSessions.startedAt))
+          .limit(1);
+        
+        if (recentSession.length > 0) {
+          lastChatActivity = {
+            sessionId: recentSession[0].sessionId,
+            startedAt: recentSession[0].startedAt.toISOString(),
+            messageCount: recentSession[0].userMessageCount + recentSession[0].botMessageCount,
+          };
+        }
+      } catch (err) {
+        console.error('[Client Health] Failed to get chat activity:', err);
+      }
+
+      // Get errors in last 15 minutes for this client
+      let errorsLast15m: { count: number; recent: Array<{ message: string; source: string; createdAt: string }> } = {
+        count: 0,
+        recent: [],
+      };
+      try {
+        const recentErrors = await db.select()
+          .from(systemLogs)
+          .where(and(
+            or(eq(systemLogs.level, 'error'), eq(systemLogs.level, 'critical')),
+            gte(systemLogs.createdAt, new Date(Date.now() - 15 * 60 * 1000)),
+            eq(systemLogs.clientId, clientId)
+          ))
+          .orderBy(desc(systemLogs.createdAt))
+          .limit(10);
+        
+        errorsLast15m.count = recentErrors.length;
+        errorsLast15m.recent = recentErrors.slice(0, 5).map(log => ({
+          message: log.message?.substring(0, 100) || 'Unknown error',
+          source: log.source || 'system',
+          createdAt: log.createdAt.toISOString(),
+        }));
+      } catch (err) {
+        console.error('[Client Health] Failed to get errors:', err);
+      }
+
+      // Get notification status from client settings
+      let notificationStatus: { emailEnabled: boolean; smsEnabled: boolean; lastAttempt?: string } = {
+        emailEnabled: false,
+        smsEnabled: false,
+      };
+      try {
+        const settings = await db.select()
+          .from(clientSettings)
+          .where(eq(clientSettings.clientId, clientId))
+          .limit(1);
+        
+        if (settings.length > 0) {
+          notificationStatus.emailEnabled = settings[0].enableEmailNotifications || false;
+          notificationStatus.smsEnabled = settings[0].enableSmsNotifications || false;
+        }
+      } catch (err) {
+        console.error('[Client Health] Failed to get notification status:', err);
+      }
+
+      // Get widget fetch status - check if bot exists and is configured
+      let widgetStatus: { configured: boolean; botId?: string; lastFetchable: boolean } = {
+        configured: false,
+        lastFetchable: false,
+      };
+      try {
+        const clientBots = await getBotsByClientId(clientId);
+        if (clientBots && clientBots.length > 0) {
+          widgetStatus.configured = true;
+          widgetStatus.botId = clientBots[0].botId;
+          widgetStatus.lastFetchable = true;
+        }
+      } catch (err) {
+        console.error('[Client Health] Failed to get widget status:', err);
+      }
+
+      res.json({
+        clientId,
+        timestamp: new Date().toISOString(),
+        lastChatActivity,
+        errorsLast15m,
+        notificationStatus,
+        widgetStatus,
+      });
+    } catch (error) {
+      console.error('[Agency Onboarding] Client health error:', error);
+      res.status(500).json({ error: 'Failed to get client health' });
+    }
+  });
+
   // Get industry templates list
   app.get("/api/agency-onboarding/templates", requireSuperAdmin, (_req, res) => {
     try {

@@ -201,7 +201,9 @@ export async function purgeOldData(config?: Partial<RetentionConfig>): Promise<{
   purgedCounts.analyticsEvents = eventsResult.length;
 
   // Purge daily analytics older than retention period (same as analytics events)
-  const dailyResult = await db.delete(dailyAnalytics).where(lt(dailyAnalytics.date, eventsCutoff)).returning();
+  // dailyAnalytics.date is stored as YYYY-MM-DD text, so compare with formatted string
+  const dailyCutoffStr = eventsCutoff.toISOString().split('T')[0];
+  const dailyResult = await db.delete(dailyAnalytics).where(lt(dailyAnalytics.date, dailyCutoffStr)).returning();
   purgedCounts.dailyAnalytics = dailyResult.length;
 
   // Purge notification logs older than retention period
@@ -225,8 +227,9 @@ export async function purgeOldData(config?: Partial<RetentionConfig>): Promise<{
     const msgResult = await db.delete(conversationMessages).where(inArray(conversationMessages.conversationId, oldConversationIds)).returning();
     purgedCounts.conversationMessages = msgResult.length;
     
-    // Delete conversation notes
-    const notesResult = await db.delete(conversationNotes).where(inArray(conversationNotes.conversationId, oldConversationIds)).returning();
+    // Delete conversation notes - notes use sessionId, not conversationId
+    // We'll delete notes that are older than the cutoff date instead
+    const notesResult = await db.delete(conversationNotes).where(lt(conversationNotes.createdAt, conversationsCutoff)).returning();
     purgedCounts.conversationNotes = notesResult.length;
     
     // Delete conversations
