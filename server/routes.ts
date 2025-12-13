@@ -2613,15 +2613,27 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Get specific bot config for demo UI
-  app.get("/api/demo/:botId", async (req, res) => {
+  // Accepts either botId directly OR workspace slug (will look up primary bot)
+  app.get("/api/demo/:botIdOrSlug", async (req, res) => {
     try {
-      const { botId } = req.params;
+      const { botIdOrSlug } = req.params;
       
-      // Use async version to check database for bots created dynamically
-      const botConfig = await getBotConfigByBotIdAsync(botId);
+      // First try direct botId lookup
+      let botConfig = await getBotConfigByBotIdAsync(botIdOrSlug);
+      
+      // If not found, try looking up by workspace slug and getting primary bot
+      if (!botConfig) {
+        const workspace = await db.select().from(workspaces).where(eq(workspaces.slug, botIdOrSlug)).limit(1);
+        if (workspace.length > 0) {
+          const [primaryBot] = await db.select().from(bots).where(eq(bots.workspaceId, workspace[0].id)).limit(1);
+          if (primaryBot) {
+            botConfig = await getBotConfigByBotIdAsync(primaryBot.botId);
+          }
+        }
+      }
       
       if (!botConfig) {
-        return res.status(404).json({ error: `Bot not found: ${botId}` });
+        return res.status(404).json({ error: `Bot not found: ${botIdOrSlug}` });
       }
       
       // Return config without sensitive system prompt details
