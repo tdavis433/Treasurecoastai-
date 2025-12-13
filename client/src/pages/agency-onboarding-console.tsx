@@ -185,18 +185,18 @@ interface DraftState {
 }
 
 const intakeFormSchema = z.object({
-  businessName: z.string().min(1, "Business name is required"),
+  businessName: z.string().optional().default(""),
   websiteUrl: z.string().url("Please enter a valid URL").min(1, "Website URL is required"),
-  primaryPhone: z.string().optional(),
+  primaryPhone: z.string().optional().default(""),
   email: z.string().email().optional().or(z.literal("")),
-  primaryCTA: z.enum(["tour", "consult", "book", "reserve", "estimate", "call"]),
-  externalBookingUrl: z.string().url().optional().or(z.literal("")),
+  primaryCTA: z.enum(["tour", "consult", "book", "reserve", "estimate", "call"]).default("consult"),
+  externalBookingUrl: z.string().optional().refine(
+    (val) => !val || val === "" || (val.startsWith("https://") && z.string().url().safeParse(val).success),
+    { message: "External booking URL must be a valid HTTPS URL" }
+  ),
   notes: z.string().optional(),
   doNotSay: z.string().optional(),
-}).refine(
-  (data) => data.primaryPhone || data.email,
-  { message: "At least one contact method (phone or email) is required", path: ["email"] }
-);
+});
 
 type IntakeFormData = z.infer<typeof intakeFormSchema>;
 
@@ -399,13 +399,102 @@ export default function AgencyOnboardingConsole() {
     },
   });
 
-  const handleGenerateDraft = async () => {
-    const isValid = await form.trigger();
-    
-    if (!isValid) {
+  const [isGeneratingAndVerifying, setIsGeneratingAndVerifying] = useState(false);
+
+  const handleGenerateAndVerify = async () => {
+    const websiteUrl = form.getValues("websiteUrl");
+    if (!websiteUrl) {
       toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields",
+        title: "Website URL Required",
+        description: "Please enter a website URL to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGeneratingAndVerifying(true);
+    
+    try {
+      // Step 1: If not scanned yet, scan first
+      if (!importData) {
+        await handleScanWebsite();
+      }
+
+      // Step 2: Generate draft setup
+      const intakeData = form.getValues();
+      const payload: DraftSetupPayload = {
+        intakeData,
+        kbDraft: {
+          services: kbServices,
+          faqs: kbFaqs,
+          policies: kbPolicies,
+          hours: kbHours,
+        },
+        websiteSuggestions: websiteSuggestions.filter(s => s.selected),
+        notification: null,
+      };
+
+      const draftResult = await apiRequest("POST", "/api/agency-onboarding/generate-draft-setup", {
+        ...payload.intakeData,
+        kbDraft: payload.kbDraft,
+        websiteSuggestions: payload.websiteSuggestions,
+        notification: payload.notification,
+        styleConfig,
+      }) as unknown as { clientId: string; botId: string };
+
+      // Step 3: Run QA Gate immediately
+      const qaResult = await apiRequest("POST", "/api/agency-onboarding/run-qa-gate", {
+        clientId: draftResult.clientId,
+        botId: draftResult.botId,
+      }) as unknown as { passed: boolean; warnings: string[]; errors: string[]; report: string };
+
+      // Step 4: If QA passed, go live automatically
+      let embedCode = "";
+      if (qaResult.passed) {
+        const liveResult = await apiRequest("POST", "/api/agency-onboarding/go-live", {
+          clientId: draftResult.clientId,
+          botId: draftResult.botId,
+        }) as unknown as { embedCode: string };
+        embedCode = liveResult.embedCode;
+      }
+
+      setDraftState({
+        clientId: draftResult.clientId,
+        botId: draftResult.botId,
+        status: qaResult.passed ? 'live' : 'qa_pending',
+        qaResults: qaResult,
+        embedCode: embedCode || undefined,
+      });
+
+      if (qaResult.passed) {
+        toast({
+          title: "Bot Ready!",
+          description: "QA passed. Copy embed code below.",
+        });
+      } else {
+        toast({
+          title: "QA Issues Found",
+          description: `${qaResult.errors?.length || 0} errors, ${qaResult.warnings?.length || 0} warnings. Review and retry.`,
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Generation Failed",
+        description: error.message || "Failed to generate and verify bot",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingAndVerifying(false);
+    }
+  };
+
+  const handleGenerateDraft = async () => {
+    const websiteUrl = form.getValues("websiteUrl");
+    if (!websiteUrl) {
+      toast({
+        title: "Website URL Required",
+        description: "Please enter a website URL",
         variant: "destructive",
       });
       return;
@@ -494,6 +583,74 @@ export default function AgencyOnboardingConsole() {
     },
   });
 
+  const autoApplySafeMerges = (data: WebsiteImportData) => {
+    let appliedCount = 0;
+
+    // SAFE: Fill missing businessName (only if empty)
+    if (data.businessName && !form.getValues("businessName")) {
+      form.setValue("businessName", data.businessName);
+      appliedCount++;
+    }
+
+    // SAFE: Fill missing contact info (only if empty)
+    const phone = data.contact.find(c => c.type === 'phone');
+    if (phone && !form.getValues("primaryPhone")) {
+      form.setValue("primaryPhone", phone.value);
+      appliedCount++;
+    }
+    
+    const email = data.contact.find(c => c.type === 'email');
+    if (email && !form.getValues("email")) {
+      form.setValue("email", email.value);
+      appliedCount++;
+    }
+
+    // SAFE: Append services (with dedupe)
+    if (data.services.length > 0) {
+      setKbServices(prev => {
+        const existingNames = new Set(prev.map(s => s.name.toLowerCase().trim()));
+        const newServices = data.services
+          .filter(s => !existingNames.has(s.name.toLowerCase().trim()))
+          .map(s => ({ name: s.name, description: s.description || "" }));
+        return [...prev, ...newServices];
+      });
+      appliedCount += data.services.length;
+    }
+
+    // SAFE: Append FAQs (with dedupe)
+    if (data.faqs.length > 0) {
+      setKbFaqs(prev => {
+        const existingQuestions = new Set(prev.map(f => f.question.toLowerCase().trim()));
+        const newFaqs = data.faqs
+          .filter(f => !existingQuestions.has(f.question.toLowerCase().trim()))
+          .map(f => ({ question: f.question, answer: f.answer }));
+        return [...prev, ...newFaqs];
+      });
+      appliedCount += data.faqs.length;
+    }
+
+    // SAFE: Append policies (with dedupe)
+    if (data.policies.length > 0) {
+      const policyText = data.policies.map(p => p.value).join("\n\n");
+      setKbPolicies(prev => {
+        if (!prev) return policyText;
+        // Avoid duplicate content
+        if (prev.includes(policyText.substring(0, 50))) return prev;
+        return `${prev}\n\n${policyText}`;
+      });
+      appliedCount += data.policies.length;
+    }
+
+    // SAFE: Fill external booking URL (only if empty and valid HTTPS)
+    const booking = data.bookingLinks.find(b => b.url.startsWith("https://"));
+    if (booking && !form.getValues("externalBookingUrl")) {
+      form.setValue("externalBookingUrl", booking.url);
+      appliedCount++;
+    }
+
+    return appliedCount;
+  };
+
   const handleScanWebsite = async () => {
     const websiteUrl = form.getValues("websiteUrl");
     if (!websiteUrl) {
@@ -507,7 +664,7 @@ export default function AgencyOnboardingConsole() {
     
     setIsScanning(true);
     try {
-      const response = await apiRequest("POST", "/api/admin/website-import", { url: websiteUrl }) as {
+      const response = await apiRequest("POST", "/api/admin/website-import", { url: websiteUrl }) as unknown as {
         businessName?: string;
         tagline?: string;
         description?: string;
@@ -540,6 +697,9 @@ export default function AgencyOnboardingConsole() {
       
       setImportData(importResult);
       
+      // AUTO-APPLY safe merges immediately after scan
+      const appliedCount = autoApplySafeMerges(importResult);
+      
       // Also populate legacy websiteSuggestions for backwards compatibility
       const legacySuggestions: WebsiteSuggestion[] = [];
       if (response.businessName) {
@@ -556,12 +716,9 @@ export default function AgencyOnboardingConsole() {
       
       setActiveTab("suggestions");
       
-      const totalItems = importResult.services.length + importResult.faqs.length + 
-        importResult.contact.length + importResult.bookingLinks.length + importResult.policies.length;
-      
       toast({
-        title: "Website Scanned",
-        description: `Scanned ${response.pagesScanned} pages, found ${totalItems} suggestions to review.`,
+        title: "Website Scanned & Auto-Applied",
+        description: `Scanned ${response.pagesScanned} pages. Auto-applied ${appliedCount} safe items.`,
       });
     } catch (error: any) {
       toast({
@@ -692,7 +849,7 @@ export default function AgencyOnboardingConsole() {
       const response = await apiRequest("POST", "/api/admin/preview-link", {
         workspaceSlug: draftState.clientId,
         botId: draftState.botId,
-      });
+      }) as unknown as { previewUrl: string; expiresAt: string };
       
       setPreviewLink({
         url: response.previewUrl,
@@ -803,34 +960,6 @@ export default function AgencyOnboardingConsole() {
           )}
         </div>
 
-        {/* Launch Checklist */}
-        <div className="mb-6 p-4 rounded-lg border border-white/10 bg-white/3" data-testid="launch-checklist">
-          <div className="flex items-center gap-2 mb-3">
-            <CheckCircle className="h-5 w-5 text-cyan-400" />
-            <span className="font-medium">Launch Checklist</span>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {getLaunchChecklist().map((item) => (
-              <div 
-                key={item.id}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm ${
-                  item.status === 'pass' 
-                    ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40' 
-                    : item.status === 'warn'
-                    ? 'bg-amber-500/15 text-amber-400 border border-amber-500/40'
-                    : 'bg-rose-500/15 text-rose-400 border border-rose-500/40'
-                }`}
-                data-testid={`checklist-item-${item.id}`}
-              >
-                {item.status === 'pass' && <Check className="h-3 w-3" />}
-                {item.status === 'warn' && <AlertTriangle className="h-3 w-3" />}
-                {item.status === 'fail' && <X className="h-3 w-3" />}
-                <span>{item.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-1 bg-white/3 border-white/10" data-testid="card-intake-form">
             <CardHeader>
@@ -845,24 +974,6 @@ export default function AgencyOnboardingConsole() {
             <CardContent>
               <Form {...form}>
                 <form className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="businessName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Business Name *</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="e.g., Joe's Auto Shop" 
-                            {...field} 
-                            data-testid="input-business-name"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
                   <div className="p-3 rounded-lg border border-dashed border-cyan-400/30 bg-cyan-500/5">
                     <FormField
                       control={form.control}
@@ -872,104 +983,20 @@ export default function AgencyOnboardingConsole() {
                           <FormLabel className="flex items-center gap-2">
                             <Globe className="h-4 w-4" />
                             Website URL *
-                            <Badge variant="secondary" className="text-xs">Scan to auto-fill</Badge>
                           </FormLabel>
-                          <div className="flex gap-2">
-                            <FormControl>
-                              <Input 
-                                placeholder="https://..." 
-                                {...field} 
-                                data-testid="input-website-url"
-                              />
-                            </FormControl>
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="outline"
-                              onClick={handleScanWebsite}
-                              disabled={isScanning}
-                              data-testid="button-scan-website"
-                            >
-                              {isScanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                            </Button>
-                          </div>
+                          <FormControl>
+                            <Input 
+                              placeholder="https://..." 
+                              {...field} 
+                              data-testid="input-website-url"
+                            />
+                          </FormControl>
+                          <FormDescription>Enter website to scan and auto-fill business info</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
-
-                  <Separator />
-
-                  <div className="grid grid-cols-1 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="primaryPhone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-1">
-                            <Phone className="h-3 w-3" /> Phone
-                          </FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="(555) 123-4567" 
-                              {...field} 
-                              data-testid="input-phone"
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-1">
-                            <Mail className="h-3 w-3" /> Email
-                          </FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="email"
-                              placeholder="info@business.com" 
-                              {...field} 
-                              data-testid="input-email"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                  </div>
-
-                  <Separator />
-
-                  <FormField
-                    control={form.control}
-                    name="primaryCTA"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Primary Call-to-Action *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-primary-cta">
-                              <SelectValue placeholder="Select CTA..." />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {CTA_OPTIONS.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormDescription>What action should the AI guide users toward?</FormDescription>
-                      </FormItem>
-                    )}
-                  />
 
                   <FormField
                     control={form.control}
@@ -1051,107 +1078,39 @@ export default function AgencyOnboardingConsole() {
             </CardContent>
             <CardFooter className="flex flex-col gap-2">
               <Button
-                className="w-full gap-2"
-                onClick={handleGenerateDraft}
-                disabled={generateDraftMutation.isPending || !!draftState}
-                data-testid="button-generate-draft"
+                className="w-full gap-2 bg-gradient-to-r from-cyan-500 to-teal-500"
+                onClick={handleGenerateAndVerify}
+                disabled={isGeneratingAndVerifying || draftState?.status === 'live'}
+                data-testid="button-generate-verify"
               >
-                {generateDraftMutation.isPending ? (
+                {isGeneratingAndVerifying ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <Sparkles className="h-4 w-4" />
+                  <Rocket className="h-4 w-4" />
                 )}
-                Generate Draft Setup
+                {isGeneratingAndVerifying ? 'Generating & Verifying...' : 'Generate & Verify'}
               </Button>
               
-              {draftState && draftState.status !== 'live' && (
-                <>
-                  <Button
-                    variant="outline"
-                    className="w-full gap-2"
-                    onClick={() => runQAGateMutation.mutate()}
-                    disabled={runQAGateMutation.isPending}
-                    data-testid="button-run-qa"
-                  >
-                    {runQAGateMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Shield className="h-4 w-4" />
-                    )}
-                    Run QA Gate
-                  </Button>
-                  
-                  <Button
-                    variant="outline"
-                    className="w-full gap-2 border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
-                    onClick={generatePreviewLink}
-                    disabled={isGeneratingPreview}
-                    data-testid="button-generate-preview"
-                  >
-                    {isGeneratingPreview ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Link2 className="h-4 w-4" />
-                    )}
-                    Generate Preview Link (24h)
-                  </Button>
-                  
-                  {previewLink && (
-                    <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/30 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-purple-400">Preview Link</span>
-                        <span className="text-xs text-muted-foreground">
-                          Expires: {new Date(previewLink.expiresAt).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex gap-2">
-                        <Input 
-                          value={previewLink.url} 
-                          readOnly 
-                          className="text-xs bg-black/30 border-purple-500/20"
-                          data-testid="input-preview-link"
-                        />
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={copyPreviewLink}
-                          data-testid="button-copy-preview"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {draftState.status === 'qa_passed' && (
-                    <Button
-                      className="w-full gap-2 bg-gradient-to-r from-cyan-500 to-teal-500"
-                      onClick={() => goLiveMutation.mutate()}
-                      disabled={goLiveMutation.isPending}
-                      data-testid="button-go-live"
-                    >
-                      {goLiveMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Rocket className="h-4 w-4" />
-                      )}
-                      Go Live + Copy Embed
-                    </Button>
-                  )}
-                </>
+              {draftState?.qaResults && !draftState.qaResults.passed && (
+                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-amber-400">
+                    <AlertTriangle className="h-4 w-4" />
+                    <span>QA Issues: {draftState.qaResults.errors?.length || 0} errors, {draftState.qaResults.warnings?.length || 0} warnings</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Review suggestions and retry Generate & Verify</p>
+                </div>
               )}
               
-              {draftState?.status === 'live' && draftState.embedCode && (
-                <Button
-                  variant="outline"
-                  className="w-full gap-2"
-                  onClick={copyEmbedCode}
-                  data-testid="button-copy-embed"
-                >
-                  <Copy className="h-4 w-4" />
-                  Copy Embed Code
-                </Button>
-              )}
+              <Button
+                variant="outline"
+                className="w-full gap-2"
+                onClick={copyEmbedCode}
+                disabled={draftState?.status !== 'live' || !draftState?.embedCode}
+                data-testid="button-copy-embed"
+              >
+                <Copy className="h-4 w-4" />
+                Copy Embed Code
+              </Button>
             </CardFooter>
           </Card>
 
@@ -1185,19 +1144,9 @@ export default function AgencyOnboardingConsole() {
                     <div>
                       <h3 className="font-semibold">Website Suggestions</h3>
                       <p className="text-sm text-muted-foreground">
-                        Review AI-extracted data from the business website
+                        Auto-filled from website scan - review before generating
                       </p>
                     </div>
-                    {importData && (
-                      <Button
-                        size="sm"
-                        onClick={handleApplySuggestions}
-                        data-testid="button-apply-suggestions"
-                      >
-                        <Check className="h-4 w-4 mr-1" />
-                        Apply Selected
-                      </Button>
-                    )}
                   </div>
 
                   {!importData ? (
