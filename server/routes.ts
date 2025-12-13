@@ -85,6 +85,7 @@ import { resetDemoWorkspace, seedAllDemoWorkspaces, getDemoSlugs, getDemoConfig 
 import { getWidgetEmbedCode, getEmbedInstructions, type WidgetEmbedOptions } from './embed';
 import { extractBookingInfoFromConversation, type ExtractedBookingInfo, type ChatMessage as OrchestratorChatMessage } from './orchestrator';
 import { requireExportClientId } from './utils/tenantScope';
+import { logAuditEvent, createAuditHelper, getAuditLogs } from './auditLogger';
 
 // =============================================
 // PHASE 2.4: SIGNED WIDGET TOKENS
@@ -3718,6 +3719,21 @@ These suggestions should be relevant to what was just discussed and help guide t
       if (!isValid) {
         // Record failed attempt
         const result = recordFailedLogin(username);
+        
+        // Audit log failed login
+        const { ipAddress, userAgent } = require('./auditLogger').extractRequestInfo(req);
+        await logAuditEvent({
+          userId: user.id,
+          username: user.username,
+          userRole: user.role,
+          action: 'login_failed',
+          resourceType: 'session',
+          clientId: user.clientId || undefined,
+          details: { reason: 'invalid_password', attemptsRemaining: result.locked ? 0 : undefined },
+          ipAddress,
+          userAgent,
+        });
+        
         if (result.locked) {
           return res.status(429).json({ 
             error: `Too many login attempts. Account locked for ${LOGIN_LOCKOUT_MINUTES} minutes.` 
@@ -3728,6 +3744,20 @@ These suggestions should be relevant to what was just discussed and help guide t
 
       // Successful login - clear any failed attempts
       clearFailedLogins(username);
+
+      // Audit log successful login
+      const { ipAddress, userAgent } = require('./auditLogger').extractRequestInfo(req);
+      await logAuditEvent({
+        userId: user.id,
+        username: user.username,
+        userRole: user.role,
+        action: 'login',
+        resourceType: 'session',
+        clientId: user.clientId || undefined,
+        details: { method: 'password' },
+        ipAddress,
+        userAgent,
+      });
 
       // Update lastLoginAt
       await db
@@ -3814,6 +3844,21 @@ These suggestions should be relevant to what was just discussed and help guide t
           lastLoginAt: new Date(),
         })
         .where(eq(adminUsers.id, user.id));
+
+      // Audit log password change
+      const { ipAddress, userAgent } = require('./auditLogger').extractRequestInfo(req);
+      await logAuditEvent({
+        userId: user.id,
+        username: user.username,
+        userRole: user.role,
+        action: 'password_change',
+        resourceType: 'user',
+        resourceId: user.id,
+        clientId: user.clientId || undefined,
+        details: { forced: user.mustChangePassword },
+        ipAddress,
+        userAgent,
+      });
 
       res.json({ 
         success: true, 
@@ -4604,6 +4649,68 @@ These suggestions should be relevant to what was just discussed and help guide t
       console.error("Get platform errors error:", error);
       res.status(500).json({ error: "Failed to fetch platform errors" });
     }
+  });
+
+  // =============================================
+  // AUDIT LOGS (Super Admin + Workspace Admins)
+  // =============================================
+  
+  app.get("/api/admin/audit-logs", requireAdminRole, async (req, res) => {
+    try {
+      const { 
+        clientId, 
+        workspaceId, 
+        userId, 
+        action, 
+        resourceType,
+        startDate,
+        endDate,
+        limit = "100",
+        offset = "0"
+      } = req.query;
+      
+      // Tenant-safe: non-super-admins can only see their own workspace's logs
+      let filterClientId = clientId as string | undefined;
+      let filterWorkspaceId = workspaceId as string | undefined;
+      
+      if (req.session.userRole !== 'super_admin') {
+        filterClientId = req.session.clientId || undefined;
+      }
+      
+      const filters: any = {
+        limit: Math.min(parseInt(String(limit), 10), 500),
+        offset: parseInt(String(offset), 10),
+      };
+      
+      if (filterClientId) filters.clientId = filterClientId;
+      if (filterWorkspaceId) filters.workspaceId = filterWorkspaceId;
+      if (userId) filters.userId = String(userId);
+      if (action) filters.action = String(action);
+      if (resourceType) filters.resourceType = String(resourceType);
+      if (startDate) filters.startDate = new Date(String(startDate));
+      if (endDate) filters.endDate = new Date(String(endDate));
+      
+      const result = await getAuditLogs(filters);
+      
+      res.json({
+        logs: result.logs,
+        total: result.total,
+        limit: filters.limit,
+        offset: filters.offset
+      });
+    } catch (error) {
+      console.error("Get audit logs error:", error);
+      res.status(500).json({ error: "Failed to fetch audit logs" });
+    }
+  });
+  
+  // Get audit log action types for filter dropdown
+  app.get("/api/admin/audit-logs/actions", requireAdminRole, async (req, res) => {
+    const { AUDIT_ACTIONS, AUDIT_RESOURCE_TYPES } = await import("@shared/schema");
+    res.json({
+      actions: AUDIT_ACTIONS,
+      resourceTypes: AUDIT_RESOURCE_TYPES
+    });
   });
 
   // =============================================
@@ -9646,6 +9753,17 @@ These suggestions should be relevant to what was just discussed and help guide t
         } as any,
       });
       
+      // Audit log for demo reset
+      const audit = createAuditHelper(req);
+      await audit.log('demo_reset', 'workspace', {
+        workspaceId: (workspace as any).id,
+        resourceId: slug,
+        details: {
+          workspaceName: (workspace as any).name,
+          stats: result.stats,
+        },
+      });
+      
       res.json({ 
         success: true, 
         message: `Demo data for ${slug} has been reset and reseeded`,
@@ -10451,6 +10569,18 @@ These suggestions should be relevant to what was just discussed and help guide t
         } as any,
       });
       
+      // Audit log for demo reset
+      const audit = createAuditHelper(req);
+      await audit.log('demo_reset', 'workspace', {
+        workspaceId: workspace.id,
+        resourceId: DEMO_CLIENT_ID,
+        details: {
+          workspaceName: 'Faith House Demo',
+          deleted: { appointments: deletedAppointments.length, leads: deletedLeads.length, messages: deletedMessages, sessions: deletedSessions.length },
+          seeded: seededData,
+        },
+      });
+      
       res.json({
         success: true,
         message: "Demo data has been reset successfully",
@@ -10644,6 +10774,18 @@ These suggestions should be relevant to what was just discussed and help guide t
           seeded: seededData,
           resetBy: req.session.userId,
         } as any,
+      });
+      
+      // Audit log for demo reset
+      const audit = createAuditHelper(req);
+      await audit.log('demo_reset', 'workspace', {
+        workspaceId: workspace.id,
+        resourceId: DEMO_CLIENT_ID,
+        details: {
+          workspaceName: 'Paws & Suds Demo',
+          deleted: { appointments: deletedAppointments.length, leads: deletedLeads.length, messages: deletedMessages, sessions: deletedSessions.length },
+          seeded: seededData,
+        },
       });
       
       res.json({

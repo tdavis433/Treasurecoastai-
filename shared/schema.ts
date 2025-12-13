@@ -572,11 +572,16 @@ export const auditLogs = pgTable("audit_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
   username: text("username").notNull(),
-  action: text("action").notNull(), // 'create', 'update', 'delete', 'login', 'logout'
-  resourceType: text("resource_type").notNull(), // 'bot', 'client', 'appointment', 'lead', 'settings'
+  userRole: text("user_role"), // super_admin, client_admin, workspace_admin, workspace_viewer
+  action: text("action").notNull(), // 'create', 'update', 'delete', 'login', 'logout', 'password_reset', 'impersonate', 'demo_reset'
+  resourceType: text("resource_type").notNull(), // 'workspace', 'bot', 'client', 'appointment', 'lead', 'settings', 'user', 'kb', 'faq'
   resourceId: varchar("resource_id"),
   clientId: varchar("client_id"),
+  workspaceId: varchar("workspace_id"),
+  beforeData: json("before_data").$type<Record<string, any>>(), // State before change (redacted)
+  afterData: json("after_data").$type<Record<string, any>>(), // State after change (redacted)
   details: json("details").$type<Record<string, any>>().default({}),
+  requestId: text("request_id"), // Correlation ID for request tracing
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -585,8 +590,27 @@ export const auditLogs = pgTable("audit_logs", {
   actionIdx: index("audit_logs_action_idx").on(table.action),
   resourceTypeIdx: index("audit_logs_resource_type_idx").on(table.resourceType),
   clientIdIdx: index("audit_logs_client_id_idx").on(table.clientId),
+  workspaceIdIdx: index("audit_logs_workspace_id_idx").on(table.workspaceId),
   createdAtIdx: index("audit_logs_created_at_idx").on(table.createdAt),
 }));
+
+// Audit action types for type safety
+export const AUDIT_ACTIONS = [
+  'create', 'update', 'delete', 'login', 'logout', 'login_failed',
+  'password_change', 'password_reset', 'user_enable', 'user_disable',
+  'impersonate_start', 'impersonate_end', 'demo_reset', 'data_export',
+  'booking_mode_change', 'failsafe_toggle', 'kb_update', 'faq_update',
+  'hours_update', 'widget_update', 'settings_update'
+] as const;
+
+export type AuditAction = typeof AUDIT_ACTIONS[number];
+
+export const AUDIT_RESOURCE_TYPES = [
+  'workspace', 'bot', 'client', 'appointment', 'lead', 'settings',
+  'user', 'kb', 'faq', 'widget', 'automation', 'session'
+] as const;
+
+export type AuditResourceType = typeof AUDIT_RESOURCE_TYPES[number];
 
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
   id: true,
