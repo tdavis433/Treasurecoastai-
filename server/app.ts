@@ -96,13 +96,15 @@ app.post(
   }
 );
 
-// Body parsers - MUST come before rate limiting and routes
+// Body parsers with payload limits - MUST come before rate limiting and routes
+// Limit JSON payloads to 100KB to prevent abuse
 app.use(express.json({
+  limit: '100kb',
   verify: (req, _res, buf) => {
     req.rawBody = buf;
   }
 }));
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: false, limit: '100kb' }));
 
 // Security: CORS for widget embeds on third-party sites ONLY
 // Admin/internal routes use same-origin policy (no CORS)
@@ -197,9 +199,41 @@ const chatLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Tenant-specific rate limiter for widget chat (per clientId/botId combination)
+// Supports both path params and body params for flexibility
+const tenantChatLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour window
+  max: isDev ? 1000 : 500, // 500 messages per hour per tenant in production
+  message: { error: 'Message limit reached for this assistant. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    // Try path params first, then fall back to body params
+    const clientId = req.params.clientId || req.body?.clientId || 'unknown';
+    const botId = req.params.botId || req.body?.botId || 'unknown';
+    return `tenant:${clientId}:${botId}`;
+  },
+});
+
+// Daily message cap limiter (resets every 24 hours)
+const dailyMessageLimiter = rateLimit({
+  windowMs: 24 * 60 * 60 * 1000, // 24 hours
+  max: isDev ? 10000 : 2000, // 2000 messages per day per tenant in production
+  message: { error: 'Daily message limit reached. Please try again tomorrow or upgrade your plan.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const clientId = req.params.clientId || req.body?.clientId || 'unknown';
+    const botId = req.params.botId || req.body?.botId || 'unknown';
+    return `daily:${clientId}:${botId}`;
+  },
+});
+
 // Apply rate limiting to specific routes (after body parsers)
 app.use('/api/auth/login', authLimiter);
-app.use('/api/chat', chatLimiter);
+// Apply tenant + daily + burst limits to all chat routes (both with and without path params)
+app.use('/api/chat/:clientId/:botId', tenantChatLimiter, dailyMessageLimiter, chatLimiter);
+app.use('/api/chat', tenantChatLimiter, dailyMessageLimiter, chatLimiter);
 app.use('/api/', apiLimiter);
 
 if (!process.env.SESSION_SECRET) {

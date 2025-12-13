@@ -1,6 +1,9 @@
 (function() {
   'use strict';
   
+  var TCAI_VERSION = '1.0.0';
+  var TCAI_BUILD_DATE = '2025-12-13';
+  
   if (window.TreasureCoastAI && window.TreasureCoastAI.initialized) {
     console.warn('Treasure Coast AI widget already initialized');
     return;
@@ -8,6 +11,8 @@
   
   window.TreasureCoastAI = {
     initialized: false,
+    version: TCAI_VERSION,
+    buildDate: TCAI_BUILD_DATE,
     config: {},
     fullConfig: null,
     iframe: null,
@@ -16,7 +21,26 @@
     isOpen: false,
     autoOpenTimer: null,
     greetingDismissed: false,
-    bubblePulseInterval: null
+    bubblePulseInterval: null,
+    getDiagnostics: function() {
+      var tcai = window.TreasureCoastAI;
+      return {
+        version: TCAI_VERSION,
+        buildDate: TCAI_BUILD_DATE,
+        initialized: tcai.initialized,
+        isOpen: tcai.isOpen,
+        hasConfig: !!tcai.config && Object.keys(tcai.config).length > 0,
+        hasFullConfig: !!tcai.fullConfig,
+        hasBubble: !!tcai.bubble && document.body.contains(tcai.bubble),
+        hasIframe: !!tcai.iframe && document.body.contains(tcai.iframe),
+        clientId: tcai.config ? tcai.config.clientId : null,
+        botId: tcai.config ? tcai.config.botId : null,
+        apiUrl: tcai.config ? tcai.config.apiUrl : null,
+        greetingDismissed: tcai.greetingDismissed,
+        browserInfo: navigator.userAgent,
+        timestamp: new Date().toISOString()
+      };
+    }
   };
   
   function getScriptConfig() {
@@ -771,7 +795,7 @@
       window.TreasureCoastAI.close = closeWidgetDirect;
       window.TreasureCoastAI.toggle = toggleWidgetDirect;
       
-      console.log('Treasure Coast AI widget initialized (TEST MODE) for ' + config.clientId + '/' + config.botId);
+      console.log('Treasure Coast AI widget v' + TCAI_VERSION + ' initialized (TEST MODE) for ' + config.clientId + '/' + config.botId);
     } else {
       var bubble = createBubble(config, fullConfig);
       var iframe = createIframe(config, fullConfig);
@@ -793,7 +817,7 @@
       window.TreasureCoastAI.close = closeWidget;
       window.TreasureCoastAI.toggle = toggleWidget;
       
-      console.log('Treasure Coast AI widget initialized for ' + config.clientId + '/' + config.botId);
+      console.log('Treasure Coast AI widget v' + TCAI_VERSION + ' initialized for ' + config.clientId + '/' + config.botId);
     }
   }
   

@@ -1091,6 +1091,72 @@ export default function WidgetSettingsPage() {
                     </div>
                   </CardContent>
                 </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Settings2 className="h-4 w-4" />
+                      Widget Diagnostics
+                    </CardTitle>
+                    <CardDescription>Debug information for troubleshooting widget issues</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="space-y-1">
+                        <p className="text-muted-foreground">Widget Version</p>
+                        <p className="font-mono font-medium" data-testid="text-widget-version">v1.0.0</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-muted-foreground">Build Date</p>
+                        <p className="font-mono font-medium" data-testid="text-build-date">2025-12-13</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-muted-foreground">Bot ID</p>
+                        <p className="font-mono font-medium truncate" data-testid="text-bot-id">{botId || 'Not set'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-muted-foreground">Workspace</p>
+                        <p className="font-mono font-medium truncate" data-testid="text-workspace">{businessName || 'Not set'}</p>
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-4 space-y-3">
+                      <p className="text-sm font-medium">Console Diagnostics Command</p>
+                      <div className="bg-muted rounded-lg p-3">
+                        <code className="text-xs font-mono">window.TreasureCoastAI.getDiagnostics()</code>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Run this command in your browser console (F12) on the page where the widget is embedded to get diagnostic information.
+                      </p>
+                    </div>
+
+                    <div className="border-t pt-4 space-y-3">
+                      <p className="text-sm font-medium">Troubleshooting Checklist</p>
+                      <ul className="text-sm text-muted-foreground space-y-2">
+                        <li className="flex items-start gap-2">
+                          <span className="text-primary">1.</span>
+                          <span>Verify embed code is placed before closing <code className="bg-muted px-1 rounded">&lt;/body&gt;</code> tag</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-primary">2.</span>
+                          <span>Check browser console (F12) for JavaScript errors</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-primary">3.</span>
+                          <span>Ensure widget token is valid and not expired</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-primary">4.</span>
+                          <span>Verify domain is in allowed domains list (if enabled)</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-primary">5.</span>
+                          <span>Check Network tab for failed API requests (401, 403, 429)</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </CardContent>
+                </Card>
               </TabsContent>
             </Tabs>
           </div>
