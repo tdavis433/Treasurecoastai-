@@ -417,6 +417,78 @@ git checkout [commit-hash]
 
 ---
 
+## Uptime Monitoring Setup (UptimeRobot / Pingdom)
+
+### Public Health Endpoint
+
+For external uptime monitoring services like UptimeRobot or Pingdom, use the **public** health endpoint:
+
+```
+GET /api/health
+```
+
+**Response (healthy):**
+```json
+{
+  "ok": true,
+  "timestamp": "2025-12-13T10:00:00.000Z",
+  "db": { "ok": true, "latencyMs": 15 },
+  "ai": { "configured": true },
+  "testModeAllowed": false,
+  "build": { "env": "production", "version": "1.0.0", "uptime": 86400 }
+}
+```
+
+**UptimeRobot Configuration:**
+- Monitor Type: HTTP(s)
+- URL: `https://your-domain.replit.app/api/health`
+- Keyword Monitoring: Check for `"ok":true`
+- Interval: 5 minutes (recommended)
+- Alert Contacts: Configure as needed
+
+**Alerting on Degraded State:**
+- The endpoint returns `ok: false` if database is down OR >50 errors in last 15 minutes
+- UptimeRobot should alert when keyword `"ok":true` is NOT found
+
+### Daily Self-Check Script
+
+For CI/CD pipelines or cron jobs, use the daily self-check script:
+
+```bash
+# Required environment variables
+export BASE_URL="https://your-domain.replit.app"
+export DEMO_CLIENT_ID="demo_faith_house"
+export DEMO_BOT_ID="faith_house_bot"
+
+# Run self-check
+bash ./scripts/daily-self-check.sh
+```
+
+**Exit codes:**
+- `0` = All checks passed
+- `1` = One or more checks failed
+
+**Optional env vars:**
+- `TIMEOUT_SECONDS` - Request timeout (default: 15)
+- `VERBOSE=true` - Enable detailed output
+
+### Super Admin Internal Health Check
+
+For detailed diagnostics (requires super admin login), use the internal endpoint:
+
+```
+GET /api/health/internal
+```
+
+This includes:
+- Error breakdown by category (chat, widget, lead, booking, auth, db)
+- Last error timestamps
+- Demo workspace readiness status
+
+Access via: Super Admin Dashboard → System Logs → "Run Self-Check" button
+
+---
+
 ## Release Notes
 
 ### Version 1.2 (December 2025)

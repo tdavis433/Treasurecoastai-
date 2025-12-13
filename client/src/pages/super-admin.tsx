@@ -612,6 +612,44 @@ export default function SuperAdmin() {
     },
   });
 
+  // Internal health check query (on-demand)
+  const [selfCheckResult, setSelfCheckResult] = useState<{
+    ok: boolean;
+    timestamp: string;
+    db: { ok: boolean; latencyMs: number };
+    ai: { configured: boolean };
+    errorsLast15m: Record<string, number>;
+    totalErrors: number;
+    demoWorkspaceReady: boolean;
+  } | null>(null);
+  const [selfCheckRunning, setSelfCheckRunning] = useState(false);
+
+  const runSelfCheck = useCallback(async () => {
+    setSelfCheckRunning(true);
+    setSelfCheckResult(null);
+    try {
+      const response = await fetch('/api/health/internal', { credentials: 'include' });
+      if (!response.ok) throw new Error('Health check failed');
+      const data = await response.json();
+      setSelfCheckResult(data);
+      toast({
+        title: data.ok ? "Self-Check Passed" : "Self-Check Warning",
+        description: data.ok 
+          ? `All systems operational. DB: ${data.db.latencyMs}ms`
+          : `Issues detected: ${data.totalErrors} errors in last 15 minutes`,
+        variant: data.ok ? "default" : "destructive",
+      });
+    } catch (error) {
+      toast({
+        title: "Self-Check Failed",
+        description: "Could not complete health check. Check server logs.",
+        variant: "destructive",
+      });
+    } finally {
+      setSelfCheckRunning(false);
+    }
+  }, [toast]);
+
   // Delete bot mutation
   const deleteBotMutation = useMutation({
     mutationFn: async (botId: string) => {
@@ -2768,16 +2806,101 @@ export default function SuperAdmin() {
                       <h2 className="text-xl font-semibold text-white">System Health & Logs</h2>
                       <p className="text-sm text-white/55">Monitor platform activity and resolve issues</p>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => refetchLogs()} 
-                      className="text-white/70 hover:text-white hover:bg-white/10"
-                    >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Refresh
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={runSelfCheck}
+                        disabled={selfCheckRunning}
+                        className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
+                        data-testid="button-run-self-check"
+                      >
+                        {selfCheckRunning ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Activity className="h-4 w-4 mr-2" />
+                        )}
+                        Run Self-Check
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => refetchLogs()} 
+                        className="text-white/70 hover:text-white hover:bg-white/10"
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Refresh
+                      </Button>
+                    </div>
                   </div>
+
+                  {/* Self-Check Result Card */}
+                  {selfCheckResult && (
+                    <GlassCard className={selfCheckResult.ok ? "border-green-500/30 bg-green-500/5" : "border-yellow-500/30 bg-yellow-500/5"}>
+                      <GlassCardContent className="py-4">
+                        <div className="flex items-start gap-3">
+                          <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${selfCheckResult.ok ? 'bg-green-500/20' : 'bg-yellow-500/20'}`}>
+                            {selfCheckResult.ok ? (
+                              <CheckCircle className="h-5 w-5 text-green-400" />
+                            ) : (
+                              <AlertCircle className="h-5 w-5 text-yellow-400" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`font-medium ${selfCheckResult.ok ? 'text-green-400' : 'text-yellow-400'}`}>
+                              {selfCheckResult.ok ? 'All Systems Operational' : 'Issues Detected'}
+                            </p>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 text-xs">
+                              <div className="text-white/70">
+                                <span className="text-white/50">DB:</span>{' '}
+                                <span className={selfCheckResult.db.ok ? 'text-green-400' : 'text-red-400'}>
+                                  {selfCheckResult.db.ok ? `OK (${selfCheckResult.db.latencyMs}ms)` : 'Down'}
+                                </span>
+                              </div>
+                              <div className="text-white/70">
+                                <span className="text-white/50">AI:</span>{' '}
+                                <span className={selfCheckResult.ai.configured ? 'text-green-400' : 'text-yellow-400'}>
+                                  {selfCheckResult.ai.configured ? 'Configured' : 'Not Set'}
+                                </span>
+                              </div>
+                              <div className="text-white/70">
+                                <span className="text-white/50">Demo:</span>{' '}
+                                <span className={selfCheckResult.demoWorkspaceReady ? 'text-green-400' : 'text-yellow-400'}>
+                                  {selfCheckResult.demoWorkspaceReady ? 'Ready' : 'Not Ready'}
+                                </span>
+                              </div>
+                              <div className="text-white/70">
+                                <span className="text-white/50">Errors (15m):</span>{' '}
+                                <span className={selfCheckResult.totalErrors === 0 ? 'text-green-400' : selfCheckResult.totalErrors < 10 ? 'text-yellow-400' : 'text-red-400'}>
+                                  {selfCheckResult.totalErrors}
+                                </span>
+                              </div>
+                            </div>
+                            {selfCheckResult.totalErrors > 0 && (
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {Object.entries(selfCheckResult.errorsLast15m)
+                                  .filter(([_, count]) => count > 0)
+                                  .map(([category, count]) => (
+                                    <Badge key={category} variant="outline" className="text-xs border-yellow-500/30 text-yellow-400">
+                                      {category}: {count}
+                                    </Badge>
+                                  ))
+                                }
+                              </div>
+                            )}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setSelfCheckResult(null)}
+                            className="text-white/40 hover:text-white shrink-0"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </GlassCardContent>
+                    </GlassCard>
+                  )}
 
                   {/* Critical Issues Alert */}
                   {systemLogs?.logs?.some(log => log.level === 'critical' && !log.isResolved) && (

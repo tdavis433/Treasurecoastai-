@@ -1327,10 +1327,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
   initStripe().catch(console.error);
   
   // =============================================
-  // HEALTH CHECK ENDPOINT
+  // HEALTH CHECK ENDPOINTS
   // =============================================
   
+  // Helper function to get error counts for last 15 minutes
+  async function getErrorCounts(): Promise<{ counts: Record<string, number>; total: number }> {
+    let errorsLast15m: Record<string, number> = { chat: 0, widget: 0, lead: 0, booking: 0, auth: 0, db: 0, other: 0 };
+    try {
+      const recentLogs = await db.select()
+        .from(systemLogs)
+        .where(and(
+          or(eq(systemLogs.level, 'error'), eq(systemLogs.level, 'critical')),
+          gte(systemLogs.createdAt, new Date(Date.now() - 15 * 60 * 1000))
+        ));
+      
+      for (const log of recentLogs) {
+        const src = (log.source || 'other').toLowerCase();
+        if (src.includes('chat') || src.includes('orchestrator')) errorsLast15m.chat++;
+        else if (src.includes('widget')) errorsLast15m.widget++;
+        else if (src.includes('lead')) errorsLast15m.lead++;
+        else if (src.includes('booking') || src.includes('appointment')) errorsLast15m.booking++;
+        else if (src.includes('auth') || src.includes('login')) errorsLast15m.auth++;
+        else if (src.includes('db') || src.includes('database') || src.includes('storage')) errorsLast15m.db++;
+        else errorsLast15m.other++;
+      }
+    } catch {
+      // If error counting fails, leave zeros
+    }
+    const total = Object.values(errorsLast15m).reduce((a, b) => a + b, 0);
+    return { counts: errorsLast15m, total };
+  }
+
+  // PUBLIC health endpoint - safe for uptime monitoring services
+  // Only exposes: ok, timestamp, db status, ai configured, uptime, build info
+  // NO sensitive data: no error details, no client IDs, no tokens
   app.get('/api/health', async (_req, res) => {
+    try {
+      // Check database connectivity with latency
+      const dbStart = Date.now();
+      let dbOk = false;
+      let dbLatencyMs = 0;
+      try {
+        const dbCheck = await storage.healthCheck?.() ?? { status: 'ok', latencyMs: 0 };
+        dbOk = dbCheck.status === 'ok';
+        dbLatencyMs = dbCheck.latencyMs || (Date.now() - dbStart);
+      } catch (dbError) {
+        dbOk = false;
+        dbLatencyMs = Date.now() - dbStart;
+      }
+
+      // Check AI configuration (boolean only, no key exposure)
+      const openaiKey = process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+      const aiConfigured = !!openaiKey && openaiKey.length > 10;
+
+      // Get error count total (not breakdown) to determine overall health
+      const { total: totalErrors } = await getErrorCounts();
+      const overallOk = dbOk && totalErrors < 50; // Degrade if >50 errors in 15 mins
+
+      // Widget test mode is only allowed in development or when WIDGET_TEST_MODE=true
+      const nodeEnv = process.env.NODE_ENV || 'development';
+      const testModeAllowed = nodeEnv !== 'production' || process.env.WIDGET_TEST_MODE === 'true';
+
+      res.json({
+        ok: overallOk,
+        timestamp: new Date().toISOString(),
+        db: { ok: dbOk, latencyMs: dbLatencyMs },
+        ai: { configured: aiConfigured },
+        testModeAllowed,
+        build: {
+          env: nodeEnv,
+          version: process.env.npm_package_version || '1.0.0',
+          uptime: Math.floor(process.uptime()),
+        },
+      });
+    } catch (error) {
+      const nodeEnv = process.env.NODE_ENV || 'development';
+      res.status(503).json({
+        ok: false,
+        timestamp: new Date().toISOString(),
+        error: 'Health check failed',
+        db: { ok: false },
+        ai: { configured: false },
+        testModeAllowed: nodeEnv !== 'production' || process.env.WIDGET_TEST_MODE === 'true',
+        build: { env: nodeEnv },
+      });
+    }
+  });
+
+  // INTERNAL health endpoint - requires super admin authentication
+  // Includes detailed error breakdown, demo workspace status, etc.
+  app.get('/api/health/internal', requireSuperAdmin, async (_req, res) => {
     try {
       // Check database connectivity with latency
       const dbStart = Date.now();
@@ -1349,34 +1435,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const openaiKey = process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
       const aiConfigured = !!openaiKey && openaiKey.length > 10;
 
-      // Get error counts for last 15 minutes by category
-      let errorsLast15m: Record<string, number> = { chat: 0, widget: 0, lead: 0, booking: 0, auth: 0, db: 0, other: 0 };
+      // Get detailed error counts
+      const { counts: errorsLast15m, total: totalErrors } = await getErrorCounts();
+      const overallOk = dbOk && totalErrors < 50;
+
+      // Get last error timestamps by category
+      let lastErrorTimestamps: Record<string, string | null> = {};
       try {
-        const recentLogs = await db.select()
-          .from(systemLogs)
-          .where(and(
-            or(eq(systemLogs.level, 'error'), eq(systemLogs.level, 'critical')),
-            gte(systemLogs.createdAt, new Date(Date.now() - 15 * 60 * 1000))
-          ));
-        
-        for (const log of recentLogs) {
-          const src = (log.source || 'other').toLowerCase();
-          if (src.includes('chat') || src.includes('orchestrator')) errorsLast15m.chat++;
-          else if (src.includes('widget')) errorsLast15m.widget++;
-          else if (src.includes('lead')) errorsLast15m.lead++;
-          else if (src.includes('booking') || src.includes('appointment')) errorsLast15m.booking++;
-          else if (src.includes('auth') || src.includes('login')) errorsLast15m.auth++;
-          else if (src.includes('db') || src.includes('database') || src.includes('storage')) errorsLast15m.db++;
-          else errorsLast15m.other++;
+        const categories = ['chat', 'widget', 'lead', 'booking', 'auth', 'db'];
+        for (const cat of categories) {
+          const lastError = await db.select()
+            .from(systemLogs)
+            .where(and(
+              or(eq(systemLogs.level, 'error'), eq(systemLogs.level, 'critical')),
+              sql`LOWER(${systemLogs.source}) LIKE ${'%' + cat + '%'}`
+            ))
+            .orderBy(desc(systemLogs.createdAt))
+            .limit(1);
+          lastErrorTimestamps[cat] = lastError[0]?.createdAt?.toISOString() || null;
         }
       } catch {
-        // If error counting fails, leave zeros
+        // If querying fails, leave empty
       }
 
-      const totalErrors = Object.values(errorsLast15m).reduce((a, b) => a + b, 0);
-      const overallOk = dbOk && totalErrors < 50; // Degrade if >50 errors in 15 mins
+      // Check demo workspace readiness
+      let demoWorkspaceReady = false;
+      try {
+        const demoSlugs = getDemoSlugs();
+        if (demoSlugs.length > 0) {
+          const demoWorkspace = await getWorkspaceBySlug(demoSlugs[0]);
+          demoWorkspaceReady = !!demoWorkspace;
+        }
+      } catch {
+        demoWorkspaceReady = false;
+      }
 
-      // Widget test mode is only allowed in development or when WIDGET_TEST_MODE=true
       const nodeEnv = process.env.NODE_ENV || 'development';
       const testModeAllowed = nodeEnv !== 'production' || process.env.WIDGET_TEST_MODE === 'true';
 
@@ -1386,6 +1479,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         db: { ok: dbOk, latencyMs: dbLatencyMs },
         ai: { configured: aiConfigured },
         errorsLast15m,
+        totalErrors,
+        lastErrorTimestamps,
+        demoWorkspaceReady,
         testModeAllowed,
         build: {
           env: nodeEnv,
@@ -1398,11 +1494,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(503).json({
         ok: false,
         timestamp: new Date().toISOString(),
-        error: 'Health check failed',
+        error: 'Internal health check failed',
         db: { ok: false },
         ai: { configured: false },
-        errorsLast15m: {},
-        testModeAllowed: nodeEnv !== 'production' || process.env.WIDGET_TEST_MODE === 'true',
         build: { env: nodeEnv },
       });
     }

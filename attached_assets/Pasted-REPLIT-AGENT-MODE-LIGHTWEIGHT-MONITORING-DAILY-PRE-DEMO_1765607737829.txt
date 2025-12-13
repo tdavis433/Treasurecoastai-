@@ -1,0 +1,102 @@
+REPLIT AGENT MODE — LIGHTWEIGHT MONITORING + DAILY PRE-DEMO SELF-CHECK (REPLIT-FRIENDLY)
+Goal: Add basic uptime monitoring hooks and an automated daily “silent self-check” so we know the platform is healthy BEFORE a demo or client traffic. Keep it lightweight, no external paid services required (but optionally supports UptimeRobot).
+
+NON-NEGOTIABLE
+- NO payment processing.
+- Do NOT log secrets/tokens/passwords.
+- Health endpoints must not leak sensitive data to unauthenticated users.
+- Keep changes minimal and stable.
+
+========================================================
+PHASE 1 — HARDEN HEALTH ENDPOINTS (PUBLIC VS ADMIN)
+========================================================
+1) Ensure /api/health is safe for PUBLIC uptime checks:
+- Response includes only:
+  ok, timestamp, db.ok + latency, ai.configured boolean, uptime, build.env/version
+- Do NOT include clientId, token info, detailed error messages, stack traces, or internal routes.
+- If “testModeAllowed” exists, ensure it’s only a boolean and reveals nothing sensitive.
+
+2) Add /api/health/internal (SUPER ADMIN ONLY) for deeper checks:
+- Must require requireSuperAdmin
+- Includes:
+  errorsLast15m breakdown, last error timestamps, demo workspace readiness quick summary
+- Keep it fast.
+
+Deliverable:
+- Confirm which endpoint is safe for UptimeRobot/public
+- Confirm internal endpoint is super-admin gated
+
+========================================================
+PHASE 2 — CREATE A “DAILY SELF-CHECK” SCRIPT (NO EXTERNAL SERVICES)
+========================================================
+Create: scripts/daily-self-check.sh
+This script should:
+1) Call PUBLIC health:
+   curl -fsS "$BASE_URL/api/health"
+   - fail if ok != true or db.ok != true
+2) Call DEMO preflight (requires auth):
+   - If you can’t easily auth via curl (session-based), add a special super-admin-only token auth for this script OR skip this call.
+   - Preferred: allow passing a SUPER_ADMIN_DIAGNOSTIC_TOKEN env var that is validated server-side ONLY for /api/demo/preflight and /api/health/internal.
+   - The token must:
+     - be stored only as env var
+     - never printed in logs
+     - checked with constant-time compare
+3) Run widget API-based checks (iframe-safe):
+   - Call widget config endpoint for known demo clientId/botId (passed as env vars)
+   - Call chat endpoint with a short prompt and verify a response returns under 15s
+4) Print a one-line summary:
+   “SELF-CHECK PASS: health ok, db latency Xms, chat ok, widget config ok”
+   If fail: print which check failed (no secrets)
+
+Environment variables for the script:
+- BASE_URL (required)
+- DEMO_CLIENT_ID (required)
+- DEMO_BOT_ID (required)
+- DIAGNOSTIC_TOKEN (optional if you implement token gating)
+- TIMEOUT_SECONDS (default 15)
+
+IMPORTANT:
+- Do not hardcode IDs or credentials in repo. Use env vars only.
+
+========================================================
+PHASE 3 — ADD A REPLIT SCHEDULED RUN (IF POSSIBLE) OR A MANUAL BUTTON
+========================================================
+If Replit supports scheduled jobs in this project:
+- Configure it to run scripts/daily-self-check.sh every morning.
+
+If Replit scheduling is not available:
+- Add a Super Admin UI button: “Run Self-Check Now”
+  - Calls internal health + preflight + widget config + chat check
+  - Displays PASS/FAIL with timestamps
+  - super_admin only
+
+========================================================
+PHASE 4 — OPTIONAL: UPTIMEROBOT INSTRUCTIONS (NO CODE REQUIRED)
+========================================================
+Add a short section to RELEASE_RUNBOOK.md:
+- Recommend monitoring:
+  - GET /api/health (every 5 min)
+- Alert to email/SMS
+- Note: only monitor /api/health (public-safe), never internal endpoints.
+
+========================================================
+PHASE 5 — VERIFY
+========================================================
+Run and confirm PASS:
+- bash ./scripts/guard-no-payments.sh
+- npx tsc --noEmit
+- npx vitest run
+- npm run build
+- bash scripts/daily-self-check.sh (with env vars set)
+
+========================================================
+FINAL OUTPUT (STRICT)
+========================================================
+Return:
+1) File paths changed
+2) The contents of scripts/daily-self-check.sh
+3) Any new env vars required
+4) Confirmation of endpoint safety (public vs internal)
+5) Proof of PASS outputs (no secrets)
+
+START NOW.
