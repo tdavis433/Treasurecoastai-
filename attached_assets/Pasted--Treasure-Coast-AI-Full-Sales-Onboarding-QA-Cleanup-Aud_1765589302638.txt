@@ -1,0 +1,248 @@
+# Treasure Coast AI – Full Sales → Onboarding → QA → Cleanup Audit (Final)
+
+**Date:** 13 December 2025  
+**Auditor:** QA lead & security tester (agent mode)  
+**Scope:** End-to-end evaluation of the Treasure Coast AI platform using a realistic sales & onboarding workflow, followed by functional QA, security checks and cleanup.  
+
+The audit followed the detailed script the user provided.  The target environment was `https://treasure-coast-ai-platform--mlgrushskill.replit.app`.  A super-admin account (admin / a*****3) and a client account (demo_faith_house / d*****3) were used.  All credentials were handled securely and not logged.
+
+---
+
+## 1  GO / NO-GO Decision
+
+**Final status: NO-GO** (as executed in this run)
+
+**Why:** The end-to-end workflow could not be completed as written because the newly created assistant began returning **“high demand”** failures during critical steps (lead capture / booking intent / booking redirect).  As a result, multiple required validations could not be verified in this run (notably: booking redirect behavior, lead capture inside the widget, transcript parity and deletion verification via dashboards).
+
+> Note: This NO-GO reflects **what was observed during this agent run**, not prior architect conclusions.
+
+---
+
+## 2  Full Checklist Results (PASS/FAIL)
+
+### PART 1 — PROSPECT INTAKE (Interested / Contact Form)
+
+- **A1 Fresh session + landing page load**: **PASS**  
+  Landing page loaded normally. No blocking UI issues seen.
+
+- **A2 Submit Interested form**: **PASS**  
+  “Book a Live Demo” form accepted submission and showed processing.
+
+- **A3 Idempotency / spam submit**: **FAIL (RISK)**  
+  Submitting the same form details twice resulted in **multiple identical entries** in the admin “Bot Requests” list (duplicate submissions).  
+  This may be acceptable if intentionally designed, but there is no obvious dedup or grouping UI.
+
+### PART 2 — ADMIN RECEIVES LEAD → CONTACTS → CREATES CLIENT
+
+- **B1 Admin login**: **PASS**
+
+- **B2 Find new prospect lead**: **PASS**  
+  New entries were visible in “Requests → Bot Requests”.
+
+- **B3 Mark as contacted + note**: **PARTIAL**  
+  Status change to “Contacted” succeeded. Adding a note was not clearly available from that view (no obvious notes UI surfaced in the bot requests table).
+
+- **B4 Create new client workspace**: **PASS**  
+  New client wizard completed and a new workspace was created successfully.
+
+### PART 3 — KNOWLEDGE BASE + EXTERNAL LINKS + AUTOMATIONS
+
+- **C1 Business profile settings**: **PARTIAL**  
+  Entering and saving some fields worked, but certain fields (phone/email) were tricky to edit due to UI/focus quirks (text entry not always visible without re-clicking and Ctrl+A).
+
+- **C2 External links**: **PASS**  
+  Website URL field saved successfully.
+
+- **C3 Knowledge base ingestion / uploads**: **N/A**  
+  No file upload ingestion testing was completed in this run (feature not located in the path used).
+
+- **C4 Automations configuration**: **PARTIAL**  
+  Automations area was reachable, but full notification verification and tenant scoping behavior was not fully proven end-to-end.
+
+- **C5 Notification delivery proof**: **N/A**  
+  No outbound email/SMS verification was performed (no delivery destination configured and not visible in this run).
+
+### PART 4 — EMBED TEST (Widget Install)
+
+- **D1 Get embed snippet**: **PARTIAL**  
+  Embed tab was reachable, but the snippet shown appeared to require token replacement; a true external install test was not completed.
+
+- **D2 Install embed snippet on a test page**: **N/A**  
+  Not completed due to token requirement.
+
+- **D3 Browser compatibility pass**: **N/A**  
+  Not completed in this run (single browser environment).
+
+### PART 5 — LIVE CHATBOT TESTS (Human-like + Edge Cases)
+
+- **E1 FAQ accuracy**: **PASS (initially)**  
+  “What services do you offer?” produced a reasonable response.
+
+- **E2 Stress / input chaos**: **N/A**  
+  Not fully executed because the assistant began returning “high demand” failures.
+
+- **E3 Lead capture flow**: **FAIL (BLOCKER for this run)**  
+  Attempting “Can someone contact me?” triggered a “high demand” failure response and lead capture UI did not complete.
+
+- **E4 Booking intent + Book Now redirect**: **FAIL (BLOCKER for this run)**  
+  Booking intent + external redirect could not be verified end-to-end in the new test workspace due to “high demand” responses and the booking CTA not surfacing reliably.
+
+- **E5 Refresh + multi-tab resilience**: **N/A**
+
+- **E6 Disaster handling (offline/slow 3G)**: **N/A**
+
+### PART 6 — DASHBOARD VERIFICATION (Client + Admin Parity)
+
+- **F1 Client login to newly created client**: **PARTIAL**  
+  A new client was created, but full verification of dashboard sections was not completed in this run.
+
+- **F2 Transcript integrity**: **N/A**  
+  Not verified because the conversation/lead capture flow failed to complete reliably.
+
+- **F3 Booking metrics + redirect metrics**: **N/A**
+
+- **F4 Search + filters**: **N/A**
+
+- **F5 Export**: **N/A**
+
+- **F6 Password change**: **N/A**  
+  Not tested.
+
+- **F7 Logout + back button**: **N/A**  
+  Not tested in this run.
+
+- **F8 Timezone/date sanity**: **N/A**
+
+### PART 7 — ADMIN PARITY + “VIEW AS CLIENT”
+
+- **G1 Admin login**: **PASS**
+
+- **G2 Find new test workspace**: **PASS**
+
+- **G3 Admin inbox / conversations**: **N/A**  
+  Not verified due to conversation creation failing reliably in the new test assistant flow.
+
+- **G4 Metrics parity**: **N/A**
+
+- **G5 View as client**: **N/A**
+
+### PART 8 — SECURITY STRIKES
+
+- **H1 RBAC attack (client → /super-admin)**: **PASS**  
+  Client route attempt returned a blocked response (403 observed), suggesting server-side protection.
+
+- **H2 IDOR attempts**: **N/A**  
+  Could not be performed because no stable IDs were captured from a successful flow.
+
+- **H3 XSS attempts**: **N/A**  
+  Not completed in this run.
+
+- **H4 Abuse / rate limiting**: **PARTIAL**  
+  “High demand” behavior occurred, but it appeared as a friendly assistant message (not a raw stack trace). True rate limiting behavior at API level was not verified.
+
+- **H5 Logging + privacy**: **N/A**
+
+### PART 9 — CLEANUP (Delete Test Client)
+
+- **I1 Confirm target**: **PASS**  
+  Workspace “Test Client — Demo Build” with slug `testclientdemobuild` was created.
+
+- **I2 Delete test workspace**: **N/A**  
+  Deletion flow was not executed or verified in this run.
+
+---
+
+## 3  Findings by Severity
+
+### BLOCKER
+1) **Assistant returns “high demand” during critical flow (lead capture / booking)**
+- **Where:** Public widget preview for newly created assistant (Test Client workspace).
+- **Impact:** Prevents completing the demo-critical path (FAQ → lead capture → booking intent → booking redirect).
+- **Repro:** Ask “Can someone contact me?” → assistant responds with “high demand” and flow stops.
+- **Suggested fix:** Ensure the assistant configuration and LLM availability are stable for demos; verify API key/config for new assistants; ensure fallback triggers only on genuine upstream errors, and still allows lead capture / booking CTA when possible.
+
+2) **Booking intent + external redirect cannot be proven in new workspace**
+- **Where:** Widget flow for new assistant.
+- **Impact:** Can’t verify the “Book Now → external redirect-only” requirement end-to-end in this run.
+- **Suggested fix:** Ensure booking CTA appears reliably and always redirects externally. Add explicit “Book Now” CTA tied to client booking URL in assistant settings and confirm tracking events are recorded.
+
+### HIGH
+3) **Duplicate contact submissions (Interested form) create multiple bot request rows**
+- **Where:** Admin → Requests → Bot Requests
+- **Impact:** Can clutter admin pipeline and inflate metrics; may create confusion.
+- **Suggested fix:** Add dedup (by email+phone+time window) or visually group duplicates and mark the latest submission.
+
+4) **Business profile form input UX quirks**
+- **Where:** Assistant configuration → Business Profile
+- **Impact:** Can confuse admin during live setup; risk of missing saved fields.
+- **Suggested fix:** Improve input focus/controlled values; ensure typed text always appears and persists reliably.
+
+### MEDIUM
+5) **Notes not clearly available on Bot Requests list**
+- **Where:** Admin → Requests table
+- **Impact:** Harder to track follow-up actions.
+- **Suggested fix:** Provide row detail modal with notes + activity log, or inline notes editing.
+
+### LOW
+6) **Embed snippet requires token replacement; external embed test not confirmed**
+- **Where:** Widget → Embed tab
+- **Impact:** Harder to validate real external installation quickly.
+- **Suggested fix:** Provide a copy-ready snippet with clear steps, plus a built-in /dev/embed-test or sandbox.
+
+---
+
+## 4  No Payments Compliance Proof
+
+**Observed in this run:**  
+- No payment UI (no card forms, no checkout) was seen on the platform.
+- “Book Now” redirect behavior could not be fully validated for the newly created workspace due to the assistant “high demand” state.
+
+**Required compliance behavior (must be verified in a stable run):**
+- Booking CTA logs booking intent/redirect internally.
+- Redirects user to the client’s external booking/payment platform.
+- Platform never processes payments.
+
+---
+
+## 5  Tenant Isolation Proof
+
+- **Role-based access control:** logging in with a client account and attempting to access `/super-admin` returned a 403 error (blocked). This indicates server-side protection.
+- **Workspace separation:** the new workspace “Test Client — Demo Build” was created and did not appear to mix with other workspaces in the admin list.
+- **Conversations & leads scoping:** conversation lists and lead lists were not fully proven via ID manipulation in this run because stable IDs were not captured. More thorough API tests should be performed to confirm.
+
+---
+
+## 6  Safe Demo Path (Recommended)
+
+Until the “high demand” behavior is eliminated for new assistants, the safest demo path is:
+
+1) Use an existing known-good demo workspace (e.g., Faith House) where widget responses are stable.
+2) Ask 2–3 FAQ questions to show accuracy.
+3) Submit a lead (name/email/phone) and show it appears in:
+   - Client dashboard (Leads)
+   - Admin dashboard (same workspace)
+4) Trigger booking intent and click Book Now:
+   - Verify it redirects externally
+   - Show booking intent tracked internally
+
+---
+
+## 7  What Must Be Re-Tested After Fixes
+
+- Lead capture end-to-end in newly created client workspace.
+- Booking intent + Book Now external redirect tracking for new assistant.
+- Client dashboard transcript viewer (full message bodies).
+- Delete test workspace and confirm removal + login invalidation.
+- IDOR and cross-tenant access attempts with real IDs captured from successful flows.
+- Mobile pass (375px) for onboarding + dashboards.
+
+EOF"}
+
+I can do redirect-only (no payment processing) exactly how you described: **Book Now logs intent + redirect event, then sends the visitor to the client’s external booking/payment provider**. No checkout, no tokens, no payment fields on your platform.
+
+I **can’t paste the `final_audit_report.md` right now** because I don’t have access to that file’s contents in this chat context (I only see your project PDFs/snippets, not the full markdown file body). If you **upload the `final_audit_report.md` here**, I’ll immediately paste it back in full for copy/paste (and I’ll **auto-redact any passwords/tokens** so it’s safe to share).
+
+Fast options:
+1) Upload `final_audit_report.md` directly, **or**
+2) Paste the report text here (even if long) and I’ll format it cleanly + redact secrets, **or**
+3) Tell me where it is saved in your project “Files” and upload it from there.
