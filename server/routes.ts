@@ -42,6 +42,7 @@ import {
   updateClientPlan,
   updateWorkspacePlan,
   getClientStatus,
+  clearCache,
   type BotConfig
 } from "./botConfig";
 import { logConversation as logConversationToFile, getConversationLogs, getLogStats } from "./conversationLogger";
@@ -7865,32 +7866,57 @@ These suggestions should be relevant to what was just discussed and help guide t
     try {
       const { botId } = req.params;
       
-      // Find the bot config to get clientId
-      const botConfig = getAllBotConfigs().find(b => b.botId === botId);
-      if (!botConfig) {
-        return res.status(404).json({ error: "Bot not found" });
-      }
+      let clientId: string | null = null;
+      let deletedFromDb = false;
       
-      // Delete from database if exists
+      // First, try to find and delete from database directly
       const existingBot = await storage.getBotByBotId(botId);
       if (existingBot) {
-        // Delete bot settings first
+        // Get the workspace to find clientId (workspace slug)
+        const [workspace] = await db.select().from(workspaces).where(eq(workspaces.id, existingBot.workspaceId)).limit(1);
+        clientId = workspace?.slug || existingBot.workspaceId;
+        
+        // Delete bot settings first (use bot's internal id)
         await db.delete(botSettings).where(eq(botSettings.botId, existingBot.id));
         // Delete bot
         await db.delete(bots).where(eq(bots.id, existingBot.id));
+        deletedFromDb = true;
       }
       
-      // Delete related data directly from database
-      await db.delete(leads).where(eq(leads.clientId, botConfig.clientId));
-      await db.delete(appointments).where(eq(appointments.clientId, botConfig.clientId));
-      await db.delete(clientSettings).where(eq(clientSettings.clientId, botConfig.clientId));
+      // Fallback: Check JSON file cache if not found in database
+      if (!deletedFromDb) {
+        const botConfig = getAllBotConfigs().find(b => b.botId === botId);
+        if (botConfig) {
+          clientId = botConfig.clientId;
+          // Try to delete JSON file
+          const botFilePath = path.join(process.cwd(), 'bots', `${botId}.json`);
+          if (fs.existsSync(botFilePath)) {
+            fs.unlinkSync(botFilePath);
+          }
+        }
+      }
+      
+      // If we couldn't find the bot anywhere, return 404
+      if (!clientId && !deletedFromDb) {
+        return res.status(404).json({ error: "Bot not found" });
+      }
+      
+      // Delete related data if we have a clientId
+      if (clientId) {
+        await db.delete(leads).where(eq(leads.clientId, clientId));
+        await db.delete(appointments).where(eq(appointments.clientId, clientId));
+        await db.delete(clientSettings).where(eq(clientSettings.clientId, clientId));
+      }
+      
+      // Clear the bot config cache to ensure consistency
+      clearCache();
       
       // Log the deletion
       await storage.createSystemLog({
         level: 'info',
         source: 'super-admin',
-        message: `Bot deleted: ${botId} (client: ${botConfig.clientId})`,
-        clientId: botConfig.clientId,
+        message: `Bot deleted: ${botId}${clientId ? ` (client: ${clientId})` : ''}`,
+        clientId: clientId || undefined,
       });
       
       res.json({ success: true, message: `Bot ${botId} deleted successfully` });
