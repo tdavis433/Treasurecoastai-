@@ -2886,12 +2886,38 @@ These suggestions should be relevant to what was just discussed and help guide t
     try {
       const validatedData = insertBotRequestSchema.parse(req.body);
       
-      const [newRequest] = await db.insert(botRequests).values({
-        ...validatedData,
-        source: "landing_page",
-      }).returning();
+      // Honeypot check - if filled, it's a bot (real users don't see this field)
+      if (validatedData.honeypot && validatedData.honeypot.trim() !== '') {
+        console.log(`[Bot Request] Honeypot triggered - rejecting bot submission from ${validatedData.email}`);
+        // Return success to not tip off bots, but don't save
+        return res.json({ success: true, message: "Request received! We'll be in touch within 24 hours." });
+      }
       
-      console.log(`[Bot Request] New submission from ${validatedData.email}: ${validatedData.name}`);
+      // Generate dedupe hash: email + phone + 'bot_request' + hour bucket
+      // This prevents duplicate submissions within the same hour
+      const hourBucket = Math.floor(Date.now() / 3600000); // Current hour as integer
+      const dedupeInput = `${validatedData.email}${validatedData.phone || ''}bot_request${hourBucket}`;
+      const dedupeHash = crypto.createHash('sha256').update(dedupeInput).digest('hex');
+      
+      try {
+        const [newRequest] = await db.insert(botRequests).values({
+          ...validatedData,
+          source: "landing_page",
+          dedupeHash,
+          honeypot: undefined, // Don't store honeypot field
+        }).returning();
+        
+        console.log(`[Bot Request] New submission from ${validatedData.email}: ${validatedData.name}`);
+      } catch (insertError: any) {
+        // Check for unique constraint violation on dedupeHash (PostgreSQL error code 23505)
+        if (insertError?.code === '23505' && insertError?.constraint?.includes('dedupe_hash')) {
+          console.log(`[Bot Request] Duplicate submission detected from ${validatedData.email} - returning success`);
+          // Return success to user - they don't need to know it was a dupe
+          return res.json({ success: true, message: "Request received! We'll be in touch within 24 hours." });
+        }
+        // Re-throw other errors
+        throw insertError;
+      }
       
       res.json({ success: true, message: "Request received! We'll be in touch within 24 hours." });
     } catch (error) {

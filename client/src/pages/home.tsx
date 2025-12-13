@@ -64,7 +64,7 @@ const staggerContainer = {
 
 export default function Home() {
   const { toast } = useToast();
-  const [contactForm, setContactForm] = useState({ name: '', email: '', phone: '', message: '' });
+  const [contactForm, setContactForm] = useState({ name: '', email: '', phone: '', message: '', honeypot: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
@@ -86,7 +86,7 @@ export default function Home() {
           title: "Request received!",
           description: "We'll be in touch within 24 hours to discuss your AI assistant.",
         });
-        setContactForm({ name: '', email: '', phone: '', message: '' });
+        setContactForm({ name: '', email: '', phone: '', message: '', honeypot: '' });
       } else {
         toast({
           title: "Something went wrong",
@@ -833,6 +833,17 @@ export default function Home() {
                     required
                     className="bg-white/5 border-white/10 text-white placeholder:text-white/40 resize-none"
                     data-testid="input-contact-message"
+                  />
+                </div>
+                {/* Honeypot field - hidden from users, traps bots */}
+                <div style={{ position: 'absolute', left: '-9999px' }} aria-hidden="true">
+                  <Input
+                    type="text"
+                    name="honeypot"
+                    value={contactForm.honeypot}
+                    onChange={(e) => setContactForm(prev => ({ ...prev, honeypot: e.target.value }))}
+                    tabIndex={-1}
+                    autoComplete="off"
                   />
                 </div>
                 <Button

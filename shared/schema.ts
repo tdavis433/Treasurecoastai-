@@ -2289,6 +2289,10 @@ export const botRequests = pgTable("bot_requests", {
   utmMedium: text("utm_medium"),
   utmCampaign: text("utm_campaign"),
   
+  // Deduplication and spam prevention
+  dedupeHash: text("dedupe_hash"), // SHA256 hash for preventing duplicate submissions within same hour
+  honeypot: text("honeypot"), // Hidden bot trap field - should always be empty for real users
+  
   // Timestamps
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -2298,6 +2302,7 @@ export const botRequests = pgTable("bot_requests", {
   statusIdx: index("bot_requests_status_idx").on(table.status),
   emailIdx: index("bot_requests_email_idx").on(table.email),
   createdAtIdx: index("bot_requests_created_at_idx").on(table.createdAt),
+  dedupeHashUnique: unique("bot_requests_dedupe_hash_unique").on(table.dedupeHash),
 }));
 
 export const insertBotRequestSchema = createInsertSchema(botRequests).omit({
@@ -2307,6 +2312,9 @@ export const insertBotRequestSchema = createInsertSchema(botRequests).omit({
   status: true,
   contactedAt: true,
   convertedAt: true,
+  dedupeHash: true, // Generated server-side
+}).extend({
+  honeypot: z.string().optional(), // Hidden bot trap field
 });
 
 export type InsertBotRequest = z.infer<typeof insertBotRequestSchema>;
