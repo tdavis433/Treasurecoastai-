@@ -1,0 +1,185 @@
+REPLIT AGENT MODE — ADD “SUPPORT + LEAD FOCUSED” BEHAVIOR PRESETS (ADMIN-ONLY) + LEAD PHRASE DETECTION + FAILSAFE LEAD CAPTURE
+
+Goal: Make every template/bot behave more helpful + support-first + lead-focused by default, while keeping the admin console minimal. This must be agency-controlled only (clients do not configure). Preserve all existing guardrails: NO payments, multi-tenant isolation, redirect-only booking.
+
+===========================================================
+HARD GUARDRAILS (BLOCKER IF VIOLATED)
+===========================================================
+1) NO PAYMENT PROCESSING EVER
+- No checkout UI, no Stripe/Square/PayPal flows, no payment intents/tokens, no billing webhooks.
+- Booking button is allowed ONLY as:
+  (a) redirect-only to external booking/payment provider (HTTPS only), OR
+  (b) internal request capture (no payments) with notifications.
+2) MULTI-TENANT ISOLATION
+- Every read/write must be scoped by workspace/clientId server-side.
+- UI hiding is not security.
+3) KEEP UI MINIMAL
+- Add behavior preset as a dropdown + 1–2 toggles max. No big wizard expansion.
+
+===========================================================
+PHASE 1 — DATA MODEL: BEHAVIOR PRESETS + FLAGS (SAFE DEFAULTS)
+===========================================================
+1.1 Add behavior settings (tenant-scoped, per workspace/bot)
+Update shared/schema.ts (and types) to store:
+- assistantBehaviorPreset: enum string, default = "support_lead_focused"
+- leadCaptureEnabled: boolean, default = true
+- leadDetectionSensitivity: "low" | "medium" | "high", default = "medium"
+- fallbackLeadCaptureEnabled: boolean, default = true
+
+Where to store:
+- Preferred: client_settings.metadata (jsonb) OR a dedicated column in client_settings.
+- Must remain tenant-scoped (per workspace/client).
+
+1.2 DB sync (Drizzle)
+- Use drizzle-kit push normally (no raw SQL patching unless unavoidable).
+- Run npm run db:push and ensure no destructive prompts for core tables.
+
+Acceptance:
+- New fields exist with safe defaults.
+- Existing tenants continue working with no manual edits required.
+
+===========================================================
+PHASE 2 — SETTINGS UI: ADMIN-ONLY CONTROL (MINIMAL)
+===========================================================
+2.1 Add admin-only behavior controls in the existing bot/workspace settings UI:
+Controls:
+1) Dropdown: Behavior Preset
+   - Support + Lead Focused (default)
+   - Sales Focused (soft)
+   - Support Only
+   - Strict / Compliance (minimal tone)
+2) Toggle: Lead Capture Enabled
+3) Dropdown/slider: Lead Detection Sensitivity (optional but preferred)
+
+Rules:
+- Must be hidden from client dashboard (clients view-only).
+- Save persists after refresh.
+- UI must match platform theme (dark luxury / glass style) and remain minimal.
+
+===========================================================
+PHASE 3 — ORCHESTRATOR: SYSTEM PROMPT RULES BY PRESET
+===========================================================
+3.1 Update server/orchestrator.ts (or prompt builder) to inject rules based on the preset.
+Do NOT break existing industry booking profiles logic.
+
+Preset rules:
+
+A) support_lead_focused (DEFAULT)
+- Helpful, calm, concise, human.
+- Answer from KB first.
+- If user shows booking/purchase/contact intent, move toward lead capture naturally.
+- If user asks for something staff must handle, ask for name + phone/email.
+- Never claim services not in KB.
+- Never mention internal system details.
+Booking behavior:
+- If bookingMode external and externalBookingUrl is valid: show external redirect CTA.
+- If external URL missing/invalid: FAILSAFE pivot to internal request capture (no payment).
+
+B) sales_focused_soft
+- Slightly more proactive CTA but never pushy; still factual and KB-driven.
+
+C) support_only
+- Focus on answers; only capture lead if asked or clearly necessary.
+
+D) strict_compliance
+- Conservative: no guessing; confirm facts; encourage contact for anything uncertain.
+
+Acceptance:
+- Switching preset changes CTA style/tone in a noticeable but safe way.
+- Tenant isolation remains intact.
+
+===========================================================
+PHASE 4 — LEAD PHRASE DETECTION (SERVER-SIDE, TENANT-SAFE)
+===========================================================
+4.1 Implement phrase-based lead intent detection helper:
+Create server/utils/leadIntent.ts (or similar) that detects lead intent from user text using patterns like:
+- “can you call me”
+- “price” / “how much”
+- “book” / “schedule”
+- “appointment”
+- “tour”
+- “consultation”
+- “availability”
+- “quote” / “estimate”
+- “come out”
+- “visit”
+- “free consult”
+Add sensitivity behavior:
+- low: only explicit book/schedule/call/quote
+- medium: include price/how much
+- high: include softer “interested” signals
+
+4.2 Trigger lead capture flow
+When lead intent is detected AND leadCaptureEnabled=true:
+- Ask for: name + best contact method (phone/email) + optional preferred time.
+- Validate phone/email formats with friendly messaging.
+- Use existing lead dedupe logic; do not create duplicates or overwrite silently.
+
+Acceptance:
+- Detects intent reliably but does NOT annoy users or fire repeatedly during normal chat.
+
+===========================================================
+PHASE 5 — WIDGET + ONBOARDING INTEGRATION
+===========================================================
+5.1 Onboarding console (simplified)
+- Default preset should be support_lead_focused.
+- Keep as optional override if you keep the console minimal.
+
+5.2 Widget config endpoint includes behavior settings safely
+Update /api/widget/config/:clientId/:botId to include:
+- behaviorPreset
+- leadCaptureEnabled
+- leadDetectionSensitivity (optional)
+Rules:
+- No secrets returned
+- Tenant-safe
+- Works without third-party cookies
+
+5.3 Widget UX: fallback lead capture message (FAILSAFE)
+If AI times out / server error / rate limit:
+- Show friendly fallback message that requests name + contact to follow up.
+- Provide English (and Spanish if already in system).
+- Save lead safely (tenant-scoped).
+- Never show stack traces.
+
+===========================================================
+PHASE 6 — VERIFY PRESET RULES WORK + QUALITY GATES
+===========================================================
+6.1 Add/extend tests (Vitest)
+Add tests that cover:
+- lead intent detection across sensitivity levels
+- preset rules injected into prompt builder/orchestrator (snapshot/contains)
+- lead capture triggers only when expected
+- booking behavior unchanged (external redirect-only + HTTPS-only validation + failsafe internal capture)
+- tenant scoping still enforced (no cross-tenant reads)
+
+6.2 Run ALL gates and paste outputs (redact secrets)
+- bash ./scripts/guard-no-payments.sh
+- npx tsc --noEmit  (MUST be 0 errors — fix any pre-existing TS errors too)
+- npx vitest run
+- npm run build
+
+Deliverables:
+- Update RELEASE_RUNBOOK.md with:
+  - Behavior Presets (admin-only)
+  - Quick verification steps (2–3 checks)
+  - Reminder: NO payments (redirect-only booking)
+- Create BEHAVIOR_PRESETS.md:
+  - What each preset does
+  - Example responses (short)
+
+===========================================================
+FINAL ACCEPTANCE CRITERIA (MUST PASS)
+===========================================================
+✅ Behavior preset exists in admin settings (not client)
+✅ Default preset is Support + Lead Focused
+✅ Lead intent detection works and is non-annoying
+✅ Fallback lead capture message triggers only on failure
+✅ Booking remains redirect-only externally (HTTPS-only) + failsafe to internal request capture
+✅ Multi-tenant isolation preserved
+✅ guard-no-payments.sh PASS
+✅ tsc --noEmit = 0 errors
+✅ vitest passes
+✅ build succeeds
+
+Start now. Implement fully. Then paste the final summary + command outputs (redact secrets).

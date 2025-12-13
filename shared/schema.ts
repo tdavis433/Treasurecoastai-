@@ -287,6 +287,12 @@ export const clientSettings = pgTable("client_settings", {
   }),
   webhookEnabled: boolean("webhook_enabled").notNull().default(false),
   
+  // Behavior preset for AI conversation style and lead capture behavior
+  // - "support_lead_focused": Helpful support with proactive lead capture (default)
+  // - "compliance_strict": Conservative responses, minimal assumptions
+  // - "sales_heavy": Aggressive lead capture and conversion focus
+  behaviorPreset: text("behavior_preset").notNull().default("support_lead_focused"),
+  
   // Metadata for extensible storage (admin notes, etc.)
   metadata: jsonb("metadata").$type<Record<string, any>>().notNull().default({}),
   
@@ -301,6 +307,24 @@ export const insertClientSettingsSchema = createInsertSchema(clientSettings).omi
 
 export type InsertClientSettings = z.infer<typeof insertClientSettingsSchema>;
 export type ClientSettings = typeof clientSettings.$inferSelect;
+
+// Behavior preset types for AI conversation and lead capture behavior
+export type BehaviorPreset = 'support_lead_focused' | 'compliance_strict' | 'sales_heavy';
+
+export const BEHAVIOR_PRESETS = {
+  support_lead_focused: {
+    name: 'Support + Lead Focused',
+    description: 'Helpful support with proactive lead capture. Answers directly, max 1 clarifying question, offers callback when uncertain.',
+  },
+  compliance_strict: {
+    name: 'Compliance Strict',
+    description: 'Conservative responses with minimal assumptions. Only provides verified information from knowledge base.',
+  },
+  sales_heavy: {
+    name: 'Sales Heavy',
+    description: 'Aggressive lead capture and conversion focus. Actively guides toward appointments and contact collection.',
+  },
+} as const;
 
 export const conversationAnalytics = pgTable("conversation_analytics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

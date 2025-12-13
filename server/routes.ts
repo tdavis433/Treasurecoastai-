@@ -2306,7 +2306,7 @@ Always be positive and solution-oriented. If someone wants to get started, direc
       };
 
       // Build system prompt with suggested replies instruction
-      const systemPrompt = buildSystemPromptFromConfig(botConfigWithUrls);
+      const systemPrompt = buildSystemPromptFromConfig(botConfigWithUrls, clientSettings?.behaviorPreset as any);
       const enhancedPrompt = `${systemPrompt}
 
 IMPORTANT: After your response, always include 2-3 suggested follow-up questions the user might want to ask. Format them as JSON at the very end of your response on a new line like this:

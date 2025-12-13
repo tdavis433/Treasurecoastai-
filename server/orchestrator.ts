@@ -937,7 +937,7 @@ class ConversationOrchestrator {
         externalPaymentUrl: clientSettings?.externalPaymentUrl || botConfig.externalPaymentUrl,
       };
 
-      const systemPrompt = buildSystemPromptFromConfig(botConfigWithUrls);
+      const systemPrompt = buildSystemPromptFromConfig(botConfigWithUrls, clientSettings?.behaviorPreset as any);
 
       const stream = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
@@ -1285,7 +1285,7 @@ class ConversationOrchestrator {
       externalPaymentUrl: clientSettings?.externalPaymentUrl || botConfig.externalPaymentUrl,
     };
 
-    const systemPrompt = buildSystemPromptFromConfig(botConfigWithUrls);
+    const systemPrompt = buildSystemPromptFromConfig(botConfigWithUrls, clientSettings?.behaviorPreset as any);
 
     // Build graceful fallback message with business contact info
     const businessPhone = clientSettings?.primaryPhone || botConfig.businessProfile?.phone;
