@@ -86,6 +86,7 @@ import { getWidgetEmbedCode, getEmbedInstructions, type WidgetEmbedOptions } fro
 import { extractBookingInfoFromConversation, type ExtractedBookingInfo, type ChatMessage as OrchestratorChatMessage } from './orchestrator';
 import { requireExportClientId } from './utils/tenantScope';
 import { logAuditEvent, createAuditHelper, getAuditLogs } from './auditLogger';
+import { retryFetch, createNotificationRetryLogger } from './retryUtils';
 
 // =============================================
 // PHASE 2.4: SIGNED WIDGET TOKENS
@@ -1174,7 +1175,8 @@ async function sendSmsNotification(
     
     const { accountSid: twilioAccountSid, authToken: twilioAuthToken, phoneNumber: twilioPhoneNumber } = twilioConfig;
 
-    const response = await fetch(
+    // Send SMS with retry logic for resilience
+    const retryResult = await retryFetch(
       `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`,
       {
         method: "POST",
@@ -1187,16 +1189,28 @@ async function sendSmsNotification(
           To: phoneNumber,
           Body: message,
         }).toString(),
+      },
+      {
+        maxRetries: 3,
+        baseDelayMs: 1000,
+        maxDelayMs: 10000,
+        onRetry: createNotificationRetryLogger('sms'),
       }
     );
 
+    if (!retryResult.success) {
+      console.error(`SMS notification failed after ${retryResult.attempts} attempts:`, retryResult.error);
+      return { success: false, error: `SMS failed after ${retryResult.attempts} attempts: ${retryResult.error}` };
+    }
+
+    const response = retryResult.result!;
     if (!response.ok) {
       const errorData = await response.json();
       console.error("Twilio API error:", errorData);
       return { success: false, error: `Twilio API error: ${response.statusText}` };
     }
 
-    console.log(`✅ SMS ${isClientConfirmation ? 'confirmation' : 'notification'} sent successfully to ${phoneNumber}`);
+    console.log(`✅ SMS ${isClientConfirmation ? 'confirmation' : 'notification'} sent to ${phoneNumber} (${retryResult.attempts} attempt(s))`);
     return { success: true };
   } catch (error) {
     console.error("SMS notification error:", error);
@@ -1271,28 +1285,43 @@ ${preIntakeInfo}
 <p><small>This request was submitted through ${settings.businessName} HopeLine Assistant on ${new Date().toLocaleString()}</small></p>
     `.trim();
 
-    // Send to all recipients using Resend's array support
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json",
+    // Send to all recipients using Resend's array support with retry logic
+    const retryResult = await retryFetch(
+      "https://api.resend.com/emails",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: "HopeLine Assistant <onboarding@resend.dev>",
+          to: emailList,
+          subject: `New ${appointment.appointmentType} Request from ${appointment.name}`,
+          html: emailBody,
+        }),
       },
-      body: JSON.stringify({
-        from: "HopeLine Assistant <onboarding@resend.dev>",
-        to: emailList,
-        subject: `New ${appointment.appointmentType} Request from ${appointment.name}`,
-        html: emailBody,
-      }),
-    });
+      {
+        maxRetries: 3,
+        baseDelayMs: 1000,
+        maxDelayMs: 10000,
+        onRetry: createNotificationRetryLogger('email'),
+      }
+    );
 
+    if (!retryResult.success) {
+      console.error(`Email notification failed after ${retryResult.attempts} attempts:`, retryResult.error);
+      return { success: false, error: `Email failed after ${retryResult.attempts} attempts: ${retryResult.error}` };
+    }
+
+    const response = retryResult.result!;
     if (!response.ok) {
       const errorData = await response.json();
       console.error("Resend API error:", errorData);
       return { success: false, error: `Resend API error: ${response.statusText}` };
     }
 
-    console.log(`✅ Email notification sent successfully to ${emailList.length} recipient(s): ${emailList.join(", ")}`);
+    console.log(`✅ Email notification sent successfully to ${emailList.length} recipient(s): ${emailList.join(", ")} (${retryResult.attempts} attempt(s))`);
     return { success: true, sentTo: emailList };
   } catch (error) {
     console.error("Email notification error:", error);

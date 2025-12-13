@@ -14,6 +14,7 @@
  */
 
 import nodemailer from 'nodemailer';
+import { retryWithBackoff, type RetryOptions } from './retryUtils';
 
 export interface EmailConfig {
   host?: string;
@@ -90,7 +91,7 @@ class EmailService {
     }
   }
 
-  async sendEmail(message: EmailMessage): Promise<{ success: boolean; error?: string }> {
+  async sendEmail(message: EmailMessage, retryOptions?: RetryOptions): Promise<{ success: boolean; error?: string; attempts?: number }> {
     if (!this.isConfigured || !this.transporter) {
       // Only log email content in development mode to protect sensitive data in production
       if (process.env.NODE_ENV !== 'production') {
@@ -113,23 +114,40 @@ class EmailService {
         console.warn('[EmailService] SMTP not configured in production - email not sent');
       }
       
-      return { success: true };
+      return { success: true, attempts: 1 };
     }
 
-    try {
-      await this.transporter.sendMail({
-        from: this.config.from,
-        to: message.to,
-        subject: message.subject,
-        text: message.text,
-        html: message.html,
-      });
-      return { success: true };
-    } catch (error) {
-      console.error('[EmailService] Failed to send email:', error);
+    // Use retry logic with exponential backoff for resilience
+    const result = await retryWithBackoff(
+      async () => {
+        await this.transporter!.sendMail({
+          from: this.config.from,
+          to: message.to,
+          subject: message.subject,
+          text: message.text,
+          html: message.html,
+        });
+      },
+      {
+        maxRetries: 3,
+        baseDelayMs: 1000,
+        maxDelayMs: 10000,
+        onRetry: (attempt, error, delayMs) => {
+          console.log(`[EmailService] Retry ${attempt}: ${error?.message || error}. Waiting ${delayMs}ms...`);
+        },
+        ...retryOptions,
+      }
+    );
+
+    if (result.success) {
+      console.log(`[EmailService] Email sent successfully (${result.attempts} attempt(s))`);
+      return { success: true, attempts: result.attempts };
+    } else {
+      console.error(`[EmailService] Failed after ${result.attempts} attempts:`, result.error);
       return { 
         success: false, 
-        error: error instanceof Error ? error.message : 'Unknown email error' 
+        error: `Failed after ${result.attempts} attempts: ${result.error}`,
+        attempts: result.attempts,
       };
     }
   }

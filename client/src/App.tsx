@@ -9,6 +9,7 @@ import AdminAppointments from "@/pages/admin-appointments";
 import AdminAnalytics from "@/pages/admin-analytics";
 import SuperAdmin from "@/pages/super-admin";
 import SuperAdminAuditLogs from "@/pages/super-admin-audit-logs";
+import AdminNotifications from "@/pages/admin-notifications";
 import ClientDetailAdmin from "@/pages/client-detail-admin";
 import BotDashboard from "@/pages/bot-dashboard";
 import ClientDashboard from "@/pages/client-dashboard";
@@ -101,6 +102,7 @@ function Router() {
       <Route path="/admin/dashboard" component={AdminDashboard} />
       <Route path="/admin/appointments" component={AdminAppointments} />
       <Route path="/admin/analytics" component={AdminAnalytics} />
+      <Route path="/admin/notifications" component={AdminNotifications} />
       <Route path="/admin/bot/new" component={CreateBot} />
       <Route path="/admin/bot/wizard" component={BotWizard} />
       <Route path="/admin/bot/:botId/automations" component={AutomationsPage} />

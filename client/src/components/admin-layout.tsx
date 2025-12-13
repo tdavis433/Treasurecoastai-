@@ -19,7 +19,8 @@ import {
   BarChart3,
   ChevronLeft,
   ChevronRight,
-  Shield
+  Shield,
+  Bell
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { AdminProvider, useAdminContext } from "@/contexts/admin-context";
@@ -39,6 +40,7 @@ const baseNavigationItems = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard, requireSuperAdmin: false },
   { name: "Appointments", href: "/admin/appointments", icon: Calendar, requireSuperAdmin: false },
   { name: "Analytics", href: "/admin/analytics", icon: BarChart3, requireSuperAdmin: false },
+  { name: "Notifications", href: "/admin/notifications", icon: Bell, requireSuperAdmin: false },
   { name: "Super Admin", href: "/super-admin", icon: Shield, requireSuperAdmin: true },
 ];
 
