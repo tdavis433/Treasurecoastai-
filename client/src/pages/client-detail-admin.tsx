@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 
 interface AuthUser {
   id: number;
@@ -326,6 +327,47 @@ export default function ClientDetailAdmin() {
       return Array.isArray(data) ? data : (data.users || []);
     },
     enabled: !!slug && activeTab === 'users',
+  });
+
+  // Behavior settings query and mutation
+  const { data: behaviorSettings, isLoading: behaviorLoading } = useQuery<{
+    behaviorPreset: string;
+    leadCaptureEnabled: boolean;
+    leadDetectionSensitivity: string;
+    fallbackLeadCaptureEnabled: boolean;
+  }>({
+    queryKey: ["/api/super-admin/clients", slug, "behavior"],
+    queryFn: async () => {
+      const response = await fetch(`/api/super-admin/clients/${slug}/behavior`, { credentials: "include" });
+      if (!response.ok) {
+        return {
+          behaviorPreset: 'support_lead_focused',
+          leadCaptureEnabled: true,
+          leadDetectionSensitivity: 'medium',
+          fallbackLeadCaptureEnabled: true,
+        };
+      }
+      return response.json();
+    },
+    enabled: !!slug && activeTab === 'settings',
+  });
+
+  const updateBehaviorMutation = useMutation({
+    mutationFn: async (data: { behaviorPreset?: string; leadCaptureEnabled?: boolean; leadDetectionSensitivity?: string }) => {
+      const response = await apiRequest("PATCH", `/api/super-admin/clients/${slug}/behavior`, data);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update behavior settings");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/clients", slug, "behavior"] });
+      toast({ title: "Saved", description: "AI behavior settings updated." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message || "Failed to update settings.", variant: "destructive" });
+    },
   });
 
   const updateWorkspaceMutation = useMutation({
@@ -959,6 +1001,118 @@ export default function ClientDetailAdmin() {
                       <p className="text-white font-mono">{workspaceData.slug}</p>
                     </div>
                   </div>
+                </GlassCardContent>
+              </GlassCard>
+
+              {/* AI Behavior Settings */}
+              <GlassCard>
+                <GlassCardHeader>
+                  <GlassCardTitle className="text-sm flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-cyan-400" />
+                    AI Behavior Settings
+                  </GlassCardTitle>
+                  <GlassCardDescription>
+                    Configure how the AI assistant behaves for this client
+                  </GlassCardDescription>
+                </GlassCardHeader>
+                <GlassCardContent>
+                  {behaviorLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="h-6 w-6 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {/* Behavior Preset */}
+                      <div className="space-y-2">
+                        <Label className="text-white/70">Behavior Preset</Label>
+                        <Select
+                          value={behaviorSettings?.behaviorPreset || 'support_lead_focused'}
+                          onValueChange={(value) => updateBehaviorMutation.mutate({ behaviorPreset: value })}
+                          disabled={updateBehaviorMutation.isPending}
+                        >
+                          <SelectTrigger className="bg-white/5 border-white/10 text-white" data-testid="select-behavior-preset">
+                            <SelectValue placeholder="Select behavior preset" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#1a1d24] border-white/10">
+                            <SelectItem value="support_lead_focused" className="text-white hover:bg-white/10">
+                              Support + Lead Focused
+                            </SelectItem>
+                            <SelectItem value="sales_focused_soft" className="text-white hover:bg-white/10">
+                              Sales Focused (Soft)
+                            </SelectItem>
+                            <SelectItem value="support_only" className="text-white hover:bg-white/10">
+                              Support Only
+                            </SelectItem>
+                            <SelectItem value="compliance_strict" className="text-white hover:bg-white/10">
+                              Compliance Strict
+                            </SelectItem>
+                            <SelectItem value="sales_heavy" className="text-white hover:bg-white/10">
+                              Sales Heavy
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-white/40">
+                          {behaviorSettings?.behaviorPreset === 'support_lead_focused' && "Helpful support with proactive lead capture"}
+                          {behaviorSettings?.behaviorPreset === 'sales_focused_soft' && "Gently guides toward booking/contact without pressure"}
+                          {behaviorSettings?.behaviorPreset === 'support_only' && "Pure support mode - no lead collection prompts"}
+                          {behaviorSettings?.behaviorPreset === 'compliance_strict' && "Strict compliance with minimal deviation"}
+                          {behaviorSettings?.behaviorPreset === 'sales_heavy' && "Aggressive sales focus"}
+                        </p>
+                      </div>
+
+                      {/* Lead Capture Toggle */}
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label className="text-white/70">Lead Capture</Label>
+                          <p className="text-xs text-white/40">Enable automatic lead detection and collection</p>
+                        </div>
+                        <Switch
+                          checked={behaviorSettings?.leadCaptureEnabled ?? true}
+                          onCheckedChange={(checked) => updateBehaviorMutation.mutate({ leadCaptureEnabled: checked })}
+                          disabled={updateBehaviorMutation.isPending}
+                          data-testid="switch-lead-capture"
+                        />
+                      </div>
+
+                      {/* Lead Detection Sensitivity */}
+                      <div className="space-y-2">
+                        <Label className="text-white/70">Lead Detection Sensitivity</Label>
+                        <Select
+                          value={behaviorSettings?.leadDetectionSensitivity || 'medium'}
+                          onValueChange={(value) => updateBehaviorMutation.mutate({ leadDetectionSensitivity: value })}
+                          disabled={!behaviorSettings?.leadCaptureEnabled || updateBehaviorMutation.isPending}
+                        >
+                          <SelectTrigger 
+                            className={`bg-white/5 border-white/10 text-white ${!behaviorSettings?.leadCaptureEnabled || updateBehaviorMutation.isPending ? 'opacity-50' : ''}`} 
+                            data-testid="select-lead-sensitivity"
+                          >
+                            <SelectValue placeholder="Select sensitivity" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#1a1d24] border-white/10">
+                            <SelectItem value="low" className="text-white hover:bg-white/10">
+                              Low - Only explicit requests
+                            </SelectItem>
+                            <SelectItem value="medium" className="text-white hover:bg-white/10">
+                              Medium - Balanced detection
+                            </SelectItem>
+                            <SelectItem value="high" className="text-white hover:bg-white/10">
+                              High - Proactive detection
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-white/40">
+                          How aggressively the AI detects lead intent in conversations
+                        </p>
+                      </div>
+
+                      {updateBehaviorMutation.isPending && (
+                        <div className="flex items-center gap-2 text-cyan-400 text-sm">
+                          <RefreshCw className="h-3 w-3 animate-spin" />
+                          Saving...
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </GlassCardContent>
               </GlassCard>
 

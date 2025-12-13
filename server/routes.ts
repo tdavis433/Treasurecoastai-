@@ -8309,6 +8309,67 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
+  // =============================================
+  // SUPER-ADMIN BEHAVIOR SETTINGS
+  // =============================================
+
+  // Get client behavior settings (super-admin only)
+  app.get("/api/super-admin/clients/:clientId/behavior", requireSuperAdmin, async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      const settings = await storage.getSettings(clientId);
+      
+      res.json({
+        behaviorPreset: settings?.behaviorPreset || 'support_lead_focused',
+        leadCaptureEnabled: settings?.leadCaptureEnabled ?? true,
+        leadDetectionSensitivity: settings?.leadDetectionSensitivity || 'medium',
+        fallbackLeadCaptureEnabled: settings?.fallbackLeadCaptureEnabled ?? true,
+      });
+    } catch (error) {
+      console.error("Get client behavior settings error:", error);
+      res.status(500).json({ error: "Failed to fetch behavior settings" });
+    }
+  });
+
+  // Update client behavior settings (super-admin only)
+  app.patch("/api/super-admin/clients/:clientId/behavior", requireSuperAdmin, async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      const { behaviorPreset, leadCaptureEnabled, leadDetectionSensitivity, fallbackLeadCaptureEnabled } = req.body;
+      
+      // Validate behaviorPreset if provided
+      const validPresets = ['support_lead_focused', 'sales_focused_soft', 'support_only', 'compliance_strict', 'sales_heavy'];
+      if (behaviorPreset && !validPresets.includes(behaviorPreset)) {
+        return res.status(400).json({ error: "Invalid behavior preset" });
+      }
+      
+      // Validate leadDetectionSensitivity if provided
+      const validSensitivities = ['low', 'medium', 'high'];
+      if (leadDetectionSensitivity && !validSensitivities.includes(leadDetectionSensitivity)) {
+        return res.status(400).json({ error: "Invalid lead detection sensitivity" });
+      }
+      
+      const updates: any = {};
+      if (behaviorPreset !== undefined) updates.behaviorPreset = behaviorPreset;
+      if (leadCaptureEnabled !== undefined) updates.leadCaptureEnabled = leadCaptureEnabled;
+      if (leadDetectionSensitivity !== undefined) updates.leadDetectionSensitivity = leadDetectionSensitivity;
+      if (fallbackLeadCaptureEnabled !== undefined) updates.fallbackLeadCaptureEnabled = fallbackLeadCaptureEnabled;
+      
+      const updated = await storage.updateSettings(clientId, updates);
+      
+      res.json({
+        success: true,
+        behaviorPreset: updated.behaviorPreset,
+        leadCaptureEnabled: updated.leadCaptureEnabled,
+        leadDetectionSensitivity: updated.leadDetectionSensitivity,
+        fallbackLeadCaptureEnabled: updated.fallbackLeadCaptureEnabled,
+      });
+    } catch (error) {
+      console.error("Update client behavior settings error:", error);
+      res.status(500).json({ error: "Failed to update behavior settings" });
+    }
+  });
+
   // Get booking leads for admin (super-admin access to any client)
   app.get("/api/super-admin/clients/:clientId/bookings", requireSuperAdmin, async (req, res) => {
     try {
