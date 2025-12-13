@@ -1376,19 +1376,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalErrors = Object.values(errorsLast15m).reduce((a, b) => a + b, 0);
       const overallOk = dbOk && totalErrors < 50; // Degrade if >50 errors in 15 mins
 
+      // Widget test mode is only allowed in development or when WIDGET_TEST_MODE=true
+      const nodeEnv = process.env.NODE_ENV || 'development';
+      const testModeAllowed = nodeEnv !== 'production' || process.env.WIDGET_TEST_MODE === 'true';
+
       res.json({
         ok: overallOk,
         timestamp: new Date().toISOString(),
         db: { ok: dbOk, latencyMs: dbLatencyMs },
         ai: { configured: aiConfigured },
         errorsLast15m,
+        testModeAllowed,
         build: {
-          env: process.env.NODE_ENV || 'development',
+          env: nodeEnv,
           version: process.env.npm_package_version || '1.0.0',
           uptime: Math.floor(process.uptime()),
         },
       });
     } catch (error) {
+      const nodeEnv = process.env.NODE_ENV || 'development';
       res.status(503).json({
         ok: false,
         timestamp: new Date().toISOString(),
@@ -1396,7 +1402,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         db: { ok: false },
         ai: { configured: false },
         errorsLast15m: {},
-        build: { env: process.env.NODE_ENV || 'development' },
+        testModeAllowed: nodeEnv !== 'production' || process.env.WIDGET_TEST_MODE === 'true',
+        build: { env: nodeEnv },
       });
     }
   });

@@ -58,9 +58,29 @@
       border-radius: 4px;
       font-size: 0.85em;
     }
+    .test-mode-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(90deg, #f59e0b, #ef4444);
+      color: #000;
+      text-align: center;
+      padding: 8px 16px;
+      font-weight: 600;
+      font-size: 14px;
+      z-index: 999999;
+      display: none;
+    }
+    .test-mode-banner.visible {
+      display: block;
+    }
   </style>
 </head>
 <body>
+  <div id="test-mode-banner" class="test-mode-banner" data-testid="test-mode-banner">
+    TEST MODE (no iframe) - For development/testing only
+  </div>
   <div class="test-container" data-testid="widget-test-page">
     <h1>Widget Test Page</h1>
     <p>This is a minimal test page for the Treasure Coast AI chat widget. Click the chat bubble in the bottom-right corner to interact with the AI assistant.</p>
@@ -79,13 +99,43 @@
 
   <!-- Treasure Coast AI Chat Widget - TEST MODE -->
   <!-- Add ?noIframe=1 to URL to mount widget directly without iframe for testing -->
+  <!-- Test mode is ONLY allowed in development or when WIDGET_TEST_MODE=true -->
   <script>
-    // Check for noIframe test mode
-    var urlParams = new URLSearchParams(window.location.search);
-    window.TCAI_TEST_MODE = urlParams.get('noIframe') === '1';
-    if (window.TCAI_TEST_MODE) {
-      console.log('[TCAI] Test mode enabled - widget will mount directly without iframe');
-    }
+    (function() {
+      var urlParams = new URLSearchParams(window.location.search);
+      var noIframeRequested = urlParams.get('noIframe') === '1';
+      
+      // Default to false - will be enabled only if allowed
+      window.TCAI_TEST_MODE = false;
+      
+      if (!noIframeRequested) {
+        console.log('[TCAI] Normal iframe mode');
+        return;
+      }
+      
+      // Check environment via API to determine if test mode is allowed
+      fetch('/api/health')
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+          // testModeAllowed is set in health endpoint based on NODE_ENV and WIDGET_TEST_MODE
+          var isAllowed = data.testModeAllowed === true;
+          
+          if (isAllowed) {
+            window.TCAI_TEST_MODE = true;
+            console.log('[TCAI] Test mode enabled - widget will mount directly without iframe');
+            // Show the test mode banner
+            var banner = document.getElementById('test-mode-banner');
+            if (banner) {
+              banner.classList.add('visible');
+            }
+          } else {
+            console.warn('[TCAI] Test mode blocked in production - using normal iframe mode');
+          }
+        })
+        .catch(function(err) {
+          console.warn('[TCAI] Could not check environment, using normal iframe mode:', err);
+        });
+    })();
   </script>
   <script src="/widget/embed.js" 
     data-client-id="faith_house" 
