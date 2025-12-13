@@ -177,11 +177,15 @@ npx tsc --noEmit
 # Expected: 0 errors
 
 # Full verification suite
-npm run guard:no-payments  # No payment keywords
-npm test                   # Unit tests
-npm run test:e2e           # E2E tests (includes redirect check)
-npm run build              # Production build
+bash ./scripts/guard-no-payments.sh   # No payment keywords
+npx vitest run                        # Unit + integration tests (68 tests)
+npm run build                         # Production build
+
+# Optional: Database schema verification (requires psql)
+# psql "$DATABASE_URL" -f scripts/verify-db-schema.sql
 ```
+
+**Note:** E2E testing uses the Replit Agent `run_test` tool (Playwright-based).
 
 ---
 

@@ -13,6 +13,11 @@ describe("tenantScope", () => {
       expect(result).toBeUndefined();
     });
 
+    it("returns undefined when sessionClientId is null", () => {
+      const result = getExportClientId(null);
+      expect(result).toBeUndefined();
+    });
+
     it("returns empty string if sessionClientId is empty string", () => {
       const result = getExportClientId("");
       expect(result).toBe("");
@@ -35,6 +40,10 @@ describe("tenantScope", () => {
 
     it("throws Error when sessionClientId is whitespace only", () => {
       expect(() => requireExportClientId("   ")).toThrow("Client ID required");
+    });
+
+    it("throws Error when sessionClientId is null", () => {
+      expect(() => requireExportClientId(null)).toThrow("Client ID required");
     });
   });
 });
