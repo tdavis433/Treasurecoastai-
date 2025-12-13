@@ -175,9 +175,8 @@ export default function DemosPage() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <Link href="/">
-              <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
+              <div className="flex items-center cursor-pointer hover:opacity-80 transition-opacity">
                 <TreasureCoastLogo size="sm" />
-                <span className="text-xl font-bold text-white">Treasure Coast AI</span>
               </div>
             </Link>
             <div className="flex items-center gap-3">
