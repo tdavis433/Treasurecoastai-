@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, integer, json, index, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, integer, json, jsonb, index, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -188,7 +188,7 @@ export const clientSettings = pgTable("client_settings", {
   webhookEnabled: boolean("webhook_enabled").notNull().default(false),
   
   // Metadata for extensible storage (admin notes, etc.)
-  metadata: json("metadata").$type<Record<string, any>>().default({}),
+  metadata: jsonb("metadata").$type<Record<string, any>>().notNull().default({}),
   
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
