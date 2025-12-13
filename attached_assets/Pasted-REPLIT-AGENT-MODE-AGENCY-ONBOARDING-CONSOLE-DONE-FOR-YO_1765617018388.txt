@@ -1,0 +1,65 @@
+REPLIT AGENT MODE — AGENCY ONBOARDING CONSOLE (DONE-FOR-YOU)
+Goal: Client does ZERO setup. I onboard them, configure, test, embed, launch. Make onboarding fast and repeatable.
+
+NON-NEGOTIABLE
+- NO payments ever. External booking is redirect-only (HTTPS only). Internal booking is request capture only.
+- Tenant isolation server-side.
+- Never echo passwords/tokens/reset links in logs/output.
+
+BUILD ONE ADMIN-ONLY SCREEN: “Agency Onboarding Console”
+Left Column (Intake Card — fastest possible):
+- Business Name (required)
+- Industry Template (required) + auto-suggest
+- Website URL (optional but recommended)
+- Primary Phone + Email (at least one required)
+- Service Area (optional)
+- Primary CTA (tour/consult/book/reserve/estimate/call)
+- Booking preference (internal vs external; default from template)
+- Notes / Do-not-say (internal only)
+Buttons:
+1) Generate Draft Setup
+2) Run QA Gate
+3) Go Live + Copy Embed
+
+Right Column (Tabs, all in one place):
+1) Website Suggestions (scan results with checkboxes + source URLs + confidence)
+2) KB Draft (services/FAQs/policies/hours editable)
+3) CTAs + Booking Flow Preview (shows EXACT widget CTAs + failsafe status)
+4) Notifications (toggle + recipient + “send test” + last attempt status)
+5) Widget Preview (live preview for this draft)
+
+Generate Draft Setup must:
+- Apply template defaults (bookingProfile, CTAs, disclaimers)
+- If websiteUrl present, run admin scrape (same-domain, limited pages, timeout)
+- Build KB draft by merging:
+  (a) what I typed in intake + (b) extracted website suggestions
+- Deduplicate services + FAQs
+- Detect booking provider links and suggest externalBookingUrl (HTTPS only)
+- Keep FAILSAFE ON:
+  if external selected but URL missing/invalid -> pivot to internal request_callback flow
+- Create workspace + bot in DRAFT mode (not live yet)
+
+Run QA Gate must:
+- Confirm widget config fetch ok
+- Confirm test chat response ok
+- Confirm lead capture ok (exactly-once)
+- Confirm booking behavior ok:
+  - external: logs intent + redirect and redirects off-domain HTTPS
+  - internal: creates request + notification attempt
+- Confirm transcript saved
+- Output CLIENT_LAUNCH_REPORT.md (PASS/FAIL + exact fixes + links)
+
+Go Live + Copy Embed must:
+- Set workspace status active
+- Show embed snippet (NO secrets) + install instructions
+- Log audit entry for launch action
+
+DELIVERABLES
+- Implement the console UI + endpoints
+- Update docs: RELEASE_RUNBOOK.md “Agency Done-For-You Onboarding”
+- Ensure quality gates pass:
+  bash ./scripts/guard-no-payments.sh
+  npx tsc --noEmit
+  npx vitest run
+  npm run build
+START NOW.
