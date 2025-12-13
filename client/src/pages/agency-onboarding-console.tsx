@@ -186,16 +186,17 @@ interface DraftState {
 
 const intakeFormSchema = z.object({
   businessName: z.string().min(1, "Business name is required"),
-  industryTemplateId: z.string().min(1, "Please select an industry"),
-  websiteUrl: z.string().url().optional().or(z.literal("")),
+  websiteUrl: z.string().url("Please enter a valid URL").min(1, "Website URL is required"),
   primaryPhone: z.string().optional(),
   email: z.string().email().optional().or(z.literal("")),
-  serviceArea: z.string().optional(),
   primaryCTA: z.enum(["tour", "consult", "book", "reserve", "estimate", "call"]),
-  bookingPreference: z.enum(["internal", "external"]),
   externalBookingUrl: z.string().url().optional().or(z.literal("")),
   notes: z.string().optional(),
   doNotSay: z.string().optional(),
+  customFaqs: z.array(z.object({
+    question: z.string(),
+    answer: z.string(),
+  })).optional(),
 }).refine(
   (data) => data.primaryPhone || data.email,
   { message: "At least one contact method (phone or email) is required", path: ["email"] }
@@ -236,9 +237,6 @@ export default function AgencyOnboardingConsole() {
   const [websiteSuggestions, setWebsiteSuggestions] = useState<WebsiteSuggestion[]>([]);
   const [importData, setImportData] = useState<WebsiteImportData | null>(null);
   const [isScanning, setIsScanning] = useState(false);
-  const [notificationEnabled, setNotificationEnabled] = useState(true);
-  const [notificationRecipient, setNotificationRecipient] = useState("");
-  const [testNotificationStatus, setTestNotificationStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   
   const [kbServices, setKbServices] = useState<Array<{ name: string; description: string }>>([]);
   const [kbFaqs, setKbFaqs] = useState<Array<{ question: string; answer: string }>>([]);
@@ -255,6 +253,15 @@ export default function AgencyOnboardingConsole() {
     Sunday: "Closed",
   });
 
+  // Style state for widget customization
+  const [styleConfig, setStyleConfig] = useState({
+    primaryColor: "#00CFFF",
+    accentColor: "#9D5CFF",
+    theme: "dark" as "dark" | "light",
+    logoUrl: "",
+  });
+  const [isMatchingTheme, setIsMatchingTheme] = useState(false);
+
   const { data: templates, isLoading: templatesLoading } = useQuery<IndustryTemplate[]>({
     queryKey: ["/api/agency-onboarding/templates"],
   });
@@ -263,33 +270,97 @@ export default function AgencyOnboardingConsole() {
     resolver: zodResolver(intakeFormSchema),
     defaultValues: {
       businessName: "",
-      industryTemplateId: "",
       websiteUrl: "",
       primaryPhone: "",
       email: "",
-      serviceArea: "",
       primaryCTA: "consult",
-      bookingPreference: "internal",
       externalBookingUrl: "",
       notes: "",
       doNotSay: "",
+      customFaqs: [],
     },
   });
 
-  const selectedTemplateId = form.watch("industryTemplateId");
-  const selectedTemplate = templates?.find(t => t.id === selectedTemplateId);
-  const bookingPreference = form.watch("bookingPreference");
-
-  useEffect(() => {
-    if (selectedTemplate) {
-      form.setValue("primaryCTA", selectedTemplate.bookingProfile?.primaryCTA as any || "consult");
-      form.setValue("bookingPreference", selectedTemplate.bookingProfile?.mode || "internal");
-      
-      const services = selectedTemplate.defaultConfig?.businessProfile?.services || [];
-      setKbServices(services.map(s => ({ name: s, description: "" })));
-      setKbFaqs(selectedTemplate.defaultConfig?.faqs || []);
+  // Match Website Theme handler
+  const handleMatchWebsiteTheme = async () => {
+    const websiteUrl = form.getValues("websiteUrl");
+    if (!websiteUrl) {
+      toast({
+        title: "Enter Website URL",
+        description: "Please enter a website URL first to extract theme colors.",
+        variant: "destructive",
+      });
+      return;
     }
-  }, [selectedTemplate, form]);
+    
+    setIsMatchingTheme(true);
+    try {
+      const response = await apiRequest("POST", "/api/admin/extract-theme", { url: websiteUrl }) as {
+        primaryColor?: string;
+        accentColor?: string;
+        logoUrl?: string;
+        theme?: "dark" | "light";
+      };
+      
+      setStyleConfig(prev => ({
+        ...prev,
+        primaryColor: response.primaryColor || prev.primaryColor,
+        accentColor: response.accentColor || prev.accentColor,
+        logoUrl: response.logoUrl || prev.logoUrl,
+        theme: response.theme || prev.theme,
+      }));
+      
+      toast({
+        title: "Theme Matched",
+        description: "Widget colors updated to match website theme.",
+      });
+    } catch (error) {
+      toast({
+        title: "Theme Extraction Failed",
+        description: "Could not extract colors from website. Using defaults.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsMatchingTheme(false);
+    }
+  };
+
+  // Launch checklist items
+  const getLaunchChecklist = () => {
+    const checks = [
+      { 
+        id: "business", 
+        label: "Business Info", 
+        status: form.getValues("businessName") ? "pass" : "fail" as "pass" | "warn" | "fail"
+      },
+      { 
+        id: "website", 
+        label: "Website Scanned", 
+        status: importData ? "pass" : "warn" as "pass" | "warn" | "fail"
+      },
+      { 
+        id: "kb", 
+        label: "KB Content", 
+        status: (kbServices.length >= 3 || kbFaqs.length >= 5) ? "pass" : (kbServices.length > 0 || kbFaqs.length > 0) ? "warn" : "fail" as "pass" | "warn" | "fail"
+      },
+      { 
+        id: "contact", 
+        label: "Contact Info", 
+        status: (form.getValues("primaryPhone") || form.getValues("email")) ? "pass" : "fail" as "pass" | "warn" | "fail"
+      },
+      { 
+        id: "draft", 
+        label: "Draft Created", 
+        status: draftState ? "pass" : "warn" as "pass" | "warn" | "fail"
+      },
+      { 
+        id: "qa", 
+        label: "QA Passed", 
+        status: draftState?.status === "qa_passed" || draftState?.status === "live" ? "pass" : draftState?.qaResults ? "fail" : "warn" as "pass" | "warn" | "fail"
+      },
+    ];
+    return checks;
+  };
 
   interface DraftSetupPayload {
     intakeData: IntakeFormData;
@@ -790,31 +861,6 @@ export default function AgencyOnboardingConsole() {
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="industryTemplateId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Industry *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-industry">
-                              <SelectValue placeholder="Select industry..." />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {templates?.map((template) => (
-                              <SelectItem key={template.id} value={template.id}>
-                                {template.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
                   <div className="p-3 rounded-lg border border-dashed border-cyan-400/30 bg-cyan-500/5">
                     <FormField
                       control={form.control}
@@ -823,8 +869,8 @@ export default function AgencyOnboardingConsole() {
                         <FormItem>
                           <FormLabel className="flex items-center gap-2">
                             <Globe className="h-4 w-4" />
-                            Website URL
-                            <Badge variant="secondary" className="text-xs">Auto-fill</Badge>
+                            Website URL *
+                            <Badge variant="secondary" className="text-xs">Scan to auto-fill</Badge>
                           </FormLabel>
                           <div className="flex gap-2">
                             <FormControl>
@@ -845,6 +891,7 @@ export default function AgencyOnboardingConsole() {
                               {isScanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                             </Button>
                           </div>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -893,24 +940,6 @@ export default function AgencyOnboardingConsole() {
                       )}
                     />
 
-                    <FormField
-                      control={form.control}
-                      name="serviceArea"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3" /> Service Area
-                          </FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="e.g., Treasure Coast, FL" 
-                              {...field} 
-                              data-testid="input-service-area"
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
                   </div>
 
                   <Separator />
@@ -920,7 +949,7 @@ export default function AgencyOnboardingConsole() {
                     name="primaryCTA"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Primary Call-to-Action</FormLabel>
+                        <FormLabel>Primary Call-to-Action *</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger data-testid="select-primary-cta">
@@ -935,32 +964,7 @@ export default function AgencyOnboardingConsole() {
                             ))}
                           </SelectContent>
                         </Select>
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="bookingPreference"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Booking Preference</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-booking-preference">
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="internal">Internal (Request Capture)</SelectItem>
-                            <SelectItem value="external">External (Redirect to URL)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormDescription>
-                          {field.value === "internal" 
-                            ? "Leads captured in-chat, no redirect" 
-                            : "Redirect to external booking system"}
-                        </FormDescription>
+                        <FormDescription>What action should the AI guide users toward?</FormDescription>
                       </FormItem>
                     )}
                   />
@@ -1157,7 +1161,7 @@ export default function AgencyOnboardingConsole() {
             </CardHeader>
             <CardContent>
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid grid-cols-5 mb-4">
+                <TabsList className="grid grid-cols-4 mb-4">
                   <TabsTrigger value="suggestions" className="gap-1" data-testid="tab-suggestions">
                     <Globe className="h-3 w-3" />
                     <span className="hidden sm:inline">Suggestions</span>
@@ -1166,13 +1170,9 @@ export default function AgencyOnboardingConsole() {
                     <Layers className="h-3 w-3" />
                     <span className="hidden sm:inline">KB Draft</span>
                   </TabsTrigger>
-                  <TabsTrigger value="ctas" className="gap-1" data-testid="tab-ctas">
-                    <Zap className="h-3 w-3" />
-                    <span className="hidden sm:inline">CTAs</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="notifications" className="gap-1" data-testid="tab-notifications">
-                    <Bell className="h-3 w-3" />
-                    <span className="hidden sm:inline">Notify</span>
+                  <TabsTrigger value="style" className="gap-1" data-testid="tab-style">
+                    <Palette className="h-3 w-3" />
+                    <span className="hidden sm:inline">Style</span>
                   </TabsTrigger>
                   <TabsTrigger value="preview" className="gap-1" data-testid="tab-preview">
                     <Eye className="h-3 w-3" />
@@ -1568,134 +1568,138 @@ export default function AgencyOnboardingConsole() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="ctas" className="space-y-4" data-testid="content-ctas">
-                  <div>
-                    <h3 className="font-semibold mb-3">Widget CTA Buttons</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      {selectedTemplate?.ctaButtons?.map((cta) => (
-                        <div 
-                          key={cta.id}
-                          className={`p-4 rounded-lg border ${
-                            cta.isPrimary 
-                              ? 'border-cyan-500/40 bg-cyan-500/10' 
-                              : 'border-white/10 bg-white/3'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 mb-2">
-                            <MessageSquare className="h-4 w-4" />
-                            <span className="font-medium">{cta.label}</span>
-                            {cta.isPrimary && (
-                              <Badge className="bg-cyan-500/20 text-cyan-400">Primary</Badge>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground">{cta.prompt}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div>
-                    <h3 className="font-semibold mb-3">Booking Flow Preview</h3>
-                    <div className={`p-4 rounded-lg border ${
-                      failsafeStatus.status === 'ok' ? 'border-emerald-500/40 bg-emerald-500/10' :
-                      failsafeStatus.status === 'warning' ? 'border-amber-500/40 bg-amber-500/10' :
-                      failsafeStatus.status === 'failsafe' ? 'border-rose-500/40 bg-rose-500/10' :
-                      'border-cyan-500/40 bg-cyan-500/10'
-                    }`}>
-                      <div className="flex items-center gap-3">
-                        {failsafeStatus.status === 'ok' && <CheckCircle className="h-6 w-6 text-emerald-400" />}
-                        {failsafeStatus.status === 'warning' && <AlertTriangle className="h-6 w-6 text-amber-400" />}
-                        {failsafeStatus.status === 'failsafe' && <Shield className="h-6 w-6 text-rose-400" />}
-                        {failsafeStatus.status === 'internal' && <Zap className="h-6 w-6 text-cyan-400" />}
-                        <div>
-                          <p className="font-medium">{failsafeStatus.message}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {bookingPreference === 'internal' 
-                              ? 'AI will collect contact info and create a lead/booking request' 
-                              : failsafeStatus.status === 'ok'
-                                ? 'Users will be redirected to external booking system'
-                                : 'Failsafe active: Will capture info internally instead'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {selectedTemplate?.bookingProfile.externalProviders && (
-                      <div className="mt-4">
-                        <p className="text-sm text-muted-foreground mb-2">Compatible providers:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedTemplate.bookingProfile.externalProviders.map((provider) => (
-                            <Badge key={provider} variant="outline">{provider}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="notifications" className="space-y-4" data-testid="content-notifications">
+                <TabsContent value="style" className="space-y-4" data-testid="content-style">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="font-semibold">Lead Notifications</h3>
+                      <h3 className="font-semibold">Widget Style</h3>
                       <p className="text-sm text-muted-foreground">
-                        Get notified when new leads come in
+                        Customize the chat widget appearance
                       </p>
                     </div>
-                    <Switch
-                      checked={notificationEnabled}
-                      onCheckedChange={setNotificationEnabled}
-                      data-testid="switch-notifications"
-                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleMatchWebsiteTheme}
+                      disabled={isMatchingTheme || !form.getValues("websiteUrl")}
+                      className="gap-2"
+                      data-testid="button-match-theme"
+                    >
+                      {isMatchingTheme ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-4 w-4" />
+                      )}
+                      Match Website Theme
+                    </Button>
                   </div>
 
-                  {notificationEnabled && (
-                    <>
-                      <div>
-                        <Label>Notification Recipient</Label>
-                        <Input
-                          type="email"
-                          value={notificationRecipient}
-                          onChange={(e) => setNotificationRecipient(e.target.value)}
-                          placeholder={form.getValues("email") || "email@example.com"}
-                          className="mt-1"
-                          data-testid="input-notification-recipient"
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="mb-2 block">Primary Color</Label>
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-10 h-10 rounded-lg border border-white/20 cursor-pointer"
+                          style={{ backgroundColor: styleConfig.primaryColor }}
                         />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Leave blank to use the business email
-                        </p>
+                        <Input
+                          type="text"
+                          value={styleConfig.primaryColor}
+                          onChange={(e) => setStyleConfig(prev => ({ ...prev, primaryColor: e.target.value }))}
+                          placeholder="#00CFFF"
+                          className="flex-1"
+                          data-testid="input-primary-color"
+                        />
                       </div>
+                    </div>
 
-                      <div className="flex items-center gap-3">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleSendTestNotification}
-                          disabled={testNotificationStatus === 'sending'}
-                          data-testid="button-send-test-notification"
-                        >
-                          {testNotificationStatus === 'sending' ? (
-                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                          ) : (
-                            <Send className="h-4 w-4 mr-1" />
-                          )}
-                          Send Test
-                        </Button>
-                        
-                        {testNotificationStatus === 'sent' && (
-                          <Badge className="bg-emerald-500/20 text-emerald-400">
-                            <Check className="h-3 w-3 mr-1" /> Sent
-                          </Badge>
-                        )}
-                        {testNotificationStatus === 'error' && (
-                          <Badge className="bg-rose-500/20 text-rose-400">
-                            <X className="h-3 w-3 mr-1" /> Failed
-                          </Badge>
-                        )}
+                    <div>
+                      <Label className="mb-2 block">Accent Color</Label>
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-10 h-10 rounded-lg border border-white/20 cursor-pointer"
+                          style={{ backgroundColor: styleConfig.accentColor }}
+                        />
+                        <Input
+                          type="text"
+                          value={styleConfig.accentColor}
+                          onChange={(e) => setStyleConfig(prev => ({ ...prev, accentColor: e.target.value }))}
+                          placeholder="#9D5CFF"
+                          className="flex-1"
+                          data-testid="input-accent-color"
+                        />
                       </div>
-                    </>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="mb-2 block">Theme Mode</Label>
+                    <div className="flex gap-3">
+                      <Button
+                        variant={styleConfig.theme === "dark" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setStyleConfig(prev => ({ ...prev, theme: "dark" }))}
+                        className="flex-1"
+                        data-testid="button-theme-dark"
+                      >
+                        Dark
+                      </Button>
+                      <Button
+                        variant={styleConfig.theme === "light" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setStyleConfig(prev => ({ ...prev, theme: "light" }))}
+                        className="flex-1"
+                        data-testid="button-theme-light"
+                      >
+                        Light
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="mb-2 block">Logo URL (Optional)</Label>
+                    <Input
+                      type="text"
+                      value={styleConfig.logoUrl}
+                      onChange={(e) => setStyleConfig(prev => ({ ...prev, logoUrl: e.target.value }))}
+                      placeholder="https://example.com/logo.png"
+                      data-testid="input-logo-url"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Leave blank to use default bot icon
+                    </p>
+                  </div>
+
+                  {styleConfig.logoUrl && (
+                    <div className="p-4 rounded-lg border border-white/10 bg-white/3">
+                      <p className="text-xs text-muted-foreground mb-2">Logo Preview</p>
+                      <img 
+                        src={styleConfig.logoUrl} 
+                        alt="Logo preview" 
+                        className="h-12 w-auto rounded"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    </div>
                   )}
+
+                  <div className="p-4 rounded-lg border border-white/10 bg-white/3">
+                    <p className="text-xs text-muted-foreground mb-3">Color Preview</p>
+                    <div className="flex items-center gap-4">
+                      <div 
+                        className="px-4 py-2 rounded-full text-white text-sm font-medium"
+                        style={{ backgroundColor: styleConfig.primaryColor }}
+                      >
+                        Primary Button
+                      </div>
+                      <div 
+                        className="px-4 py-2 rounded-full text-white text-sm font-medium"
+                        style={{ backgroundColor: styleConfig.accentColor }}
+                      >
+                        Accent Button
+                      </div>
+                    </div>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="preview" className="space-y-4" data-testid="content-preview">
@@ -1715,7 +1719,7 @@ export default function AgencyOnboardingConsole() {
                       <div 
                         className="p-4 text-white"
                         style={{ 
-                          background: `linear-gradient(135deg, ${selectedTemplate?.defaultConfig?.theme?.primaryColor || '#00E5CC'} 0%, ${selectedTemplate?.defaultConfig?.theme?.primaryColor || '#00E5CC'}88 100%)` 
+                          background: `linear-gradient(135deg, ${styleConfig.primaryColor} 0%, ${styleConfig.primaryColor}88 100%)` 
                         }}
                       >
                         <div className="flex items-center gap-3">
