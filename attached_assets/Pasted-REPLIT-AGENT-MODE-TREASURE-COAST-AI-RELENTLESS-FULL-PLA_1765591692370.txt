@@ -1,0 +1,375 @@
+REPLIT AGENT MODE — TREASURE COAST AI — “RELENTLESS” FULL-PLATFORM FINISH + ZERO-DEFECT PASS
+(Scan every file, every line. Run everything. Fix everything. Add tests. Prove readiness.)
+
+You are Replit Agent running inside the repo. You have full read/write access to the codebase, can run commands, run the dev server, run tests, edit files, and commit changes. Your mission is to take this platform to production-grade reliability with no demo surprises.
+
+========================================================
+0) PRIMARY OBJECTIVE
+========================================================
+Perform a complete end-to-end engineering audit AND remediation:
+- Scan EVERY file, EVERY line of code, EVERY route, EVERY job, EVERY automation, EVERY bot, EVERY page.
+- Run the app and exercise ALL flows like real humans and malicious actors.
+- Identify ALL issues (bugs, UX failures, security risks, scalability risks, missing validations, dead code, flaky behavior).
+- Fix all issues you can fix.
+- Add automated tests so issues cannot regress.
+- Finish with a strict, evidence-based GO/NO-GO report.
+
+ABSOLUTE RULE: if something “might” cause a problem in production or live demos, fix it or harden it.
+
+========================================================
+1) NON-NEGOTIABLE GUARDRAILS (BLOCKER IF VIOLATED)
+========================================================
+A) NO PAYMENT PROCESSING — EVER (REDIRECT-ONLY)
+- Platform must NOT collect/store/transmit/process payment details:
+  NO card fields, NO ACH, NO wallet, NO checkout UI, NO payment tokens/intents, NO billing portals,
+  NO subscriptions/invoices/refunds/chargebacks, NO payment webhooks.
+- “Book Now” is allowed ONLY as:
+  1) Log booking intent internally (analytics + dashboards)
+  2) Redirect the visitor externally to the CLIENT’S booking/payment platform to complete booking/payment there.
+- If ANY Stripe/Square/PayPal/payment-intent/checkout code exists beyond outbound linking/redirect:
+  REMOVE it and report file paths + line numbers.
+
+B) MULTI-TENANT ISOLATION (SERVER-SIDE ONLY)
+- Every read/write MUST be scoped by tenant/workspace at the server/DB layer.
+- UI hiding is not security.
+- Any IDOR or cross-tenant data access = BLOCKER.
+
+C) DEMO-READINESS / PRODUCT QUALITY
+- No “coming soon”, placeholders, dead buttons, broken pages visible to prospects/clients.
+- Friendly errors only; no stack traces shown in UI.
+- No flakey “high demand” fallback spam. If upstream fails, degrade gracefully and still allow lead capture + booking redirect.
+
+D) SECURITY + PRIVACY
+- Never log secrets/tokens/passwords/reset tokens.
+- Enforce secure cookies and auth session handling.
+- Sanitize all user input (chat/leads/forms) and prevent XSS.
+- Add rate limiting for chat, lead capture, password reset, login.
+
+========================================================
+2) TARGET ENVIRONMENT (FOR RUNTIME QA)
+========================================================
+Platform Base URL:
+https://treasure-coast-ai-platform--mlgrushskill.replit.app
+
+Credentials for runtime verification (DO NOT COMMIT; DO NOT PRINT PASSWORDS):
+- Admin: username admin / password admin123
+- Client: username demo_faith_house / password demo123
+Rule: never echo passwords in output (redact a*****3 / d*****3).
+
+========================================================
+3) OUTPUT REQUIREMENTS (STRICT)
+========================================================
+You MUST create these deliverables inside the repo:
+1) /docs/REPO_MAP.md
+2) /docs/FINDINGS.md (grouped by severity with file+line+repro+fix)
+3) /docs/NO_PAYMENTS_COMPLIANCE.md (standalone)
+4) /docs/TENANT_ISOLATION_PROOF.md (standalone)
+5) /docs/TEST_REPORT.md (commands + results)
+6) /docs/RELEASE_RUNBOOK.md (deploy + rollback + smoke test)
+7) /docs/DEMO_SCRIPT.md (safe demo steps + exact questions)
+
+And produce a final terminal summary:
+- Demo-ready? YES/NO
+- Production-ready? YES/NO
+- Top 10 risks remaining (should be none; if any, justify)
+
+========================================================
+4) EXECUTION PLAN (YOU MUST FOLLOW THIS ORDER)
+========================================================
+
+-----------------------------
+PHASE 0 — BASELINE SNAPSHOT
+-----------------------------
+0.1 Print system info
+- node -v, npm -v / pnpm -v, python -v (if relevant)
+- OS info
+
+0.2 Install dependencies cleanly
+- If lockfile exists, respect it.
+- Fix peer dep chaos properly (don’t ignore warnings blindly).
+
+0.3 Run baseline checks WITHOUT fixing yet
+- lint
+- typecheck
+- unit tests
+- build
+- start server
+Capture failures in /docs/TEST_REPORT.md as “Baseline”.
+
+0.4 Start dev server and confirm it boots
+- Record local URL, startup logs
+- Confirm no runtime crash loops.
+
+-----------------------------
+PHASE 1 — FULL REPO INVENTORY
+-----------------------------
+1.1 Generate full tree inventory
+- List top-level folders and what each does.
+- Identify: frontend, backend/api, db, migrations, auth, bots, jobs, config, scripts.
+
+1.2 Create REPO MAP (/docs/REPO_MAP.md)
+Include:
+- Tech stack (frameworks, UI libs, server framework, DB/ORM, auth)
+- All public routes/pages
+- All client dashboard routes/pages
+- All admin routes/pages
+- All API endpoints
+- Background jobs/queues/cron
+- Bot/assistant architecture (where prompts/configs live)
+- Analytics/events pipeline (if any)
+- File upload/KB ingestion pipeline (if any)
+
+1.3 Enumerate ENV VARS
+- Grep for process.env usage
+- List each env var, purpose, required/optional, safe defaults
+- Add to REPO_MAP.md
+
+-----------------------------
+PHASE 2 — STATIC CODE AUDIT (EVERY FILE, EVERY LINE)
+-----------------------------
+2.1 Run “danger sweeps” across repo and log results
+MANDATORY KEYWORD SWEEPS:
+Payment sweep (must remove):
+stripe, square, paypal, payment, checkout, payment_intent, client_secret, card, ach, refund, chargeback,
+invoice, subscription, billing, webhook (payment-related), tipping
+
+Security sweep:
+eval, new Function, dangerouslySetInnerHTML, innerHTML, document.write,
+cors('*'), Access-Control-Allow-Origin: *,
+jsonwebtoken decode without verify, bcrypt compare misuse
+
+Multi-tenant sweep:
+tenantId, workspaceId, orgId usage — verify enforced in server queries, not only in UI
+
+Secrets sweep:
+admin123, demo123, api keys, bearer, token=, sk- patterns, private keys, SMTP creds
+
+2.2 Lint/typecheck hardening
+- Fix ALL lint errors
+- Fix ALL type errors (no “any” band-aids unless justified)
+- Ensure strict mode where feasible.
+
+2.3 Dead code + duplicate code cleanup
+- Remove unused components/routes
+- Remove duplicate logic; centralize shared validators and auth guards.
+
+2.4 Code quality rules (must implement if missing)
+- Server-side validation for all inputs (zod/yup/validator)
+- Central error handler that returns friendly messages
+- Logging with redaction of PII/secrets
+
+-----------------------------
+PHASE 3 — RUNTIME WALKTHROUGH (ALL FEATURES)
+-----------------------------
+You must test on:
+- Desktop viewport
+- Mobile viewport (375px)
+- Slow network simulation (if available)
+- Incognito/fresh session
+- Two-tab concurrency
+- Hard refresh mid-flow
+
+A) PUBLIC SITE
+- All public pages load, no broken assets, no console errors.
+- Widget loads quickly, opens/closes, keyboard accessible.
+
+B) AUTH FLOWS
+- Admin login/logout/back button
+- Client login/logout/back button
+- Session expiration behavior
+- Password reset: token one-time use + expiry; no token leaks in logs
+
+C) CLIENT DASHBOARD
+Verify every section:
+- Overview metrics
+- Conversations list + transcript viewer (message bodies, roles, ordering, timestamps)
+- Leads list + statuses + search + filters + pagination
+- Bookings list + booking intents + redirect clicks tracked
+- Settings + profile + password change (if present)
+- Mobile layout: no off-screen modals, tables scroll, no trapped UI
+
+D) ADMIN DASHBOARD
+Verify:
+- Client list
+- Create client wizard
+- Assistant management
+- “View as client” / impersonation (if present): safe and scoped
+- Admin conversations inbox shows correct workspace conversations
+- Metrics parity vs client for same workspace/time window
+
+E) CHATBOTS / DEMOS
+- Test every demo bot:
+  - 3 FAQ questions
+  - typo/slang input
+  - long input
+  - rapid-fire spam sends
+- “High demand” fallback must not appear constantly.
+  If upstream fails:
+  - show helpful fallback
+  - still allow lead capture + booking redirect CTA
+
+F) LEAD CAPTURE (CRITICAL)
+Test:
+- valid name/email/phone
+- invalid email formats
+- empty required fields
+- emoji/special chars
+- double-submit spam
+Expect:
+- friendly validation
+- idempotency/dedup rules that don’t overwrite identity silently
+- tenant-scoped storage
+- clear UI feedback
+
+G) BOOKING (CRITICAL)
+- Booking intent logging
+- “Book Now” button/link always visible when booking is requested
+- Clicking “Book Now” ALWAYS redirects externally (client booking/payment service)
+- Track redirect clicks
+- NO hosted booking checkout on our domain
+
+H) FILE UPLOAD / KB INGESTION (IF PRESENT)
+- upload allowed file
+- disallowed type
+- too-large file
+- ensure no server crash and friendly errors
+
+-----------------------------
+PHASE 4 — SECURITY / TENANT PROOF (BLOCKER IF FAIL)
+-----------------------------
+4.1 RBAC proof
+- Client cannot access admin routes (direct URL + API calls)
+- Admin can access admin routes
+
+4.2 Tenant isolation proof (IDOR)
+- Attempt to change IDs in URLs and API calls:
+  leadId, convoId, bookingId, assistantId, workspaceId
+- Attempt to query other tenant resources
+PASS:
+- 401/403 or empty response, no data leak
+
+4.3 XSS and injection tests
+- Inject <script>alert(1)</script> and variants in:
+  - chat message
+  - lead fields
+  - settings fields
+PASS:
+- sanitized/escaped, no execution
+
+4.4 Rate limiting / abuse tests
+- spam chat 20 requests quickly
+- spam lead submit
+- spam password reset
+PASS:
+- throttling / graceful errors, no downtime
+
+4.5 Security headers / CORS
+- Confirm CORS not permissive
+- Confirm session cookies HttpOnly/Secure/SameSite
+- Confirm common security headers (as applicable)
+
+Write results to /docs/TENANT_ISOLATION_PROOF.md with:
+- endpoints tested
+- payloads attempted
+- responses
+
+-----------------------------
+PHASE 5 — FIX EVERYTHING (PATCHES + TESTS)
+-----------------------------
+Rules:
+- Fix in severity order: BLOCKER → HIGH → MEDIUM → LOW
+- After EACH fix:
+  - rerun lint/typecheck/tests/build
+  - re-run the specific user flow manually
+  - add regression test where possible
+
+Must implement if missing:
+- Central request validation
+- Central auth guard middleware
+- Tenant scoping helpers that cannot be bypassed
+- Error boundary on frontend
+- Server error handler returning friendly errors
+- Logging redaction
+- Dedup/idempotency strategy for lead form and lead capture
+- Reliable booking redirect flow (redirect-only)
+
+-----------------------------
+PHASE 6 — AUTOMATED TESTS (MANDATORY)
+-----------------------------
+6.1 Playwright E2E suite
+Create tests for Demo Critical Path:
+1) Load landing page → open widget → ask FAQ → assert response exists
+2) Submit lead via widget or form → assert record created
+3) Trigger booking intent → click Book Now → assert:
+   - external redirect URL
+   - NOT our domain
+4) Login client → assert lead exists + transcript visible + booking intent visible
+5) Login admin → assert same workspace shows same records and metrics parity
+
+Run in:
+- desktop
+- mobile (375px)
+- slow network mode (if supported)
+
+6.2 API tests
+- RBAC: client cannot hit admin endpoints
+- Tenant isolation: cannot read/write across tenants
+- Conversation ordering + persistence
+- Booking redirect click increments
+
+6.3 CI-ready scripts
+Add npm scripts:
+- lint
+- typecheck
+- test
+- test:e2e
+- build
+Ensure everything runs clean.
+
+-----------------------------
+PHASE 7 — RELEASE READINESS (MANDATORY)
+-----------------------------
+Create /docs/RELEASE_RUNBOOK.md including:
+- environment variables checklist
+- deployment steps
+- rollback steps
+- post-deploy smoke test steps (exact click path)
+- monitoring/alerts pointers (errors, uptime, logs)
+
+Create /docs/DEMO_SCRIPT.md:
+- safest 5 questions to ask
+- safest click path
+- what to avoid (risky edges)
+- backup fallback talk-track if LLM is down
+
+-----------------------------
+PHASE 8 — FINAL REPORT (STRICT)
+-----------------------------
+Write /docs/FINDINGS.md:
+- BLOCKER/HIGH/MEDIUM/LOW
+For each:
+- file path + line numbers
+- reproduction steps
+- fix applied
+- tests added
+
+Write /docs/NO_PAYMENTS_COMPLIANCE.md:
+- Evidence that no payment processing code exists
+- Where booking redirect is implemented
+- Proof it redirects externally and only logs intent
+
+Write /docs/TEST_REPORT.md:
+- Baseline vs Final results
+- All commands run and outputs summarized
+
+FINAL TERMINAL OUTPUT (MUST PRINT)
+- Demo-ready? YES/NO
+- Production-ready? YES/NO
+- Top 10 risks (should be none; if any, explain)
+- List of all tests passing
+- Link to docs created
+
+START NOW:
+1) Generate repo inventory and baseline test outputs.
+2) Run the mandatory keyword sweeps and write results.
+3) Fix everything systematically, add tests, and confirm final GO.
