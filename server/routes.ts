@@ -3197,39 +3197,44 @@ These suggestions should be relevant to what was just discussed and help guide t
       if (!queryValidation.success) {
         return res.status(400).json({ error: queryValidation.error });
       }
-      
-      const { startDate, endDate, clientId: queryClientId } = queryValidation.data as any;
-      const clientId = queryClientId || req.session.clientId;
-      
+
+      // Only allow date range from query; tenant scope comes from the session.
+      const { startDate, endDate } = queryValidation.data;
+
+      const clientId = req.session.clientId;
       if (!clientId) {
         return res.status(400).json({ error: "Client ID required" });
       }
-      
+
       const start = startDate ? new Date(startDate) : undefined;
       const end = endDate ? new Date(endDate) : undefined;
-      
+
       const summary = await storage.getAnalyticsSummary(clientId, start, end);
-      
+
       // Build CSV content
-      const headers = ['Date', 'Conversations', 'Appointments'];
-      const rows = summary.dailyActivity.map(day => [
+      const headers = ["Date", "Conversations", "Appointments"];
+      const rows = summary.dailyActivity.map((day) => [
         day.date,
         day.conversations.toString(),
-        day.appointments.toString()
+        day.appointments.toString(),
       ]);
 
-      const csvContent = [
-        headers.join(','),
-        ...rows.map(row => row.join(','))
-      ].join('\n');
+      const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
 
       // Add summary row
-      const summaryRow = `\n\nSummary\nTotal Conversations,${summary.totalConversations}\nTotal Appointments,${summary.totalAppointments}\nConversion Rate,${summary.conversionRate.toFixed(1)}%\nCrisis Redirects,${summary.crisisRedirects}`;
+      const summaryRow =
+        `\n\nSummary` +
+        `\nTotal Conversations,${summary.totalConversations}` +
+        `\nTotal Appointments,${summary.totalAppointments}` +
+        `\nConversion Rate,${summary.conversionRate.toFixed(1)}%` +
+        `\nCrisis Redirects,${summary.crisisRedirects}`;
 
-      const fileName = `analytics_${startDate || 'all'}_to_${endDate || 'now'}.csv`;
-      
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      // Keep filename safe (even though dates are validated)
+      const safe = (s: string) => s.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const fileName = safe(`analytics_${startDate || "all"}_to_${endDate || "now"}.csv`);
+
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
       res.send(csvContent + summaryRow);
     } catch (error) {
       console.error("Export analytics error:", error);
