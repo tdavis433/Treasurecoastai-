@@ -1,10 +1,20 @@
 import OpenAI from "openai";
 import { storage } from "./storage";
 import type { ScrapedWebsite, InsertScrapedWebsite } from "@shared/schema";
+import { validateBookingUrl, validateWebsiteUrl, isSameDomain, detectBookingLinks, detectSocialLinks } from "./urlValidator";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
 });
+
+// Configuration for multi-page crawling
+const CRAWL_CONFIG = {
+  maxPages: 15,          // Maximum pages to crawl
+  maxDepth: 2,           // Maximum link depth from homepage
+  pageTimeoutMs: 15000,  // Timeout per page
+  totalTimeoutMs: 120000, // Total crawl timeout (2 minutes)
+  delayBetweenRequestsMs: 500, // Delay between requests
+};
 
 interface ExtractedData {
   businessName?: string;
