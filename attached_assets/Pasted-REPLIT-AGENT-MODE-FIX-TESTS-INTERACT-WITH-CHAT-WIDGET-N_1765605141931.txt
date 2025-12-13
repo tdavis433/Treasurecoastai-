@@ -1,0 +1,92 @@
+REPLIT AGENT MODE — FIX TESTS: INTERACT WITH CHAT WIDGET (NOT THE INTEREST FORM)
+Goal: Our automated tests/agent actions keep typing into the “Interested/Contact” form on the landing page instead of the chat widget. Fix this so testing reliably targets the widget and chat flow, even though the widget is inside an iframe.
+
+NON-NEGOTIABLE
+- Do NOT touch payment processing (keep billing routes disabled / no payments).
+- Do NOT print secrets.
+- Don’t “assume” typing worked — verify messages appear in the widget transcript.
+
+========================================================
+PHASE 1 — STOP TESTING THE WIDGET ON THE LANDING PAGE
+========================================================
+Problem: Landing page has a form with inputs, and the agent/test keeps filling those.
+Solution: All widget UI tests must run on a dedicated widget-only page.
+
+1) Make /widget-test.html the PRIMARY E2E/UI test target.
+- Ensure /widget-test.html contains ONLY:
+  - A clear “Open Widget” control (if needed)
+  - The embed snippet / widget mount
+  - No contact/lead form inputs
+- If /widget-test.html currently includes extra content, strip it down.
+
+2) Add a new dedicated route/page if needed:
+- /demo/widget (or similar)
+- MUST be minimal and widget-only.
+
+========================================================
+PHASE 2 — MAKE THE WIDGET TESTABLE (IFRAME-SAFE)
+========================================================
+Because the widget runs inside an iframe, tests must explicitly target it:
+
+A) Update Playwright/agent steps to:
+- Navigate to /widget-test.html (NOT /)
+- Wait for the widget iframe to exist (e.g. iframe[src*="widget"] or known selector)
+- Use frameLocator() to interact inside the iframe:
+  - Click widget open button (inside iframe if needed)
+  - Type message into the widget input
+  - Click Send
+  - Assert the message appears in the widget message list
+  - Assert an AI response appears
+
+B) If iframe DOM access is still blocked/flaky:
+Add a TEST MODE option (dev/test only) to mount widget without an iframe.
+- Example: /widget-test.html?noIframe=1
+- embed.js checks for that param in dev/test and mounts widget directly
+- Production behavior MUST remain iframe (if that’s your default)
+
+========================================================
+PHASE 3 — ADD STABLE SELECTORS (DATA-TESTIDS) IN WIDGET UI
+========================================================
+In public/widget/widget.js, add data-testid attributes to key elements:
+- data-testid="tcai-widget-open"
+- data-testid="tcai-widget-input"
+- data-testid="tcai-widget-send"
+- data-testid="tcai-widget-messages"
+- data-testid="tcai-widget-retry"
+Then update tests to use these selectors ONLY (never generic input selectors).
+
+========================================================
+PHASE 4 — ADD A “WIDGET-ONLY E2E” TEST (OR SCRIPT) THAT PROVES REAL CHAT
+========================================================
+Create one reliable test that:
+1) Opens /widget-test.html
+2) Opens widget
+3) Sends: “Hello — test message”
+4) Verifies the user message appears in the widget
+5) Verifies an assistant response appears (or fallback appears)
+6) Triggers booking intent phrase: “I want to book”
+7) Verifies booking button appears (or fallback CTA appears if URL invalid)
+IMPORTANT: Do NOT ever type into the landing page contact form.
+
+If you cannot fully do UI testing, keep the API-based test script too, but the UI test must at least verify that typed text shows in the widget (not the form).
+
+========================================================
+PHASE 5 — VERIFY
+========================================================
+Run:
+- bash ./scripts/guard-no-payments.sh
+- npx tsc --noEmit
+- npx vitest run
+- npm run build
+Then run the widget UI test on /widget-test.html and prove it types into the widget input (via data-testid assertions).
+
+========================================================
+FINAL OUTPUT (STRICT)
+========================================================
+Return:
+1) The final test steps or test file (path + key selectors)
+2) Proof you are targeting the iframe correctly (frameLocator usage) OR proof test-mode noIframe works
+3) The new/updated /widget-test.html behavior (what’s on the page)
+4) Quality gate results PASS
+
+START NOW.
