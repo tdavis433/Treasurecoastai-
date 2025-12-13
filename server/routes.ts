@@ -1767,6 +1767,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? botConfig.quickActions
         : getDefaultQuickActions(botConfig.botType, botConfig.businessProfile?.businessName);
       
+      // Get client settings for behavior configuration
+      const settings = await storage.getSettings(clientId);
+      
       // Return safe widget configuration (no sensitive data)
       res.json({
         status: 'active',
@@ -1778,7 +1781,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         theme: 'dark',
         token: widgetToken,
         quickActions,
-        enableHumanHandoff: true
+        enableHumanHandoff: true,
+        // Behavior settings for AI behavior control
+        behaviorPreset: settings?.behaviorPreset || 'support_lead_focused',
+        leadCaptureEnabled: settings?.leadCaptureEnabled ?? true,
+        leadDetectionSensitivity: settings?.leadDetectionSensitivity || 'medium',
       });
     } catch (error) {
       console.error('Widget config error:', error);
