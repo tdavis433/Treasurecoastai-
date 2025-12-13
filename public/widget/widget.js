@@ -156,11 +156,37 @@
     elements.messages.scrollTop = elements.messages.scrollHeight;
   }
   
+  // Validate booking URL - only allow https:// and block dangerous schemes
+  function isValidBookingUrl(url) {
+    if (!url || typeof url !== 'string') return false;
+    var trimmed = url.trim().toLowerCase();
+    // Block dangerous schemes
+    if (trimmed.startsWith('javascript:') || 
+        trimmed.startsWith('data:') || 
+        trimmed.startsWith('file:') ||
+        trimmed.startsWith('vbscript:')) {
+      console.warn('Blocked unsafe booking URL scheme:', trimmed.substring(0, 20));
+      return false;
+    }
+    // Only allow https://
+    if (!trimmed.startsWith('https://')) {
+      console.warn('Booking URL must use HTTPS:', trimmed.substring(0, 30));
+      return false;
+    }
+    return true;
+  }
+
   function showBookingButton(bookingUrl) {
     // Remove any existing booking button
     var existingBtn = document.querySelector('.tcai-booking-btn');
     if (existingBtn) {
       existingBtn.remove();
+    }
+    
+    // Validate URL before rendering
+    if (!isValidBookingUrl(bookingUrl)) {
+      console.warn('Invalid booking URL blocked');
+      return;
     }
     
     // Create booking button
@@ -325,35 +351,86 @@
       state.isLoading = false;
       renderMessages();
       
-      // Show friendly error with retry hint
+      // Show friendly error with retry button - never expose stack traces
       var errorMsg = error.message || 'Failed to send message.';
+      var friendlyMsg = 'Something went wrong. Please try again.';
       if (errorMsg.includes('high demand') || errorMsg.includes('rate limit') || errorMsg.includes('overloaded')) {
-        renderErrorWithRetry('Our AI is experiencing high demand. Please wait a moment and try again.');
-      } else {
-        renderErrorWithRetry(errorMsg);
+        friendlyMsg = 'Our AI is experiencing high demand. Please wait a moment and try again.';
+      } else if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
+        friendlyMsg = 'Connection issue. Please check your internet and try again.';
       }
+      renderErrorWithRetry(friendlyMsg, content);
+      // Log to console for debugging (not exposed to UI)
       console.error('Chat error:', error);
     } finally {
       elements.sendBtn.disabled = false;
     }
   }
   
-  function renderErrorWithRetry(message) {
+  // Store last failed message for retry
+  var lastFailedMessage = '';
+
+  function renderErrorWithRetry(message, failedContent) {
+    // Store failed message for retry button
+    if (failedContent) {
+      lastFailedMessage = failedContent;
+    }
+    
+    // Sanitize error message - never show stack traces
+    var safeMessage = message;
+    if (safeMessage.includes('Error:') || safeMessage.includes('at ') || safeMessage.length > 100) {
+      safeMessage = 'Something went wrong. Please try again.';
+    }
+    
     var errorDiv = document.createElement('div');
     errorDiv.className = 'tcai-error tcai-error-recoverable';
     errorDiv.setAttribute('data-testid', 'error-message');
     errorDiv.setAttribute('role', 'alert');
     errorDiv.innerHTML = [
       '<div class="tcai-error-content">',
-      '  <span>' + escapeHtml(message) + '</span>',
+      '  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>',
+      '  <span>' + escapeHtml(safeMessage) + '</span>',
       '</div>',
-      '<div class="tcai-error-hint">',
-      '  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>',
-      '  <span>Type your message again to retry</span>',
-      '</div>'
+      '<button class="tcai-retry-btn" data-testid="button-retry" style="',
+      '  display: flex;',
+      '  align-items: center;',
+      '  justify-content: center;',
+      '  gap: 6px;',
+      '  margin-top: 8px;',
+      '  padding: 8px 16px;',
+      '  background: rgba(255,255,255,0.1);',
+      '  color: inherit;',
+      '  border: 1px solid rgba(255,255,255,0.2);',
+      '  border-radius: 6px;',
+      '  font-size: 13px;',
+      '  cursor: pointer;',
+      '  transition: background 0.2s;',
+      '">',
+      '  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>',
+      '  Retry',
+      '</button>'
     ].join('');
     elements.messages.appendChild(errorDiv);
     elements.messages.scrollTop = elements.messages.scrollHeight;
+    
+    // Attach retry button handler
+    var retryBtn = errorDiv.querySelector('.tcai-retry-btn');
+    if (retryBtn) {
+      retryBtn.onclick = function() {
+        errorDiv.remove();
+        if (lastFailedMessage) {
+          sendMessage(lastFailedMessage);
+        } else if (elements.input && elements.input.value.trim()) {
+          sendMessage(elements.input.value);
+        }
+      };
+      retryBtn.onmouseover = function() {
+        retryBtn.style.background = 'rgba(255,255,255,0.2)';
+      };
+      retryBtn.onmouseout = function() {
+        retryBtn.style.background = 'rgba(255,255,255,0.1)';
+      };
+    }
     
     // Re-enable input after brief timeout
     setTimeout(function() {

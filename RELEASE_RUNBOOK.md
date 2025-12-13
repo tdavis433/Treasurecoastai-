@@ -373,6 +373,49 @@ git checkout [commit-hash]
 
 ---
 
+## Client Website Embed Instructions
+
+### Quick Start
+
+1. **Get your embed snippet** from the Admin Dashboard → Assistants → Your Bot → Integration Panel
+2. **Paste the snippet** in your website HTML, just before the closing `</body>` tag:
+
+```html
+<script
+  src="https://your-domain.com/widget/embed.js"
+  data-client-id="your_client_id"
+  data-bot-id="your_bot_id"
+  data-primary-color="#00E5CC"
+  data-business-name="Your Business"
+></script>
+</body>
+```
+
+### Verification Steps
+
+1. **Open in Incognito/Private window** (clears cache and cookies)
+2. **Check for the chat bubble** in the bottom-right corner
+3. **Click the bubble** and send a test message
+4. **Verify AI responds** with relevant information
+
+### Common Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Widget not appearing | Hard refresh (Ctrl+Shift+R / Cmd+Shift+R), check for JavaScript errors in browser console (F12) |
+| Widget blocked | Disable ad blockers temporarily; check if your site's CSP allows the widget origin |
+| "Something went wrong" error | Check internet connection, try clicking Retry button, verify bot is not paused |
+| Booking button not working | Verify external booking URL is configured and uses HTTPS |
+
+### Security Notes
+
+- The embed snippet contains **no secrets** - only public identifiers (clientId, botId) and styling
+- Widget uses **token-based auth** - no third-party cookies required
+- All assets served over **HTTPS only**
+- Booking links validated to **HTTPS only** (blocks javascript:, data:, file: schemes)
+
+---
+
 ## Release Notes
 
 ### Version 1.2 (December 2025)
