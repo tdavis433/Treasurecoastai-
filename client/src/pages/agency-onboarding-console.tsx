@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { BEHAVIOR_PRESETS, type BehaviorPreset } from "@shared/schema";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -257,6 +258,9 @@ export default function AgencyOnboardingConsole() {
     logoUrl: "",
   });
   const [isMatchingTheme, setIsMatchingTheme] = useState(false);
+  
+  // Behavior preset for AI conversation style
+  const [behaviorPreset, setBehaviorPreset] = useState<BehaviorPreset>("support_lead_focused");
 
   const { data: templates, isLoading: templatesLoading } = useQuery<IndustryTemplate[]>({
     queryKey: ["/api/agency-onboarding/templates"],
@@ -440,6 +444,7 @@ export default function AgencyOnboardingConsole() {
         websiteSuggestions: payload.websiteSuggestions,
         notification: payload.notification,
         styleConfig,
+        behaviorPreset,
       }) as unknown as { clientId: string; botId: string };
 
       // Step 3: Run QA Gate immediately
@@ -1073,6 +1078,32 @@ export default function AgencyOnboardingConsole() {
                       </FormItem>
                     )}
                   />
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1">
+                      <Bot className="h-3 w-3 text-cyan-400" /> AI Behavior Preset
+                    </Label>
+                    <Select
+                      value={behaviorPreset}
+                      onValueChange={(value: BehaviorPreset) => setBehaviorPreset(value)}
+                    >
+                      <SelectTrigger data-testid="select-behavior-preset">
+                        <SelectValue placeholder="Select behavior preset" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(BEHAVIOR_PRESETS).map(([key, preset]) => (
+                          <SelectItem key={key} value={key} data-testid={`option-preset-${key}`}>
+                            <div className="flex flex-col">
+                              <span>{preset.name}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {BEHAVIOR_PRESETS[behaviorPreset].description}
+                    </p>
+                  </div>
                 </form>
               </Form>
             </CardContent>
