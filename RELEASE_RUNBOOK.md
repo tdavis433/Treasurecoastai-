@@ -6,6 +6,20 @@
 
 ---
 
+## PRE-DEMO / PRE-DEPLOY QUICK VERIFY (REPLIT)
+
+```bash
+bash ./scripts/guard-no-payments.sh
+npx tsc --noEmit
+npx vitest run
+npm run build
+
+# Optional DB schema check (if psql available)
+psql "$DATABASE_URL" -f scripts/verify-db-schema.sql
+```
+
+---
+
 ## Safe Demo Path (Quick Smoke Test)
 
 Before any demo or deployment, run this 5-step verification:
