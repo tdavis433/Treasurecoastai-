@@ -1,0 +1,113 @@
+PROMPT 1 — REPLIT AGENT MODE
+ADD TEST/GUARD COMMANDS + MINIMAL UNIT TESTS + UPDATE RUNBOOK (FULL IMPLEMENTATION)
+
+GOAL
+Make verification repeatable and match the runbook by adding:
+- npm test (Vitest)
+- npm run guard:no-payments (uses existing guard script)
+- npm run db:verify (runs scripts/verify-db-schema.sql)
+- npm run check (TypeScript noEmit)
+- npm run test:e2e (Playwright if installed; otherwise install + add minimal E2E or add a clearly labeled placeholder)
+Also add a minimal Vitest smoke test that prevents regression of tenant isolation for /api/analytics/export (clientId must come from session only).
+
+NON-NEGOTIABLE RULES
+- NO PAYMENT PROCESSING EVER: Do not introduce Stripe/Square/PayPal/checkout/payment intents/tokens/webhooks/billing code.
+- Do NOT print secrets/tokens/passwords in output.
+- Keep changes minimal and stable. Prefer adding small helpers rather than refactoring the whole app.
+- Ensure docs remain truthful: the runbook commands must exist and succeed.
+
+CURRENT CONTEXT
+Existing package.json scripts:
+- dev, build, start, check, db:push
+Vitest is already installed (vitest + @vitest/coverage-v8).
+Existing scripts already in repo:
+- scripts/guard-no-payments.sh
+- scripts/verify-db-schema.sql
+
+========================================================
+PHASE 1 — UPDATE package.json SCRIPTS (MANDATORY)
+========================================================
+Update package.json scripts to include (preserve existing ones too):
+
+"check": "tsc --noEmit",
+"test": "vitest run",
+"test:watch": "vitest",
+"test:coverage": "vitest run --coverage",
+"guard:no-payments": "bash ./scripts/guard-no-payments.sh",
+"db:verify": "psql \"$DATABASE_URL\" -f scripts/verify-db-schema.sql",
+
+E2E:
+A) If Playwright already exists:
+"test:e2e": "playwright test"
+
+B) If Playwright NOT installed:
+- Install it:
+  npm i -D @playwright/test
+  npx playwright install --with-deps  (only if needed on Replit)
+- Add:
+  "test:e2e": "playwright test"
+
+If Playwright cannot be installed/configured, use a non-failing placeholder ONLY as last resort:
+"test:e2e": "node -e \"console.log('E2E not configured yet. Skipping.');\""
+…and update the runbook to clearly say E2E is optional until configured.
+
+========================================================
+PHASE 2 — ADD VITEST CONFIG + MINIMAL REGRESSION TEST (MANDATORY)
+========================================================
+1) Create vitest.config.ts (if missing) for Node environment.
+2) Create tests/unit/ folder (if missing).
+3) Add a minimal regression test that proves export tenant scoping can’t regress.
+
+Preferred minimal approach:
+- Create server/utils/tenantScope.ts with a pure helper:
+  export function getExportClientId(sessionRole: string | undefined, sessionClientId: string | undefined): string | undefined
+  For now it should ALWAYS return sessionClientId (no query override).
+- Update /api/analytics/export handler to use that helper (smallest possible change).
+- Add tests/unit/tenantScope.test.ts asserting:
+  - returns sessionClientId for normal users
+  - returns undefined if sessionClientId missing
+
+Do NOT refactor the whole routes file.
+
+========================================================
+PHASE 3 — OPTIONAL PLAYWRIGHT E2E (RECOMMENDED IF FEASIBLE)
+========================================================
+If Playwright is installed, add 1 minimal E2E test that:
+- Loads the app base URL
+- Verifies login page loads
+- Optionally verifies widget loads on landing/demo page (no secrets)
+IMPORTANT: Do NOT hardcode credentials in repo tests.
+Use env vars:
+E2E_BASE_URL, E2E_ADMIN_USER, E2E_ADMIN_PASS, E2E_CLIENT_USER, E2E_CLIENT_PASS
+
+========================================================
+PHASE 4 — UPDATE RELEASE_RUNBOOK.md (MANDATORY)
+========================================================
+Update the runbook “Commands to Verify” section to the REAL scripts:
+- npm run guard:no-payments
+- npm run db:verify
+- npm run check
+- npm test
+- npm run test:e2e (only if configured; otherwise clearly label optional)
+
+========================================================
+PHASE 5 — RUN ALL COMMANDS (MANDATORY)
+========================================================
+Run and confirm they pass:
+1) npm run guard:no-payments
+2) npm run check
+3) npm test
+4) npm run db:push
+5) npm run db:verify
+6) npm run test:e2e (if real)
+
+========================================================
+FINAL OUTPUT (STRICT)
+========================================================
+Provide:
+1) The updated package.json scripts block
+2) List of files created/edited
+3) Short results of each command run (pass/fail)
+4) If Playwright added: list required E2E env var names only (no secrets)
+
+START NOW.
