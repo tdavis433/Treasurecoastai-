@@ -1,0 +1,113 @@
+COPY/PASTE — REPLIT AGENT MODE PROMPT
+Fix drizzle-kit push interactive prompt: workspaces_slug_unique constraint
+
+CONTEXT
+- We already fixed client_settings.metadata drift by switching schema to jsonb + notNull + default.
+- db:push still shows an interactive prompt, but it is now about: workspaces_slug_unique constraint/index.
+- Goal: eliminate the prompt permanently by aligning Drizzle schema with actual DB state, WITHOUT destructive changes or risk to production/demo stability.
+
+NON-NEGOTIABLE SAFETY RULES
+1) Do NOT accept any destructive migration blindly.
+2) Do NOT drop/recreate constraints/indexes if duplicates exist.
+3) Preserve uniqueness of workspaces.slug (slugs are used in URLs and must be unique).
+4) No secrets in logs/output.
+
+OBJECTIVE
+- Determine exactly why drizzle-kit push is prompting about workspaces_slug_unique.
+- Fix schema/DB drift so db:push becomes clean and non-interactive.
+- Ensure workspaces.slug remains enforced UNIQUE in a stable way (preferably using a clearly named unique constraint or unique index).
+- Produce a short report explaining what was wrong and what was changed.
+
+STEP-BY-STEP TASKS (FOLLOW IN ORDER)
+
+PHASE 1 — CAPTURE WHAT DRIZZLE IS ASKING
+1) Run:
+   npm run db:push
+2) Copy the FULL interactive prompt output exactly as shown (the lines describing what it wants to do).
+3) DO NOT choose “yes” yet. Stop and analyze first.
+
+PHASE 2 — CHECK DATA SAFETY (DUPLICATE SLUGS)
+4) In Postgres, run:
+   SELECT slug, COUNT(*)
+   FROM workspaces
+   GROUP BY slug
+   HAVING COUNT(*) > 1;
+
+- If any rows return:
+  a) This is the root cause (cannot safely enforce uniqueness).
+  b) Fix duplicates first (see PHASE 4A).
+
+- If 0 rows return:
+  proceed to PHASE 3.
+
+PHASE 3 — INSPECT CURRENT DB CONSTRAINTS/INDEXES
+5) Check indexes:
+   SELECT indexname, indexdef
+   FROM pg_indexes
+   WHERE tablename = 'workspaces';
+
+6) Check constraints:
+   SELECT conname, pg_get_constraintdef(c.oid) AS def
+   FROM pg_constraint c
+   JOIN pg_class t ON c.conrelid = t.oid
+   WHERE t.relname = 'workspaces';
+
+7) Identify:
+- Does workspaces.slug have uniqueness enforced currently?
+- Is it enforced by a UNIQUE INDEX or a UNIQUE CONSTRAINT?
+- What is the exact name (e.g., workspaces_slug_unique, workspaces_slug_uniqueconstraint, etc.)?
+
+PHASE 4 — ALIGN DRIZZLE SCHEMA TO DB (STOP THE PROMPT)
+Goal: Make Drizzle schema match the DB enforcement method + naming so db:push becomes a no-op.
+
+4A) If duplicates existed (from PHASE 2)
+8) Create a deterministic slug-fix plan:
+- Keep the earliest/primary record’s slug unchanged.
+- For duplicates, append a suffix like “-2”, “-3”, or “-<shortid>”.
+9) Apply updates safely:
+- Update duplicate rows to unique slugs.
+- Re-run the duplicate query until it returns 0 rows.
+
+4B) Decide the canonical uniqueness approach
+10) Prefer one stable approach:
+Option 1 (recommended): Use a named UNIQUE constraint via Drizzle `unique("...").on(t.slug)`
+Option 2: Use `.unique()` directly on the column (may auto-name and cause churn)
+Option 3: Use a named unique index (if your schema style uses indexes for uniqueness)
+
+11) Update shared/schema.ts so it matches what EXISTS in DB:
+- If DB uses a UNIQUE CONSTRAINT named X: define unique("X").on(t.slug)
+- If DB uses a UNIQUE INDEX named Y: define the matching unique index approach (or rename DB to match schema)
+
+IMPORTANT:
+- Do NOT change DB objects just to “make Drizzle happy” unless it is safe and non-destructive.
+- Prefer changing schema naming to match DB if possible.
+
+PHASE 5 — RE-RUN db:push UNTIL CLEAN
+12) Run:
+   npm run db:push
+13) Expected outcome:
+- No interactive prompt.
+- No destructive changes suggested.
+- If still prompting, repeat PHASE 1–4 until schema and DB match perfectly.
+
+PHASE 6 — VALIDATION (MUST DO)
+14) Validate uniqueness is enforced:
+- Attempt inserting a duplicate slug (or simulate) and confirm it fails.
+- Confirm app routes that depend on slug still work.
+15) Validate core platform still works:
+- Admin login
+- Client login
+- Widget loads and AI responds
+16) Confirm no new schema drift:
+- db:push should remain non-interactive on subsequent runs.
+
+DELIVERABLE (REQUIRED OUTPUT)
+Provide a short final report including:
+- What the db:push prompt wanted to do (quoted/paraphrased)
+- Whether duplicates existed (and how fixed)
+- What was changed in shared/schema.ts (exact snippet)
+- What exists in DB now (constraint/index name + definition)
+- Confirmation: db:push now runs cleanly, and uniqueness is enforced
+
+START NOW
+- Begin with PHASE 1 (capture prompt output) and proceed through all phases until db:push is clean and stable.
