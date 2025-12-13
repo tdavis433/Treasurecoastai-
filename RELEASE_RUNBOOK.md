@@ -185,7 +185,7 @@ npm run build                         # Production build
 # psql "$DATABASE_URL" -f scripts/verify-db-schema.sql
 ```
 
-**Note:** E2E testing uses the Replit Agent `run_test` tool (Playwright-based).
+**Note:** E2E testing uses the Replit Agent `run_test` tool (Playwright-based). E2E may not be runnable via `npm run test:e2e` unless Playwright is configured locally.
 
 ---
 
