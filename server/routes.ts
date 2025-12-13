@@ -85,7 +85,7 @@ import { resetDemoWorkspace, seedAllDemoWorkspaces, getDemoSlugs, getDemoConfig 
 import { getWidgetEmbedCode, getEmbedInstructions, type WidgetEmbedOptions } from './embed';
 import { extractBookingInfoFromConversation, type ExtractedBookingInfo, type ChatMessage as OrchestratorChatMessage } from './orchestrator';
 import { requireExportClientId } from './utils/tenantScope';
-import { logAuditEvent, createAuditHelper, getAuditLogs } from './auditLogger';
+import { logAuditEvent, createAuditHelper, getAuditLogs, extractRequestInfo } from './auditLogger';
 import { retryFetch, createNotificationRetryLogger } from './retryUtils';
 import { exportClientData, deleteClientData, getRetentionConfig, purgeOldData } from './dataLifecycle';
 import { INDUSTRY_TEMPLATES, type IndustryTemplate } from './industryTemplates';
@@ -3776,7 +3776,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         const result = recordFailedLogin(username);
         
         // Audit log failed login
-        const { ipAddress, userAgent } = require('./auditLogger').extractRequestInfo(req);
+        const { ipAddress, userAgent } = extractRequestInfo(req);
         await logAuditEvent({
           userId: user.id,
           username: user.username,
@@ -3801,7 +3801,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       clearFailedLogins(username);
 
       // Audit log successful login
-      const { ipAddress, userAgent } = require('./auditLogger').extractRequestInfo(req);
+      const loginReqInfo = extractRequestInfo(req);
       await logAuditEvent({
         userId: user.id,
         username: user.username,
@@ -3810,8 +3810,8 @@ These suggestions should be relevant to what was just discussed and help guide t
         resourceType: 'session',
         clientId: user.clientId || undefined,
         details: { method: 'password' },
-        ipAddress,
-        userAgent,
+        ipAddress: loginReqInfo.ipAddress,
+        userAgent: loginReqInfo.userAgent,
       });
 
       // Update lastLoginAt
@@ -3901,7 +3901,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         .where(eq(adminUsers.id, user.id));
 
       // Audit log password change
-      const { ipAddress, userAgent } = require('./auditLogger').extractRequestInfo(req);
+      const pwdChangeReqInfo = extractRequestInfo(req);
       await logAuditEvent({
         userId: user.id,
         username: user.username,
@@ -3911,8 +3911,8 @@ These suggestions should be relevant to what was just discussed and help guide t
         resourceId: user.id,
         clientId: user.clientId || undefined,
         details: { forced: user.mustChangePassword },
-        ipAddress,
-        userAgent,
+        ipAddress: pwdChangeReqInfo.ipAddress,
+        userAgent: pwdChangeReqInfo.userAgent,
       });
 
       // Session invalidation: destroy all other sessions for this user

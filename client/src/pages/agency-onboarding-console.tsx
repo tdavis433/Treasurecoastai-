@@ -215,11 +215,12 @@ export default function AgencyOnboardingConsole() {
 
   useEffect(() => {
     if (selectedTemplate) {
-      form.setValue("primaryCTA", selectedTemplate.bookingProfile.primaryCTA as any);
-      form.setValue("bookingPreference", selectedTemplate.bookingProfile.mode);
+      form.setValue("primaryCTA", selectedTemplate.bookingProfile?.primaryCTA as any || "consult");
+      form.setValue("bookingPreference", selectedTemplate.bookingProfile?.mode || "internal");
       
-      setKbServices(selectedTemplate.defaultConfig.businessProfile.services.map(s => ({ name: s, description: "" })));
-      setKbFaqs(selectedTemplate.defaultConfig.faqs);
+      const services = selectedTemplate.defaultConfig?.businessProfile?.services || [];
+      setKbServices(services.map(s => ({ name: s, description: "" })));
+      setKbFaqs(selectedTemplate.defaultConfig?.faqs || []);
     }
   }, [selectedTemplate, form]);
 
@@ -1156,7 +1157,7 @@ export default function AgencyOnboardingConsole() {
                   <div>
                     <h3 className="font-semibold mb-3">Widget CTA Buttons</h3>
                     <div className="grid grid-cols-2 gap-3">
-                      {selectedTemplate?.ctaButtons.map((cta) => (
+                      {selectedTemplate?.ctaButtons?.map((cta) => (
                         <div 
                           key={cta.id}
                           className={`p-4 rounded-lg border ${
@@ -1299,7 +1300,7 @@ export default function AgencyOnboardingConsole() {
                       <div 
                         className="p-4 text-white"
                         style={{ 
-                          background: `linear-gradient(135deg, ${selectedTemplate?.defaultConfig.theme.primaryColor || '#00E5CC'} 0%, ${selectedTemplate?.defaultConfig.theme.primaryColor || '#00E5CC'}88 100%)` 
+                          background: `linear-gradient(135deg, ${selectedTemplate?.defaultConfig?.theme?.primaryColor || '#00E5CC'} 0%, ${selectedTemplate?.defaultConfig?.theme?.primaryColor || '#00E5CC'}88 100%)` 
                         }}
                       >
                         <div className="flex items-center gap-3">
@@ -1316,12 +1317,12 @@ export default function AgencyOnboardingConsole() {
                       <div className="p-4 space-y-3 bg-slate-950">
                         <div className="bg-white/10 rounded-2xl rounded-tl-md p-3 max-w-[80%]">
                           <p className="text-sm text-white/90">
-                            {selectedTemplate?.defaultConfig.theme.welcomeMessage || "Hello! How can I help you today?"}
+                            {selectedTemplate?.defaultConfig?.theme?.welcomeMessage || "Hello! How can I help you today?"}
                           </p>
                         </div>
                         
                         <div className="flex flex-wrap gap-2">
-                          {selectedTemplate?.ctaButtons.slice(0, 3).map((cta) => (
+                          {selectedTemplate?.ctaButtons?.slice(0, 3).map((cta) => (
                             <button
                               key={cta.id}
                               className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
@@ -1330,7 +1331,7 @@ export default function AgencyOnboardingConsole() {
                                   : 'bg-white/10 text-white/80 hover:bg-white/20'
                               }`}
                               style={cta.isPrimary ? { 
-                                background: selectedTemplate?.defaultConfig.theme.primaryColor || '#00E5CC' 
+                                background: selectedTemplate?.defaultConfig?.theme?.primaryColor || '#00E5CC' 
                               } : undefined}
                             >
                               {cta.label}
@@ -1349,7 +1350,7 @@ export default function AgencyOnboardingConsole() {
                           />
                           <button 
                             className="w-8 h-8 rounded-full flex items-center justify-center"
-                            style={{ background: selectedTemplate?.defaultConfig.theme.primaryColor || '#00E5CC' }}
+                            style={{ background: selectedTemplate?.defaultConfig?.theme?.primaryColor || '#00E5CC' }}
                           >
                             <Send className="h-4 w-4 text-white" />
                           </button>
