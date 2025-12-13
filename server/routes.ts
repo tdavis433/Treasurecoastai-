@@ -89,6 +89,7 @@ import { logAuditEvent, createAuditHelper, getAuditLogs, extractRequestInfo } fr
 import { retryFetch, createNotificationRetryLogger } from './retryUtils';
 import { exportClientData, deleteClientData, getRetentionConfig, purgeOldData } from './dataLifecycle';
 import { INDUSTRY_TEMPLATES, type IndustryTemplate } from './industryTemplates';
+import { generatePreviewToken, verifyPreviewToken, getTokenTimeRemaining, type PreviewTokenPayload } from './previewToken';
 
 // =============================================
 // PHASE 2.4: SIGNED WIDGET TOKENS
@@ -1782,6 +1783,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Widget config error:', error);
       res.status(500).json({ error: 'Failed to load widget configuration' });
+    }
+  });
+
+  // =============================================
+  // PUBLIC PREVIEW PAGE API - Token-validated preview access
+  // =============================================
+  
+  // Get preview page data (public, token-validated)
+  app.get('/api/preview/:workspaceSlug', async (req, res) => {
+    try {
+      const { workspaceSlug } = req.params;
+      const token = req.query.t as string;
+      
+      if (!token) {
+        return res.status(401).json({ error: 'Preview token required' });
+      }
+      
+      // Verify the preview token
+      const tokenResult = verifyPreviewToken(token, workspaceSlug);
+      if (!tokenResult.valid || !tokenResult.payload) {
+        return res.status(401).json({ error: tokenResult.error || 'Invalid preview token' });
+      }
+      
+      const { botId } = tokenResult.payload;
+      
+      // Get workspace info
+      const workspace = await getWorkspaceBySlug(workspaceSlug);
+      if (!workspace) {
+        return res.status(404).json({ error: 'Workspace not found' });
+      }
+      
+      // Get bot config
+      const botConfig = await getBotConfigByBotIdAsync(botId) || getBotConfigByBotId(botId);
+      if (!botConfig) {
+        return res.status(404).json({ error: 'Bot not found' });
+      }
+      
+      // Get time remaining on token
+      const timeRemaining = getTokenTimeRemaining(tokenResult.payload);
+      
+      // Generate a widget token for the preview session (uses same expiry as preview token)
+      const secondsLeft = Math.max(60, tokenResult.payload.exp - Math.floor(Date.now() / 1000));
+      const widgetToken = generateWidgetToken(botConfig.clientId, botId, secondsLeft);
+      
+      // Get quick actions
+      const quickActions = botConfig.quickActions && botConfig.quickActions.length > 0
+        ? botConfig.quickActions
+        : getDefaultQuickActions(botConfig.botType, botConfig.businessProfile?.businessName);
+      
+      // Build wow buttons - showcase bot capabilities
+      const wowButtons = [
+        { label: 'Tell me about your services', message: 'What services do you offer?' },
+        { label: 'Book an appointment', message: 'I would like to book an appointment' },
+        { label: 'What are your hours?', message: 'What are your business hours?' },
+        { label: 'Contact information', message: 'How can I contact you?' },
+        { label: 'Pricing info', message: 'Tell me about your pricing' },
+      ];
+      
+      // Return preview page data
+      res.json({
+        success: true,
+        preview: {
+          workspaceSlug,
+          workspaceName: workspace.name || workspaceSlug,
+          botId,
+          botName: botConfig.name,
+          businessName: botConfig.businessProfile?.businessName || botConfig.name,
+          businessType: botConfig.botType || 'generic',
+          logo: botConfig.businessProfile?.logo || null,
+          primaryColor: botConfig.widgetSettings?.primaryColor || '#06b6d4',
+          tagline: botConfig.businessProfile?.tagline || `Your AI Assistant`,
+        },
+        widget: {
+          clientId: botConfig.clientId,
+          botId,
+          token: widgetToken,
+          quickActions,
+        },
+        wowButtons,
+        expiry: {
+          expiresAt: new Date(tokenResult.payload.exp * 1000).toISOString(),
+          timeRemaining: timeRemaining.humanReadable,
+          hoursRemaining: timeRemaining.hoursRemaining,
+          secondsRemaining: timeRemaining.secondsRemaining,
+        },
+      });
+    } catch (error) {
+      console.error('[Preview API] Error:', error);
+      res.status(500).json({ error: 'Failed to load preview data' });
     }
   });
 
@@ -5626,6 +5716,62 @@ These suggestions should be relevant to what was just discussed and help guide t
         success: false,
         error: `Failed to import website: ${errorMessage}` 
       });
+    }
+  });
+
+  // =============================================
+  // PREVIEW LINK GENERATION - 24-hour sales preview links
+  // =============================================
+  
+  // Generate a preview link for a workspace/bot (super_admin only)
+  app.post("/api/admin/preview-link", requireSuperAdmin, async (req, res) => {
+    try {
+      const { workspaceSlug, botId, ttl } = req.body;
+      
+      if (!workspaceSlug || typeof workspaceSlug !== 'string') {
+        return res.status(400).json({ error: "workspaceSlug is required" });
+      }
+      
+      if (!botId || typeof botId !== 'string') {
+        return res.status(400).json({ error: "botId is required" });
+      }
+      
+      // Verify workspace exists
+      const workspace = await getWorkspaceBySlug(workspaceSlug);
+      if (!workspace) {
+        return res.status(404).json({ error: "Workspace not found" });
+      }
+      
+      // Verify bot exists and belongs to this workspace
+      const botConfig = await getBotConfigByBotIdAsync(botId) || getBotConfigByBotId(botId);
+      if (!botConfig) {
+        return res.status(404).json({ error: "Bot not found" });
+      }
+      
+      // Generate preview token (default 24 hours)
+      const tokenTtl = typeof ttl === 'number' && ttl > 0 ? Math.min(ttl, 86400 * 7) : 86400;
+      const tokenResult = generatePreviewToken(workspaceSlug, botId, tokenTtl);
+      
+      // Build the preview URL
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : process.env.BASE_URL || 'http://localhost:5000';
+      const previewUrl = `${baseUrl}/preview/${workspaceSlug}?t=${tokenResult.token}`;
+      
+      console.log(`[Preview Link] Generated for ${workspaceSlug}/${botId}, expires: ${tokenResult.expiresAt.toISOString()}`);
+      
+      res.json({
+        success: true,
+        previewUrl,
+        token: tokenResult.token,
+        expiresAt: tokenResult.expiresAt.toISOString(),
+        expiresIn: tokenResult.expiresIn,
+        workspaceSlug,
+        botId,
+      });
+    } catch (error) {
+      console.error("[Preview Link] Error generating preview link:", error);
+      res.status(500).json({ error: "Failed to generate preview link" });
     }
   });
 

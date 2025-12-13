@@ -243,6 +243,8 @@ export default function AgencyOnboardingConsole() {
   const [kbServices, setKbServices] = useState<Array<{ name: string; description: string }>>([]);
   const [kbFaqs, setKbFaqs] = useState<Array<{ question: string; answer: string }>>([]);
   const [kbPolicies, setKbPolicies] = useState("");
+  const [previewLink, setPreviewLink] = useState<{ url: string; expiresAt: string } | null>(null);
+  const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   const [kbHours, setKbHours] = useState<Record<string, string>>({
     Monday: "9:00 AM - 5:00 PM",
     Tuesday: "9:00 AM - 5:00 PM",
@@ -630,6 +632,54 @@ export default function AgencyOnboardingConsole() {
       toast({
         title: "Copied!",
         description: "Embed code copied to clipboard.",
+      });
+    }
+  };
+
+  const generatePreviewLink = async () => {
+    if (!draftState?.clientId || !draftState?.botId) {
+      toast({
+        title: "Draft Required",
+        description: "Please create a draft setup first.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsGeneratingPreview(true);
+    try {
+      const response = await apiRequest("POST", "/api/admin/preview-link", {
+        workspaceSlug: draftState.clientId,
+        botId: draftState.botId,
+      });
+      
+      setPreviewLink({
+        url: response.previewUrl,
+        expiresAt: response.expiresAt,
+      });
+      
+      navigator.clipboard.writeText(response.previewUrl);
+      toast({
+        title: "Preview Link Generated!",
+        description: "Link copied to clipboard. Valid for 24 hours.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate preview link.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingPreview(false);
+    }
+  };
+
+  const copyPreviewLink = () => {
+    if (previewLink?.url) {
+      navigator.clipboard.writeText(previewLink.url);
+      toast({
+        title: "Copied!",
+        description: "Preview link copied to clipboard.",
       });
     }
   };
@@ -1026,6 +1076,48 @@ export default function AgencyOnboardingConsole() {
                     )}
                     Run QA Gate
                   </Button>
+                  
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2 border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+                    onClick={generatePreviewLink}
+                    disabled={isGeneratingPreview}
+                    data-testid="button-generate-preview"
+                  >
+                    {isGeneratingPreview ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Link2 className="h-4 w-4" />
+                    )}
+                    Generate Preview Link (24h)
+                  </Button>
+                  
+                  {previewLink && (
+                    <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/30 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-purple-400">Preview Link</span>
+                        <span className="text-xs text-muted-foreground">
+                          Expires: {new Date(previewLink.expiresAt).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input 
+                          value={previewLink.url} 
+                          readOnly 
+                          className="text-xs bg-black/30 border-purple-500/20"
+                          data-testid="input-preview-link"
+                        />
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={copyPreviewLink}
+                          data-testid="button-copy-preview"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                   
                   {draftState.status === 'qa_passed' && (
                     <Button

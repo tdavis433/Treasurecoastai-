@@ -303,6 +303,83 @@ Run this exact flow after deploy:
 - Verify widget loads on demo page
 - Test conversation + lead + booking redirect
 
+### 4. Preview Link (Sales Demo)
+- Navigate to Agency Console → Onboarding
+- Click "Generate Preview Link (24h)" for a workspace
+- Verify link is generated with expiry time
+- Open link in new browser → Preview page loads
+- Verify expiry banner displays countdown
+- Click wow buttons → Widget opens with message
+- Test that expired tokens show "Preview Link Expired" message
+
+---
+
+## Preview Link Feature
+
+### Overview
+
+The Preview Link feature allows agencies to generate time-limited (24-hour) branded preview pages for sales prospects. Prospects can test the AI assistant without full account onboarding.
+
+### How It Works
+
+1. **Token Generation:** HMAC-SHA256 signed tokens with 24h TTL
+2. **Public Route:** `/preview/:workspaceSlug?t=<token>`
+3. **Branded Page:** Shows business name, logo, primary color
+4. **Wow Buttons:** Pre-configured prompts to demo AI capabilities
+5. **Expiry Banner:** Live countdown showing time remaining
+6. **Widget Integration:** Fully functional chat widget on preview page
+
+### Security
+
+- Tokens are HMAC-signed using derived secret from `WIDGET_TOKEN_SECRET`
+- Tokens include workspace/bot binding (cannot be reused across workspaces)
+- Expired tokens show friendly "Preview Link Expired" message
+- No authentication required for preview (by design - it's for prospects)
+
+### API Endpoints
+
+**Generate Preview Token (Admin Only):**
+```
+POST /api/admin/preview-link
+Authorization: Super Admin required
+
+Request:
+{
+  "workspaceSlug": "demo_workspace",
+  "botId": "bot_123"
+}
+
+Response:
+{
+  "success": true,
+  "previewUrl": "https://domain.com/preview/demo_workspace?t=...",
+  "expiresAt": "2025-12-14T10:00:00.000Z",
+  "expiresIn": 86400
+}
+```
+
+**Fetch Preview Data (Public):**
+```
+GET /api/preview/:workspaceSlug?t=<token>
+
+Response:
+{
+  "success": true,
+  "preview": { ... },
+  "widget": { ... },
+  "wowButtons": [ ... ],
+  "expiry": { ... }
+}
+```
+
+### Testing
+
+Unit tests in `tests/unit/previewToken.test.ts` cover:
+- Token generation and structure
+- Signature verification
+- Expiry handling
+- Workspace/bot mismatch rejection
+
 ---
 
 ## NO PAYMENTS POLICY (HARD GUARDRAIL)

@@ -45,6 +45,7 @@ import DemoRoofing from "@/pages/demo-roofing";
 import DemoWedding from "@/pages/demo-wedding";
 import DevEmbedTest from "@/pages/dev-embed-test";
 import AgencyOnboardingConsole from "@/pages/agency-onboarding-console";
+import PreviewPage from "@/pages/preview-page";
 import { useEffect } from "react";
 
 function PasswordChangeGuard({ children }: { children: React.ReactNode }) {
@@ -95,6 +96,7 @@ function Router() {
       <Route path="/demo/roofing" component={DemoRoofing} />
       <Route path="/demo/wedding" component={DemoWedding} />
       <Route path="/demo/:botId" component={DemoBotPage} />
+      <Route path="/preview/:workspaceSlug" component={PreviewPage} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
       <Route path="/change-password" component={ChangePassword} />

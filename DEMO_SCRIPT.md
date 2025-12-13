@@ -121,6 +121,33 @@ This script guides you through demonstrating the key features of Treasure Coast 
 
 ---
 
+### Part 3.5: Sales Preview Link (2 minutes)
+
+**Overview:**
+Generate a time-limited (24h) branded preview link to share with prospects. They can test the AI assistant without full onboarding.
+
+**Exact Click Path:**
+1. Sidebar → Agency Console → Onboarding
+2. Select a workspace/client
+3. Click **"Generate Preview Link (24h)"** button (purple button)
+4. Copy the generated link
+5. Share with prospect via email/text
+
+**Demo the Preview Page:**
+1. Open the copied link in a new browser tab
+2. Show the branded header with business logo/name
+3. Point out the **expiry banner** at top (shows time remaining)
+4. Click **"Wow Buttons"** to demo AI capabilities
+5. Widget opens with pre-filled message
+
+**Talking Points:**
+- "Prospects get a branded preview without account setup"
+- "Link expires in 24 hours for security"
+- "They can try the AI assistant immediately"
+- "Conversations are tracked for follow-up"
+
+---
+
 ### Part 4: Widget Demo (3 minutes)
 
 **⚠️ NO PAYMENTS NOTICE:**
