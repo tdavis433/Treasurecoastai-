@@ -2965,11 +2965,29 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
+  // Validation schema for bot request updates
+  const botRequestUpdateSchema = z.object({
+    status: z.enum(["new", "contacted", "qualified", "converted", "declined"]).optional(),
+    priority: z.enum(["low", "normal", "high", "urgent"]).optional(),
+    adminNotes: z.string().max(10000, "Admin notes cannot exceed 10,000 characters").nullable().optional(),
+    assignedTo: z.string().nullable().optional(),
+  });
+
   // Update a bot request (admin only)
   app.patch("/api/bot-requests/:id", requireSuperAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      const updates = req.body;
+      
+      // Validate the update body
+      const validationResult = botRequestUpdateSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: "Validation failed", 
+          details: validationResult.error.errors 
+        });
+      }
+      
+      const updates: Record<string, any> = { ...validationResult.data };
       
       // Handle status changes
       if (updates.status === "contacted" && !updates.contactedAt) {

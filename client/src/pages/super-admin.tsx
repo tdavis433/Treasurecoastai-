@@ -972,7 +972,8 @@ export default function SuperAdmin() {
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
     // Clear auth cache to prevent back-button access after logout
     queryClient.clear();
-    setLocation("/login");
+    // Use hard redirect to ensure all state is cleared
+    window.location.href = "/login";
   };
 
   const getStatusBadge = (status: string) => {
@@ -9234,6 +9235,8 @@ function KnowledgeSectionPanel({ bots, clients }: { bots: BotConfig[]; clients: 
 function BotRequestsSectionPanel() {
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [expandedNotes, setExpandedNotes] = useState<string | null>(null);
+  const [editingNotes, setEditingNotes] = useState<Record<string, string>>({});
   
   interface BotRequest {
     id: string;
@@ -9401,6 +9404,24 @@ function BotRequestsSectionPanel() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          if (expandedNotes === request.id) {
+                            setExpandedNotes(null);
+                          } else {
+                            setExpandedNotes(request.id);
+                            setEditingNotes(prev => ({ ...prev, [request.id]: request.adminNotes || '' }));
+                          }
+                        }}
+                        className="text-white/60 hover:text-white hover:bg-white/10"
+                        data-testid={`button-toggle-notes-${request.id}`}
+                      >
+                        <FileText className="h-4 w-4 mr-1" />
+                        Notes
+                        {request.adminNotes && <span className="ml-1 w-2 h-2 rounded-full bg-cyan-400" />}
+                      </Button>
                       <Select
                         value={request.status}
                         onValueChange={(newStatus) => updateMutation.mutate({ id: request.id, updates: { status: newStatus } })}
@@ -9418,6 +9439,64 @@ function BotRequestsSectionPanel() {
                       </Select>
                     </div>
                   </div>
+                  
+                  {/* Admin Notes Section */}
+                  {expandedNotes === request.id && (
+                    <div className="mt-4 pt-4 border-t border-white/10">
+                      <Label className="text-white/70 text-sm mb-2 block">Internal Admin Notes</Label>
+                      <Textarea
+                        value={editingNotes[request.id] || ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value.length <= 10000) {
+                            setEditingNotes(prev => ({ ...prev, [request.id]: value }));
+                          }
+                        }}
+                        placeholder="Add internal notes about this request..."
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/40 min-h-[100px] resize-y"
+                        data-testid={`textarea-admin-notes-${request.id}`}
+                      />
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-xs text-white/50" data-testid={`text-notes-char-count-${request.id}`}>
+                          {(editingNotes[request.id] || '').length.toLocaleString()} / 10,000
+                        </span>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setExpandedNotes(null);
+                              setEditingNotes(prev => {
+                                const updated = { ...prev };
+                                delete updated[request.id];
+                                return updated;
+                              });
+                            }}
+                            className="text-white/60 hover:text-white hover:bg-white/10"
+                            data-testid={`button-cancel-notes-${request.id}`}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              updateMutation.mutate({ 
+                                id: request.id, 
+                                updates: { adminNotes: editingNotes[request.id] || null } 
+                              });
+                              setExpandedNotes(null);
+                            }}
+                            disabled={updateMutation.isPending}
+                            className="bg-cyan-500 hover:bg-cyan-600 text-white"
+                            data-testid={`button-save-notes-${request.id}`}
+                          >
+                            {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
+                            Save Notes
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

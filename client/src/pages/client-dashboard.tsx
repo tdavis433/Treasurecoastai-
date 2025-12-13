@@ -526,7 +526,8 @@ export default function ClientDashboard() {
       const response = await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
       if (response.ok) {
         queryClient.clear();
-        setLocation("/login");
+        // Use hard redirect to ensure all state is cleared
+        window.location.href = "/login";
       } else {
         toast({ title: "Error", description: "Failed to logout.", variant: "destructive" });
       }

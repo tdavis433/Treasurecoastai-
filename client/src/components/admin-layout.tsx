@@ -1,7 +1,7 @@
 import { useLocation } from "wouter";
 import { Link } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
   Select,
@@ -75,11 +75,10 @@ function AdminLayoutInner({ children }: AdminLayoutProps) {
       return response.json();
     },
     onSuccess: () => {
-      toast({
-        title: "Logged out",
-        description: "You have been logged out successfully.",
-      });
-      setLocation("/login");
+      // Clear all cached auth state
+      queryClient.clear();
+      // Use hard redirect to ensure all state is cleared
+      window.location.href = "/login";
     },
   });
 
