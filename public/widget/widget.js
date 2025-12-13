@@ -156,24 +156,32 @@
     elements.messages.scrollTop = elements.messages.scrollHeight;
   }
   
-  // Validate booking URL - only allow https:// and block dangerous schemes
+  // Validate booking URL - strictly enforce https:// using URL parser
   function isValidBookingUrl(url) {
     if (!url || typeof url !== 'string') return false;
-    var trimmed = url.trim().toLowerCase();
-    // Block dangerous schemes
-    if (trimmed.startsWith('javascript:') || 
-        trimmed.startsWith('data:') || 
-        trimmed.startsWith('file:') ||
-        trimmed.startsWith('vbscript:')) {
-      console.warn('Blocked unsafe booking URL scheme:', trimmed.substring(0, 20));
+    
+    try {
+      // Trim whitespace and parse with URL constructor for strict validation
+      var parsed = new URL(url.trim());
+      
+      // Only allow https: protocol (case-insensitive via URL parser)
+      if (parsed.protocol !== 'https:') {
+        console.warn('Booking URL must use HTTPS protocol');
+        return false;
+      }
+      
+      // Ensure we have a valid hostname
+      if (!parsed.hostname || parsed.hostname.length < 3) {
+        console.warn('Booking URL has invalid hostname');
+        return false;
+      }
+      
+      return true;
+    } catch (e) {
+      // URL constructor throws on invalid URLs (including javascript:, data:, etc.)
+      console.warn('Invalid booking URL:', e.message);
       return false;
     }
-    // Only allow https://
-    if (!trimmed.startsWith('https://')) {
-      console.warn('Booking URL must use HTTPS:', trimmed.substring(0, 30));
-      return false;
-    }
-    return true;
   }
 
   function showBookingButton(bookingUrl) {
