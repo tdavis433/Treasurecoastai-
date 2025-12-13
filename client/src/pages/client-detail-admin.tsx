@@ -274,6 +274,7 @@ export default function ClientDetailAdmin() {
       context?: string;
       status: string;
       createdAt: string;
+      tags?: string[];
     }>;
     total: number;
   }>({

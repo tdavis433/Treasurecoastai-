@@ -187,6 +187,9 @@ export const clientSettings = pgTable("client_settings", {
   }),
   webhookEnabled: boolean("webhook_enabled").notNull().default(false),
   
+  // Metadata for extensible storage (admin notes, etc.)
+  metadata: json("metadata").$type<Record<string, any>>().default({}),
+  
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 

@@ -425,22 +425,22 @@ const analyticsDateRangeQuerySchema = z.object({
 
 const analyticsTrendsQuerySchema = z.object({
   botId: z.string().optional(),
-  days: z.string().regex(/^\d+$/).transform(Number).optional().default("30"),
+  days: z.preprocess((val) => val ?? "30", z.string().regex(/^\d+$/).transform(Number)),
 });
 
 const analyticsSessionsQuerySchema = z.object({
   botId: z.string().optional(),
-  limit: z.string().regex(/^\d+$/).transform(Number).optional().default("50"),
+  limit: z.preprocess((val) => val ?? "50", z.string().regex(/^\d+$/).transform(Number)),
 });
 
 const conversationsQuerySchema = z.object({
   botId: z.string().optional(),
-  limit: z.string().regex(/^\d+$/).transform(Number).optional().default("50"),
-  offset: z.string().regex(/^\d+$/).transform(Number).optional().default("0"),
+  limit: z.preprocess((val) => val ?? "50", z.string().regex(/^\d+$/).transform(Number)),
+  offset: z.preprocess((val) => val ?? "0", z.string().regex(/^\d+$/).transform(Number)),
 });
 
 const superAdminOverviewQuerySchema = z.object({
-  days: z.string().regex(/^\d+$/).transform(Number).optional().default("30"),
+  days: z.preprocess((val) => val ?? "30", z.string().regex(/^\d+$/).transform(Number)),
 });
 
 // Auth schemas
@@ -1883,7 +1883,7 @@ Always be positive and solution-oriented. If someone wants to get started, direc
               botId,
               appointmentRequested: analysis.bookingIntent || freshSession?.appointmentRequested || false,
               topics: freshSession?.topics as string[] || [],
-              metadata: updatedMetadata,
+              metadata: updatedMetadata as any,
               needsReview: analysis.needsReview,
               reviewReason: analysis.reviewReason
             });
@@ -2173,7 +2173,7 @@ These suggestions should be relevant to what was just discussed and help guide t
               botId,
               appointmentRequested: analysis.bookingIntent || freshSession?.appointmentRequested || false,
               topics: freshSession?.topics as string[] || [],
-              metadata: updatedMetadata,
+              metadata: updatedMetadata as any,
               needsReview: analysis.needsReview,
               reviewReason: analysis.reviewReason
             });
@@ -2269,7 +2269,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         res.write(`data: ${JSON.stringify({ 
           type: 'done', 
           suggestedReplies: ["When is a good time to call?", "What are your operating hours?"],
-          meta: { clientId, botId, sessionId: sessionId || `session_${Date.now()}`, rateLimited: true }
+          meta: { clientId: req.params.clientId, botId: req.params.botId, sessionId: req.body?.sessionId || `session_${Date.now()}`, rateLimited: true }
         })}\n\n`);
         res.end();
         return;
@@ -2833,7 +2833,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       // Fire webhook for new appointment (async, non-blocking)
       sendAppointmentCreatedWebhook(effectiveClientId, {
-        id: appointment.id,
+        id: appointment.id as any,
         name: appointment.name,
         email: null, // appointment table doesn't have email column
         phone: appointment.contact,
@@ -2935,13 +2935,13 @@ These suggestions should be relevant to what was just discussed and help guide t
     try {
       const { status, limit = "50", offset = "0" } = req.query;
       
-      let query = db.select().from(botRequests).orderBy(sql`${botRequests.createdAt} DESC`);
+      let requests;
       
       if (status && status !== "all") {
-        query = db.select().from(botRequests).where(eq(botRequests.status, status as string)).orderBy(sql`${botRequests.createdAt} DESC`);
+        requests = await db.select().from(botRequests).where(eq(botRequests.status, status as string)).orderBy(sql`${botRequests.createdAt} DESC`).limit(parseInt(limit as string)).offset(parseInt(offset as string));
+      } else {
+        requests = await db.select().from(botRequests).orderBy(sql`${botRequests.createdAt} DESC`).limit(parseInt(limit as string)).offset(parseInt(offset as string));
       }
-      
-      const requests = await query.limit(parseInt(limit as string)).offset(parseInt(offset as string));
       
       // Get counts by status
       const counts = await db.select({
@@ -3488,9 +3488,9 @@ These suggestions should be relevant to what was just discussed and help guide t
         status: "active",
         settings: {
           brandColor: "#06b6d4",
-          logoUrl: null,
+          logoUrl: undefined,
           timezone: "America/New_York",
-        },
+        } as any,
       }).returning();
 
       // Create workspace membership
@@ -3512,8 +3512,11 @@ These suggestions should be relevant to what was just discussed and help guide t
         businessProfile: {
           businessName: businessName,
           type: "generic",
+          location: "",
           phone: phone || "",
           email: email,
+          website: "",
+          hours: {},
         },
         systemPrompt: `You are a helpful AI assistant for ${businessName}. Be friendly, professional, and help visitors with their questions.`,
         theme: {
@@ -4471,7 +4474,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           ...existingConfig.metadata,
           clonedFrom: botId,
           createdAt: new Date().toISOString(),
-        },
+        } as any,
         status: 'paused', // Start duplicates as paused
       };
       
@@ -4514,6 +4517,11 @@ These suggestions should be relevant to what was just discussed and help guide t
             businessProfile: {
               businessName: 'Serenity House',
               type: 'sober_living',
+              location: '',
+              phone: '',
+              email: '',
+              website: '',
+              hours: {},
               services: ['Structured Living', 'Group Therapy', 'Job Placement', 'Alumni Support', 'Family Programs'],
             },
             systemPrompt: 'You are a compassionate admissions counselor for a sober living facility. Be warm, non-judgmental, and supportive.',
@@ -4526,6 +4534,11 @@ These suggestions should be relevant to what was just discussed and help guide t
             businessProfile: {
               businessName: 'The Gentleman\'s Cut',
               type: 'barber',
+              location: '',
+              phone: '',
+              email: '',
+              website: '',
+              hours: {},
               services: ['Classic Cuts', 'Fades', 'Beard Trims', 'Hot Towel Shave', 'Kids Cuts'],
             },
             systemPrompt: 'You are a friendly front-desk assistant for an upscale barber shop. Be casual but professional.',
@@ -4538,6 +4551,11 @@ These suggestions should be relevant to what was just discussed and help guide t
             businessProfile: {
               businessName: 'Peak Performance Fitness',
               type: 'gym',
+              location: '',
+              phone: '',
+              email: '',
+              website: '',
+              hours: {},
               services: ['24/7 Gym Access', 'Personal Training', 'Group Classes', 'Nutrition Coaching'],
             },
             systemPrompt: 'You are an enthusiastic fitness consultant. Be motivating and helpful.',
@@ -4549,6 +4567,11 @@ These suggestions should be relevant to what was just discussed and help guide t
             businessProfile: {
               businessName: 'The Local Table',
               type: 'restaurant',
+              location: '',
+              phone: '',
+              email: '',
+              website: '',
+              hours: {},
               services: ['Dine-In', 'Takeout', 'Private Events', 'Catering'],
             },
             systemPrompt: 'You are a warm, professional restaurant host. Help guests with reservations and menu questions.',
@@ -4560,6 +4583,11 @@ These suggestions should be relevant to what was just discussed and help guide t
             businessProfile: {
               businessName: 'Precision Auto Care',
               type: 'auto',
+              location: '',
+              phone: '',
+              email: '',
+              website: '',
+              hours: {},
               services: ['Oil Changes', 'Brake Service', 'Engine Diagnostics', 'Tire Service'],
             },
             systemPrompt: 'You are a friendly, trustworthy auto service advisor. Explain repairs in simple terms.',
@@ -4571,6 +4599,11 @@ These suggestions should be relevant to what was just discussed and help guide t
             businessProfile: {
               businessName: 'Reliable Home Pros',
               type: 'home_services',
+              location: '',
+              phone: '',
+              email: '',
+              website: '',
+              hours: {},
               services: ['Plumbing', 'HVAC', 'Electrical', 'Handyman'],
             },
             systemPrompt: 'You are a professional service coordinator. Be helpful and efficient.',
@@ -5849,7 +5882,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         lastSession?.startedAt,
         lastAppointment?.createdAt,
         lastLead?.createdAt,
-      ].filter(Boolean).map(d => new Date(d));
+      ].filter(d => d != null).map(d => new Date(d as any));
       
       const lastActivity = lastActivityDates.length > 0
         ? new Date(Math.max(...lastActivityDates.map(d => d.getTime()))).toISOString()
@@ -6043,7 +6076,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           preview: messages[0]?.content?.substring(0, 100),
         }))
         .sort((a, b) => new Date(b.lastMessage).getTime() - new Date(a.lastMessage).getTime())
-        .slice(offset, offset + limit);
+        .slice(offset as number, (offset as number) + (limit as number));
 
       res.json({
         clientId,
@@ -6179,7 +6212,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
       
       const clientId = (req as any).effectiveClientId;
-      const { botId, days } = queryValidation.data;
+      const { botId, days } = queryValidation.data as { botId?: string; days: number };
       
       const trends = await storage.getClientDailyTrends(clientId, botId, days);
       
@@ -6232,7 +6265,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
       
       const clientId = (req as any).effectiveClientId;
-      const { botId, limit } = queryValidation.data;
+      const { botId, limit } = queryValidation.data as { botId?: string; limit: number };
       
       const sessions = await storage.getClientRecentSessions(clientId, botId, limit);
       
@@ -6337,7 +6370,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
       
       const clientId = (req as any).effectiveClientId;
-      const { botId, days } = queryValidation.data;
+      const { botId, days } = queryValidation.data as { botId?: string; days: number };
       
       const trends = await storage.getClientDailyTrends(clientId, botId, days);
       const summary = await storage.getClientAnalyticsSummary(clientId, botId);
@@ -6417,7 +6450,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(400).json({ error: queryValidation.error });
       }
       
-      const { botId, limit } = queryValidation.data;
+      const { botId, limit } = queryValidation.data as { botId?: string; limit: number };
       const sessions = await storage.getClientRecentSessions(clientId, botId, limit);
       
       // Build CSV content
@@ -7222,8 +7255,8 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
       
       // Get the appointment to verify ownership
-      const appointments = await storage.getAllAppointments(clientId);
-      const appointment = appointments.find((a: any) => a.id.toString() === id);
+      const clientAppointments = await storage.getAllAppointments(clientId);
+      const appointment = clientAppointments.find((a: any) => a.id.toString() === id);
       
       if (!appointment) {
         return res.status(404).json({ error: "Booking not found" });
@@ -7235,9 +7268,9 @@ These suggestions should be relevant to what was just discussed and help guide t
       if (bodyValidation.data.notes !== undefined) updates.notes = bodyValidation.data.notes;
       
       // Use the appointments table for update
-      const [updated] = await db.update(appointments)
+      const [updated] = await (db.update(appointments) as any)
         .set(updates)
-        .where(eq(appointments.id, parseInt(id)))
+        .where(eq(appointments.id, id))
         .returning();
       
       res.json(updated);
@@ -8342,7 +8375,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         source: 'super-admin',
         message: `Admin started impersonation of client ${clientId}`,
         workspaceId: (workspace as any).id,
-        details: { adminId: superAdminId },
+        details: { adminId: superAdminId } as any,
       });
       
       res.json({ 
@@ -8386,7 +8419,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         level: 'info',
         source: 'super-admin',
         message: `Admin ended impersonation of client ${clientId}`,
-        details: { adminId: req.session.userId },
+        details: { adminId: req.session.userId } as any,
       });
       
       res.json({ success: true, message: "Returned to admin view" });
@@ -8498,7 +8531,11 @@ These suggestions should be relevant to what was just discussed and help guide t
           businessProfile: {
             businessName: name,
             type: "generic",
+            location: "",
+            phone: "",
             email: clientEmail,
+            website: "",
+            hours: {},
           },
           systemPrompt: `You are a helpful AI assistant for ${name}. Be friendly, professional, and help visitors with their questions.`,
           theme: {
@@ -8558,7 +8595,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           ownerId: effectiveOwnerId,
           clientEmail: clientEmail || null,
           hasClientAccount: !!clientUser,
-        },
+        } as any,
       });
       
       // Return workspace with client credentials if created
@@ -8803,9 +8840,10 @@ These suggestions should be relevant to what was just discussed and help guide t
           phone: contactPhone || '',
           email: contactEmail,
           website: websiteUrl || '',
+          hours: {},
           services: template.services,
           personaConfig, // Store persona config inside businessProfile
-        },
+        } as any,
         systemPrompt: buildSystemPrompt(),
         theme: {
           primaryColor: "#06b6d4",
@@ -8932,7 +8970,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           personaConfigured: !!(assistantName || assistantRole || toneDescription),
           faqCount: mergedFaqs.length,
           automationsCreated,
-        },
+        } as any,
       });
 
       // 13. Generate widget embed code
@@ -9080,7 +9118,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         details: { 
           resetBy: (req as any).session?.userId,
           stats: result.stats,
-        },
+        } as any,
       });
       
       res.json({ 
@@ -9104,7 +9142,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         level: 'info',
         source: 'super-admin',
         message: `Seeded ${result.seeded.length} demo workspaces`,
-        details: { seeded: result.seeded, errors: result.errors },
+        details: { seeded: result.seeded, errors: result.errors } as any,
       });
       
       res.json({ 
@@ -9179,7 +9217,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const embedOptions: WidgetEmbedOptions = {
         workspaceSlug: slug,
         botId: primaryBot.botId,
-        primaryColor: primaryBot.theme?.primaryColor || "#00E5CC",
+        primaryColor: (primaryBot as any).theme?.primaryColor || "#00E5CC",
         businessName: primaryBot.businessProfile?.businessName || primaryBot.name || "AI Assistant",
         businessSubtitle: primaryBot.businessProfile?.type || "Powered by TCAI",
         showGreetingPopup: false,
@@ -9237,7 +9275,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         source: 'super-admin',
         message: `Workspace ${slug} updated`,
         workspaceId: workspace.id,
-        details: { name, plan, ownerId, adminNotes: adminNotes ? 'updated' : undefined },
+        details: { name, plan, ownerId, adminNotes: adminNotes ? 'updated' : undefined } as any,
       });
       
       res.json(workspace);
@@ -9284,7 +9322,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         source: 'super-admin',
         message: `Workspace ${slug} deleted`,
         workspaceId: (existing as any).id,
-        details: { deletedBots: workspaceBots.length },
+        details: { deletedBots: workspaceBots.length } as any,
       });
       
       await deleteWorkspace(slug);
@@ -9319,18 +9357,19 @@ These suggestions should be relevant to what was just discussed and help guide t
       for (const bot of wsBots) {
         const sessions = await storage.getClientRecentSessions(bot.clientId, bot.botId, 100);
         for (const session of sessions) {
+          const metadata = session.metadata as Record<string, any> || {};
           allConversations.push({
             id: session.id,
             sessionId: session.sessionId,
             botId: bot.botId,
-            visitorName: session.visitorName || null,
-            visitorEmail: session.visitorEmail || null,
-            visitorPhone: session.visitorPhone || null,
-            messageCount: session.messageCount || 0,
-            sentiment: session.sentiment || null,
-            summary: session.summary || null,
+            visitorName: metadata.visitorName || null,
+            visitorEmail: metadata.visitorEmail || null,
+            visitorPhone: metadata.visitorPhone || null,
+            messageCount: session.userMessageCount + session.botMessageCount,
+            sentiment: metadata.sentiment || null,
+            summary: metadata.aiSummary || null,
             createdAt: session.startedAt?.toISOString(),
-            updatedAt: session.updatedAt?.toISOString(),
+            updatedAt: session.endedAt?.toISOString() || session.startedAt?.toISOString(),
           });
         }
       }
@@ -9366,7 +9405,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         name: lead.name || 'Anonymous',
         email: lead.email || null,
         phone: lead.phone || null,
-        context: lead.context || null,
+        context: lead.conversationPreview || lead.notes || null,
         status: lead.status || 'new',
         createdAt: lead.createdAt?.toISOString(),
         updatedAt: lead.updatedAt?.toISOString() || null,
@@ -9395,9 +9434,9 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
       
       // Get appointments for this workspace (using slug as clientId)
-      const appointmentsList = await storage.getAppointments(slug);
+      const appointmentsList = await storage.getAllAppointments(slug);
       
-      const formattedAppointments = appointmentsList.map(apt => ({
+      const formattedAppointments = appointmentsList.map((apt: any) => ({
         id: apt.id,
         name: apt.name || 'Unknown',
         contact: apt.contact || null,
@@ -9965,7 +10004,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           },
           seeded: seededData,
           resetBy: req.session.userId,
-        },
+        } as any,
       });
       
       res.json({
@@ -10120,7 +10159,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           source: lead.source,
           status: "new",
           notes: lead.notes,
-          capturedAt: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000),
         });
         seededData.leads++;
       }
@@ -10160,7 +10199,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           },
           seeded: seededData,
           resetBy: req.session.userId,
-        },
+        } as any,
       });
       
       res.json({
