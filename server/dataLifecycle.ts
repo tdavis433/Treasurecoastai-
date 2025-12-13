@@ -227,18 +227,26 @@ export async function purgeOldData(config?: Partial<RetentionConfig>): Promise<{
     const msgResult = await db.delete(conversationMessages).where(inArray(conversationMessages.conversationId, oldConversationIds)).returning();
     purgedCounts.conversationMessages = msgResult.length;
     
-    // Delete conversation notes - notes use sessionId, not conversationId
-    // We'll delete notes that are older than the cutoff date instead
-    const notesResult = await db.delete(conversationNotes).where(lt(conversationNotes.createdAt, conversationsCutoff)).returning();
-    purgedCounts.conversationNotes = notesResult.length;
-    
     // Delete conversations
     const convoResult = await db.delete(conversations).where(inArray(conversations.id, oldConversationIds)).returning();
     purgedCounts.conversations = convoResult.length;
   } else {
     purgedCounts.conversationMessages = 0;
-    purgedCounts.conversationNotes = 0;
     purgedCounts.conversations = 0;
+  }
+  
+  // Purge conversation notes tied to old chat sessions (notes use sessionId to link to chatSessions)
+  // Get session IDs of old chat sessions that were already purged
+  const oldSessionIds = await db.select({ sessionId: chatSessions.sessionId })
+    .from(chatSessions)
+    .where(lt(chatSessions.startedAt, sessionCutoff));
+  
+  if (oldSessionIds.length > 0) {
+    const sessionIdList = oldSessionIds.map(s => s.sessionId);
+    const notesResult = await db.delete(conversationNotes).where(inArray(conversationNotes.sessionId, sessionIdList)).returning();
+    purgedCounts.conversationNotes = notesResult.length;
+  } else {
+    purgedCounts.conversationNotes = 0;
   }
 
   structuredLogger.info('Data purge completed', { action: 'data_purge_complete', purgedCounts });
