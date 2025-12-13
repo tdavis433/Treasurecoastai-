@@ -1,0 +1,163 @@
+REPLIT AGENT MODE — “MAKE IT WHOLE” HARDENING PACK
+(Treasure Coast AI — Demo Stability + Day-2 Client Reliability)
+
+GOAL
+We already have working templates, booking profiles w/ failsafe, demo validation, and sweep tests.
+Now unify the remaining “ops + UX + reliability” pieces into a complete, production-ready system where:
+- demos never act funny
+- clients don’t silently misconfigure
+- internal requests always get noticed
+- embedding on real domains is predictable
+- spam + costs are controlled
+
+NON-NEGOTIABLE
+- NO payments ever (redirect-only for external booking, internal request only).
+- Tenant isolation enforced server-side.
+- Never print passwords/tokens/reset links in output.
+
+============================================================
+PHASE 1 — TEMPLATE READINESS (KB + DISCLAIMERS) CONTRACT
+============================================================
+1) Define “Template Readiness Minimums” per template:
+- Must have: businessName default, operatingHours structure, 6+ services OR 8+ FAQs OR about >= 50 chars
+- Industry disclaimers enforced where applicable:
+  - Law firm: not legal advice
+  - Dental / Med spa: not medical advice / emergency guidance
+  - Recovery: safety/crisis guidance toggle (if supported)
+2) Update template sweep script to validate content readiness (not just bookingProfile).
+- If a template fails readiness, mark FAIL and list missing fields.
+Deliverable:
+- TEMPLATE_READINESS_REPORT.md (PASS/FAIL per template)
+
+============================================================
+PHASE 2 — WIZARD “DEMO PROOF” UX (PREVIEW + WARNINGS + SCORE)
+============================================================
+Add/upgrade wizard features:
+1) Always-visible “Widget Preview Panel” while onboarding:
+- Shows: CTAs, bookingMode, failsafe status, disclaimer summary, primary contact method shown to users
+2) Booking step warnings:
+- If bookingMode=external and URL missing/invalid:
+  - show clear yellow banner: “External link missing — FAILSAFE will capture internal requests”
+  - provide “Test link” button (disabled if missing)
+3) Readiness Score (Green/Yellow/Red) on final step:
+- Blockers:
+  - no contact method
+  - invalid hours structure
+  - bookingMode missing
+  - failsafe disabled (should be ON by default)
+  - widget config fails
+- Weighted: KB readiness, notifications configured, diagnostics pass
+4) Add “Run Diagnostics” button in wizard review step (uses existing diagnostics endpoint)
+
+Deliverable:
+- WIZARD_READINESS_SPEC.md (brief) and implementation in UI
+
+============================================================
+PHASE 3 — NOTIFICATION RELIABILITY (DON’T LET REQUESTS DISAPPEAR)
+============================================================
+1) Add Notification Delivery Logging:
+- Log every notification attempt with:
+  type (sms/email), tenant/workspace, recipient, status (success/fail), error (redacted), timestamp
+2) Add UI banner(s):
+- If internal booking mode and notifications disabled/missing recipients:
+  - show persistent banner in Client Dashboard Settings:
+    “Notifications not configured — requests will be saved but you won’t be alerted.”
+- Show “Last notification attempt” summary
+3) Add “Send Test Notification” button in settings/wizard:
+- Executes a safe test message (no secrets)
+
+Deliverables:
+- NOTIFICATION_HEALTH.md (docs)
+- UI: Notification Health section
+
+============================================================
+PHASE 4 — DEMO OPERATIONS (RESET + SEED + CLEAN DEMOS)
+============================================================
+1) Create demo reset script:
+- scripts/demo-reset.ts (or .sh + node)
+- Deletes demo-only data safely for selected demo workspace(s):
+  - conversations, leads, appointment requests, analytics events created during demo
+  - does NOT delete templates
+2) Add admin-only “Reset Demo Workspace” button in UI
+3) Add “Seed Demo Baseline” script:
+- ensures each demo bot has minimum KB + valid CTAs ready
+
+Deliverables:
+- DEMO_RESET_RUNBOOK.md
+- scripts/demo-reset.ts
+- scripts/demo-seed.ts (if needed)
+
+============================================================
+PHASE 5 — EMBED REAL-DOMAIN HARDENING (CSP/CACHE/DIAGNOSTICS)
+============================================================
+1) Version the embed script URL to reduce caching issues:
+- Example: /widget/embed.v1.js or add ?v=buildHash
+2) Add “Widget Diagnostics” panel (admin/client):
+- Shows: widget config fetch ok, token ok, chat endpoint ok, booking mode ok, failsafe status
+3) Add Runbook section: “Client Site Embed Troubleshooting”
+- CSP guidance (what to allow)
+- Ad blocker notes
+- Cache busting tips
+- How to verify with /widget-test.html?noIframe=1 (gated by env)
+
+Deliverables:
+- Updated RELEASE_RUNBOOK.md (Embed Diagnostics section)
+- Diagnostics UI page
+
+============================================================
+PHASE 6 — ABUSE + COST GUARDRAILS (REAL TRAFFIC)
+============================================================
+1) Add tenant-aware throttling (if not already):
+- Per-IP and per-tenant limits for:
+  chat sends, lead submits, booking request submits, password reset
+2) Add a “cost guard” / “message cap” per tenant:
+- Configurable max messages/day (safe default)
+- If exceeded: bot responds with friendly fallback:
+  “I’m having trouble right now — please leave contact info and we’ll reach out.”
+- Always still logs lead/contact capture
+3) Add payload limits:
+- reject huge chat messages with friendly error
+
+Deliverables:
+- RATE_LIMITING_POLICY.md
+- Admin controls for per-tenant caps (optional but recommended)
+
+============================================================
+PHASE 7 — UNIFIED CHECKS + CI-READY COMMANDS
+============================================================
+1) Extend the existing verification suite to include:
+- template readiness check
+- demo mapping check
+- industry template sweep
+- widget e2e script (if present)
+2) Output one “All Checks” runner:
+- scripts/run-all-checks.sh that runs:
+  bash ./scripts/guard-no-payments.sh
+  npx tsc --noEmit
+  npx vitest run
+  npm run build
+  npx tsx scripts/validate-demo-templates.ts
+  npx tsx scripts/industry-template-sweep.ts
+  npx tsx scripts/template-readiness-check.ts (new)
+  bash scripts/widget-e2e-test.sh (if present)
+
+Deliverables:
+- scripts/run-all-checks.sh
+- FINAL_HARDENING_REPORT.md (PASS/FAIL + evidence)
+
+============================================================
+FINAL OUTPUT (STRICT)
+============================================================
+Return:
+1) FINAL_HARDENING_REPORT.md (copy/paste)
+2) TEMPLATE_READINESS_REPORT.md (copy/paste)
+3) List of files changed
+4) Proof of:
+- wizard warnings + preview panel
+- notification health banner + delivery log
+- demo reset works and is safe
+- embed diagnostics exists
+- rate limit + cost cap behavior is graceful
+5) Confirm all quality gates pass
+
+START NOW. Follow phases in order. Do not skip deliverables.

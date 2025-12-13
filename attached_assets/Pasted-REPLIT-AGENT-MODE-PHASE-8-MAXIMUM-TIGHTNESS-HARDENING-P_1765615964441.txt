@@ -1,0 +1,280 @@
+REPLIT AGENT MODE — PHASE 8 “MAXIMUM TIGHTNESS” HARDENING PASS
+(Treasure Coast AI — final production-grade polish beyond “no-gaps”)
+
+GOAL
+Take the platform from “working + demo-ready” to “production-tight” by closing the last operational/security/reliability edges:
+- audit logs + safer auth/session handling
+- CSRF + permission granularity
+- secrets scanning + deployment gates
+- load testing + notification resiliency
+- observability + alerting readiness
+- retention/export/delete + backup/restore drill
+- embed real-world CSP/caching/offline behavior
+- AI guardrails + hallucination fallback
+- Safe Demo Mode + Master Predeploy Gate
+
+NON-NEGOTIABLES
+- NO PAYMENT PROCESSING EVER. External booking = redirect-only (HTTPS), internal = request capture only.
+- Tenant isolation server-side.
+- Never print passwords/tokens/reset links/secrets in output.
+- Any change must keep existing quality gates passing:
+  guard-no-payments, tsc, vitest, build, template/demo validation, industry sweep.
+
+DELIVERABLES (STRICT)
+Create/Update:
+1) FINAL_MAX_TIGHTNESS_REPORT.md (PASS/FAIL per phase + evidence + file paths)
+2) scripts/predeploy-gate.sh (single “block deploy unless everything passes” runner)
+3) docs/SECURITY_HARDENING.md
+4) docs/OPS_RUNBOOK.md (alerts/backups/restore/retention)
+5) docs/EMBED_TROUBLESHOOTING_CSP.md (client-friendly)
+6) docs/DATA_RETENTION_EXPORT_DELETE.md
+7) scripts/load-test-critical-path.(js|ts|sh)
+8) scripts/secrets-scan.sh (lightweight grep + npm audit + dependency vuln check)
+9) DB audit log + retention scaffolding (tables/endpoints) if missing
+
+============================================================
+PHASE 1 — AUDIT LOGGING (WHO DID WHAT)
+============================================================
+Objective: Every sensitive admin action is recorded.
+
+Tasks:
+- Add DB table: admin_audit_logs (or equivalent)
+  Fields:
+  id, actorUserId, actorRole, actorClientId, action, targetType, targetId,
+  beforeJson, afterJson, ip, userAgent, requestId, createdAt
+- Log these actions at minimum:
+  - create/update/delete workspace
+  - change bookingMode/externalBookingUrl/failsafe toggles
+  - changes to KB/FAQs/services/hours
+  - user reset password / disable / enable
+  - impersonation start/stop (“view as client”)
+  - demo reset actions
+- Add Super Admin UI page: “Audit Logs” with filters:
+  date range, actor, action type, clientId/tenant, target type
+- Ensure audit log payloads are redacted for secrets/credentials.
+
+Acceptance:
+- 10+ key actions produce audit log entries.
+- UI filter works and is tenant-safe (super admin sees all; workspace admins only their workspace).
+
+============================================================
+PHASE 2 — AUTH/SESSION HARDENING + CSRF
+============================================================
+Objective: secure cookies, CSRF for session-auth routes, and safe session invalidation.
+
+Tasks:
+- Confirm session cookie flags:
+  HttpOnly=true, SameSite=Lax (or Strict if safe), Secure=true in production
+- On password change / password reset:
+  - invalidate existing sessions (at least for that user)
+- Add CSRF protection for state-changing authenticated routes:
+  - Use standard CSRF middleware pattern (token in header)
+  - Exempt ONLY endpoints that are public and do not use session auth (e.g. widget config/chat endpoints if truly public)
+- Add origin/referrer checks for authenticated POST/PATCH/DELETE as defense-in-depth.
+
+Acceptance:
+- Authenticated destructive routes reject missing/invalid CSRF token (403)
+- Widget + public endpoints continue to function unchanged
+- Logout/back button cannot access protected content
+
+============================================================
+PHASE 3 — RBAC GRANULARITY (TIGHTER ROLES)
+============================================================
+Objective: reduce blast radius and avoid “admin does everything”.
+
+Tasks:
+- Add roles (if not present) and enforce on server:
+  super_admin
+  workspace_admin (can edit settings for their workspace)
+  workspace_viewer (read-only dashboards)
+- Ensure destructive actions require workspace_admin or super_admin.
+- Ensure impersonation requires super_admin.
+- Add clear UI restrictions (but enforcement must be server-side).
+
+Acceptance:
+- viewer cannot modify anything (server returns 403)
+- admin-only routes are protected by role middleware consistently
+
+============================================================
+PHASE 4 — SECRETS + VULNERABILITY SCANNING
+============================================================
+Objective: prevent accidental leakage and catch dependency risks.
+
+Tasks:
+- Add scripts/secrets-scan.sh that checks repo for:
+  OPENAI_API_KEY, STRIPE, SECRET, TOKEN, PASSWORD patterns, private keys, etc.
+  (Use safe grep patterns; do not print actual matches, only file paths + redacted previews)
+- Add npm audit (or pnpm/yarn equivalent) step to gate.
+- Add docs: “Secrets Rotation Checklist” + “What never goes in logs.”
+
+Acceptance:
+- secrets-scan produces PASS on clean repo
+- if it finds anything, it fails non-zero and prints only safe/redacted output
+
+============================================================
+PHASE 5 — LOAD TEST “DEMO CRITICAL PATH”
+============================================================
+Objective: prove it doesn’t wobble under modest concurrency.
+
+Critical path to load test:
+- GET /api/health
+- GET /api/widget/config/:clientId/:botId
+- POST chat endpoint for widget (the real endpoint your widget uses)
+- lead capture endpoint (if applicable)
+- booking intent logging endpoint
+
+Tasks:
+- Create scripts/load-test-critical-path that can run:
+  - 10, 25, 50 concurrent users
+  - 60–120 seconds
+  - outputs: p50/p95 latency, error rate, throughput
+- Ensure tenant-safe test inputs (use demo tenant IDs already seeded; don’t spam real prod tenants)
+
+Acceptance:
+- error rate stays near 0 for 10–25 concurrency
+- graceful degradation at higher load (no crashes; clear errors if rate limit triggers)
+
+============================================================
+PHASE 6 — NOTIFICATION RESILIENCY (QUEUE/RETRY + VISIBILITY)
+============================================================
+Objective: internal requests never “disappear”.
+
+Tasks:
+- Implement a lightweight retry strategy for SMS/email sends:
+  - backoff + max attempts
+  - store attempts in notification_logs
+- Add UI surface (admin/client) showing:
+  - last success/fail + timestamp
+  - “Send Test Notification” button
+- If notifications misconfigured:
+  - show persistent banner: “Requests are saved but you won’t be alerted.”
+
+Acceptance:
+- Failed notifications are visible and don’t break booking request creation
+- test notification works or fails with clear, friendly reason
+
+============================================================
+PHASE 7 — OBSERVABILITY (CORRELATION IDs + SAFE STRUCTURED LOGS)
+============================================================
+Objective: debugging is fast and safe.
+
+Tasks:
+- Add requestId middleware:
+  - generate/propagate x-request-id
+  - include in all logs + error responses (safe)
+- Add structured logger (or improve existing):
+  - always include: requestId, clientId, userId (if any), route, status, latency
+  - redact PII (emails/phones/tokens) in error messages and stack traces
+- Ensure /api/health/internal includes:
+  - last error timestamps + categories (already exists; confirm redaction)
+
+Acceptance:
+- Every request log line includes requestId
+- error viewer shows redacted messages only
+
+============================================================
+PHASE 8 — DATA LIFECYCLE (RETENTION / EXPORT / DELETE)
+============================================================
+Objective: client trust + compliance posture.
+
+Tasks:
+- Define defaults:
+  - transcript retention (e.g. 12 months) configurable per tenant
+  - lead retention (e.g. 24 months)
+- Add workspace-level actions:
+  - Export data (CSV/JSON) for leads/convos/bookings (tenant-scoped)
+  - Delete data (soft-delete or hard-delete; define clearly)
+- Ensure deletes cascade ONLY within the workspace.
+
+Acceptance:
+- Export is tenant-safe and works
+- Delete cannot cross tenant boundary
+- Documentation exists: docs/DATA_RETENTION_EXPORT_DELETE.md
+
+============================================================
+PHASE 9 — BACKUP/RESTORE DRILL + MIGRATION SAFETY
+============================================================
+Objective: “oops recovery” is real, not theoretical.
+
+Tasks:
+- Add docs/OPS_RUNBOOK.md sections:
+  - backup strategy (provider instructions)
+  - restore-to-staging drill steps
+  - “before db:push in production” checklist
+- Add a “migration safety gate” note:
+  - forbid db:push --force on production unless explicit backup + approval
+  - detect destructive prompts (where possible) and stop
+
+Acceptance:
+- Runbook contains step-by-step restore drill
+- Predeploy gate warns/blocks on unsafe DB operations (best effort)
+
+============================================================
+PHASE 10 — EMBED REAL-WORLD EDGE CASES (CSP/CACHE/OFFLINE)
+============================================================
+Objective: embedding on random client sites doesn’t break silently.
+
+Tasks:
+- Add docs/EMBED_TROUBLESHOOTING_CSP.md including:
+  - common CSP directives needed (script-src/connect-src/frame-src)
+  - adblock notes
+  - cache-bust/versioned embed script strategy
+- Ensure widget has:
+  - friendly offline/timeout UI (“Retry” + “Leave your info”)
+  - diagnostics mode (optional) that can confirm config/chat endpoints reachable
+- Confirm https-only assets and strict external booking URL validation remain enforced.
+
+Acceptance:
+- “Embed troubleshooting” doc is copy/paste ready for clients
+- Widget fails gracefully under offline simulation
+
+============================================================
+PHASE 11 — AI QUALITY GUARDRAILS (INDUSTRY-SAFE)
+============================================================
+Objective: reduce hallucinations and protect reputation.
+
+Tasks:
+- Per-industry “Do/Don’t say” rules:
+  - legal/medical disclaimers always appended when relevant
+- Low-confidence fallback:
+  - If KB lacks answer → ask 1 clarifying question OR pivot to “request callback”
+- Ensure crisis/safety triggers (if present) still work.
+
+Acceptance:
+- AI responses avoid overconfident claims when KB missing
+- fallback creates lead/request reliably
+
+============================================================
+PHASE 12 — SAFE DEMO MODE + MASTER DEPLOY GATE
+============================================================
+Objective: prevent demo accidents and enforce readiness.
+
+Tasks:
+- Add DEMO_SAFE_MODE=true (env flag):
+  - disables destructive actions (delete workspace, reset prod data, etc.)
+  - locks critical settings (optional)
+- Create scripts/predeploy-gate.sh that runs ALL gates:
+  bash ./scripts/guard-no-payments.sh
+  npx tsc --noEmit
+  npx vitest run
+  npm run build
+  npx tsx scripts/validate-demo-templates.ts
+  npx tsx scripts/industry-template-sweep.ts
+  (and any new scripts: readiness check, load test smoke, secrets scan)
+
+Acceptance:
+- predeploy-gate exits non-zero on any failure
+- produces a concise PASS/FAIL summary
+
+============================================================
+FINAL OUTPUT REQUIRED
+============================================================
+1) FINAL_MAX_TIGHTNESS_REPORT.md
+- PASS/FAIL per phase
+- evidence (commands run + outputs)
+- file paths changed (no secrets)
+2) All new scripts + docs listed above
+3) Confirm: no payments, tenant isolation, demo bots correct, failsafe intact
+4) Confirm all existing quality gates still pass
+
+START NOW. Implement phases in order. Avoid breaking working demos. Keep changes minimal but robust.
