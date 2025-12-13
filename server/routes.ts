@@ -2663,6 +2663,112 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
+  // =============================================
+  // DEMO PRE-FLIGHT CHECK (Super Admin Only)
+  // One-click validation before demos
+  // IMPORTANT: Must be before /api/demo/:botIdOrSlug to avoid route conflict
+  // =============================================
+  
+  app.get("/api/demo/preflight", requireSuperAdmin, async (req, res) => {
+    try {
+      const checks: Record<string, { pass: boolean; message: string; details?: any }> = {};
+      
+      // 1. Health Check (DB + AI)
+      try {
+        const dbCheck = await storage.healthCheck?.() ?? { status: 'ok', latencyMs: 0 };
+        const openaiKey = process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+        const aiConfigured = !!(openaiKey && openaiKey.length > 10);
+        
+        checks.health = {
+          pass: dbCheck.status === 'ok' && aiConfigured,
+          message: dbCheck.status === 'ok' && aiConfigured ? "DB and AI healthy" : 
+            (!aiConfigured ? "AI not configured" : "Database unhealthy"),
+          details: { dbLatencyMs: dbCheck.latencyMs, aiConfigured }
+        };
+      } catch {
+        checks.health = { pass: false, message: "Health check failed" };
+      }
+      
+      // 2. Demo Workspaces Available
+      try {
+        const demoSlugs = getDemoSlugs();
+        const demoBotsFound: string[] = [];
+        for (const slug of demoSlugs) {
+          const workspace = await getWorkspaceBySlug(slug);
+          if (workspace) {
+            demoBotsFound.push(slug);
+          }
+        }
+        checks.demoWorkspaces = {
+          pass: demoBotsFound.length > 0,
+          message: demoBotsFound.length > 0 
+            ? `${demoBotsFound.length} demo workspace(s) available` 
+            : "No demo workspaces found",
+          details: { available: demoBotsFound, expected: demoSlugs }
+        };
+      } catch {
+        checks.demoWorkspaces = { pass: false, message: "Demo workspace check failed" };
+      }
+      
+      // 3. Sample Chat Test (dry run)
+      try {
+        const demoSlugs = getDemoSlugs();
+        if (demoSlugs.length > 0) {
+          const testSlug = demoSlugs[0];
+          const workspace = await getWorkspaceBySlug(testSlug);
+          if (workspace) {
+            const botConfigs = await getBotsByWorkspaceId(workspace.id);
+            checks.sampleChatReady = {
+              pass: botConfigs.length > 0,
+              message: botConfigs.length > 0 
+                ? `Demo bot "${botConfigs[0].name}" ready for chat` 
+                : "No demo bots configured",
+              details: { workspace: testSlug, botCount: botConfigs.length }
+            };
+          } else {
+            checks.sampleChatReady = { pass: false, message: "Primary demo workspace missing" };
+          }
+        } else {
+          checks.sampleChatReady = { pass: false, message: "No demo slugs configured" };
+        }
+      } catch {
+        checks.sampleChatReady = { pass: false, message: "Sample chat check failed" };
+      }
+      
+      // 4. Recent Errors Check
+      try {
+        const errorCount = await storage.getRecentErrorCount?.(15) ?? 0;
+        checks.recentErrors = {
+          pass: errorCount < 10,
+          message: errorCount < 10 
+            ? `${errorCount} errors in last 15 min (acceptable)` 
+            : `${errorCount} errors in last 15 min (high)`,
+          details: { count: errorCount }
+        };
+      } catch {
+        checks.recentErrors = { pass: true, message: "Error count unavailable (assuming OK)" };
+      }
+      
+      // Calculate overall status
+      const allPassing = Object.values(checks).every(c => c.pass);
+      const passingCount = Object.values(checks).filter(c => c.pass).length;
+      const totalChecks = Object.keys(checks).length;
+      
+      res.json({
+        ready: allPassing,
+        summary: allPassing ? "All pre-flight checks passed" : `${passingCount}/${totalChecks} checks passing`,
+        checks,
+        recommendation: allPassing 
+          ? "Demo environment is ready for presentations" 
+          : "Please resolve failing checks before demo",
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Demo preflight error:", error);
+      res.status(500).json({ error: "Failed to run preflight checks" });
+    }
+  });
+
   // Get specific bot config for demo UI
   // Accepts either botId directly OR workspace slug (will look up primary bot)
   app.get("/api/demo/:botIdOrSlug", async (req, res) => {
@@ -4269,111 +4375,6 @@ These suggestions should be relevant to what was just discussed and help guide t
     } catch (error) {
       console.error("Get platform errors error:", error);
       res.status(500).json({ error: "Failed to fetch platform errors" });
-    }
-  });
-
-  // =============================================
-  // DEMO PRE-FLIGHT CHECK (Super Admin Only)
-  // One-click validation before demos
-  // =============================================
-  
-  app.get("/api/demo/preflight", requireSuperAdmin, async (req, res) => {
-    try {
-      const checks: Record<string, { pass: boolean; message: string; details?: any }> = {};
-      
-      // 1. Health Check (DB + AI)
-      try {
-        const dbCheck = await storage.healthCheck?.() ?? { status: 'ok', latencyMs: 0 };
-        const openaiKey = process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
-        const aiConfigured = !!(openaiKey && openaiKey.length > 10);
-        
-        checks.health = {
-          pass: dbCheck.status === 'ok' && aiConfigured,
-          message: dbCheck.status === 'ok' && aiConfigured ? "DB and AI healthy" : 
-            (!aiConfigured ? "AI not configured" : "Database unhealthy"),
-          details: { dbLatencyMs: dbCheck.latencyMs, aiConfigured }
-        };
-      } catch {
-        checks.health = { pass: false, message: "Health check failed" };
-      }
-      
-      // 2. Demo Workspaces Available
-      try {
-        const demoSlugs = getDemoSlugs();
-        const demoBotsFound: string[] = [];
-        for (const slug of demoSlugs) {
-          const workspace = await getWorkspaceBySlug(slug);
-          if (workspace) {
-            demoBotsFound.push(slug);
-          }
-        }
-        checks.demoWorkspaces = {
-          pass: demoBotsFound.length > 0,
-          message: demoBotsFound.length > 0 
-            ? `${demoBotsFound.length} demo workspace(s) available` 
-            : "No demo workspaces found",
-          details: { available: demoBotsFound, expected: demoSlugs }
-        };
-      } catch {
-        checks.demoWorkspaces = { pass: false, message: "Demo workspace check failed" };
-      }
-      
-      // 3. Sample Chat Test (dry run)
-      try {
-        const demoSlugs = getDemoSlugs();
-        if (demoSlugs.length > 0) {
-          const testSlug = demoSlugs[0];
-          const workspace = await getWorkspaceBySlug(testSlug);
-          if (workspace) {
-            const botConfigs = await getBotsByWorkspaceId(workspace.id);
-            checks.sampleChatReady = {
-              pass: botConfigs.length > 0,
-              message: botConfigs.length > 0 
-                ? `Demo bot "${botConfigs[0].name}" ready for chat` 
-                : "No demo bots configured",
-              details: { workspace: testSlug, botCount: botConfigs.length }
-            };
-          } else {
-            checks.sampleChatReady = { pass: false, message: "Primary demo workspace missing" };
-          }
-        } else {
-          checks.sampleChatReady = { pass: false, message: "No demo slugs configured" };
-        }
-      } catch {
-        checks.sampleChatReady = { pass: false, message: "Sample chat check failed" };
-      }
-      
-      // 4. Recent Errors Check
-      try {
-        const errorCount = await storage.getRecentErrorCount?.(15) ?? 0;
-        checks.recentErrors = {
-          pass: errorCount < 10,
-          message: errorCount < 10 
-            ? `${errorCount} errors in last 15 min (acceptable)` 
-            : `${errorCount} errors in last 15 min (high)`,
-          details: { count: errorCount }
-        };
-      } catch {
-        checks.recentErrors = { pass: true, message: "Error count unavailable (assuming OK)" };
-      }
-      
-      // Calculate overall status
-      const allPassing = Object.values(checks).every(c => c.pass);
-      const passingCount = Object.values(checks).filter(c => c.pass).length;
-      const totalChecks = Object.keys(checks).length;
-      
-      res.json({
-        ready: allPassing,
-        summary: allPassing ? "All pre-flight checks passed" : `${passingCount}/${totalChecks} checks passing`,
-        checks,
-        recommendation: allPassing 
-          ? "Demo environment is ready for presentations" 
-          : "Please resolve failing checks before demo",
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error("Demo preflight error:", error);
-      res.status(500).json({ error: "Failed to run preflight checks" });
     }
   });
 
