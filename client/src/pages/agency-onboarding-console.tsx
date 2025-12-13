@@ -324,41 +324,88 @@ export default function AgencyOnboardingConsole() {
     }
   };
 
-  // Launch checklist items
+  // Launch checklist items with fix links
   const getLaunchChecklist = () => {
-    const checks = [
+    const hasMinimumKB = () => {
+      // Minimum viable KB: services >= 6 OR FAQs >= 8 OR about >= 80 chars
+      const servicesOk = kbServices.length >= 6;
+      const faqsOk = kbFaqs.length >= 8;
+      const aboutOk = kbPolicies.length >= 80;
+      const hasKBContent = servicesOk || faqsOk || aboutOk;
+      // Also need operating hours and contact
+      const hasHours = Object.values(kbHours).some(h => h && h !== "Closed" && h.trim() !== "");
+      const hasContact = !!(form.getValues("primaryPhone") || form.getValues("email"));
+      return hasKBContent && hasHours && hasContact;
+    };
+
+    const checks: Array<{
+      id: string;
+      label: string;
+      status: "pass" | "warn" | "fail";
+      fixTab?: string;
+      fixAction?: string;
+    }> = [
       { 
         id: "business", 
         label: "Business Info", 
-        status: form.getValues("businessName") ? "pass" : "fail" as "pass" | "warn" | "fail"
+        status: form.getValues("businessName") ? "pass" : "fail",
+        fixTab: undefined,
+        fixAction: "Enter business name"
       },
       { 
         id: "website", 
         label: "Website Scanned", 
-        status: importData ? "pass" : "warn" as "pass" | "warn" | "fail"
+        status: importData ? "pass" : "warn",
+        fixTab: "suggestions",
+        fixAction: "Scan website"
       },
       { 
         id: "kb", 
-        label: "KB Content", 
-        status: (kbServices.length >= 3 || kbFaqs.length >= 5) ? "pass" : (kbServices.length > 0 || kbFaqs.length > 0) ? "warn" : "fail" as "pass" | "warn" | "fail"
+        label: "KB Minimum", 
+        status: hasMinimumKB() ? "pass" : (kbServices.length > 0 || kbFaqs.length > 0) ? "warn" : "fail",
+        fixTab: "kb",
+        fixAction: "Add more content"
       },
       { 
         id: "contact", 
-        label: "Contact Info", 
-        status: (form.getValues("primaryPhone") || form.getValues("email")) ? "pass" : "fail" as "pass" | "warn" | "fail"
+        label: "Contact", 
+        status: (form.getValues("primaryPhone") || form.getValues("email")) ? "pass" : "fail",
+        fixTab: undefined,
+        fixAction: "Add phone/email"
       },
       { 
-        id: "draft", 
-        label: "Draft Created", 
-        status: draftState ? "pass" : "warn" as "pass" | "warn" | "fail"
+        id: "booking", 
+        label: "Booking", 
+        status: form.getValues("externalBookingUrl") || form.getValues("primaryCTA") ? "pass" : "warn",
+        fixTab: undefined,
+        fixAction: "Configure CTA"
+      },
+      { 
+        id: "style", 
+        label: "Widget Style", 
+        status: styleConfig.primaryColor ? "pass" : "warn",
+        fixTab: "style",
+        fixAction: "Customize style"
       },
       { 
         id: "qa", 
-        label: "QA Passed", 
-        status: draftState?.status === "qa_passed" || draftState?.status === "live" ? "pass" : draftState?.qaResults ? "fail" : "warn" as "pass" | "warn" | "fail"
+        label: "QA Gate", 
+        status: draftState?.status === "qa_passed" || draftState?.status === "live" ? "pass" : draftState?.qaResults ? "fail" : "warn",
+        fixTab: undefined,
+        fixAction: "Run QA"
       },
     ];
     return checks;
+  };
+
+  // Checklist summary for pinned bar
+  const getChecklistSummary = () => {
+    const checks = getLaunchChecklist();
+    const passed = checks.filter(c => c.status === "pass").length;
+    const total = checks.length;
+    const allPassed = passed === total;
+    const hasErrors = checks.some(c => c.status === "fail");
+    return { passed, total, allPassed, hasErrors, checks };
   };
 
   interface DraftSetupPayload {
@@ -963,6 +1010,52 @@ export default function AgencyOnboardingConsole() {
                draftState.status === 'qa_pending' ? 'QA PENDING' : 'DRAFT'}
             </Badge>
           )}
+        </div>
+
+        {/* Pinned Launch Checklist Status Bar */}
+        <div className="sticky top-0 z-50 mb-4 p-3 rounded-lg bg-slate-900/95 backdrop-blur border border-white/10" data-testid="launch-checklist-bar">
+          {(() => {
+            const summary = getChecklistSummary();
+            return (
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Shield className={`h-4 w-4 ${summary.allPassed ? 'text-emerald-400' : summary.hasErrors ? 'text-rose-400' : 'text-amber-400'}`} />
+                  <span className="text-sm font-medium">
+                    Launch Checklist: {summary.passed}/{summary.total}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap flex-1">
+                  {summary.checks.map(check => (
+                    <div key={check.id} className="flex items-center gap-1">
+                      {check.status === "pass" ? (
+                        <CheckCircle className="h-3.5 w-3.5 text-emerald-400" />
+                      ) : check.status === "fail" ? (
+                        <AlertCircle className="h-3.5 w-3.5 text-rose-400" />
+                      ) : (
+                        <Clock className="h-3.5 w-3.5 text-amber-400" />
+                      )}
+                      {check.fixTab && check.status !== "pass" ? (
+                        <button
+                          onClick={() => setActiveTab(check.fixTab!)}
+                          className="text-xs hover:underline text-muted-foreground hover:text-foreground"
+                          data-testid={`fix-${check.id}`}
+                        >
+                          {check.label}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">{check.label}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {summary.allPassed && draftState?.status === 'live' && (
+                  <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/40">
+                    Ready to Deploy
+                  </Badge>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

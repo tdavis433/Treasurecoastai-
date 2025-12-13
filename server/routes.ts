@@ -11721,7 +11721,101 @@ These suggestions should be relevant to what was just discussed and help guide t
       theme: z.enum(['dark', 'light']).optional(),
       logoUrl: z.string().optional(),
     }).optional(),
+    // KB Draft from frontend - will auto-inject template defaults if below minimum
+    kbDraft: z.object({
+      services: z.array(z.object({
+        name: z.string(),
+        description: z.string().optional(),
+      })).optional(),
+      faqs: z.array(z.object({
+        question: z.string(),
+        answer: z.string(),
+      })).optional(),
+      policies: z.string().optional(),
+      hours: z.record(z.string()).optional(),
+    }).optional(),
   });
+
+  // Minimum Viable KB thresholds
+  const KB_MINIMUM = {
+    SERVICES_MIN: 6,
+    FAQS_MIN: 8,
+    ABOUT_MIN_CHARS: 80,
+  };
+
+  // Helper: Check if KB content meets minimum viable threshold
+  function checkKBMinimum(kbDraft: { 
+    services?: Array<{ name: string }>; 
+    faqs?: Array<{ question: string; answer: string }>; 
+    policies?: string;
+  }): { meetsMinimum: boolean; missing: string[] } {
+    const missing: string[] = [];
+    const servicesOk = (kbDraft.services?.length || 0) >= KB_MINIMUM.SERVICES_MIN;
+    const faqsOk = (kbDraft.faqs?.length || 0) >= KB_MINIMUM.FAQS_MIN;
+    const aboutOk = (kbDraft.policies?.length || 0) >= KB_MINIMUM.ABOUT_MIN_CHARS;
+    
+    // KB is viable if ANY of these conditions is met
+    const hasKBContent = servicesOk || faqsOk || aboutOk;
+    
+    if (!servicesOk) missing.push('services');
+    if (!faqsOk) missing.push('faqs');
+    if (!aboutOk) missing.push('about');
+    
+    return { meetsMinimum: hasKBContent, missing };
+  }
+
+  // Helper: Inject template defaults into KB with "Template default" labels
+  function injectTemplateDefaults(
+    kbDraft: {
+      services?: Array<{ name: string; description?: string }>;
+      faqs?: Array<{ question: string; answer: string }>;
+      policies?: string;
+    },
+    template: IndustryTemplate
+  ): {
+    services: Array<{ name: string; description: string; isTemplateDefault?: boolean }>;
+    faqs: Array<{ question: string; answer: string; isTemplateDefault?: boolean }>;
+    policies: string;
+    injectedDefaults: string[];
+  } {
+    const injectedDefaults: string[] = [];
+    
+    // Start with provided KB data
+    let services: Array<{ name: string; description: string; isTemplateDefault?: boolean }> = 
+      (kbDraft.services || []).map(s => ({ name: s.name, description: s.description || '' }));
+    let faqs: Array<{ question: string; answer: string; isTemplateDefault?: boolean }> = 
+      (kbDraft.faqs || []).map(f => ({ question: f.question, answer: f.answer }));
+    let policies = kbDraft.policies || '';
+    
+    // Inject template services if below minimum
+    if (services.length < KB_MINIMUM.SERVICES_MIN) {
+      const existingNames = new Set(services.map(s => s.name.toLowerCase()));
+      const templateServices = template.defaultConfig.businessProfile.services
+        .filter(s => !existingNames.has(s.toLowerCase()))
+        .map(s => ({ name: s, description: '(Template default)', isTemplateDefault: true }));
+      services = [...services, ...templateServices];
+      if (templateServices.length > 0) injectedDefaults.push('services');
+    }
+    
+    // Inject template FAQs if below minimum
+    if (faqs.length < KB_MINIMUM.FAQS_MIN) {
+      const existingQuestions = new Set(faqs.map(f => f.question.toLowerCase()));
+      const templateFaqs = template.defaultConfig.faqs
+        .filter(f => !existingQuestions.has(f.question.toLowerCase()))
+        .map(f => ({ ...f, isTemplateDefault: true }));
+      faqs = [...faqs, ...templateFaqs];
+      if (templateFaqs.length > 0) injectedDefaults.push('faqs');
+    }
+    
+    // Inject template about/policies if below minimum
+    if (policies.length < KB_MINIMUM.ABOUT_MIN_CHARS) {
+      const templateAbout = `Welcome to our ${template.defaultConfig.businessProfile.type}. ${template.defaultConfig.systemPromptIntro} (Template default)`;
+      policies = policies ? `${policies}\n\n${templateAbout}` : templateAbout;
+      injectedDefaults.push('about');
+    }
+    
+    return { services, faqs, policies, injectedDefaults };
+  }
 
   // Generate Draft Setup - Creates workspace + bot in DRAFT mode
   app.post("/api/agency-onboarding/generate-draft-setup", requireSuperAdmin, async (req, res) => {
@@ -11826,18 +11920,54 @@ These suggestions should be relevant to what was just discussed and help guide t
         }
       }
 
-      // Step 3: Merge template defaults + scraped data + intake for KB draft
-      const mergedServices = [
-        ...template.defaultConfig.businessProfile.services,
-        ...(scrapedData?.services?.map((s: any) => s.name) || []),
-      ].filter((s, i, arr) => arr.indexOf(s) === i); // Deduplicate
+      // Step 3: Build KB from intake.kbDraft + scraped data, with template auto-injection
+      // Priority: intake.kbDraft > scrapedData > template defaults (auto-injected if below minimum)
+      const rawKbDraft = {
+        services: [
+          ...(intake.kbDraft?.services || []),
+          ...(scrapedData?.services?.map((s: any) => ({ name: s.name, description: s.description || '' })) || []),
+        ],
+        faqs: [
+          ...(intake.kbDraft?.faqs || []),
+          ...(scrapedData?.faqs || []),
+        ],
+        policies: intake.kbDraft?.policies || '',
+        hours: intake.kbDraft?.hours || scrapedData?.contactInfo?.hours || {},
+      };
 
-      const mergedFaqs = [
-        ...template.defaultConfig.faqs,
-        ...(scrapedData?.faqs || []),
-      ].filter((faq, i, arr) => 
-        arr.findIndex(f => f.question.toLowerCase() === faq.question.toLowerCase()) === i
-      ); // Deduplicate by question
+      // Check if KB meets minimum and inject template defaults if needed
+      const kbCheck = checkKBMinimum(rawKbDraft);
+      let injectedDefaults: string[] = [];
+      let finalKb: {
+        services: Array<{ name: string; description: string; isTemplateDefault?: boolean }>;
+        faqs: Array<{ question: string; answer: string; isTemplateDefault?: boolean }>;
+        policies: string;
+      };
+
+      if (!kbCheck.meetsMinimum) {
+        // Auto-inject template defaults
+        const injected = injectTemplateDefaults(rawKbDraft, template);
+        finalKb = injected;
+        injectedDefaults = injected.injectedDefaults;
+        console.log(`[Agency Onboarding] KB below minimum, auto-injected template defaults: ${injectedDefaults.join(', ')}`);
+      } else {
+        // Use raw KB as-is
+        finalKb = {
+          services: rawKbDraft.services.map(s => ({ name: s.name, description: s.description || '' })),
+          faqs: rawKbDraft.faqs.map(f => ({ question: f.question, answer: f.answer })),
+          policies: rawKbDraft.policies,
+        };
+      }
+
+      // Deduplicate services and FAQs
+      const mergedServices = finalKb.services
+        .filter((s, i, arr) => arr.findIndex(x => x.name.toLowerCase() === s.name.toLowerCase()) === i)
+        .map(s => s.name);
+
+      const mergedFaqs = finalKb.faqs
+        .filter((faq, i, arr) => 
+          arr.findIndex(f => f.question.toLowerCase() === faq.question.toLowerCase()) === i
+        );
 
       // Step 4: Determine booking behavior with FAILSAFE
       let bookingMode = intake.bookingPreference || template.bookingProfile.mode;
@@ -11979,8 +12109,14 @@ These suggestions should be relevant to what was just discussed and help guide t
         kbDraft: {
           services: mergedServices,
           faqs: mergedFaqs,
-          policies: template.disclaimer,
-          hours: scrapedData?.contactInfo?.hours || {},
+          policies: finalKb.policies || template.disclaimer,
+          hours: rawKbDraft.hours,
+        },
+        kbAutoInjection: {
+          wasInjected: injectedDefaults.length > 0,
+          injectedCategories: injectedDefaults,
+          meetsMinimum: kbCheck.meetsMinimum,
+          missing: kbCheck.missing,
         },
         bookingConfig: {
           mode: bookingMode,
