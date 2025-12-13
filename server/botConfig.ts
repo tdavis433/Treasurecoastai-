@@ -86,7 +86,16 @@ export interface BotAutomationConfig {
     enabled: boolean;
     triggerKeywords?: string[];
     captureFields?: string[];
+    collectFields?: string[];
     successMessage?: string;
+    confirmationMessage?: string;
+  };
+  bookingCapture?: {
+    enabled: boolean;
+    mode: 'internal' | 'external';
+    externalUrl?: string;
+    failsafeEnabled?: boolean;
+    failsafeActive?: boolean;
   };
   fallback?: {
     enabled: boolean;
@@ -120,12 +129,17 @@ export interface BotConfig {
   externalBookingUrl?: string;
   externalPaymentUrl?: string;
   metadata?: {
-    isDemo: boolean;
+    isDemo?: boolean;
     isTemplate?: boolean;
     templateCategory?: string;
     clonedFrom?: string;
-    createdAt: string;
-    version: string;
+    createdAt?: string;
+    version?: string;
+    industryTemplate?: string;
+    onboardingStatus?: 'draft' | 'qa_pending' | 'qa_passed' | 'live';
+    goLiveDate?: string;
+    createdViaOnboarding?: boolean;
+    disclaimer?: string;
   };
   workspaceId?: string;
   botType?: string;

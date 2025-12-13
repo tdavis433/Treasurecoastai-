@@ -3938,7 +3938,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         // Restore session data after regeneration
         req.session.userId = user.id;
         req.session.username = user.username;
-        req.session.userRole = user.role;
+        req.session.userRole = user.role as typeof req.session.userRole;
         req.session.clientId = user.clientId || null;
         
         req.session.save((saveErr) => {
@@ -11936,11 +11936,11 @@ ${allPassed ? 'READY FOR LAUNCH' : 'ISSUES FOUND - Review required'}
       // Update bot metadata to mark as live
       const botConfig = await getBotConfigByBotIdAsync(botId);
       if (botConfig) {
-        const updatedConfig = {
+        const updatedConfig: BotConfig = {
           ...botConfig,
           metadata: {
             ...(botConfig.metadata || {}),
-            onboardingStatus: 'live',
+            onboardingStatus: 'live' as const,
             goLiveDate: new Date().toISOString(),
           },
         };
