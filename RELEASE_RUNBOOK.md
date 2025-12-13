@@ -1,8 +1,22 @@
 # Treasure Coast AI - Release Runbook
 
-**Version:** 1.1  
+**Version:** 1.2  
 **Last Updated:** December 13, 2025  
 **Policy:** NO PAYMENT PROCESSING (redirect-only booking)
+
+---
+
+## Safe Demo Path (Quick Smoke Test)
+
+Before any demo or deployment, run this 5-step verification:
+
+1. **Login Check:** `/login` → admin / [password] → Dashboard loads
+2. **Widget Check:** Assistants → Any bot → Preview → Widget loads
+3. **Chat Check:** Ask "What services do you offer?" → AI responds
+4. **Lead Check:** Leads section shows existing leads
+5. **Redirect Check:** Trigger booking → "Book Now" redirects EXTERNALLY (not our domain)
+
+**If any step fails, do not proceed with demo/deploy.**
 
 ---
 
@@ -28,7 +42,7 @@ SMTP_PASS=               # Email server password
 ```
 
 **IMPORTANT:** Payments are NOT supported by design.  
-Do NOT add Stripe/Square/PayPal keys or payment processing logic.
+Do NOT add payment provider keys or payment processing logic.
 
 **Security notes:**
 - Rotate DEFAULT_ADMIN_PASSWORD + demo passwords before any public demo.
@@ -54,72 +68,119 @@ npm run db:push
   2. No dropping critical constraints/indexes
   3. No cross-tenant risk
 
-**NOTE:** Use `--force` ONLY if you fully understand the operation and have a rollback plan.  
-(Prefer avoiding force in production.)
+---
+
+### 3. CRITICAL: NO --force on Production Database
+
+**⚠️ HARD RULE: `db:push --force` is ONLY allowed on disposable dev databases.**
+
+**Before ANY destructive database operation:**
+1. [ ] Confirm you are NOT on production database
+2. [ ] Take a full database backup
+3. [ ] Document rollback plan
+4. [ ] Get explicit approval if production-adjacent
+
+**If you must use --force:**
+```bash
+# ONLY on development/disposable DBs
+# Verify DATABASE_URL is NOT production first!
+echo $DATABASE_URL  # Confirm it's dev
+npm run db:push --force
+```
 
 ---
 
-### 3. Database Drift Prevention Notes (IMPORTANT)
+### 4. Database Drift Prevention (IMPORTANT)
 
-#### A) client_settings.metadata must exist and match schema
+#### A) Schema Verification Script
 
-**Expected in DB:**
+Run before every deployment:
+
+```bash
+# Verify database schema matches expectations
+psql "$DATABASE_URL" -f scripts/verify-db-schema.sql
 ```
-client_settings.metadata is jsonb NOT NULL DEFAULT '{}'::jsonb
-```
 
-**Verification query:**
+Or run individual checks:
+
 ```sql
+-- Check client_settings.metadata column
 SELECT column_name, data_type, is_nullable, column_default
 FROM information_schema.columns
 WHERE table_name = 'client_settings'
   AND column_name = 'metadata';
+-- Expected: data_type = jsonb, is_nullable = NO, default contains {}
 ```
 
-**Expected:**
-- data_type = jsonb
-- is_nullable = NO
-- default contains {} / '{}'
+#### B) Required Constraint Names (Drizzle alignment)
 
-#### B) Constraint naming alignment (Drizzle expected names)
+These constraints must exist with exact names:
 
-**Constraint fixes applied to match Drizzle naming conventions:**
-- `bot_templates_template_id_key` → `bot_templates_template_id_unique`
-- `session_states_session_id_key` → `session_states_session_id_unique`
-- `widget_settings_bot_id_key` → `widget_settings_bot_id_unique`
-- `flow_sessions_conversation_id_key` → `flow_sessions_conversation_id_unique`
+| Table | Constraint Name |
+|-------|-----------------|
+| bot_templates | bot_templates_template_id_unique |
+| session_states | session_states_session_id_unique |
+| widget_settings | widget_settings_bot_id_unique |
+| flow_sessions | flow_sessions_conversation_id_unique |
+| bot_requests | bot_requests_dedupe_hash_unique |
 
-**Additional DB fix:**
-- Fixed duplicate/null values in `bot_requests.dedupe_hash`
-- Converted index to a proper constraint (to prevent drift and ensure consistent uniqueness behavior)
+#### C) Verification Commands
 
-**Verification (indexes/constraints):**
 ```sql
-SELECT indexname, indexdef
-FROM pg_indexes
-WHERE schemaname = 'public'
-ORDER BY tablename, indexname;
-
+-- Check all unique constraints
 SELECT conname, pg_get_constraintdef(c.oid) AS def, t.relname AS table_name
 FROM pg_constraint c
 JOIN pg_class t ON c.conrelid = t.oid
 WHERE t.relnamespace = 'public'::regnamespace
+  AND c.contype = 'u'
 ORDER BY table_name, conname;
+
+-- Check all indexes
+SELECT indexname, indexdef
+FROM pg_indexes
+WHERE schemaname = 'public'
+ORDER BY tablename, indexname;
 ```
 
 ---
 
-### 4. Build Verification
+### 5. No-Payments Guard
+
+**Automated Check (run before deploy):**
+
+```bash
+npm run guard:no-payments
+```
+
+This script scans for forbidden payment keywords:
+- stripe, square, paypal
+- checkout, payment_intent, client_secret
+- chargeback, refund, subscription, billing
+
+**E2E Redirect Assertion:**
+
+The test suite verifies:
+- "Book Now" redirect target is EXTERNAL (not our domain)
+- No checkout/payment UI exists on our domain
+
+```bash
+npm run test:e2e
+```
+
+---
+
+### 6. Build Verification
 
 ```bash
 # TypeScript compilation check
 npx tsc --noEmit
 # Expected: 0 errors
 
-# Recommended full verification
-npm test
-npm run test:e2e
-npm run build
+# Full verification suite
+npm run guard:no-payments  # No payment keywords
+npm test                   # Unit tests
+npm run test:e2e           # E2E tests (includes redirect check)
+npm run build              # Production build
 ```
 
 ---
@@ -130,7 +191,8 @@ npm run build
 
 - [ ] All required environment variables configured
 - [ ] Database connection verified
-- [ ] `npm run db:push` completes cleanly
+- [ ] `npm run db:push` completes cleanly (NO --force on prod!)
+- [ ] `npm run guard:no-payments` passes
 - [ ] TypeScript builds with 0 errors
 - [ ] E2E tests passing (see TEST_REPORT.md)
 
@@ -208,10 +270,11 @@ Run this exact flow after deploy:
 **Allowed:**
 - Track booking intent and booking redirect events internally
 - Redirect users externally to the client's booking/payment provider
+- Store external booking URL in client settings
 
 **Not allowed:**
-- Stripe/Square/PayPal integrations
-- Checkout UI
+- Any payment provider integrations (Stripe/Square/PayPal/etc)
+- Checkout UI on our domain
 - Payment intents/tokens
 - Refunds/chargebacks/subscriptions/invoices
 - Payment-related webhooks
@@ -256,15 +319,21 @@ git checkout [commit-hash]
 3. Confirm redirect destination is external (not your domain)
 
 ### Issue: Database errors / schema drift
-1. Run `npm run db:push`
+1. Run `npm run db:push` (NOT --force on prod!)
 2. If interactive prompts appear, inspect carefully and confirm no destructive changes
-3. Verify DB constraints and column parity (see Drift Prevention section)
+3. Run `psql "$DATABASE_URL" -f scripts/verify-db-schema.sql`
+4. Verify DB constraints and column parity (see Drift Prevention section)
+
+### Issue: guard:no-payments fails
+1. Search codebase for flagged keyword
+2. Remove payment-related code
+3. Re-run guard script
 
 ---
 
 ## Release Notes
 
-### Version 1.1 (December 2025)
+### Version 1.2 (December 2025)
 
 **Features:**
 - Agency-first AI assistant platform
@@ -278,6 +347,7 @@ git checkout [commit-hash]
 **Known Limitations:**
 - Email features require SMTP setup
 - Widget embedding may require domain configuration depending on allowlist/security settings
+- Payments are not supported by design
 
 ---
 
