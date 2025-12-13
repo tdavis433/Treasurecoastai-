@@ -1,0 +1,152 @@
+REPLIT AGENT MODE — “SIMPLE + FAST + POWERFUL” FINAL STREAMLINE PASS
+(Treasure Coast AI — keep it lean, admin-led, zero client work)
+
+GOAL
+Make onboarding insanely fast for ME (agency/admin) while staying airtight:
+- minimal inputs
+- one-page admin console
+- one-click style match
+- minimum viable KB always (so the bot never feels empty)
+- client-level “health/errors” glance (so demos + live usage don’t act weird)
+- pinned launch checklist (so I never forget a step)
+NO feature creep. No client self-serve. No complex rollback systems.
+
+NON-NEGOTIABLES
+- NO payment processing ever (external booking = HTTPS redirect-only; internal = request capture only).
+- Tenant isolation enforced server-side.
+- Scrape results are suggestions only (never auto-overwrite my manual inputs unless I explicitly replace).
+
+============================================================
+PHASE 1 — PINNED “LAUNCH CHECKLIST” (ADMIN CONSOLE ONLY)
+============================================================
+Add a simple pinned checklist panel at the top of the Agency Onboarding Console.
+Each item shows: PASS / WARN / FAIL and a one-click “Fix” link to the relevant tab.
+
+Checklist items (minimal but complete):
+1) Intake basics present (business name + at least 1 contact method)
+2) Template selected (auto-suggest ok)
+3) Booking configured:
+   - external: valid HTTPS externalBookingUrl
+   - internal: request capture enabled + appointment types exist
+   - failsafe ON (always)
+4) Knowledge base minimum met (see Phase 3)
+5) Notifications configured IF internal mode (recipient present + enabled)
+6) Widget preview loads (config fetch ok)
+7) QA Gate last run: PASS (timestamp shown)
+8) Optional: Preview link generated (24h) (nice-to-have)
+
+Rules:
+- Checklist is not a wizard. It’s a simple “status bar” that keeps me moving.
+- No new pages. Only links to existing tabs.
+
+============================================================
+PHASE 2 — “MATCH WEBSITE THEME” (ONE CLICK)
+============================================================
+Add a one-click button in the Style tab: “Match Website Theme”.
+
+Behavior:
+- Uses websiteUrl (if provided) to pull:
+  - favicon/logo candidate
+  - primary + accent colors (best-effort)
+  - recommends light/dark theme based on contrast
+- Applies safe defaults if extraction fails:
+  - keep existing theme
+  - keep default colors
+- Always allows manual override of:
+  - primaryColor
+  - accentColor
+  - theme (light/dark)
+  - logoUrl
+
+Guardrails:
+- Never blocks onboarding if it fails.
+- Never slows down flow (strict timeout; partial results ok).
+
+Deliverable:
+- Style tab now has: [Match Website Theme] button + small “Applied/Failed” toast.
+
+============================================================
+PHASE 3 — MINIMUM VIABLE KB PACK PER TEMPLATE (NO EMPTY BOTS)
+============================================================
+Implement “Minimum KB Pack” so every template launches with a competent assistant even if:
+- website scrape fails
+- client gave minimal info
+
+For every template:
+Required minimum to be GREEN:
+- Either:
+  - services >= 6
+  OR
+  - FAQs >= 8
+  OR
+  - about/longForm >= 80 chars
+AND
+- operatingHours present (can be default placeholder but structured)
+AND
+- contact method present (phone or email)
+
+If missing:
+- auto-inject template’s “Minimum Pack”:
+  - 8–12 template FAQs (industry-specific)
+  - 6–10 starter services
+  - default policies (including “no payments on platform”)
+  - industry disclaimer (law/medical/recovery etc.)
+
+Rules:
+- Auto-injection must be clearly labeled as “Template defaults” and editable.
+- Never overwrite admin-entered data; only fill missing.
+
+Update existing validation scripts to include KB minimum check.
+
+============================================================
+PHASE 4 — CLIENT “HEALTH + ERRORS” GLANCE (NO PANIC DEBUGGING)
+============================================================
+Add a lightweight “Client Health” card visible in:
+- Super Admin → Workspace detail page
+- Agency Onboarding Console for the current workspace
+
+It shows (tenant-scoped):
+- Last widget config fetch time (or last seen)
+- Last chat activity time
+- Errors last 15 minutes (count)
+- Last 5 errors (redacted, with category: chat/widget/lead/booking/auth/db/other)
+- Notification last attempt status (success/fail + timestamp) if enabled
+
+Rules:
+- This is not a full observability suite—keep it simple.
+- No sensitive values. Redact emails/phones/tokens in error messages.
+
+============================================================
+PHASE 5 — KEEP THE FLOW 3-BUTTON SIMPLE
+============================================================
+Ensure the Agency Onboarding Console still stays:
+1) Generate Draft Setup
+2) Run QA Gate
+3) Go Live + Copy Embed
+Optional:
+- Generate 24h Preview Link (small secondary button)
+
+Do NOT add additional wizard steps or extra pages.
+
+============================================================
+PHASE 6 — QUALITY GATES (MUST PASS)
+============================================================
+Run and prove:
+- bash ./scripts/guard-no-payments.sh
+- npx tsc --noEmit
+- npx vitest run
+- npm run build
+- demo template validation + industry sweep (if present)
+
+============================================================
+FINAL OUTPUT (STRICT)
+============================================================
+Return a single summary including:
+1) What changed (file paths)
+2) Checklist items + statuses
+3) Proof screenshots/log snippets where applicable (no secrets)
+4) Confirmation that flow remains simple:
+   - intake → generate → QA → go live → embed
+5) Commands run + PASS results
+
+START NOW. Keep changes minimal, fast, and reliable.

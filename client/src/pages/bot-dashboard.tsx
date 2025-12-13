@@ -18,8 +18,10 @@ import {
   Calendar, Utensils, Scissors, Car, Dumbbell, Home, ClipboardList,
   Users, DollarSign, Shield, Search, Loader2, ExternalLink, Check,
   X, RefreshCw, Trash2, Plus, Download, BarChart3, Send, Bot,
-  Play, Eye, Code2, Zap, Bell, Copy, Palette
+  Play, Eye, Code2, Zap, Bell, Copy, Palette, Activity, CheckCircle2,
+  XCircle, AlertCircle, Wrench, HelpCircle, Info
 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface BotFaq {
@@ -1586,9 +1588,17 @@ function BotOverviewTab({ botId, botConfig }: { botId: string; botConfig: BotCon
                 <Code2 className="h-4 w-4 mr-3 text-yellow-400" />
                 Get Embed Code
               </Button>
+              <WidgetPreviewPanel botId={botId} config={botConfig} />
+              <DiagnosticsPanel botId={botId} config={botConfig} />
             </div>
           </GlassCardContent>
         </GlassCard>
+      </div>
+
+      {/* Readiness Score and Warnings */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <BotReadinessScore config={botConfig} />
+        <BookingWarnings config={botConfig} />
       </div>
 
       {/* Embed Code Modal */}
@@ -2387,5 +2397,708 @@ function SecurityTab({ config, updateSecurity }: {
         </GlassCardContent>
       </GlassCard>
     </div>
+  );
+}
+
+// ============================================================================
+// PHASE 2: Wizard Demo Proof UX Components
+// ============================================================================
+
+interface ReadinessCheck {
+  label: string;
+  passed: boolean;
+  severity: 'critical' | 'warning' | 'info';
+  description: string;
+}
+
+function calculateReadinessScore(config: BotConfig): { score: number; checks: ReadinessCheck[]; criticalPassRate: number } {
+  const checks: ReadinessCheck[] = [];
+  
+  // Critical checks (required for production) - these block deployment
+  checks.push({
+    label: "Business Name",
+    passed: !!config.businessProfile.businessName?.trim(),
+    severity: 'critical',
+    description: "Business name is required for the AI to introduce itself properly"
+  });
+  
+  checks.push({
+    label: "System Prompt",
+    passed: (config.systemPrompt?.length || 0) >= 100,
+    severity: 'critical',
+    description: "A detailed system prompt (100+ chars) ensures quality responses"
+  });
+  
+  checks.push({
+    label: "Contact Info",
+    passed: !!(config.businessProfile.phone || config.businessProfile.email),
+    severity: 'critical',
+    description: "Phone or email needed for lead capture and customer contact"
+  });
+  
+  // Industry-specific critical checks
+  const businessType = config.businessProfile.type;
+  if (businessType === 'sober_living') {
+    checks.push({
+      label: "Crisis Handling",
+      passed: !!(config.rules?.crisisHandling?.onCrisisKeywords?.length && config.rules?.crisisHandling?.responseTemplate),
+      severity: 'critical',
+      description: "Recovery facilities must have crisis keywords and response configured"
+    });
+  }
+  
+  // Warning checks (recommended for quality)
+  const faqCount = config.faqs?.length || 0;
+  checks.push({
+    label: "FAQs Configured",
+    passed: faqCount >= 5,
+    severity: 'warning',
+    description: `${faqCount}/5 FAQs configured. 5+ FAQs recommended for better accuracy`
+  });
+  
+  const servicesCount = config.businessProfile.services?.length || 0;
+  checks.push({
+    label: "Services Listed",
+    passed: servicesCount >= 3,
+    severity: 'warning',
+    description: `${servicesCount}/3 services listed. 3+ services help customers understand offerings`
+  });
+  
+  const hoursConfigured = Object.values(config.businessProfile.hours || {}).filter(h => h?.trim()).length;
+  checks.push({
+    label: "Business Hours",
+    passed: hoursConfigured >= 5,
+    severity: 'warning',
+    description: `${hoursConfigured}/7 days configured. Complete hours help with scheduling inquiries`
+  });
+  
+  // Industry-specific warnings
+  if (['barber', 'restaurant', 'gym'].includes(businessType)) {
+    checks.push({
+      label: "Booking Setup",
+      passed: !!(config.businessProfile.booking?.onlineBookingUrl || config.businessProfile.booking?.walkInsWelcome),
+      severity: 'warning',
+      description: "Appointment-based businesses should have booking URL or walk-in policy set"
+    });
+  }
+  
+  // Info checks (nice to have)
+  checks.push({
+    label: "Website URL",
+    passed: !!config.businessProfile.website?.trim(),
+    severity: 'info',
+    description: "Website URL helps AI direct customers to more information"
+  });
+  
+  checks.push({
+    label: "Location Set",
+    passed: !!config.businessProfile.location?.trim(),
+    severity: 'info',
+    description: "Location helps with directions and service area questions"
+  });
+  
+  // Calculate score - CRITICAL CHECKS DOMINATE
+  const criticalChecks = checks.filter(c => c.severity === 'critical');
+  const criticalPassed = criticalChecks.filter(c => c.passed).length;
+  const criticalTotal = criticalChecks.length;
+  const criticalPassRate = criticalTotal > 0 ? criticalPassed / criticalTotal : 1;
+  
+  // If ANY critical check fails, max score is 49%
+  if (criticalPassRate < 1) {
+    const baseScore = Math.round(criticalPassRate * 49);
+    return { score: baseScore, checks, criticalPassRate };
+  }
+  
+  // All critical passed - now calculate advisory score (50-100%)
+  const warningChecks = checks.filter(c => c.severity === 'warning');
+  const warningPassed = warningChecks.filter(c => c.passed).length;
+  const warningTotal = warningChecks.length;
+  
+  const infoChecks = checks.filter(c => c.severity === 'info');
+  const infoPassed = infoChecks.filter(c => c.passed).length;
+  const infoTotal = infoChecks.length;
+  
+  // Base 50% for passing all critical, +35% for warnings, +15% for info
+  const warningScore = warningTotal > 0 ? (warningPassed / warningTotal) * 35 : 35;
+  const infoScore = infoTotal > 0 ? (infoPassed / infoTotal) * 15 : 15;
+  const score = Math.round(50 + warningScore + infoScore);
+  
+  return { score, checks, criticalPassRate };
+}
+
+function BotReadinessScore({ config }: { config: BotConfig }) {
+  const { score, checks } = calculateReadinessScore(config);
+  
+  const getScoreColor = () => {
+    if (score >= 80) return { bg: "from-green-500/20 to-emerald-500/20", border: "border-green-400/30", text: "text-green-400" };
+    if (score >= 60) return { bg: "from-yellow-500/20 to-amber-500/20", border: "border-yellow-400/30", text: "text-yellow-400" };
+    return { bg: "from-red-500/20 to-orange-500/20", border: "border-red-400/30", text: "text-red-400" };
+  };
+  
+  const getScoreLabel = () => {
+    if (score >= 80) return "Production Ready";
+    if (score >= 60) return "Needs Improvement";
+    return "Not Ready";
+  };
+  
+  const colors = getScoreColor();
+  const failedCritical = checks.filter(c => c.severity === 'critical' && !c.passed);
+  const failedWarning = checks.filter(c => c.severity === 'warning' && !c.passed);
+  
+  return (
+    <GlassCard>
+      <GlassCardHeader>
+        <GlassCardTitle className="flex items-center gap-2">
+          <Activity className="h-5 w-5 text-cyan-400" />
+          Production Readiness
+        </GlassCardTitle>
+        <GlassCardDescription>Configuration completeness for live deployment</GlassCardDescription>
+      </GlassCardHeader>
+      <GlassCardContent>
+        <div className="space-y-4">
+          {/* Score Display */}
+          <div className={`p-4 rounded-xl bg-gradient-to-br ${colors.bg} border ${colors.border}`}>
+            <div className="flex items-center justify-between mb-3">
+              <span className={`text-4xl font-bold ${colors.text}`} data-testid="readiness-score">{score}%</span>
+              <NeonBadge variant={score >= 80 ? "success" : score >= 60 ? "warning" : "danger"}>
+                {getScoreLabel()}
+              </NeonBadge>
+            </div>
+            <Progress value={score} className="h-2" />
+          </div>
+          
+          {/* Failed Critical Checks */}
+          {failedCritical.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-red-400 text-sm font-medium flex items-center gap-1">
+                <XCircle className="h-4 w-4" />
+                Critical Issues ({failedCritical.length})
+              </h4>
+              {failedCritical.map((check, i) => (
+                <div key={i} className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm">
+                  <span className="text-red-300 font-medium">{check.label}</span>
+                  <p className="text-red-200/70 text-xs mt-1">{check.description}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {/* Failed Warning Checks */}
+          {failedWarning.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-amber-400 text-sm font-medium flex items-center gap-1">
+                <AlertCircle className="h-4 w-4" />
+                Recommendations ({failedWarning.length})
+              </h4>
+              {failedWarning.map((check, i) => (
+                <div key={i} className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm">
+                  <span className="text-amber-300 font-medium">{check.label}</span>
+                  <p className="text-amber-200/70 text-xs mt-1">{check.description}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {/* All Passed */}
+          {failedCritical.length === 0 && failedWarning.length === 0 && (
+            <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 text-center">
+              <CheckCircle2 className="h-8 w-8 text-green-400 mx-auto mb-2" />
+              <p className="text-green-300 font-medium">All critical and recommended checks passed!</p>
+              <p className="text-green-200/70 text-sm">Your bot is ready for production deployment.</p>
+            </div>
+          )}
+        </div>
+      </GlassCardContent>
+    </GlassCard>
+  );
+}
+
+function BookingWarnings({ config }: { config: BotConfig }) {
+  const warnings: { message: string; severity: 'warning' | 'info' }[] = [];
+  const businessType = config.businessProfile.type;
+  
+  // Check for booking configuration issues
+  const bookingUrl = config.businessProfile.booking?.onlineBookingUrl;
+  const hasPhone = !!config.businessProfile.phone?.trim();
+  const hasEmail = !!config.businessProfile.email?.trim();
+  const hoursConfigured = Object.values(config.businessProfile.hours || {}).filter(h => h?.trim()).length;
+  const servicesCount = config.businessProfile.services?.length || 0;
+  const walkInsWelcome = config.businessProfile.booking?.walkInsWelcome;
+  
+  // Universal warnings
+  if (!bookingUrl && !hasPhone && !hasEmail) {
+    warnings.push({
+      message: "No booking URL, phone, or email configured. Users won't be able to book appointments.",
+      severity: 'warning'
+    });
+  }
+  
+  if (hoursConfigured === 0) {
+    warnings.push({
+      message: "No business hours configured. AI can't answer availability questions accurately.",
+      severity: 'warning'
+    });
+  }
+  
+  // Industry-specific warnings
+  if (['barber', 'restaurant'].includes(businessType)) {
+    if (!bookingUrl && !walkInsWelcome) {
+      warnings.push({
+        message: `${businessType === 'barber' ? 'Salons' : 'Restaurants'} should have either an online booking URL or walk-in policy set.`,
+        severity: 'warning'
+      });
+    }
+    if (walkInsWelcome && !config.businessProfile.booking?.walkInsNote) {
+      warnings.push({
+        message: "Walk-ins enabled but no walk-in note configured. Consider adding wait time info.",
+        severity: 'info'
+      });
+    }
+  }
+  
+  if (businessType === 'gym') {
+    const membershipOptions = config.businessProfile.membershipOptions?.length || 0;
+    if (membershipOptions === 0) {
+      warnings.push({
+        message: "No membership options configured. Gyms should list available membership tiers.",
+        severity: 'warning'
+      });
+    }
+  }
+  
+  if (['homeservice', 'autoservice'].includes(businessType)) {
+    if (servicesCount === 0) {
+      warnings.push({
+        message: "No services listed. Service businesses need a service catalog for accurate quotes.",
+        severity: 'warning'
+      });
+    }
+    if (!config.businessProfile.serviceArea?.trim()) {
+      warnings.push({
+        message: "No service area defined. Consider adding the areas you serve.",
+        severity: 'info'
+      });
+    }
+  }
+  
+  if (businessType === 'sober_living') {
+    if (!config.rules?.crisisHandling?.responseTemplate) {
+      warnings.push({
+        message: "Crisis response template not configured. Critical for recovery facilities.",
+        severity: 'warning'
+      });
+    }
+  }
+  
+  if (businessType === 'medspa') {
+    if (servicesCount === 0) {
+      warnings.push({
+        message: "No treatments listed. Med spas should catalog available procedures and pricing.",
+        severity: 'warning'
+      });
+    }
+    if (!bookingUrl) {
+      warnings.push({
+        message: "No online booking for consultations. Consider adding a booking link for appointments.",
+        severity: 'info'
+      });
+    }
+  }
+  
+  if (businessType === 'realestate') {
+    if (servicesCount === 0) {
+      warnings.push({
+        message: "No services listed. Real estate agents should list specialties (buyer agent, listing agent, etc.).",
+        severity: 'warning'
+      });
+    }
+    if (!config.businessProfile.serviceArea?.trim()) {
+      warnings.push({
+        message: "No service area defined. Real estate agents should specify coverage areas.",
+        severity: 'warning'
+      });
+    }
+  }
+  
+  if (businessType === 'tattoo') {
+    if (servicesCount === 0) {
+      warnings.push({
+        message: "No tattoo styles listed. Tattoo artists should list their specialties (traditional, realism, etc.).",
+        severity: 'warning'
+      });
+    }
+    if (!bookingUrl && !walkInsWelcome) {
+      warnings.push({
+        message: "Tattoo shops should have either consultation booking or walk-in policy set.",
+        severity: 'warning'
+      });
+    }
+  }
+  
+  if (businessType === 'dental') {
+    if (servicesCount === 0) {
+      warnings.push({
+        message: "No dental services listed. Dental practices should list procedures offered.",
+        severity: 'warning'
+      });
+    }
+    if (!bookingUrl) {
+      warnings.push({
+        message: "No online appointment booking. Consider adding scheduling link for patient convenience.",
+        severity: 'info'
+      });
+    }
+  }
+  
+  if (businessType === 'legal') {
+    if (servicesCount === 0) {
+      warnings.push({
+        message: "No practice areas listed. Law firms should specify areas of practice.",
+        severity: 'warning'
+      });
+    }
+    if (!bookingUrl && !hasPhone) {
+      warnings.push({
+        message: "No consultation booking or phone number. Clients need a way to schedule consultations.",
+        severity: 'warning'
+      });
+    }
+  }
+  
+  if (businessType === 'veterinary') {
+    if (servicesCount === 0) {
+      warnings.push({
+        message: "No veterinary services listed. Vet clinics should list available services.",
+        severity: 'warning'
+      });
+    }
+    if (!hasPhone) {
+      warnings.push({
+        message: "No phone number configured. Emergency pet care requires immediate phone access.",
+        severity: 'warning'
+      });
+    }
+  }
+  
+  if (!bookingUrl && hasPhone) {
+    warnings.push({
+      message: "No online booking URL. Users will need to call to schedule appointments.",
+      severity: 'info'
+    });
+  }
+  
+  if (warnings.length === 0) return null;
+  
+  return (
+    <GlassCard>
+      <GlassCardHeader>
+        <GlassCardTitle className="flex items-center gap-2">
+          <Calendar className="h-5 w-5 text-amber-400" />
+          Booking Configuration
+        </GlassCardTitle>
+      </GlassCardHeader>
+      <GlassCardContent>
+        <div className="space-y-2">
+          {warnings.map((warning, i) => (
+            <div 
+              key={i} 
+              className={`p-3 rounded-lg flex items-start gap-3 ${
+                warning.severity === 'warning' 
+                  ? 'bg-amber-500/10 border border-amber-500/20' 
+                  : 'bg-blue-500/10 border border-blue-500/20'
+              }`}
+              data-testid={`booking-warning-${i}`}
+            >
+              {warning.severity === 'warning' ? (
+                <AlertTriangle className="h-4 w-4 text-amber-400 flex-shrink-0 mt-0.5" />
+              ) : (
+                <Info className="h-4 w-4 text-blue-400 flex-shrink-0 mt-0.5" />
+              )}
+              <span className={`text-sm ${
+                warning.severity === 'warning' ? 'text-amber-200/80' : 'text-blue-200/80'
+              }`}>
+                {warning.message}
+              </span>
+            </div>
+          ))}
+        </div>
+      </GlassCardContent>
+    </GlassCard>
+  );
+}
+
+interface DiagnosticResult {
+  name: string;
+  status: 'pending' | 'running' | 'pass' | 'fail';
+  message?: string;
+  duration?: number;
+}
+
+function DiagnosticsPanel({ botId, config }: { botId: string; config: BotConfig }) {
+  const { toast } = useToast();
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [tests, setTests] = useState<DiagnosticResult[]>([
+    { name: "Configuration Valid", status: 'pending' },
+    { name: "Chat API Responds", status: 'pending' },
+    { name: "Widget Script Loads", status: 'pending' },
+    { name: "Bot Config Endpoint", status: 'pending' },
+  ]);
+  const [isTesting, setIsTesting] = useState(false);
+  
+  const updateTest = (name: string, update: Partial<DiagnosticResult>) => {
+    setTests(prev => prev.map(t => t.name === name ? { ...t, ...update } : t));
+  };
+  
+  const runDiagnostics = async () => {
+    setIsTesting(true);
+    
+    // Track final results for toast - each is set exactly once
+    let configResult: 'pass' | 'fail' = 'fail';
+    let chatApiResult: 'pass' | 'fail' = 'fail';
+    let widgetResult: 'pass' | 'fail' = 'fail';
+    let botConfigResult: 'pass' | 'fail' = 'fail';
+    
+    // Reset to running state
+    setTests([
+      { name: "Configuration Valid", status: 'running' },
+      { name: "Chat API Responds", status: 'pending' },
+      { name: "Widget Script Loads", status: 'pending' },
+      { name: "Bot Config Endpoint", status: 'pending' },
+    ]);
+    
+    // Test 1: Local config validation
+    const startConfig = Date.now();
+    const { criticalPassRate } = calculateReadinessScore(config);
+    configResult = criticalPassRate === 1 ? 'pass' : 'fail';
+    setTests([
+      { name: "Configuration Valid", status: configResult, message: configResult === 'pass' ? "All critical checks passed" : `${Math.round(criticalPassRate * 100)}% critical checks passed`, duration: Date.now() - startConfig },
+      { name: "Chat API Responds", status: 'running' },
+      { name: "Widget Script Loads", status: 'pending' },
+      { name: "Bot Config Endpoint", status: 'pending' },
+    ]);
+    
+    // Test 2: Chat API ping
+    const startApi = Date.now();
+    let chatApiMessage = "";
+    try {
+      const response = await fetch(`/api/chat/${config.clientId}/${botId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'ping' }], sessionId: 'diagnostics-test' })
+      });
+      const apiOk = response.status !== 404 && response.status < 500;
+      chatApiResult = apiOk ? 'pass' : 'fail';
+      chatApiMessage = apiOk ? `Status ${response.status}` : `Failed with ${response.status}`;
+    } catch {
+      chatApiResult = 'fail';
+      chatApiMessage = "Network error - API unreachable";
+    }
+    setTests([
+      { name: "Configuration Valid", status: configResult, message: configResult === 'pass' ? "All critical checks passed" : `${Math.round(criticalPassRate * 100)}% critical checks passed`, duration: Date.now() - startConfig },
+      { name: "Chat API Responds", status: chatApiResult, message: chatApiMessage, duration: Date.now() - startApi },
+      { name: "Widget Script Loads", status: 'running' },
+      { name: "Bot Config Endpoint", status: 'pending' },
+    ]);
+    
+    // Test 3: Widget script endpoint
+    const startWidget = Date.now();
+    let widgetMessage = "";
+    try {
+      const response = await fetch('/widget/embed.js', { method: 'HEAD' });
+      widgetResult = response.ok ? 'pass' : 'fail';
+      widgetMessage = response.ok ? "Script accessible" : `Status ${response.status}`;
+    } catch {
+      widgetResult = 'fail';
+      widgetMessage = "Network error";
+    }
+    setTests([
+      { name: "Configuration Valid", status: configResult, message: configResult === 'pass' ? "All critical checks passed" : `${Math.round(criticalPassRate * 100)}% critical checks passed`, duration: Date.now() - startConfig },
+      { name: "Chat API Responds", status: chatApiResult, message: chatApiMessage, duration: Date.now() - startApi },
+      { name: "Widget Script Loads", status: widgetResult, message: widgetMessage, duration: Date.now() - startWidget },
+      { name: "Bot Config Endpoint", status: 'running' },
+    ]);
+    
+    // Test 4: Bot config endpoint
+    const startBotConfig = Date.now();
+    let botConfigMessage = "";
+    try {
+      const response = await fetch(`/api/bots/${config.clientId}/${botId}/config`, {
+        credentials: 'include'
+      });
+      botConfigResult = response.ok ? 'pass' : 'fail';
+      botConfigMessage = response.ok ? "Config accessible" : `Status ${response.status}`;
+    } catch {
+      botConfigResult = 'fail';
+      botConfigMessage = "Network error";
+    }
+    
+    // Final state update
+    setTests([
+      { name: "Configuration Valid", status: configResult, message: configResult === 'pass' ? "All critical checks passed" : `${Math.round(criticalPassRate * 100)}% critical checks passed`, duration: Date.now() - startConfig },
+      { name: "Chat API Responds", status: chatApiResult, message: chatApiMessage, duration: Date.now() - startApi },
+      { name: "Widget Script Loads", status: widgetResult, message: widgetMessage, duration: Date.now() - startWidget },
+      { name: "Bot Config Endpoint", status: botConfigResult, message: botConfigMessage, duration: Date.now() - startBotConfig },
+    ]);
+    
+    // Count passed from our local tracking variables (not state)
+    const passedCount = [configResult, chatApiResult, widgetResult, botConfigResult].filter(r => r === 'pass').length;
+    setIsTesting(false);
+    toast({ 
+      title: "Diagnostics Complete", 
+      description: `${passedCount}/4 checks passed.`
+    });
+  };
+  
+  const getTestStatusIcon = (status: DiagnosticResult['status']) => {
+    switch (status) {
+      case 'pending': return <HelpCircle className="h-4 w-4 text-white/40" />;
+      case 'running': return <Loader2 className="h-4 w-4 text-cyan-400 animate-spin" />;
+      case 'pass': return <CheckCircle2 className="h-4 w-4 text-green-400" />;
+      case 'fail': return <XCircle className="h-4 w-4 text-red-400" />;
+    }
+  };
+  
+  return (
+    <>
+      <Button
+        variant="outline"
+        className="w-full justify-start text-left"
+        onClick={() => setShowDiagnostics(true)}
+        data-testid="button-diagnostics"
+      >
+        <Wrench className="h-4 w-4 mr-3 text-amber-400" />
+        Run Diagnostics
+      </Button>
+      
+      <Dialog open={showDiagnostics} onOpenChange={setShowDiagnostics}>
+        <DialogContent className="bg-[#1a1d24] border-white/10 max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <Wrench className="h-5 w-5 text-amber-400" />
+              Bot Diagnostics
+            </DialogTitle>
+            <DialogDescription className="text-white/55">
+              Run real-time checks to identify issues with your bot configuration and endpoints.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 mt-4">
+            <Button
+              onClick={runDiagnostics}
+              disabled={isTesting}
+              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+              data-testid="button-run-diagnostics"
+            >
+              {isTesting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Running Tests...
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4 mr-2" />
+                  Run All Tests
+                </>
+              )}
+            </Button>
+            
+            <div className="space-y-2">
+              {tests.map((test) => (
+                <div 
+                  key={test.name}
+                  className={`p-3 rounded-lg border flex items-center justify-between ${
+                    test.status === 'fail' ? 'bg-red-500/10 border-red-500/20' :
+                    test.status === 'pass' ? 'bg-green-500/10 border-green-500/20' :
+                    'bg-white/5 border-white/10'
+                  }`}
+                >
+                  <div className="flex-1">
+                    <span className="text-white font-medium text-sm">{test.name}</span>
+                    {test.message && (
+                      <p className={`text-xs mt-0.5 ${
+                        test.status === 'fail' ? 'text-red-300' :
+                        test.status === 'pass' ? 'text-green-300' :
+                        'text-white/55'
+                      }`}>
+                        {test.message}
+                        {test.duration !== undefined && ` (${test.duration}ms)`}
+                      </p>
+                    )}
+                  </div>
+                  {getTestStatusIcon(test.status)}
+                </div>
+              ))}
+            </div>
+            
+            {/* Embed code info */}
+            <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
+              <h4 className="text-blue-400 font-medium text-sm mb-2 flex items-center gap-1">
+                <Info className="h-4 w-4" />
+                Embed Information
+              </h4>
+              <div className="space-y-1 text-xs text-blue-200/70">
+                <p><strong>Client ID:</strong> <code className="bg-black/30 px-1 rounded">{config.clientId}</code></p>
+                <p><strong>Bot ID:</strong> <code className="bg-black/30 px-1 rounded">{botId}</code></p>
+                <p><strong>Demo URL:</strong> <code className="bg-black/30 px-1 rounded">/demo/{botId}</code></p>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function WidgetPreviewPanel({ botId, config }: { botId: string; config: BotConfig }) {
+  const [showPreview, setShowPreview] = useState(false);
+  
+  return (
+    <>
+      <Button
+        variant="outline"
+        className="w-full justify-start text-left"
+        onClick={() => setShowPreview(true)}
+        data-testid="button-widget-preview"
+      >
+        <Eye className="h-4 w-4 mr-3 text-purple-400" />
+        Widget Preview
+      </Button>
+      
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent className="bg-[#1a1d24] border-white/10 max-w-4xl h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <Eye className="h-5 w-5 text-purple-400" />
+              Widget Preview
+            </DialogTitle>
+            <DialogDescription className="text-white/55">
+              See how your chat widget looks to visitors
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex-1 relative mt-4 rounded-lg overflow-hidden border border-white/10 bg-gradient-to-br from-gray-900 to-gray-800">
+            <iframe
+              src={`/demo/${botId}`}
+              className="w-full h-full min-h-[500px]"
+              title="Widget Preview"
+              data-testid="widget-preview-iframe"
+            />
+            <div className="absolute top-2 right-2 flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.open(`/demo/${botId}`, '_blank')}
+                className="bg-black/50 border-white/20"
+                data-testid="button-open-fullscreen-preview"
+              >
+                <ExternalLink className="h-3 w-3 mr-1" />
+                Open Full
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
