@@ -92,6 +92,56 @@ function categorizeMessageTopic(content: string): string {
   return 'general';
 }
 
+/**
+ * BOOKING FAILSAFE: Validate external booking URL
+ * Only HTTPS URLs are allowed - blocks javascript:, data:, file:, http: (insecure)
+ * Returns true if URL is valid and safe for redirect
+ */
+export function isValidExternalBookingUrl(url: string | null | undefined): boolean {
+  if (!url || typeof url !== 'string' || url.trim().length === 0) {
+    return false;
+  }
+  
+  const trimmed = url.trim().toLowerCase();
+  
+  // Block dangerous URL schemes
+  const blockedSchemes = ['javascript:', 'data:', 'file:', 'vbscript:', 'about:'];
+  for (const scheme of blockedSchemes) {
+    if (trimmed.startsWith(scheme)) {
+      console.warn(`[Orchestrator] Blocked dangerous URL scheme: ${scheme} in URL: ${url}`);
+      return false;
+    }
+  }
+  
+  // Block insecure HTTP - only HTTPS allowed
+  if (trimmed.startsWith('http:')) {
+    console.warn(`[Orchestrator] Blocked insecure HTTP URL (HTTPS required): ${url}`);
+    return false;
+  }
+  
+  // Must start with HTTPS
+  if (!trimmed.startsWith('https://')) {
+    console.warn(`[Orchestrator] URL must start with https://: ${url}`);
+    return false;
+  }
+  
+  // Basic URL validation
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') {
+      return false;
+    }
+    // Must have a valid hostname
+    if (!parsed.hostname || parsed.hostname.length < 3) {
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.warn(`[Orchestrator] Invalid URL format: ${url}`);
+    return false;
+  }
+}
+
 export interface ExtractedBookingInfo {
   name?: string;
   phone?: string;
@@ -523,6 +573,7 @@ export interface OrchestratorMeta {
   leadCaptured?: boolean;
   bookingSaved?: boolean;  // When booking was saved during resilient persistence
   contactInfo?: { name?: string; email?: string; phone?: string };
+  failsafeActivated?: boolean;  // True when external URL was invalid and we pivoted to internal
 }
 
 export interface OrchestratorResponse {
@@ -673,12 +724,27 @@ class ConversationOrchestrator {
 
       // 12. Get client settings for external URLs and booking mode
       const clientSettings = await configCache.getClientSettings(clientId);
-      const bookingMode = (clientSettings?.bookingMode as 'internal' | 'external') || 'internal';
+      let bookingMode = (clientSettings?.bookingMode as 'internal' | 'external') || 'internal';
+      let bookingUrl: string | null = null;
+      let failsafeActivated = false;
 
-      // 13. Return standardized response - only include booking URL when intent is detected and mode is external
-      const bookingUrl = (postProcessResult.showBooking && bookingMode === 'external')
-        ? (clientSettings?.externalBookingUrl || botConfig.externalBookingUrl || null)
-        : null;
+      // 13. BOOKING FAILSAFE: Check if external URL is valid when mode is external
+      if (postProcessResult.showBooking && bookingMode === 'external') {
+        const candidateUrl = clientSettings?.externalBookingUrl || botConfig.externalBookingUrl || null;
+        
+        if (isValidExternalBookingUrl(candidateUrl)) {
+          // URL is valid - use external mode
+          bookingUrl = candidateUrl;
+        } else {
+          // FAILSAFE: External URL missing/invalid - pivot to internal mode
+          console.warn(`[Orchestrator] FAILSAFE ACTIVATED: External booking URL missing/invalid for ${clientId}/${botId}. Pivoting to internal mode.`);
+          bookingMode = 'internal';
+          failsafeActivated = true;
+          
+          // Note: The widget/frontend will display the internal booking form
+          // when bookingMode is 'internal' and showBooking is true
+        }
+      }
       
       return {
         success: true,
@@ -697,6 +763,7 @@ class ConversationOrchestrator {
           suggestedReplies: [],
           leadCaptured: postProcessResult.leadCaptured,
           contactInfo: postProcessResult.contactInfo,
+          failsafeActivated, // Signal that failsafe was triggered
         },
       };
     } catch (error: any) {
@@ -717,23 +784,33 @@ class ConversationOrchestrator {
         const bookingKeywords = /\b(book|appointment|schedule|reserve|booking|consultation)\b/i;
         const hasBookingIntent = bookingKeywords.test(lastUserMessage);
         
-        // Try to get client settings for external booking URL
+        // Try to get client settings for external booking URL with failsafe validation
         let fallbackBookingUrl: string | null = null;
         let fallbackBookingMode: 'internal' | 'external' = 'internal';
         let fallbackProviderName: string | null = null;
+        let failsafeActivated = false;
         
         try {
           const clientSettings = await configCache.getClientSettings(request.clientId);
-          if (clientSettings?.bookingMode === 'external' && clientSettings?.externalBookingUrl) {
-            fallbackBookingMode = 'external';
-            fallbackBookingUrl = clientSettings.externalBookingUrl;
-            fallbackProviderName = clientSettings.externalBookingProviderName || null;
+          if (clientSettings?.bookingMode === 'external') {
+            const candidateUrl = clientSettings.externalBookingUrl || null;
+            if (isValidExternalBookingUrl(candidateUrl)) {
+              fallbackBookingMode = 'external';
+              fallbackBookingUrl = candidateUrl;
+              fallbackProviderName = clientSettings.externalBookingProviderName || null;
+            } else {
+              // FAILSAFE: Invalid/missing URL - stay internal
+              console.warn(`[Orchestrator] FAILSAFE in rate-limit handler: Invalid external URL for ${request.clientId}`);
+              failsafeActivated = true;
+            }
           }
         } catch (e) {
           // Silently ignore - we'll just not show booking button
         }
         
-        const showBookingOnFallback = hasBookingIntent && fallbackBookingMode === 'external' && !!fallbackBookingUrl;
+        // Show booking on external only if URL is valid, otherwise show internal form
+        const showBookingOnFallback = hasBookingIntent;
+        const effectiveBookingMode = fallbackBookingUrl ? fallbackBookingMode : 'internal';
         
         // Craft a more helpful message if booking intent detected
         const friendlyMessage = showBookingOnFallback
@@ -749,11 +826,12 @@ class ConversationOrchestrator {
             sessionId: request.sessionId || `session_${Date.now()}`,
             responseTimeMs: Date.now() - startTime,
             showBooking: showBookingOnFallback,
-            bookingMode: fallbackBookingMode,
-            externalBookingUrl: showBookingOnFallback ? fallbackBookingUrl : null,
-            externalBookingProviderName: showBookingOnFallback ? fallbackProviderName : null,
+            bookingMode: effectiveBookingMode,
+            externalBookingUrl: effectiveBookingMode === 'external' ? fallbackBookingUrl : null,
+            externalBookingProviderName: effectiveBookingMode === 'external' ? fallbackProviderName : null,
             externalPaymentUrl: null,
             suggestedReplies: showBookingOnFallback ? [] : ["When can I call you?", "What are your hours?"],
+            failsafeActivated,
           },
         };
       }
@@ -904,11 +982,25 @@ class ConversationOrchestrator {
       );
       await incrementMessageCount(clientId);
 
-      // 10. Send final meta - only include booking URL when intent is detected and mode is external
-      const streamBookingMode = (clientSettings?.bookingMode as 'internal' | 'external') || 'internal';
-      const bookingUrl = (postProcessResult.showBooking && streamBookingMode === 'external')
-        ? (clientSettings?.externalBookingUrl || botConfig.externalBookingUrl || null)
-        : null;
+      // 10. Send final meta with FAILSAFE validation
+      let streamBookingMode = (clientSettings?.bookingMode as 'internal' | 'external') || 'internal';
+      let bookingUrl: string | null = null;
+      let failsafeActivated = false;
+
+      // BOOKING FAILSAFE: Validate external URL when mode is external
+      if (postProcessResult.showBooking && streamBookingMode === 'external') {
+        const candidateUrl = clientSettings?.externalBookingUrl || botConfig.externalBookingUrl || null;
+        
+        if (isValidExternalBookingUrl(candidateUrl)) {
+          bookingUrl = candidateUrl;
+        } else {
+          // FAILSAFE: Pivot to internal mode
+          console.warn(`[Orchestrator] FAILSAFE ACTIVATED (stream): External booking URL missing/invalid for ${clientId}/${botId}. Pivoting to internal.`);
+          streamBookingMode = 'internal';
+          failsafeActivated = true;
+        }
+      }
+
       const paymentUrl = postProcessResult.showBooking 
         ? (clientSettings?.externalPaymentUrl || botConfig.externalPaymentUrl || null)
         : null;
@@ -931,6 +1023,7 @@ class ConversationOrchestrator {
           leadCaptured: postProcessResult.leadCaptured,
           bookingSaved: postProcessResult.bookingSaved || false,
           contactInfo: postProcessResult.contactInfo,
+          failsafeActivated,
         },
       };
 
