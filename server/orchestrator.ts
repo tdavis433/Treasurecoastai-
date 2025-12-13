@@ -673,8 +673,35 @@ class ConversationOrchestrator {
       
       if (isRateLimitError) {
         console.error('[Orchestrator] OpenAI rate limit exceeded - returning friendly message as normal reply');
-        // Return as a successful response so the widget shows it as a normal message, not an error toast
-        const friendlyMessage = "I apologize, but I'm experiencing high demand right now. Please try again in a moment, or feel free to call us directly for immediate assistance.";
+        
+        // Even during rate limiting, check if user has booking intent and external booking is configured
+        const lastUserMessage = request.messages[request.messages.length - 1]?.content || '';
+        const bookingKeywords = /\b(book|appointment|schedule|reserve|booking|consultation)\b/i;
+        const hasBookingIntent = bookingKeywords.test(lastUserMessage);
+        
+        // Try to get client settings for external booking URL
+        let fallbackBookingUrl: string | null = null;
+        let fallbackBookingMode: 'internal' | 'external' = 'internal';
+        let fallbackProviderName: string | null = null;
+        
+        try {
+          const clientSettings = await configCache.getClientSettings(request.clientId);
+          if (clientSettings?.bookingMode === 'external' && clientSettings?.externalBookingUrl) {
+            fallbackBookingMode = 'external';
+            fallbackBookingUrl = clientSettings.externalBookingUrl;
+            fallbackProviderName = clientSettings.externalBookingProviderName || null;
+          }
+        } catch (e) {
+          // Silently ignore - we'll just not show booking button
+        }
+        
+        const showBookingOnFallback = hasBookingIntent && fallbackBookingMode === 'external' && !!fallbackBookingUrl;
+        
+        // Craft a more helpful message if booking intent detected
+        const friendlyMessage = showBookingOnFallback
+          ? "I apologize, but I'm experiencing high demand right now. However, you can still complete your booking by clicking the button below!"
+          : "I apologize, but I'm experiencing high demand right now. Please try again in a moment, or feel free to call us directly for immediate assistance.";
+        
         return {
           success: true,
           reply: friendlyMessage,
@@ -683,11 +710,12 @@ class ConversationOrchestrator {
             botId: request.botId,
             sessionId: request.sessionId || `session_${Date.now()}`,
             responseTimeMs: Date.now() - startTime,
-            showBooking: false,
-            bookingMode: 'internal',
-            externalBookingUrl: null,
+            showBooking: showBookingOnFallback,
+            bookingMode: fallbackBookingMode,
+            externalBookingUrl: showBookingOnFallback ? fallbackBookingUrl : null,
+            externalBookingProviderName: showBookingOnFallback ? fallbackProviderName : null,
             externalPaymentUrl: null,
-            suggestedReplies: ["When can I call you?", "What are your hours?"],
+            suggestedReplies: showBookingOnFallback ? [] : ["When can I call you?", "What are your hours?"],
           },
         };
       }
@@ -968,12 +996,39 @@ class ConversationOrchestrator {
           console.error('[Orchestrator] Error saving resilient lead/booking:', saveError);
         }
         
+        // Check if external booking is configured - show booking button even during errors
+        let fallbackBookingUrl: string | null = null;
+        let fallbackBookingMode: 'internal' | 'external' = 'internal';
+        let fallbackProviderName: string | null = null;
+        let hasBookingIntent = false;
+        
+        try {
+          const lastMsg = messages[messages.length - 1]?.content || '';
+          const bookingKeywords = /\b(book|appointment|schedule|reserve|booking|consultation)\b/i;
+          hasBookingIntent = bookingKeywords.test(lastMsg);
+          
+          const fallbackSettings = await configCache.getClientSettings(clientId);
+          if (fallbackSettings?.bookingMode === 'external' && fallbackSettings?.externalBookingUrl) {
+            fallbackBookingMode = 'external';
+            fallbackBookingUrl = fallbackSettings.externalBookingUrl;
+            fallbackProviderName = fallbackSettings.externalBookingProviderName || null;
+          }
+        } catch (e) {
+          // Silently ignore
+        }
+        
+        const showBookingOnError = hasBookingIntent && fallbackBookingMode === 'external' && !!fallbackBookingUrl;
+        
         // Build appropriate friendly message based on what was saved
         let friendlyMessage: string;
         if (savedBooking) {
           friendlyMessage = "I'm experiencing some delays right now, but I've saved your information and booking request! Our team will reach out shortly to confirm the details. Thank you for your patience!";
+        } else if (savedLead && showBookingOnError) {
+          friendlyMessage = "I'm experiencing some delays right now, but I've saved your contact information. You can complete your booking by clicking the button below!";
         } else if (savedLead) {
           friendlyMessage = "I'm experiencing some delays right now, but don't worry - I've saved your contact information. Our team will reach out to you soon. Thank you for your patience!";
+        } else if (showBookingOnError) {
+          friendlyMessage = "I apologize, but I'm experiencing high demand right now. However, you can still complete your booking by clicking the button below!";
         } else {
           friendlyMessage = "I apologize, but I'm experiencing high demand right now. Please try again in a moment, or feel free to call us directly for immediate assistance.";
         }
@@ -986,11 +1041,12 @@ class ConversationOrchestrator {
             botId,
             sessionId,
             responseTimeMs: Date.now() - startTime,
-            showBooking: false,
-            bookingMode: 'internal',
-            externalBookingUrl: null,
+            showBooking: showBookingOnError,
+            bookingMode: fallbackBookingMode,
+            externalBookingUrl: showBookingOnError ? fallbackBookingUrl : null,
+            externalBookingProviderName: showBookingOnError ? fallbackProviderName : null,
             externalPaymentUrl: null,
-            suggestedReplies: ["When can I call you?", "What are your hours?"],
+            suggestedReplies: showBookingOnError ? [] : ["When can I call you?", "What are your hours?"],
             leadCaptured: savedLead,
             bookingSaved: savedBooking,
           }
