@@ -611,6 +611,122 @@
     });
   }
   
+  function createDirectWidgetContainer(config, fullConfig) {
+    var container = document.createElement('div');
+    container.id = 'tcai-direct-widget';
+    container.setAttribute('data-testid', 'widget-container');
+    
+    var position = (fullConfig && fullConfig.widgetSettings && fullConfig.widgetSettings.position) || config.position;
+    var themeMode = (fullConfig && fullConfig.widgetSettings && fullConfig.widgetSettings.themeMode) || config.theme;
+    var resolvedTheme = getResolvedTheme(themeMode);
+    
+    var positionStyles = getPositionStyles(position, 'window');
+    var bgColor = resolvedTheme === 'light' ? '#ffffff' : '#1a1a2e';
+    
+    container.style.cssText = [
+      'position: fixed',
+      'width: 380px',
+      'height: 600px',
+      'max-height: calc(100vh - 120px)',
+      'max-width: calc(100vw - 48px)',
+      'border: none',
+      'border-radius: 16px',
+      'box-shadow: 0 10px 40px rgba(0,0,0,0.3)',
+      'z-index: 2147483647',
+      'opacity: 0',
+      'transform: translateY(20px) scale(0.95)',
+      'transition: opacity 0.3s ease, transform 0.3s ease',
+      'pointer-events: none',
+      'background: ' + bgColor,
+      'overflow: hidden',
+      positionStyles
+    ].join(';');
+    
+    container.innerHTML = '<div class="tcai-container" style="width:100%;height:100%;"></div>';
+    
+    return container;
+  }
+  
+  function loadWidgetDirectly(config, fullConfig, container) {
+    var link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = config.apiUrl + '/widget/widget.css';
+    document.head.appendChild(link);
+    
+    var script = document.createElement('script');
+    script.src = config.apiUrl + '/widget/widget.js';
+    script.onload = function() {
+      var themeMode = (fullConfig && fullConfig.widgetSettings && fullConfig.widgetSettings.themeMode) || config.theme;
+      var resolvedTheme = getResolvedTheme(themeMode);
+      
+      var widgetConfig = Object.assign({}, config);
+      widgetConfig.theme = resolvedTheme;
+      widgetConfig.apiUrl = config.apiUrl;
+      
+      if (fullConfig) {
+        widgetConfig.fullConfig = fullConfig;
+        if (fullConfig.widgetSettings) {
+          widgetConfig.primaryColor = fullConfig.widgetSettings.primaryColor || widgetConfig.primaryColor;
+          widgetConfig.greeting = fullConfig.widgetSettings.greeting || widgetConfig.greeting;
+        }
+      }
+      
+      if (window.TCAIWidget && typeof window.TCAIWidget.init === 'function') {
+        window.TCAIWidget.init(widgetConfig, container.querySelector('.tcai-container'));
+      }
+    };
+    container.appendChild(script);
+  }
+  
+  function openWidgetDirect() {
+    var tcai = window.TreasureCoastAI;
+    
+    if (tcai.autoOpenTimer) {
+      clearTimeout(tcai.autoOpenTimer);
+      tcai.autoOpenTimer = null;
+    }
+    
+    hideGreetingPopup();
+    
+    tcai.isOpen = true;
+    tcai.directContainer.style.opacity = '1';
+    tcai.directContainer.style.transform = 'translateY(0) scale(1)';
+    tcai.directContainer.style.pointerEvents = 'auto';
+    tcai.bubble.innerHTML = getCloseIcon();
+    tcai.bubble.setAttribute('aria-label', 'Close chat');
+    
+    try {
+      sessionStorage.setItem('tcai_opened', 'true');
+    } catch (e) {}
+  }
+  
+  function closeWidgetDirect() {
+    var tcai = window.TreasureCoastAI;
+    
+    tcai.isOpen = false;
+    tcai.directContainer.style.opacity = '0';
+    tcai.directContainer.style.transform = 'translateY(20px) scale(0.95)';
+    tcai.directContainer.style.pointerEvents = 'none';
+    
+    var avatarUrl = tcai.fullConfig && tcai.fullConfig.widgetSettings && tcai.fullConfig.widgetSettings.avatarUrl;
+    if (avatarUrl) {
+      tcai.bubble.innerHTML = '<img src="' + avatarUrl + '" alt="Chat" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;">';
+    } else {
+      tcai.bubble.innerHTML = getChatIcon(tcai.config.bubbleIcon);
+    }
+    tcai.bubble.setAttribute('aria-label', 'Open chat');
+  }
+  
+  function toggleWidgetDirect() {
+    var tcai = window.TreasureCoastAI;
+    
+    if (tcai.isOpen) {
+      closeWidgetDirect();
+    } else {
+      openWidgetDirect();
+    }
+  }
+
   async function init() {
     var config = getScriptConfig();
     
@@ -629,27 +745,56 @@
     }
     window.TreasureCoastAI.fullConfig = fullConfig;
     
-    var bubble = createBubble(config, fullConfig);
-    var iframe = createIframe(config, fullConfig);
+    var isTestMode = window.TCAI_TEST_MODE === true;
     
-    window.TreasureCoastAI.bubble = bubble;
-    window.TreasureCoastAI.iframe = iframe;
-    
-    document.body.appendChild(bubble);
-    document.body.appendChild(iframe);
-    
-    window.addEventListener('message', handleMessage);
-    
-    setupThemeListener();
-    setupAutoOpen(config, fullConfig);
-    setupGreetingPopup(config, fullConfig);
-    
-    window.TreasureCoastAI.initialized = true;
-    window.TreasureCoastAI.open = openWidget;
-    window.TreasureCoastAI.close = closeWidget;
-    window.TreasureCoastAI.toggle = toggleWidget;
-    
-    console.log('Treasure Coast AI widget initialized for ' + config.clientId + '/' + config.botId);
+    if (isTestMode) {
+      console.log('[TCAI] Initializing in TEST MODE (noIframe)');
+      
+      var bubble = createBubble(config, fullConfig);
+      var directContainer = createDirectWidgetContainer(config, fullConfig);
+      
+      window.TreasureCoastAI.bubble = bubble;
+      window.TreasureCoastAI.directContainer = directContainer;
+      window.TreasureCoastAI.iframe = directContainer;
+      
+      bubble.onclick = function() {
+        toggleWidgetDirect();
+      };
+      
+      document.body.appendChild(bubble);
+      document.body.appendChild(directContainer);
+      
+      loadWidgetDirectly(config, fullConfig, directContainer);
+      
+      window.TreasureCoastAI.initialized = true;
+      window.TreasureCoastAI.open = openWidgetDirect;
+      window.TreasureCoastAI.close = closeWidgetDirect;
+      window.TreasureCoastAI.toggle = toggleWidgetDirect;
+      
+      console.log('Treasure Coast AI widget initialized (TEST MODE) for ' + config.clientId + '/' + config.botId);
+    } else {
+      var bubble = createBubble(config, fullConfig);
+      var iframe = createIframe(config, fullConfig);
+      
+      window.TreasureCoastAI.bubble = bubble;
+      window.TreasureCoastAI.iframe = iframe;
+      
+      document.body.appendChild(bubble);
+      document.body.appendChild(iframe);
+      
+      window.addEventListener('message', handleMessage);
+      
+      setupThemeListener();
+      setupAutoOpen(config, fullConfig);
+      setupGreetingPopup(config, fullConfig);
+      
+      window.TreasureCoastAI.initialized = true;
+      window.TreasureCoastAI.open = openWidget;
+      window.TreasureCoastAI.close = closeWidget;
+      window.TreasureCoastAI.toggle = toggleWidget;
+      
+      console.log('Treasure Coast AI widget initialized for ' + config.clientId + '/' + config.botId);
+    }
   }
   
   if (document.readyState === 'loading') {

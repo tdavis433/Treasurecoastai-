@@ -757,6 +757,40 @@
     }
   }
   
+  function initWithConfig(externalConfig, containerElement) {
+    if (externalConfig.clientId) config.clientId = externalConfig.clientId;
+    if (externalConfig.botId) config.botId = externalConfig.botId;
+    if (externalConfig.primaryColor) config.primaryColor = sanitizeColor(externalConfig.primaryColor);
+    if (externalConfig.greeting) config.greeting = externalConfig.greeting;
+    if (externalConfig.theme) config.theme = externalConfig.theme;
+    if (externalConfig.businessType) config.businessType = externalConfig.businessType;
+    if (externalConfig.businessName) config.businessName = externalConfig.businessName;
+    if (externalConfig.businessSubtitle) config.businessSubtitle = externalConfig.businessSubtitle;
+    if (externalConfig.apiUrl) config.apiUrl = externalConfig.apiUrl;
+    
+    if (externalConfig.fullConfig && externalConfig.fullConfig.widgetSettings) {
+      var ws = externalConfig.fullConfig.widgetSettings;
+      if (ws.avatarUrl) config.avatarUrl = ws.avatarUrl;
+      if (ws.showPoweredBy !== undefined) config.showPoweredBy = ws.showPoweredBy;
+      if (ws.notificationSoundEnabled !== undefined) config.notificationSoundEnabled = ws.notificationSoundEnabled;
+      if (ws.primaryColor) config.primaryColor = sanitizeColor(ws.primaryColor);
+      if (ws.greeting) config.greeting = ws.greeting;
+    }
+    
+    if (externalConfig.fullConfig && externalConfig.fullConfig.quickActions) {
+      config.quickActions = externalConfig.fullConfig.quickActions;
+    }
+    
+    applyTheme();
+    render();
+    
+    window.closeWidget = function() {
+      if (window.TreasureCoastAI && window.TreasureCoastAI.close) {
+        window.TreasureCoastAI.close();
+      }
+    };
+  }
+
   function init() {
     var urlParams = getUrlParams();
     config.clientId = urlParams.clientId;
@@ -774,9 +808,17 @@
     window.addEventListener('message', handleParentMessage);
   }
   
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
+  window.TCAIWidget = {
+    init: initWithConfig
+  };
+  
+  var isEmbedded = window.TCAI_TEST_MODE === true || window.frameElement !== null || window.parent !== window;
+  
+  if (!isEmbedded || window.frameElement !== null) {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
   }
 })();
