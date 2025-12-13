@@ -42,7 +42,7 @@ export const MED_SPA_BOOKING_PROFILE: BookingProfile = {
   defaultMode: 'external',
   ctas: [
     { id: 'book_treatment', label: 'Book Treatment', kind: 'primary', appointmentTypeId: 'book_treatment' },
-    { id: 'request_callback', label: 'Request Consultation', kind: 'secondary', appointmentTypeId: 'request_callback' },
+    { id: 'request_appointment', label: 'Request Consultation', kind: 'secondary', appointmentTypeId: 'request_appointment' },
   ],
   appointmentTypes: [
     {
@@ -131,7 +131,7 @@ export const DENTAL_CLINIC_BOOKING_PROFILE: BookingProfile = {
   defaultMode: 'external',
   ctas: [
     { id: 'book_appointment', label: 'Book Appointment', kind: 'primary', appointmentTypeId: 'book_appointment' },
-    { id: 'request_callback', label: 'Request Callback', kind: 'secondary', appointmentTypeId: 'request_callback' },
+    { id: 'request_appointment', label: 'Request Callback', kind: 'secondary', appointmentTypeId: 'request_appointment' },
   ],
   appointmentTypes: [
     {
