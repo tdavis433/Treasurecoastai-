@@ -319,5 +319,85 @@ Authorization: [client session cookie]
 
 ---
 
+## Agency Onboarding Console
+
+### Overview
+
+The Agency Onboarding Console (`/super-admin/agency-onboarding`) provides a streamlined, done-for-you client setup workflow. It enables agencies to configure new client workspaces and AI assistants in minutes.
+
+### Access
+
+- **Route**: `/super-admin/agency-onboarding`
+- **Required Role**: Super Admin
+
+### Workflow Stages
+
+1. **Client Intake**: Collect business information, select industry template
+2. **Website Scanning**: AI-powered extraction of business data from client website
+3. **KB Draft Review**: Edit services, FAQs, policies, and business hours
+4. **CTA Configuration**: Configure primary/secondary CTAs and booking flow
+5. **Notifications**: Set up lead notification email delivery
+6. **Widget Preview**: Review widget appearance before deployment
+7. **QA Gate**: Automated validation before going live
+8. **Go Live**: Activate the bot and generate embed code
+
+### Industry Templates
+
+15 pre-configured templates available:
+- Automotive, Barbershop, Childcare, Dental, Fitness
+- Handyman, Hotel, Law Firm, Med Spa, Real Estate
+- Recovery House, Restaurant, Roofing, Tattoo, Wedding
+
+Each template includes:
+- Booking profile (internal/external mode)
+- Primary and secondary CTAs
+- Default services and FAQs
+- Industry-appropriate disclaimer
+- Theme colors and welcome messages
+
+### Booking Flow Failsafe
+
+**NON-NEGOTIABLE Rules:**
+- External booking is redirect-only (HTTPS required)
+- Internal booking is request-capture only (no payments ever)
+- Failsafe: If external URL missing/invalid → automatically uses internal request_callback
+
+### QA Gate Checks
+
+Before going live, the QA Gate validates:
+- Business name and contact info present
+- At least one service defined
+- Valid booking configuration
+- Notification recipient configured (if enabled)
+- Widget theme configured
+
+### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/agency-onboarding/templates` | GET | List industry templates |
+| `/api/agency-onboarding/generate-draft-setup` | POST | Create draft workspace/bot |
+| `/api/agency-onboarding/run-qa-gate` | POST | Validate draft configuration |
+| `/api/agency-onboarding/go-live` | POST | Activate bot, generate embed code |
+
+### Troubleshooting
+
+**Issue**: Website scan returns no data
+- Verify URL is publicly accessible
+- Check if site uses heavy JavaScript (may require additional parsing)
+- Manual entry is always available as fallback
+
+**Issue**: QA Gate fails
+- Review all required fields in the intake form
+- Ensure at least one contact method (phone or email)
+- Verify booking URL is HTTPS if using external mode
+
+**Issue**: Go Live fails
+- Ensure QA Gate has passed
+- Check for any pending draft validation errors
+- Verify workspace and bot IDs exist
+
+---
+
 *Last Updated: December 2025*
-*Version: 1.0*
+*Version: 1.1*

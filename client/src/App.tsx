@@ -44,6 +44,7 @@ import DemoHotel from "@/pages/demo-hotel";
 import DemoRoofing from "@/pages/demo-roofing";
 import DemoWedding from "@/pages/demo-wedding";
 import DevEmbedTest from "@/pages/dev-embed-test";
+import AgencyOnboardingConsole from "@/pages/agency-onboarding-console";
 import { useEffect } from "react";
 
 function PasswordChangeGuard({ children }: { children: React.ReactNode }) {
@@ -116,6 +117,7 @@ function Router() {
       <Route path="/client/inbox" component={InboxPage} />
       <Route path="/super-admin/clients/:slug" component={ClientDetailAdmin} />
       <Route path="/super-admin/audit-logs" component={SuperAdminAuditLogs} />
+      <Route path="/super-admin/agency-onboarding" component={AgencyOnboardingConsole} />
       <Route path="/super-admin" component={SuperAdmin} />
       <Route path="/dev/embed-test" component={DevEmbedTest} />
       <Route component={NotFound} />
