@@ -1,0 +1,126 @@
+REPLIT AGENT MODE — FINAL “STAY RELIABLE LIVE” HARDENING PASS
+(DEMO + REAL CLIENTS) — SECURITY + RELIABILITY RECEIPTS
+
+GOAL
+Do a final hardening pass focused on preventing post-demo issues when real clients start using the platform.
+Deliver fix-ready proof that:
+1) NO payments code exists (no Stripe/Square/PayPal in runtime)
+2) Admin-only endpoints are correctly gated (super_admin only)
+3) Error logs cannot leak PII/tokens and have retention
+4) Health + Preflight remain fast and safe
+5) Add iframe-safe automated checks (API-based E2E) instead of DOM clicks
+
+NON-NEGOTIABLE
+- NO PAYMENT PROCESSING EVER: redirect-only booking. No checkout UI, no payment tokens/intents, no billing webhooks.
+- Never print secrets, passwords, widget tokens, or reset tokens.
+- Tenant isolation must remain enforced server-side.
+- Friendly errors only for public/widget/client views.
+
+========================================================
+PHASE 1 — NO PAYMENTS “ZERO STRIPE” PROOF (MANDATORY)
+========================================================
+1) Search entire repo for payment terms:
+stripe, square, paypal, checkout, payment, billing, invoice, subscription, payment_intent, client_secret, webhook (payment), refund, chargeback
+2) For every match:
+- file path + line numbers
+- whether it’s dead code / dev-only / runtime
+3) REQUIREMENT:
+- Remove/disable any payment provider integration code.
+- Update docs wording: remove “Stripe only handles schema init” language.
+Final must state clearly: “No payment processing code enabled or present.”
+
+Deliverable:
+- A short “No Payments Compliance Proof” section with exact results.
+
+========================================================
+PHASE 2 — RBAC LOCKDOWN FOR NEW ADMIN/DIAGNOSTIC ENDPOINTS (MANDATORY)
+========================================================
+Verify (and fix if needed) that these endpoints are protected by requireSuperAdmin:
+- GET /api/admin/workspaces/:workspaceId/diagnostics
+- GET /api/admin/platform-errors
+- GET /api/demo/preflight
+If any is only requireAuth or weaker, upgrade to requireSuperAdmin.
+
+Also verify client users cannot access them via direct URL or API call (401/403).
+
+Deliverable:
+- paste the exact route definitions (middleware + handler signature)
+- confirm responses when called as client user
+
+========================================================
+PHASE 3 — ERROR LOG VIEWER SAFETY + RETENTION (MANDATORY)
+========================================================
+1) Ensure platform error logs NEVER store:
+- widget tokens
+- reset tokens
+- passwords
+- full chat message bodies
+- full emails/phones (redact)
+2) Implement redaction in the error logging pipeline:
+- email → t***@domain.com
+- phone → ***-***-1234
+- tokens → [REDACTED]
+3) Add retention:
+- Keep last 30 days OR last N rows (e.g., 5,000)
+- Add an admin-only “Purge old logs” job or auto-delete on insert
+
+Deliverable:
+- file path(s) where errors are created/stored
+- sample stored record (sanitized)
+
+========================================================
+PHASE 4 — HEALTH + PREFLIGHT PERFORMANCE + SAFETY (MANDATORY)
+========================================================
+1) Confirm /api/health returns within ~250ms typical and contains:
+- db latency
+- ai configured boolean (no calls required)
+- errorsLast15m counts
+2) Confirm /api/demo/preflight:
+- super_admin only
+- returns READY/NOT READY with reasons
+- does not leak tenant data beyond what’s needed
+
+Deliverable:
+- example outputs (no secrets)
+- where the checks pull data from
+
+========================================================
+PHASE 5 — IFRAME-SAFE AUTOMATED CHECKS (MANDATORY)
+========================================================
+Because Playwright can’t reliably click inside the widget iframe, add API-based E2E checks:
+Create a script/test that:
+1) Calls widget config endpoint for a known demo client/bot:
+   - expects 200
+   - expects token present (do not print token; only assert exists)
+2) Calls chat endpoint with a minimal payload:
+   - expects 200 within timeout
+3) Verifies booking URL validation behavior:
+   - invalid URL rejected (no Book Now)
+   - valid https URL accepted (Book Now shown)
+4) Runs in CI/local via a single command (even if not in package scripts)
+
+Deliverable:
+- file path(s) for the new API-based E2E test
+- how to run it (one command)
+
+========================================================
+PHASE 6 — VERIFY EVERYTHING (MUST PASS)
+========================================================
+Run and confirm PASS:
+- bash ./scripts/guard-no-payments.sh
+- npx tsc --noEmit
+- npx vitest run
+- npm run build
+
+========================================================
+FINAL OUTPUT (STRICT)
+========================================================
+Return:
+1) No Payments Compliance Proof (keyword results + what removed)
+2) RBAC Proof for diagnostics/errors/preflight endpoints
+3) Error Log redaction + retention proof
+4) Health/Preflight example outputs (safe)
+5) API-based E2E test instructions + file paths
+6) Quality gates output (pass)
+
+START NOW.

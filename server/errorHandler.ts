@@ -6,6 +6,7 @@
  */
 
 import { Response, Request, NextFunction } from 'express';
+import { redactMessage } from './utils/redact';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -64,16 +65,20 @@ export function sanitizeError(error: unknown): string {
 
 /**
  * Logs error with appropriate detail level
+ * Applies PII redaction to prevent sensitive data in logs
  */
 export function logError(context: string, error: unknown): void {
   const timestamp = new Date().toISOString();
-  const errorMessage = error instanceof Error ? error.message : String(error);
+  const rawMessage = error instanceof Error ? error.message : String(error);
+  // Apply PII redaction to error messages before logging
+  const errorMessage = redactMessage(rawMessage);
   const stack = error instanceof Error ? error.stack : undefined;
   
   console.error(`[${timestamp}] [ERROR] ${context}: ${errorMessage}`);
   
   if (!isProduction && stack) {
-    console.error(stack);
+    // Also redact PII from stack traces
+    console.error(redactMessage(stack));
   }
 }
 

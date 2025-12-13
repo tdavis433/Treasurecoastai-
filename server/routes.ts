@@ -7050,66 +7050,20 @@ These suggestions should be relevant to what was just discussed and help guide t
   // CLIENT BILLING ENDPOINTS
   // =============================================
 
-  // Get client subscription info
+  // Get client subscription info - BILLING DISABLED
   app.get("/api/client/billing", requireClientAuth, async (req, res) => {
-    try {
-      const clientId = (req as any).effectiveClientId;
-      
-      const { stripeService } = await import('./stripeService');
-      const subscription = await stripeService.getSubscriptionByClientId(clientId);
-      const customer = await stripeService.getCustomerByClientId(clientId);
-      
-      // Get workspace info for plan name
-      const workspace = await storage.getWorkspaceByClientId(clientId);
-      
-      res.json({
-        clientId,
-        hasSubscription: !!subscription,
-        subscription: subscription ? {
-          id: (subscription as any).id,
-          status: (subscription as any).status,
-          currentPeriodEnd: (subscription as any).currentPeriodEnd,
-          cancelAtPeriodEnd: (subscription as any).cancelAtPeriodEnd,
-        } : null,
-        customer: customer ? {
-          id: (customer as any).id,
-          email: (customer as any).email,
-        } : null,
-        plan: workspace?.plan || 'starter',
-        planName: workspace?.plan === 'pro' ? 'Pro Plan' : workspace?.plan === 'enterprise' ? 'Enterprise Plan' : 'Starter Plan',
-      });
-    } catch (error) {
-      console.error("Get client billing error:", error);
-      res.status(500).json({ error: "Failed to fetch billing info" });
-    }
+    return res.status(501).json({ 
+      error: "Billing temporarily disabled",
+      message: "Payment processing is not enabled on this platform. Contact support for billing inquiries."
+    });
   });
 
-  // Create customer portal session for client
+  // Create customer portal session for client - BILLING DISABLED
   app.post("/api/client/billing/portal", requireClientAuth, async (req, res) => {
-    try {
-      const clientId = (req as any).effectiveClientId;
-      
-      const { stripeService } = await import('./stripeService');
-      const customer = await stripeService.getCustomerByClientId(clientId);
-      
-      if (!customer) {
-        return res.status(404).json({ error: "No billing account found. Please contact support." });
-      }
-
-      const protocol = req.headers['x-forwarded-proto'] || 'https';
-      const host = req.headers.host;
-      const returnUrl = `${protocol}://${host}/client/dashboard`;
-
-      const session = await stripeService.createCustomerPortalSession(
-        (customer as any).id,
-        returnUrl
-      );
-
-      res.json({ url: session.url });
-    } catch (error) {
-      console.error("Create client portal session error:", error);
-      res.status(500).json({ error: "Failed to open billing portal" });
-    }
+    return res.status(501).json({ 
+      error: "Billing temporarily disabled",
+      message: "Payment processing is not enabled on this platform. Contact support for billing inquiries."
+    });
   });
 
   // =============================================
@@ -9924,125 +9878,44 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
-  // Create checkout session for client subscription
+  // Create checkout session for client subscription - BILLING DISABLED
   app.post("/api/stripe/checkout", requireSuperAdmin, async (req, res) => {
-    try {
-      const { clientId, priceId, email, businessName } = req.body;
-
-      if (!clientId || !priceId) {
-        return res.status(400).json({ error: "clientId and priceId are required" });
-      }
-
-      const { stripeService } = await import('./stripeService');
-      
-      let customer = await stripeService.getCustomerByClientId(clientId);
-      let customerId: string;
-      
-      if (!customer) {
-        const newCustomer = await stripeService.createCustomer(
-          email || `${clientId}@treasurecoast.ai`,
-          clientId,
-          businessName || clientId
-        );
-        customerId = newCustomer.id;
-      } else {
-        customerId = (customer as any).id;
-      }
-
-      const protocol = req.headers['x-forwarded-proto'] || 'https';
-      const host = req.headers.host;
-      const baseUrl = `${protocol}://${host}`;
-
-      const session = await stripeService.createCheckoutSession(
-        customerId,
-        priceId,
-        clientId,
-        `${baseUrl}/super-admin?checkout=success&clientId=${clientId}`,
-        `${baseUrl}/super-admin?checkout=canceled&clientId=${clientId}`
-      );
-
-      res.json({ url: session.url, sessionId: session.id });
-    } catch (error) {
-      console.error("Create checkout session error:", error);
-      res.status(500).json({ error: "Failed to create checkout session" });
-    }
+    return res.status(501).json({ 
+      error: "Billing temporarily disabled",
+      message: "Payment processing is not enabled on this platform. Contact support for billing inquiries."
+    });
   });
 
-  // Get client subscription status
+  // Get client subscription status - BILLING DISABLED
   app.get("/api/stripe/subscription/:clientId", requireSuperAdmin, async (req, res) => {
-    try {
-      const { clientId } = req.params;
-      const { stripeService } = await import('./stripeService');
-      
-      const subscription = await stripeService.getSubscriptionByClientId(clientId);
-      const customer = await stripeService.getCustomerByClientId(clientId);
-      
-      res.json({ 
-        subscription: subscription || null,
-        customer: customer || null,
-        hasActiveSubscription: !!subscription 
-      });
-    } catch (error) {
-      console.error("Get subscription error:", error);
-      res.status(500).json({ error: "Failed to get subscription" });
-    }
+    return res.status(501).json({ 
+      error: "Billing temporarily disabled",
+      message: "Payment processing is not enabled on this platform. Contact support for billing inquiries."
+    });
   });
 
-  // Create customer portal session for managing subscription
+  // Create customer portal session for managing subscription - BILLING DISABLED
   app.post("/api/stripe/portal", requireSuperAdmin, async (req, res) => {
-    try {
-      const { clientId } = req.body;
-
-      if (!clientId) {
-        return res.status(400).json({ error: "clientId is required" });
-      }
-
-      const { stripeService } = await import('./stripeService');
-      const customer = await stripeService.getCustomerByClientId(clientId);
-      
-      if (!customer) {
-        return res.status(404).json({ error: "No Stripe customer found for this client" });
-      }
-
-      const protocol = req.headers['x-forwarded-proto'] || 'https';
-      const host = req.headers.host;
-      const returnUrl = `${protocol}://${host}/super-admin`;
-
-      const session = await stripeService.createCustomerPortalSession(
-        (customer as any).id,
-        returnUrl
-      );
-
-      res.json({ url: session.url });
-    } catch (error) {
-      console.error("Create portal session error:", error);
-      res.status(500).json({ error: "Failed to create portal session" });
-    }
+    return res.status(501).json({ 
+      error: "Billing temporarily disabled",
+      message: "Payment processing is not enabled on this platform. Contact support for billing inquiries."
+    });
   });
 
-  // Get billing overview for super admin dashboard
+  // Get billing overview for super admin dashboard - BILLING DISABLED
   app.get("/api/super-admin/billing/overview", requireSuperAdmin, async (req, res) => {
-    try {
-      const { stripeService } = await import('./stripeService');
-      const overview = await stripeService.getBillingOverview();
-      res.json(overview);
-    } catch (error) {
-      console.error("Get billing overview error:", error);
-      res.status(500).json({ error: "Failed to get billing overview" });
-    }
+    return res.status(501).json({ 
+      error: "Billing temporarily disabled",
+      message: "Payment processing is not enabled on this platform. Contact support for billing inquiries."
+    });
   });
 
-  // Get recent invoices for super admin dashboard
+  // Get recent invoices for super admin dashboard - BILLING DISABLED
   app.get("/api/super-admin/billing/invoices", requireSuperAdmin, async (req, res) => {
-    try {
-      const limit = parseInt(req.query.limit as string) || 10;
-      const { stripeService } = await import('./stripeService');
-      const invoices = await stripeService.getRecentInvoices(limit);
-      res.json({ invoices });
-    } catch (error) {
-      console.error("Get recent invoices error:", error);
-      res.status(500).json({ error: "Failed to get recent invoices" });
-    }
+    return res.status(501).json({ 
+      error: "Billing temporarily disabled",
+      message: "Payment processing is not enabled on this platform. Contact support for billing inquiries."
+    });
   });
 
   // =============================================
