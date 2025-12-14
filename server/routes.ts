@@ -3451,14 +3451,10 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
-  app.get("/api/appointments/:id", requireAuth, async (req, res) => {
+  app.get("/api/appointments/:id", requireClientAuth, async (req, res) => {
     try {
-      const queryClientId = req.query.clientId as string | undefined;
-      const clientId = req.session.clientId || queryClientId;
-      
-      if (!clientId) {
-        return res.status(400).json({ error: "Client ID required" });
-      }
+      // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
+      const clientId = (req as any).effectiveClientId;
       
       const appointment = await storage.getAppointmentById(clientId, req.params.id);
       if (!appointment) {
@@ -3471,7 +3467,7 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
-  app.patch("/api/appointments/:id", requireAuth, async (req, res) => {
+  app.patch("/api/appointments/:id", requireClientAuth, async (req, res) => {
     try {
       // Validate params
       const paramsValidation = validateRequest(idParamSchema, req.params);
@@ -3490,12 +3486,8 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(400).json({ error: "No valid fields to update" });
       }
       
-      const queryClientId = req.query.clientId as string | undefined;
-      const clientId = req.session.clientId || queryClientId;
-      
-      if (!clientId) {
-        return res.status(400).json({ error: "Client ID required" });
-      }
+      // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
+      const clientId = (req as any).effectiveClientId;
       
       const appointment = await storage.updateAppointment(clientId, paramsValidation.data.id, updates);
       res.json(appointment);
@@ -3505,7 +3497,7 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
-  app.patch("/api/appointments/:id/status", requireAuth, async (req, res) => {
+  app.patch("/api/appointments/:id/status", requireClientAuth, async (req, res) => {
     try {
       // Validate params and body
       const paramsValidation = validateRequest(idParamSchema, req.params);
@@ -3518,12 +3510,8 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(400).json({ error: bodyValidation.error });
       }
       
-      const queryClientId = req.query.clientId as string | undefined;
-      const clientId = req.session.clientId || queryClientId;
-      
-      if (!clientId) {
-        return res.status(400).json({ error: "Client ID required" });
-      }
+      // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
+      const clientId = (req as any).effectiveClientId;
       
       await storage.updateAppointmentStatus(clientId, paramsValidation.data.id, bodyValidation.data.status);
       res.json({ success: true });
@@ -3533,15 +3521,11 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
-  app.delete("/api/appointments/:id", requireAdminRole, async (req, res) => {
+  app.delete("/api/appointments/:id", requireClientAuth, requireAdminRole, async (req, res) => {
     try {
       const { id } = req.params;
-      const queryClientId = req.query.clientId as string | undefined;
-      const clientId = req.session.clientId || queryClientId;
-      
-      if (!clientId) {
-        return res.status(400).json({ error: "Client ID required" });
-      }
+      // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
+      const clientId = (req as any).effectiveClientId;
       
       await storage.deleteAppointment(clientId, id);
       res.json({ success: true });
@@ -3551,13 +3535,10 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
-  app.get("/api/settings", requireSuperAdmin, async (req, res) => {
+  app.get("/api/settings", requireClientAuth, async (req, res) => {
     try {
-      const clientId = (req.query.clientId as string) || req.session.clientId;
-      
-      if (!clientId) {
-        return res.status(400).json({ error: "Client ID required" });
-      }
+      // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
+      const clientId = (req as any).effectiveClientId;
       
       const settings = await storage.getSettings(clientId);
       res.json(settings);
@@ -3567,14 +3548,12 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
-  app.patch("/api/settings", requireSuperAdmin, async (req, res) => {
+  app.patch("/api/settings", requireClientAuth, async (req, res) => {
     try {
-      const { clientId: bodyClientId, ...settingsData } = req.body;
-      const clientId = bodyClientId || req.session.clientId;
-      
-      if (!clientId) {
-        return res.status(400).json({ error: "Client ID required" });
-      }
+      // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
+      // Ignore any clientId from request body - only use session-based client context
+      const { clientId: _ignoredClientId, ...settingsData } = req.body;
+      const clientId = (req as any).effectiveClientId;
       
       const validatedData = insertClientSettingsSchema.partial().parse(settingsData);
       const settings = await storage.updateSettings(clientId, validatedData);
@@ -3585,13 +3564,10 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
-  app.get("/api/analytics", requireAuth, async (req, res) => {
+  app.get("/api/analytics", requireClientAuth, async (req, res) => {
     try {
-      const clientId = (req.query.clientId as string) || req.session.clientId;
-      
-      if (!clientId) {
-        return res.status(400).json({ error: "Client ID required" });
-      }
+      // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
+      const clientId = (req as any).effectiveClientId;
       
       const analytics = await storage.getAnalytics(clientId);
       res.json(analytics);
@@ -3601,20 +3577,18 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
-  app.get("/api/analytics/summary", requireAuth, async (req, res) => {
+  app.get("/api/analytics/summary", requireClientAuth, async (req, res) => {
     try {
-      // Validate query params
+      // Validate query params (only date range, clientId comes from session)
       const queryValidation = validateRequest(analyticsDateRangeQuerySchema, req.query);
       if (!queryValidation.success) {
         return res.status(400).json({ error: queryValidation.error });
       }
       
-      const { startDate, endDate, clientId: queryClientId } = queryValidation.data as any;
-      const clientId = queryClientId || req.session.clientId;
-      
-      if (!clientId) {
-        return res.status(400).json({ error: "Client ID required" });
-      }
+      // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
+      // Ignore any clientId from query params
+      const { startDate, endDate } = queryValidation.data;
+      const clientId = (req as any).effectiveClientId;
       
       const start = startDate ? new Date(startDate) : undefined;
       const end = endDate ? new Date(endDate) : undefined;
@@ -5214,10 +5188,26 @@ These suggestions should be relevant to what was just discussed and help guide t
       req.session.isImpersonating = true;
       
       // Save session explicitly
-      req.session.save((err) => {
+      req.session.save(async (err) => {
         if (err) {
           console.error("Session save error during impersonation:", err);
           return res.status(500).json({ error: "Failed to start impersonation" });
+        }
+        
+        // Audit log impersonation start
+        try {
+          await logAuditEvent({
+            eventType: 'IMPERSONATION_START',
+            userId: req.session.userId || 'unknown',
+            action: `Super admin started impersonating client: ${clientId}`,
+            resourceType: 'client',
+            resourceId: clientId,
+            ipAddress: req.ip || req.socket.remoteAddress,
+            userAgent: req.headers['user-agent'],
+            success: true,
+          });
+        } catch (auditError) {
+          console.error("Failed to log impersonation audit event:", auditError);
         }
         
         console.log(`Super admin ${req.session.userId} started impersonating client: ${clientId}`);
@@ -5243,10 +5233,26 @@ These suggestions should be relevant to what was just discussed and help guide t
       req.session.isImpersonating = false;
       
       // Save session explicitly
-      req.session.save((err) => {
+      req.session.save(async (err) => {
         if (err) {
           console.error("Session save error during stop impersonation:", err);
           return res.status(500).json({ error: "Failed to stop impersonation" });
+        }
+        
+        // Audit log impersonation end
+        try {
+          await logAuditEvent({
+            eventType: 'IMPERSONATION_END',
+            userId: req.session.userId || 'unknown',
+            action: `Super admin stopped impersonating client: ${previousClientId}`,
+            resourceType: 'client',
+            resourceId: previousClientId || 'none',
+            ipAddress: req.ip || req.socket.remoteAddress,
+            userAgent: req.headers['user-agent'],
+            success: true,
+          });
+        } catch (auditError) {
+          console.error("Failed to log impersonation audit event:", auditError);
         }
         
         console.log(`Super admin ${req.session.userId} stopped impersonating client: ${previousClientId}`);
