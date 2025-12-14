@@ -5304,11 +5304,14 @@ These suggestions should be relevant to what was just discussed and help guide t
       const previousClientId = req.session.effectiveClientId;
       
       // Handle "not impersonating" case explicitly (cleaner for demos)
+      // Returns same shape as successful stop for trivial frontend logic
       if (!previousClientId || !req.session.isImpersonating) {
         return res.json({ 
           success: true, 
           message: "Already not impersonating",
-          previousClientId: null
+          previousClientId: null,
+          isImpersonating: false,
+          effectiveClientId: null
         });
       }
       
@@ -5330,7 +5333,9 @@ These suggestions should be relevant to what was just discussed and help guide t
       res.json({ 
         success: true, 
         message: "Stopped impersonation, returned to super admin view",
-        previousClientId
+        previousClientId,
+        isImpersonating: false,
+        effectiveClientId: null
       });
       
       // Fire-and-forget audit logging (non-blocking)
