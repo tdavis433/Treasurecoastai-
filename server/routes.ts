@@ -92,6 +92,7 @@ import { exportClientData, deleteClientData, getRetentionConfig, purgeOldData } 
 import { INDUSTRY_TEMPLATES, type IndustryTemplate } from './industryTemplates';
 import { generatePreviewToken, verifyPreviewToken, getTokenTimeRemaining, type PreviewTokenPayload } from './previewToken';
 import { validateBookingUrl } from './urlValidator';
+import { csrfProtection } from './csrfMiddleware';
 
 // =============================================
 // PHASE 2.4: SIGNED WIDGET TOKENS
@@ -5222,7 +5223,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Start impersonating a client (sets session-based effectiveClientId)
-  app.post("/api/super-admin/impersonate", requireSuperAdmin, impersonationLimiter, async (req, res) => {
+  app.post("/api/super-admin/impersonate", requireSuperAdmin, csrfProtection, impersonationLimiter, async (req, res) => {
     try {
       const validation = impersonateClientSchema.safeParse(req.body);
       if (!validation.success) {
@@ -5349,11 +5350,11 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   };
   
-  // Primary endpoint (with rate limiting)
-  app.post("/api/super-admin/impersonate/stop", requireSuperAdmin, impersonationLimiter, stopImpersonationHandler);
+  // Primary endpoint (with rate limiting + CSRF)
+  app.post("/api/super-admin/impersonate/stop", requireSuperAdmin, csrfProtection, impersonationLimiter, stopImpersonationHandler);
   
-  // Legacy alias for backward compatibility - delegates to the same handler (with rate limiting)
-  app.post("/api/super-admin/stop-impersonate", requireSuperAdmin, impersonationLimiter, stopImpersonationHandler);
+  // Legacy alias for backward compatibility - delegates to the same handler (with rate limiting + CSRF)
+  app.post("/api/super-admin/stop-impersonate", requireSuperAdmin, csrfProtection, impersonationLimiter, stopImpersonationHandler);
 
   // Get current impersonation status
   app.get("/api/super-admin/impersonation-status", requireSuperAdmin, async (req, res) => {
@@ -9539,93 +9540,9 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
-  // Client impersonation - Start impersonation session
-  app.post("/api/super-admin/impersonate/:clientId", requireSuperAdmin, async (req, res) => {
-    try {
-      const { clientId } = req.params;
-      const superAdminId = req.session.userId;
-      
-      // SECURITY: Use database as the canonical source of truth (not bot JSON cache)
-      const workspace = await storage.getWorkspaceByClientId(clientId);
-      if (!workspace) {
-        return res.status(404).json({ error: "Client not found" });
-      }
-      
-      // Store original session data and set impersonation
-      req.session.originalUserId = superAdminId;
-      req.session.originalRole = req.session.userRole;
-      req.session.isImpersonating = true;
-      req.session.clientId = clientId;
-      req.session.userRole = 'client_admin';
-      req.session.lastSeenAt = Date.now(); // Reset idle timeout on impersonation
-      
-      await new Promise<void>((resolve, reject) => {
-        req.session.save((err) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      });
-      
-      // Log impersonation
-      await storage.createSystemLog({
-        level: 'info',
-        source: 'super-admin',
-        message: `Admin started impersonation of client ${clientId}`,
-        workspaceId: (workspace as any).id,
-        details: { adminId: superAdminId } as any,
-      });
-      
-      res.json({ 
-        success: true, 
-        clientId,
-        clientName: (workspace as any).name,
-        message: `Now viewing as ${(workspace as any).name}`
-      });
-    } catch (error) {
-      console.error("Impersonation error:", error);
-      res.status(500).json({ error: "Failed to start impersonation" });
-    }
-  });
-
-  // End client impersonation
-  app.post("/api/super-admin/end-impersonation", async (req, res) => {
-    try {
-      if (!req.session.isImpersonating || !req.session.originalUserId) {
-        return res.status(400).json({ error: "Not currently impersonating" });
-      }
-      
-      const clientId = req.session.clientId;
-      
-      // Restore original session
-      req.session.userId = req.session.originalUserId;
-      req.session.userRole = req.session.originalRole || 'super_admin';
-      req.session.clientId = null;
-      req.session.isImpersonating = false;
-      req.session.originalUserId = undefined;
-      req.session.originalRole = undefined;
-      req.session.lastSeenAt = Date.now(); // Reset idle timeout on end impersonation
-      
-      await new Promise<void>((resolve, reject) => {
-        req.session.save((err) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      });
-      
-      // Log end of impersonation
-      await storage.createSystemLog({
-        level: 'info',
-        source: 'super-admin',
-        message: `Admin ended impersonation of client ${clientId}`,
-        details: { adminId: req.session.userId } as any,
-      });
-      
-      res.json({ success: true, message: "Returned to admin view" });
-    } catch (error) {
-      console.error("End impersonation error:", error);
-      res.status(500).json({ error: "Failed to end impersonation" });
-    }
-  });
+  // NOTE: Legacy impersonation routes (/api/super-admin/impersonate/:clientId and /api/super-admin/end-impersonation)
+  // have been removed. Use POST /api/super-admin/impersonate with body {clientId} and POST /api/super-admin/impersonate/stop instead.
+  // These new routes have proper CSRF protection, rate limiting, and tenant validation.
 
   // Helper function to generate a cryptographically secure temporary password
   function generateTemporaryPassword(length: number = 12): string {
