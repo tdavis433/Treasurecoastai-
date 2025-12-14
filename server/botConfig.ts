@@ -3,6 +3,7 @@ import * as path from 'path';
 import { db } from './storage';
 import { bots, botSettings, workspaces, botTemplates, clientSettings, BehaviorPreset } from '@shared/schema';
 import { eq } from 'drizzle-orm';
+import { structuredLogger } from './structuredLogger';
 
 export interface BotBusinessProfile {
   businessName: string;
@@ -249,7 +250,7 @@ async function loadBotFromDatabase(botId: string): Promise<BotConfig | null> {
     
     return config;
   } catch (error) {
-    console.error(`Error loading bot from database for botId ${botId}:`, error);
+    structuredLogger.error('Error loading bot from database', { botId, error: String(error) });
     return null;
   }
 }
@@ -274,7 +275,7 @@ function loadBotFromJson(clientId: string, botId: string): BotConfig | null {
     
     return null;
   } catch (error) {
-    console.error(`Error loading bot config from JSON for ${clientId}/${botId}:`, error);
+    structuredLogger.error('Error loading bot config from JSON', { clientId, botId, error: String(error) });
     return null;
   }
 }
@@ -299,7 +300,7 @@ function loadBotFromJsonByBotId(botId: string): BotConfig | null {
     
     return null;
   } catch (error) {
-    console.error(`Error loading bot config from JSON for botId ${botId}:`, error);
+    structuredLogger.error('Error loading bot config from JSON by botId', { botId, error: String(error) });
     return null;
   }
 }
@@ -334,7 +335,7 @@ export async function getBotConfigAsync(clientId: string, botId: string): Promis
     // SECURITY: Validate that the bot belongs to the requested clientId (workspace slug)
     // The clientId in the URL must match the workspace slug in the database
     if (dbConfig.clientId !== clientId) {
-      console.warn(`Security: Bot ${botId} requested with clientId ${clientId} but belongs to ${dbConfig.clientId}`);
+      structuredLogger.warn('Security: Cross-tenant access attempt rejected', { botId, requestedClientId: clientId, actualClientId: dbConfig.clientId });
       return null; // Reject cross-tenant access
     }
     botConfigCache.set(cacheKey, dbConfig);
@@ -427,7 +428,7 @@ export function getAllBotConfigs(): BotConfig[] {
     cacheTimestamp = Date.now();
     return configs;
   } catch (error) {
-    console.error('Error loading all bot configs:', error);
+    structuredLogger.error('Error loading all bot configs', { error: String(error) });
     return [];
   }
 }
@@ -457,7 +458,7 @@ export async function getAllBotConfigsAsync(): Promise<BotConfig[]> {
     cacheTimestamp = Date.now();
     return configs;
   } catch (error) {
-    console.error('Error loading all bot configs async:', error);
+    structuredLogger.error('Error loading all bot configs async', { error: String(error) });
     return getAllBotConfigs();
   }
 }
@@ -467,7 +468,7 @@ export async function getAllTemplates(): Promise<any[]> {
     const templates = await db.select().from(botTemplates).where(eq(botTemplates.isActive, true));
     return templates;
   } catch (error) {
-    console.error('Error loading templates:', error);
+    structuredLogger.error('Error loading templates', { error: String(error) });
     return [];
   }
 }
@@ -477,7 +478,7 @@ export async function getTemplateById(templateId: string): Promise<any | null> {
     const [template] = await db.select().from(botTemplates).where(eq(botTemplates.templateId, templateId)).limit(1);
     return template || null;
   } catch (error) {
-    console.error('Error loading template:', error);
+    structuredLogger.error('Error loading template', { templateId, error: String(error) });
     return null;
   }
 }
@@ -497,7 +498,7 @@ export function getClients(): ClientsData {
     
     return { clients: [] };
   } catch (error) {
-    console.error('Error loading clients:', error);
+    structuredLogger.error('Error loading clients', { error: String(error) });
     return { clients: [] };
   }
 }
@@ -507,7 +508,7 @@ export async function getWorkspaces(): Promise<any[]> {
     const workspaceList = await db.select().from(workspaces);
     return workspaceList;
   } catch (error) {
-    console.error('Error loading workspaces:', error);
+    structuredLogger.error('Error loading workspaces', { error: String(error) });
     return [];
   }
 }
@@ -517,7 +518,7 @@ export async function getWorkspaceBySlug(slug: string): Promise<any | null> {
     const [workspace] = await db.select().from(workspaces).where(eq(workspaces.slug, slug)).limit(1);
     return workspace || null;
   } catch (error) {
-    console.error('Error loading workspace:', error);
+    structuredLogger.error('Error loading workspace', { slug, error: String(error) });
     return null;
   }
 }
@@ -541,7 +542,7 @@ export async function createWorkspace(data: {
     }).returning();
     return workspace;
   } catch (error) {
-    console.error('Error creating workspace:', error);
+    structuredLogger.error('Error creating workspace', { name: data.name, slug: data.slug, error: String(error) });
     throw error;
   }
 }
@@ -569,7 +570,7 @@ export async function updateWorkspace(slug: string, data: {
       .returning();
     return workspace;
   } catch (error) {
-    console.error('Error updating workspace:', error);
+    structuredLogger.error('Error updating workspace', { slug, error: String(error) });
     throw error;
   }
 }
@@ -579,7 +580,7 @@ export async function deleteWorkspace(slug: string): Promise<boolean> {
     const result = await db.delete(workspaces).where(eq(workspaces.slug, slug));
     return true;
   } catch (error) {
-    console.error('Error deleting workspace:', error);
+    structuredLogger.error('Error deleting workspace', { slug, error: String(error) });
     throw error;
   }
 }
@@ -598,7 +599,7 @@ export async function getBotsByWorkspaceId(workspaceId: string): Promise<BotConf
     
     return configs;
   } catch (error) {
-    console.error('Error loading bots by workspace:', error);
+    structuredLogger.error('Error loading bots by workspace', { workspaceId, error: String(error) });
     return [];
   }
 }
@@ -1127,7 +1128,7 @@ export async function saveBotConfigAsync(botId: string, updates: Partial<BotConf
     
     return saveBotConfig(botId, updates as BotConfig);
   } catch (error) {
-    console.error(`Error saving bot config async for ${botId}:`, error);
+    structuredLogger.error('Error saving bot config async', { botId, error: String(error) });
     return false;
   }
 }
@@ -1156,7 +1157,7 @@ export function saveBotConfig(botId: string, config: BotConfig): boolean {
     
     return false;
   } catch (error) {
-    console.error(`Error saving bot config for ${botId}:`, error);
+    structuredLogger.error('Error saving bot config', { botId, error: String(error) });
     return false;
   }
 }
@@ -1171,16 +1172,16 @@ export function createBotConfig(config: BotConfig): boolean {
     const filePath = path.join(BOTS_DIR, `${sanitizedBotId}.json`);
     
     if (fs.existsSync(filePath)) {
-      console.error(`Bot config file already exists: ${filePath}`);
+      structuredLogger.error('Bot config file already exists', { filePath, botId: config.botId });
       return false;
     }
     
     fs.writeFileSync(filePath, JSON.stringify(config, null, 2), 'utf-8');
     clearCache();
-    console.log(`Created new bot config: ${filePath}`);
+    structuredLogger.info('Created new bot config', { filePath, botId: config.botId });
     return true;
   } catch (error) {
-    console.error(`Error creating bot config for ${config.botId}:`, error);
+    structuredLogger.error('Error creating bot config', { botId: config.botId, error: String(error) });
     return false;
   }
 }
@@ -1215,7 +1216,7 @@ export function saveClients(clientsData: ClientsData): boolean {
     clearCache();
     return true;
   } catch (error) {
-    console.error('Error saving clients:', error);
+    structuredLogger.error('Error saving clients', { error: String(error) });
     return false;
   }
 }
@@ -1256,7 +1257,7 @@ export function registerClient(
     }
     return { success: false, error: 'Failed to save clients file' };
   } catch (error) {
-    console.error('Error registering client:', error);
+    structuredLogger.error('Error registering client', { clientId, error: String(error) });
     return { success: false, error: String(error) };
   }
 }
@@ -1281,7 +1282,7 @@ export function updateClientStatus(
     }
     return { success: false, error: 'Failed to save clients file' };
   } catch (error) {
-    console.error('Error updating client status:', error);
+    structuredLogger.error('Error updating client status', { clientId, error: String(error) });
     return { success: false, error: String(error) };
   }
 }
@@ -1306,7 +1307,7 @@ export function updateClientPlan(
     }
     return { success: false, error: 'Failed to save clients file' };
   } catch (error) {
-    console.error('Error updating client plan:', error);
+    structuredLogger.error('Error updating client plan', { clientId, error: String(error) });
     return { success: false, error: String(error) };
   }
 }
@@ -1336,7 +1337,7 @@ export async function updateWorkspacePlan(
     
     return { success: true, workspace };
   } catch (error) {
-    console.error('Error updating workspace plan:', error);
+    structuredLogger.error('Error updating workspace plan', { slug, plan, error: String(error) });
     return { success: false, error: String(error) };
   }
 }
@@ -1357,7 +1358,7 @@ export function addBotToClient(clientId: string, botId: string): boolean {
     
     return true;
   } catch (error) {
-    console.error('Error adding bot to client:', error);
+    structuredLogger.error('Error adding bot to client', { clientId, botId, error: String(error) });
     return false;
   }
 }

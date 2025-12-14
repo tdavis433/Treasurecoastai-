@@ -39,6 +39,7 @@ import { checkMessageLimit, incrementMessageCount, incrementAutomationCount } fr
 import { getClientStatus } from './botConfig';
 import { addDays, addWeeks, setHours, setMinutes, startOfDay, format, getDay } from 'date-fns';
 import { extractContactSignals, mergeContactSignals } from '@shared/contactSignals';
+import { structuredLogger } from './structuredLogger';
 
 /**
  * SAFE RETRY WRAPPER FOR CRITICAL WRITES
@@ -66,10 +67,10 @@ async function withRetry<T>(
         error?.message?.includes('temporarily unavailable');
       
       if (attempt < maxRetries && isTransient) {
-        console.warn(`[Orchestrator] ${operationName} failed (attempt ${attempt + 1}), retrying...`, error?.message);
+        structuredLogger.warn(`${operationName} failed, retrying`, { attempt: attempt + 1, error: error?.message });
         await new Promise(resolve => setTimeout(resolve, 100 * (attempt + 1))); // Brief exponential backoff
       } else {
-        console.error(`[Orchestrator] ${operationName} failed after ${attempt + 1} attempts:`, error?.message || error);
+        structuredLogger.error(`${operationName} failed after all attempts`, { attempts: attempt + 1, error: error?.message || error });
         throw error;
       }
     }
@@ -109,20 +110,20 @@ export function isValidExternalBookingUrl(url: string | null | undefined): boole
   const blockedSchemes = ['javascript:', 'data:', 'file:', 'vbscript:', 'about:'];
   for (const scheme of blockedSchemes) {
     if (trimmed.startsWith(scheme)) {
-      console.warn(`[Orchestrator] Blocked dangerous URL scheme: ${scheme} in URL: ${url}`);
+      structuredLogger.warn('Blocked dangerous URL scheme', { scheme, url });
       return false;
     }
   }
   
   // Block insecure HTTP - only HTTPS allowed
   if (trimmed.startsWith('http:')) {
-    console.warn(`[Orchestrator] Blocked insecure HTTP URL (HTTPS required): ${url}`);
+    structuredLogger.warn('Blocked insecure HTTP URL (HTTPS required)', { url });
     return false;
   }
   
   // Must start with HTTPS
   if (!trimmed.startsWith('https://')) {
-    console.warn(`[Orchestrator] URL must start with https://: ${url}`);
+    structuredLogger.warn('URL must start with https://', { url });
     return false;
   }
   
@@ -138,7 +139,7 @@ export function isValidExternalBookingUrl(url: string | null | undefined): boole
     }
     return true;
   } catch (e) {
-    console.warn(`[Orchestrator] Invalid URL format: ${url}`);
+    structuredLogger.warn('Invalid URL format', { url });
     return false;
   }
 }
@@ -269,7 +270,7 @@ function parseVagueTimeToDatetime(timePhrase: string): string | null {
   try {
     return baseDate.toISOString();
   } catch (e) {
-    console.warn('Failed to parse time phrase:', timePhrase, e);
+    structuredLogger.warn('Failed to parse time phrase', { timePhrase, error: e });
     return null;
   }
 }
@@ -421,7 +422,7 @@ export function extractBookingInfoFromConversation(
   const parsedTime = parseVagueTimeToDatetime(preferredTime);
   const scheduledAt = parsedTime || undefined;
   if (scheduledAt) {
-    console.log(`Booking time parsed: "${preferredTime}" -> ${scheduledAt}`);
+    structuredLogger.info('Booking time parsed', { preferredTime, scheduledAt });
   }
 
   const isComplete = !!(name && phone);
@@ -630,7 +631,13 @@ function logConversationToFile(data: {
 }): void {
   // Only log message snippets in development to avoid exposing user data in production
   if (process.env.NODE_ENV !== 'production') {
-    console.log(`[CHAT] ${data.clientId}/${data.botId} | ${data.sessionId} | User: ${data.userMessage.slice(0, 50)}... | Bot: ${data.botReply.slice(0, 50)}...`);
+    structuredLogger.info('Chat message', { 
+      clientId: data.clientId, 
+      botId: data.botId, 
+      sessionId: data.sessionId,
+      userMessageSnippet: data.userMessage.slice(0, 50),
+      botReplySnippet: data.botReply.slice(0, 50)
+    });
   }
 }
 
@@ -747,7 +754,7 @@ class ConversationOrchestrator {
           bookingUrl = candidateUrl;
         } else {
           // FAILSAFE: External URL missing/invalid - pivot to internal mode
-          console.warn(`[Orchestrator] FAILSAFE ACTIVATED: External booking URL missing/invalid for ${clientId}/${botId}. Pivoting to internal mode.`);
+          structuredLogger.warn('FAILSAFE ACTIVATED: External booking URL missing/invalid. Pivoting to internal mode', { clientId, botId });
           bookingMode = 'internal';
           failsafeActivated = true;
           
@@ -777,7 +784,7 @@ class ConversationOrchestrator {
         },
       };
     } catch (error: any) {
-      console.error('[Orchestrator] Error processing message:', error);
+      structuredLogger.error('Error processing message', { error });
       
       // Check for OpenAI rate limit or transient errors
       const isRateLimitError = error?.status === 429 || 
@@ -793,7 +800,7 @@ class ConversationOrchestrator {
         error?.message?.includes('network');
       
       if (isTransientError) {
-        console.error('[Orchestrator] OpenAI error (non-streaming) - attempting resilient lead/booking capture');
+        structuredLogger.error('OpenAI error (non-streaming) - attempting resilient lead/booking capture');
         
         // RESILIENT PERSISTENCE: Extract and save contact info even when OpenAI fails
         let savedLead = false;
@@ -833,9 +840,9 @@ class ConversationOrchestrator {
                 name: extracted.name,
                 email: extracted.email,
                 phone: extracted.phone,
-              }).catch(err => console.error('[Automation] Error triggering lead_captured:', err));
+              }).catch(err => structuredLogger.error('Error triggering lead_captured automation', { error: err }));
               
-              console.log('[Orchestrator] Resilient lead saved (non-streaming) despite OpenAI error:', {
+              structuredLogger.info('Resilient lead saved (non-streaming) despite OpenAI error', {
                 clientId: request.clientId, sessionId: request.sessionId, hasPhone: !!extracted.phone, hasEmail: !!extracted.email
               });
             }
@@ -868,15 +875,15 @@ class ConversationOrchestrator {
                 name: extracted.name,
                 phone: extracted.phone,
                 appointmentType: extracted.bookingType || 'tour',
-              }).catch(err => console.error('[Automation] Error triggering appointment_booked:', err));
+              }).catch(err => structuredLogger.error('Error triggering appointment_booked automation', { error: err }));
               
-              console.log('[Orchestrator] Resilient booking saved (non-streaming) despite OpenAI error:', {
+              structuredLogger.info('Resilient booking saved (non-streaming) despite OpenAI error', {
                 clientId: request.clientId, sessionId: request.sessionId, bookingType: extracted.bookingType, name: extracted.name
               });
             }
           }
         } catch (saveError) {
-          console.error('[Orchestrator] Error saving resilient lead/booking (non-streaming):', saveError);
+          structuredLogger.error('Error saving resilient lead/booking (non-streaming)', { error: saveError });
         }
         
         // Check if external booking is configured - show booking button even during errors
@@ -900,7 +907,7 @@ class ConversationOrchestrator {
               fallbackProviderName = clientSettings.externalBookingProviderName || null;
             } else {
               // FAILSAFE: Invalid/missing URL - stay internal
-              console.warn(`[Orchestrator] FAILSAFE in error handler: Invalid external URL for ${request.clientId}`);
+              structuredLogger.warn('FAILSAFE in error handler: Invalid external URL', { clientId: request.clientId });
               failsafeActivated = true;
             }
           }
@@ -1104,7 +1111,7 @@ class ConversationOrchestrator {
           bookingUrl = candidateUrl;
         } else {
           // FAILSAFE: Pivot to internal mode
-          console.warn(`[Orchestrator] FAILSAFE ACTIVATED (stream): External booking URL missing/invalid for ${clientId}/${botId}. Pivoting to internal.`);
+          structuredLogger.warn('FAILSAFE ACTIVATED (stream): External booking URL missing/invalid. Pivoting to internal', { clientId, botId });
           streamBookingMode = 'internal';
           failsafeActivated = true;
         }
@@ -1137,7 +1144,7 @@ class ConversationOrchestrator {
       };
 
     } catch (error: any) {
-      console.error('[Orchestrator] Stream error:', error);
+      structuredLogger.error('Stream error', { error });
       
       // Check for OpenAI rate limit errors or transient errors
       const isRateLimitError = error?.status === 429 || 
@@ -1153,7 +1160,7 @@ class ConversationOrchestrator {
         error?.message?.includes('network');
       
       if (isTransientError) {
-        console.error('[Orchestrator] OpenAI error - attempting to save lead/booking before returning friendly message');
+        structuredLogger.error('OpenAI error - attempting to save lead/booking before returning friendly message');
         
         // RESILIENT PERSISTENCE: Extract and save contact info even when OpenAI fails
         let savedLead = false;
@@ -1193,9 +1200,9 @@ class ConversationOrchestrator {
                 name: extracted.name,
                 email: extracted.email,
                 phone: extracted.phone,
-              }).catch(err => console.error('[Automation] Error triggering lead_captured:', err));
+              }).catch(err => structuredLogger.error('Error triggering lead_captured automation', { error: err }));
               
-              console.log('[Orchestrator] Resilient lead saved despite OpenAI error:', {
+              structuredLogger.info('Resilient lead saved despite OpenAI error', {
                 clientId, sessionId, hasPhone: !!extracted.phone, hasEmail: !!extracted.email
               });
             }
@@ -1228,15 +1235,15 @@ class ConversationOrchestrator {
                 name: extracted.name,
                 phone: extracted.phone,
                 appointmentType: extracted.bookingType || 'tour',
-              }).catch(err => console.error('[Automation] Error triggering appointment_booked:', err));
+              }).catch(err => structuredLogger.error('Error triggering appointment_booked automation', { error: err }));
               
-              console.log('[Orchestrator] Resilient booking saved despite OpenAI error:', {
+              structuredLogger.info('Resilient booking saved despite OpenAI error', {
                 clientId, sessionId, bookingType: extracted.bookingType, name: extracted.name
               });
             }
           }
         } catch (saveError) {
-          console.error('[Orchestrator] Error saving resilient lead/booking:', saveError);
+          structuredLogger.error('Error saving resilient lead/booking', { error: saveError });
         }
         
         // Check if external booking is configured - show booking button even during errors
@@ -1436,9 +1443,9 @@ class ConversationOrchestrator {
       return completion.choices[0]?.message?.content || defaultReply;
     } catch (error: any) {
       if (error?.message === 'AI_TIMEOUT') {
-        console.warn(`[Orchestrator] OpenAI timeout after ${AI_TIMEOUT_MS}ms for client ${clientId}`);
+        structuredLogger.warn('OpenAI timeout', { timeoutMs: AI_TIMEOUT_MS, clientId });
       } else {
-        console.error(`[Orchestrator] OpenAI error for client ${clientId}:`, error?.message || error);
+        structuredLogger.error('OpenAI error', { clientId, error: error?.message || error });
       }
       return fallbackMessage;
     }
@@ -1582,10 +1589,10 @@ class ConversationOrchestrator {
             name: contactInfo.name,
             email: contactInfo.email,
             phone: contactInfo.phone,
-          }).catch(err => console.error('[Automation] Error triggering lead_captured:', err));
+          }).catch(err => structuredLogger.error('Error triggering lead_captured automation', { error: err }));
         }
       } catch (error) {
-        console.error('[Orchestrator] Error capturing lead:', error);
+        structuredLogger.error('Error capturing lead', { error });
       }
     }
 
@@ -1620,7 +1627,7 @@ class ConversationOrchestrator {
         });
         
         if (!existingAppointment && !isDuplicateRecent) {
-          console.log(`[Orchestrator] Creating AI-driven booking for session ${sessionData.sessionId}`, {
+          structuredLogger.info('Creating AI-driven booking', {
             clientId,
             botId,
             sessionId: sessionData.sessionId,
@@ -1651,16 +1658,19 @@ class ConversationOrchestrator {
             name: bookingInfo.name,
             phone: bookingInfo.phone,
             appointmentType: bookingInfo.bookingType,
-          }).catch(err => console.error('[Automation] Error triggering appointment_booked:', err));
+          }).catch(err => structuredLogger.error('Error triggering appointment_booked automation', { error: err }));
           
           bookingSaved = true;
-          console.log(`[Orchestrator] Booking created successfully: ${bookingInfo.bookingType} for ${bookingInfo.name}`, {
+          structuredLogger.info('Booking created successfully', {
             clientId,
             botId,
             sessionId: sessionData.sessionId,
+            bookingType: bookingInfo.bookingType,
+            name: bookingInfo.name,
           });
         } else {
-          console.log(`[Orchestrator] Skipping duplicate booking for session ${sessionData.sessionId}`, {
+          structuredLogger.info('Skipping duplicate booking', {
+            sessionId: sessionData.sessionId,
             reason: existingAppointment ? 'existing_session_appointment' : 'recent_duplicate_type',
             existingAppointmentId: existingAppointment?.id,
             bookingType: bookingInfo.bookingType,
@@ -1668,18 +1678,15 @@ class ConversationOrchestrator {
         }
       } catch (error: any) {
         // Log detailed error with context for debugging
-        console.error('[Orchestrator] Error creating AI-driven booking:', {
+        structuredLogger.error('Error creating AI-driven booking', {
           error: error?.message || error,
-          stack: error?.stack,
-          context: {
-            clientId,
-            botId,
-            sessionId: sessionData.sessionId,
-            bookingType: bookingInfo.bookingType,
-            name: bookingInfo.name,
-            hasPhone: !!bookingInfo.phone,
-            hasEmail: !!bookingInfo.email,
-          }
+          clientId,
+          botId,
+          sessionId: sessionData.sessionId,
+          bookingType: bookingInfo.bookingType,
+          name: bookingInfo.name,
+          hasPhone: !!bookingInfo.phone,
+          hasEmail: !!bookingInfo.email,
         });
         // Note: The AI has already acknowledged the booking in its response.
         // We don't modify the response here - the team can still follow up manually

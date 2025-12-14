@@ -510,7 +510,7 @@ async function ensureAdminUserExists() {
     const existingAdmin = await storage.findAdminByUsername(adminUsername);
     
     if (!existingAdmin && adminPassword) {
-      console.log("Creating default super admin user from environment variables...");
+      structuredLogger.info("Creating default super admin user from environment variables...");
       const passwordHash = await bcrypt.hash(adminPassword, 10);
       
       await db.insert(adminUsers).values({
@@ -519,17 +519,17 @@ async function ensureAdminUserExists() {
         role: "super_admin",
       });
       
-      console.log("Default super admin user created successfully");
+      structuredLogger.info("Default super admin user created successfully");
     } else if (existingAdmin && adminPassword) {
       // Update password if admin exists and password is set (allows password resets)
-      console.log("Updating super admin password from environment variables...");
+      structuredLogger.info("Updating super admin password from environment variables...");
       const passwordHash = await bcrypt.hash(adminPassword, 10);
       await db.update(adminUsers)
         .set({ passwordHash: passwordHash, role: "super_admin" })
         .where(eq(adminUsers.username, adminUsername));
-      console.log("Super admin password updated successfully");
+      structuredLogger.info("Super admin password updated successfully");
     } else if (!adminPassword && !existingAdmin) {
-      console.warn("WARNING: No DEFAULT_ADMIN_PASSWORD set. Skipping admin user creation. Set this environment variable to create the initial admin account.");
+      structuredLogger.warn("WARNING: No DEFAULT_ADMIN_PASSWORD set. Skipping admin user creation. Set this environment variable to create the initial admin account.");
     }
 
     // Create client_admin (staff) account for Faith House only if password is set via env
@@ -539,7 +539,7 @@ async function ensureAdminUserExists() {
     const defaultStaffClientId = process.env.DEFAULT_STAFF_CLIENT_ID || "faith_house";
     
     if (!existingStaff && staffPassword) {
-      console.log(`Creating default client admin (staff) user for ${defaultStaffClientId} from environment variables...`);
+      structuredLogger.info(`Creating default client admin (staff) user for ${defaultStaffClientId} from environment variables...`);
       const staffPasswordHash = await bcrypt.hash(staffPassword, 10);
       
       await db.insert(adminUsers).values({
@@ -549,19 +549,19 @@ async function ensureAdminUserExists() {
         clientId: defaultStaffClientId,
       });
       
-      console.log(`Default client admin (staff) user created successfully for ${defaultStaffClientId}`);
+      structuredLogger.info(`Default client admin (staff) user created successfully for ${defaultStaffClientId}`);
     } else if (!staffPassword && !existingStaff) {
-      console.warn("WARNING: No DEFAULT_STAFF_PASSWORD set. Skipping staff user creation. Set this environment variable to create the initial staff account.");
+      structuredLogger.warn("WARNING: No DEFAULT_STAFF_PASSWORD set. Skipping staff user creation. Set this environment variable to create the initial staff account.");
     } else if (existingStaff && !existingStaff.clientId) {
       // Update existing staff user to have default clientId
-      console.log(`Updating staff user with ${defaultStaffClientId} clientId...`);
+      structuredLogger.info(`Updating staff user with ${defaultStaffClientId} clientId...`);
       await db.update(adminUsers)
         .set({ clientId: defaultStaffClientId })
         .where(eq(adminUsers.username, staffUsername));
-      console.log(`Staff user updated with ${defaultStaffClientId} clientId`);
+      structuredLogger.info(`Staff user updated with ${defaultStaffClientId} clientId`);
     }
   } catch (error) {
-    console.error("Error ensuring admin user exists:", error);
+    structuredLogger.error("Error ensuring admin user exists:", error);
   }
 }
 
@@ -741,7 +741,7 @@ async function requireClientAuth(req: Request, res: Response, next: NextFunction
       
       // Workspace MUST exist for the clientId
       if (!workspace) {
-        console.error(`Client admin ${req.session.userId} has invalid clientId ${req.session.clientId} - workspace not found`);
+        structuredLogger.error(`Client admin ${req.session.userId} has invalid clientId ${req.session.clientId} - workspace not found`);
         return res.status(403).json({ 
           error: "Workspace not found", 
           message: "Your account configuration is invalid. Please contact your administrator." 
@@ -751,7 +751,7 @@ async function requireClientAuth(req: Request, res: Response, next: NextFunction
       // Membership MUST exist in the workspace
       const membership = await storage.checkWorkspaceMembership(req.session.userId, workspace.id);
       if (!membership) {
-        console.error(`Client admin ${req.session.userId} denied access - no membership in workspace ${workspace.id} (${req.session.clientId})`);
+        structuredLogger.error(`Client admin ${req.session.userId} denied access - no membership in workspace ${workspace.id} (${req.session.clientId})`);
         return res.status(403).json({ 
           error: "Access denied", 
           message: "You no longer have access to this workspace. Please contact your administrator." 
@@ -762,7 +762,7 @@ async function requireClientAuth(req: Request, res: Response, next: NextFunction
       (req as any).membershipRole = membership.role;
     } catch (error) {
       // Validation failure = deny access (fail secure)
-      console.error("Workspace membership validation failed:", error);
+      structuredLogger.error("Workspace membership validation failed:", error);
       return res.status(500).json({ error: "Access validation failed. Please try again." });
     }
     
@@ -796,13 +796,13 @@ async function requireClientAuth(req: Request, res: Response, next: NextFunction
       if (!workspace) {
         // Clear invalid impersonation from session and PERSIST the change
         // This prevents "sticky impersonation" edge cases across refresh/back button/multiple tabs
-        console.warn(`Super admin impersonation invalid - workspace not found: ${effectiveClientId}`);
+        structuredLogger.warn(`Super admin impersonation invalid - workspace not found: ${effectiveClientId}`);
         req.session.effectiveClientId = null;
         req.session.isImpersonating = false;
         
         await new Promise<void>((resolve) => {
           req.session.save((err) => {
-            if (err) console.error("Failed to save session after clearing impersonation:", err);
+            if (err) structuredLogger.error("Failed to save session after clearing impersonation:", err);
             resolve();
           });
         });
@@ -814,13 +814,13 @@ async function requireClientAuth(req: Request, res: Response, next: NextFunction
       (req as any).workspaceId = workspace.id;
     } catch (error) {
       // Validation failure = deny access (fail secure)
-      console.error("Workspace lookup failed for super admin impersonation:", error);
+      structuredLogger.error("Workspace lookup failed for super admin impersonation:", error);
       req.session.effectiveClientId = null;
       req.session.isImpersonating = false;
       
       await new Promise<void>((resolve) => {
         req.session.save((err) => {
-          if (err) console.error("Failed to save session after clearing impersonation:", err);
+          if (err) structuredLogger.error("Failed to save session after clearing impersonation:", err);
           resolve();
         });
       });
@@ -864,7 +864,7 @@ async function validateBotAccess(req: Request, res: Response, botId: string): Pr
       
       // Check if bot belongs to user's workspace/clientId
       if (bot.clientId !== req.session.clientId) {
-        console.warn(`Client admin ${userId} attempted to access bot ${botId} from different client ${bot.clientId}`);
+        structuredLogger.warn(`Client admin ${userId} attempted to access bot ${botId} from different client ${bot.clientId}`);
         res.status(403).json({ error: "Access denied - bot belongs to different tenant" });
         return false;
       }
@@ -873,7 +873,7 @@ async function validateBotAccess(req: Request, res: Response, botId: string): Pr
       if (bot.workspaceId) {
         const membership = await storage.checkWorkspaceMembership(userId, bot.workspaceId);
         if (!membership) {
-          console.warn(`Client admin ${userId} denied access - no workspace membership for bot ${botId}`);
+          structuredLogger.warn(`Client admin ${userId} denied access - no workspace membership for bot ${botId}`);
           res.status(403).json({ error: "Access denied - workspace membership required" });
           return false;
         }
@@ -883,7 +883,7 @@ async function validateBotAccess(req: Request, res: Response, botId: string): Pr
       
       return true;
     } catch (error) {
-      console.error("Bot access validation error:", error);
+      structuredLogger.error("Bot access validation error:", error);
       res.status(500).json({ error: "Access validation failed" });
       return false;
     }
@@ -1216,7 +1216,7 @@ async function generateConversationSummary(sessionId: string, clientId: string):
 
     return completion.choices[0]?.message?.content || "Unable to generate summary.";
   } catch (error) {
-    console.error("Conversation summary error:", error);
+    structuredLogger.error("Conversation summary error:", error);
     return "Error generating conversation summary.";
   }
 }
@@ -1238,7 +1238,7 @@ async function analyzeConversation(
 ): Promise<ConversationAnalysis | null> {
   try {
     if (!openai) {
-      console.log('[AI Analysis] OpenAI not configured');
+      structuredLogger.info('[AI Analysis] OpenAI not configured');
       return null;
     }
 
@@ -1295,7 +1295,7 @@ Return ONLY valid JSON, no other text.`
     const analysis = JSON.parse(responseText) as ConversationAnalysis;
     return analysis;
   } catch (error) {
-    console.error('[AI Analysis] Error analyzing conversation:', error);
+    structuredLogger.error('[AI Analysis] Error analyzing conversation:', error);
     return null;
   }
 }
@@ -1330,7 +1330,7 @@ async function sendSmsNotification(
     const twilioConfig = getTwilioConfig();
     
     if (!twilioConfig) {
-      console.log("📱 Twilio credentials not configured - skipping SMS notification");
+      structuredLogger.info("📱 Twilio credentials not configured - skipping SMS notification");
       return { success: false, error: "Twilio not configured" };
     }
     
@@ -1360,21 +1360,21 @@ async function sendSmsNotification(
     );
 
     if (!retryResult.success) {
-      console.error(`SMS notification failed after ${retryResult.attempts} attempts:`, retryResult.error);
+      structuredLogger.error(`SMS notification failed after ${retryResult.attempts} attempts:`, retryResult.error);
       return { success: false, error: `SMS failed after ${retryResult.attempts} attempts: ${retryResult.error}` };
     }
 
     const response = retryResult.result!;
     if (!response.ok) {
       const errorData = await response.json();
-      console.error("Twilio API error:", errorData);
+      structuredLogger.error("Twilio API error:", errorData);
       return { success: false, error: `Twilio API error: ${response.statusText}` };
     }
 
-    console.log(`✅ SMS ${isClientConfirmation ? 'confirmation' : 'notification'} sent to ${phoneNumber} (${retryResult.attempts} attempt(s))`);
+    structuredLogger.info(`✅ SMS ${isClientConfirmation ? 'confirmation' : 'notification'} sent to ${phoneNumber} (${retryResult.attempts} attempt(s))`);
     return { success: true };
   } catch (error) {
-    console.error("SMS notification error:", error);
+    structuredLogger.error("SMS notification error:", error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
@@ -1389,7 +1389,7 @@ async function sendEmailNotification(
     const resendApiKey = getResendApiKey();
     
     if (!resendApiKey) {
-      console.log("📧 Resend API key not configured - skipping email notification");
+      structuredLogger.info("📧 Resend API key not configured - skipping email notification");
       return { success: false, error: "API key not configured" };
     }
 
@@ -1471,21 +1471,21 @@ ${preIntakeInfo}
     );
 
     if (!retryResult.success) {
-      console.error(`Email notification failed after ${retryResult.attempts} attempts:`, retryResult.error);
+      structuredLogger.error(`Email notification failed after ${retryResult.attempts} attempts:`, retryResult.error);
       return { success: false, error: `Email failed after ${retryResult.attempts} attempts: ${retryResult.error}` };
     }
 
     const response = retryResult.result!;
     if (!response.ok) {
       const errorData = await response.json();
-      console.error("Resend API error:", errorData);
+      structuredLogger.error("Resend API error:", errorData);
       return { success: false, error: `Resend API error: ${response.statusText}` };
     }
 
-    console.log(`✅ Email notification sent successfully to ${emailList.length} recipient(s): ${emailList.join(", ")} (${retryResult.attempts} attempt(s))`);
+    structuredLogger.info(`✅ Email notification sent successfully to ${emailList.length} recipient(s): ${emailList.join(", ")} (${retryResult.attempts} attempt(s))`);
     return { success: true, sentTo: emailList };
   } catch (error) {
-    console.error("Email notification error:", error);
+    structuredLogger.error("Email notification error:", error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
@@ -1511,7 +1511,7 @@ async function logNotification(params: {
       metadata: params.metadata || {},
     });
   } catch (error) {
-    console.error('[Notification Log] Failed to log notification:', error);
+    structuredLogger.error('[Notification Log] Failed to log notification:', error);
   }
 }
 
@@ -1898,7 +1898,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         leadDetectionSensitivity: settings?.leadDetectionSensitivity || 'medium',
       });
     } catch (error) {
-      console.error('Widget config error:', error);
+      structuredLogger.error('Widget config error:', error);
       res.status(500).json({ error: 'Failed to load widget configuration' });
     }
   });
@@ -1987,7 +1987,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
       });
     } catch (error) {
-      console.error('[Preview API] Error:', error);
+      structuredLogger.error('[Preview API] Error:', error);
       res.status(500).json({ error: 'Failed to load preview data' });
     }
   });
@@ -2093,7 +2093,7 @@ Always be positive and solution-oriented. If someone wants to get started, direc
 
       res.json({ response });
     } catch (error) {
-      console.error('Platform help chat error:', error);
+      structuredLogger.error('Platform help chat error:', error);
       res.status(500).json({ error: 'Failed to process message' });
     }
   });
@@ -2175,7 +2175,7 @@ Always be positive and solution-oriented. If someone wants to get started, direc
         showAppointmentFlow: userWantsToBook
       });
     } catch (error) {
-      console.error("Chat error:", error);
+      structuredLogger.error("Chat error:", error);
       res.status(500).json({ error: "Failed to process chat message" });
     }
   });
@@ -2223,7 +2223,7 @@ Always be positive and solution-oriented. If someone wants to get started, direc
           message: 'This bot requires authentication. Please obtain a token from /api/widget/config'
         });
       } else if (isProduction) {
-        console.warn(`[SECURITY] Chat request without widget token for ${clientId}/${botId}`);
+        structuredLogger.warn(`[SECURITY] Chat request without widget token for ${clientId}/${botId}`);
       }
       
       // HTTP-level security: Domain validation
@@ -2236,14 +2236,14 @@ Always be positive and solution-oriented. If someone wants to get started, direc
               originDomain === domain || originDomain.endsWith(`.${domain}`)
             );
             if (!isAllowed) {
-              console.warn(`[SECURITY] Request from unauthorized domain ${originDomain} for ${clientId}/${botId}`);
+              structuredLogger.warn(`[SECURITY] Request from unauthorized domain ${originDomain} for ${clientId}/${botId}`);
               return res.status(403).json({ 
                 error: 'Domain not authorized',
                 message: 'This widget is not authorized to run on this domain'
               });
             }
           } catch {
-            console.warn(`[SECURITY] Invalid origin header for ${clientId}/${botId}: ${origin}`);
+            structuredLogger.warn(`[SECURITY] Invalid origin header for ${clientId}/${botId}: ${origin}`);
           }
         }
       }
@@ -2338,11 +2338,11 @@ Always be positive and solution-oriented. If someone wants to get started, direc
             analysis
           );
         } catch (err) {
-          console.error('[AI Analysis] Background processing failed:', err);
+          structuredLogger.error('[AI Analysis] Background processing failed:', err);
         }
       })();
     } catch (error) {
-      console.error("Multi-tenant chat error:", error);
+      structuredLogger.error("Multi-tenant chat error:", error);
       res.status(500).json({ error: "Failed to process chat message" });
     }
   });
@@ -2475,7 +2475,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           suggestedReplies = suggestionsData.replies || [];
           cleanReply = fullReply.replace(/\[SUGGESTIONS\].*?\[\/SUGGESTIONS\]/s, '').trim();
         } catch (e) {
-          console.error('Failed to parse suggestions:', e);
+          structuredLogger.error('Failed to parse suggestions:', e);
         }
       }
 
@@ -2618,9 +2618,9 @@ These suggestions should be relevant to what was just discussed and help guide t
             });
             
             if (analysis.needsReview) {
-              console.log(`[AI Analysis] Streaming session ${actualSessionId} FLAGGED for review: ${analysis.reviewReason}`);
+              structuredLogger.info(`[AI Analysis] Streaming session ${actualSessionId} FLAGGED for review: ${analysis.reviewReason}`);
             } else {
-              console.log(`[AI Analysis] Streaming session ${actualSessionId} enriched`);
+              structuredLogger.info(`[AI Analysis] Streaming session ${actualSessionId} enriched`);
             }
           }
           
@@ -2650,7 +2650,7 @@ These suggestions should be relevant to what was just discussed and help guide t
               const existingAppointment = await storage.getAppointmentBySessionId(actualSessionId, clientId);
               
               if (!existingAppointment) {
-                console.log(`[Streaming] Creating AI-driven booking for session ${actualSessionId}`, {
+                structuredLogger.info(`[Streaming] Creating AI-driven booking for session ${actualSessionId}`, {
                   clientId,
                   botId,
                   sessionId: actualSessionId,
@@ -2673,19 +2673,19 @@ These suggestions should be relevant to what was just discussed and help guide t
                   sessionId: actualSessionId,
                 });
                 
-                console.log(`[Streaming] Booking created successfully: ${bookingInfo.bookingType} for ${bookingInfo.name}`);
+                structuredLogger.info(`[Streaming] Booking created successfully: ${bookingInfo.bookingType} for ${bookingInfo.name}`);
               }
             }
           } catch (bookingErr) {
-            console.error('[Streaming] Error creating AI-driven booking:', bookingErr);
+            structuredLogger.error('[Streaming] Error creating AI-driven booking:', bookingErr);
           }
         } catch (err) {
-          console.error('[AI Analysis] Streaming processing failed:', err);
+          structuredLogger.error('[AI Analysis] Streaming processing failed:', err);
         }
       })();
 
     } catch (error: any) {
-      console.error("Streaming chat error:", error);
+      structuredLogger.error("Streaming chat error:", error);
       
       // Check for OpenAI rate limit error
       const isRateLimitError = error?.status === 429 || 
@@ -2694,7 +2694,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         error?.message?.includes('rate_limit');
       
       if (isRateLimitError) {
-        console.error("[Streaming] OpenAI rate limit exceeded - providing fallback response");
+        structuredLogger.error("[Streaming] OpenAI rate limit exceeded - providing fallback response");
         const fallbackMessage = "I apologize, but our AI service is currently experiencing high demand. Please try again in a few moments, or feel free to call us directly at the number listed on this page for immediate assistance.";
         
         if (!res.headersSent) {
@@ -2800,7 +2800,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         }
       });
     } catch (error) {
-      console.error("Human handoff error:", error);
+      structuredLogger.error("Human handoff error:", error);
       res.status(500).json({ error: "Failed to process handoff request" });
     }
   });
@@ -2921,7 +2921,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       if (existingLead) {
         // SECURITY: Verify lead belongs to this client before updating
         if (existingLead.clientId !== clientId) {
-          console.error(`[Auto-Lead] Security: Attempted to update lead ${existingLead.id} belonging to different client`);
+          structuredLogger.error(`[Auto-Lead] Security: Attempted to update lead ${existingLead.id} belonging to different client`);
           return;
         }
         
@@ -2947,7 +2947,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         }
         
         await storage.updateLead(clientId, existingLead.id, updates);
-        console.log(`[Auto-Lead] Updated existing lead ${existingLead.id} for session ${sessionId}`);
+        structuredLogger.info(`[Auto-Lead] Updated existing lead ${existingLead.id} for session ${sessionId}`);
       } else {
         // Build tags array
         const tags: string[] = [];
@@ -2973,7 +2973,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           lastContactedAt: null,
         });
         
-        console.log(`[Auto-Lead] Created new lead ${newLead.id} for session ${sessionId} (quality: ${aiAnalysis?.leadQuality || 'unknown'})`);
+        structuredLogger.info(`[Auto-Lead] Created new lead ${newLead.id} for session ${sessionId} (quality: ${aiAnalysis?.leadQuality || 'unknown'})`);
         
         // Increment lead counter
         await incrementLeadCount(clientId);
@@ -2987,11 +2987,11 @@ These suggestions should be relevant to what was just discussed and help guide t
           source: newLead.source,
           status: newLead.status,
           createdAt: newLead.createdAt,
-        }).catch(err => console.error('[Webhook] Error sending lead webhook:', err));
+        }).catch(err => structuredLogger.error('[Webhook] Error sending lead webhook:', err));
       }
     } catch (error) {
       // Don't fail the chat request if lead capture fails
-      console.error('[Auto-Lead] Error capturing lead:', error);
+      structuredLogger.error('[Auto-Lead] Error capturing lead:', error);
     }
   }
 
@@ -3047,7 +3047,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json({ bots: botList });
     } catch (error) {
-      console.error("Get demos error:", error);
+      structuredLogger.error("Get demos error:", error);
       res.status(500).json({ error: "Failed to fetch demo bots" });
     }
   });
@@ -3153,7 +3153,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         timestamp: new Date().toISOString()
       });
     } catch (error) {
-      console.error("Demo preflight error:", error);
+      structuredLogger.error("Demo preflight error:", error);
       res.status(500).json({ error: "Failed to run preflight checks" });
     }
   });
@@ -3199,7 +3199,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         isDemo: botConfig.metadata?.isDemo ?? (botConfig.clientId === 'demo')
       });
     } catch (error) {
-      console.error("Get demo bot error:", error);
+      structuredLogger.error("Get demo bot error:", error);
       res.status(500).json({ error: "Failed to fetch demo bot" });
     }
   });
@@ -3225,7 +3225,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json({ clients: clientsWithBots });
     } catch (error) {
-      console.error("Get platform clients error:", error);
+      structuredLogger.error("Get platform clients error:", error);
       res.status(500).json({ error: "Failed to fetch clients" });
     }
   });
@@ -3243,7 +3243,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json(botConfig);
     } catch (error) {
-      console.error("Get bot config error:", error);
+      structuredLogger.error("Get bot config error:", error);
       res.status(500).json({ error: "Failed to fetch bot config" });
     }
   });
@@ -3259,7 +3259,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json({ logs, stats });
     } catch (error) {
-      console.error("Get logs error:", error);
+      structuredLogger.error("Get logs error:", error);
       res.status(500).json({ error: "Failed to fetch logs" });
     }
   });
@@ -3307,7 +3307,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           
           conversationSummary = completion.choices[0]?.message?.content || "Unable to generate summary.";
         } catch (error) {
-          console.error("Error generating summary from conversation history:", error);
+          structuredLogger.error("Error generating summary from conversation history:", error);
         }
       }
       
@@ -3324,7 +3324,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         name: appointment.name,
         phone: appointment.contact,
         appointmentType: appointment.appointmentType,
-      }).catch(err => console.error('[Automation] Error triggering appointment_booked:', err));
+      }).catch(err => structuredLogger.error('[Automation] Error triggering appointment_booked:', err));
       
       const settings = await storage.getSettings(effectiveClientId);
       
@@ -3336,10 +3336,10 @@ These suggestions should be relevant to what was just discussed and help guide t
           settings
         );
         if (!emailResult.success && emailResult.error !== "API key not configured") {
-          console.warn(`Email notification failed: ${emailResult.error}`);
+          structuredLogger.warn(`Email notification failed: ${emailResult.error}`);
         }
       } else if (settings) {
-        console.log("📧 Email notifications not enabled or no recipient configured");
+        structuredLogger.info("📧 Email notifications not enabled or no recipient configured");
       }
       
       if (settings?.enableSmsNotifications && settings.notificationPhone) {
@@ -3358,7 +3358,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         );
         
         if (!smsResult.success && smsResult.error !== "Twilio not configured") {
-          console.warn(`SMS staff notification failed: ${smsResult.error}`);
+          structuredLogger.warn(`SMS staff notification failed: ${smsResult.error}`);
         }
         
         if (appointment.contactPreference === 'text' && appointment.contact) {
@@ -3371,7 +3371,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           );
           
           if (!clientSmsResult.success && clientSmsResult.error !== "Twilio not configured") {
-            console.warn(`SMS client confirmation failed: ${clientSmsResult.error}`);
+            structuredLogger.warn(`SMS client confirmation failed: ${clientSmsResult.error}`);
           }
         }
       }
@@ -3387,11 +3387,11 @@ These suggestions should be relevant to what was just discussed and help guide t
         appointmentType: appointment.appointmentType,
         notes: appointment.notes,
         createdAt: appointment.createdAt,
-      }).catch(err => console.error('[Webhook] Error sending appointment webhook:', err));
+      }).catch(err => structuredLogger.error('[Webhook] Error sending appointment webhook:', err));
       
       res.json({ success: true, appointment });
     } catch (error) {
-      console.error("Appointment error:", error);
+      structuredLogger.error("Appointment error:", error);
       res.status(400).json({ error: "Failed to create appointment" });
     }
   });
@@ -3414,7 +3414,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const result = await storage.getFilteredAppointments(clientId, filters);
       res.json(result);
     } catch (error) {
-      console.error("Get appointments error:", error);
+      structuredLogger.error("Get appointments error:", error);
       res.status(500).json({ error: "Failed to fetch appointments" });
     }
   });
@@ -3430,7 +3430,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       // Honeypot check - if filled, it's a bot (real users don't see this field)
       if (validatedData.honeypot && validatedData.honeypot.trim() !== '') {
-        console.log(`[Bot Request] Honeypot triggered - rejecting bot submission from ${validatedData.email}`);
+        structuredLogger.info(`[Bot Request] Honeypot triggered - rejecting bot submission from ${validatedData.email}`);
         // Return success to not tip off bots, but don't save
         return res.json({ success: true, message: "Request received! We'll be in touch within 24 hours." });
       }
@@ -3449,11 +3449,11 @@ These suggestions should be relevant to what was just discussed and help guide t
           honeypot: undefined, // Don't store honeypot field
         }).returning();
         
-        console.log(`[Bot Request] New submission from ${validatedData.email}: ${validatedData.name}`);
+        structuredLogger.info(`[Bot Request] New submission from ${validatedData.email}: ${validatedData.name}`);
       } catch (insertError: any) {
         // Check for unique constraint violation on dedupeHash (PostgreSQL error code 23505)
         if (insertError?.code === '23505' && insertError?.constraint?.includes('dedupe_hash')) {
-          console.log(`[Bot Request] Duplicate submission detected from ${validatedData.email} - returning success`);
+          structuredLogger.info(`[Bot Request] Duplicate submission detected from ${validatedData.email} - returning success`);
           // Return success to user - they don't need to know it was a dupe
           return res.json({ success: true, message: "Request received! We'll be in touch within 24 hours." });
         }
@@ -3463,7 +3463,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json({ success: true, message: "Request received! We'll be in touch within 24 hours." });
     } catch (error) {
-      console.error("Bot request submission error:", error);
+      structuredLogger.error("Bot request submission error:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid form data", details: error.errors });
       }
@@ -3501,7 +3501,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         total: Object.values(statusCounts).reduce((a, b) => a + b, 0)
       });
     } catch (error) {
-      console.error("Get bot requests error:", error);
+      structuredLogger.error("Get bot requests error:", error);
       res.status(500).json({ error: "Failed to fetch requests" });
     }
   });
@@ -3550,7 +3550,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json({ success: true, request: updated });
     } catch (error) {
-      console.error("Update bot request error:", error);
+      structuredLogger.error("Update bot request error:", error);
       res.status(500).json({ error: "Failed to update request" });
     }
   });
@@ -3566,7 +3566,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
       res.json(appointment);
     } catch (error) {
-      console.error("Get appointment error:", error);
+      structuredLogger.error("Get appointment error:", error);
       res.status(500).json({ error: "Failed to fetch appointment" });
     }
   });
@@ -3596,7 +3596,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const appointment = await storage.updateAppointment(clientId, paramsValidation.data.id, updates);
       res.json(appointment);
     } catch (error) {
-      console.error("Update appointment error:", error);
+      structuredLogger.error("Update appointment error:", error);
       res.status(500).json({ error: "Failed to update appointment" });
     }
   });
@@ -3620,7 +3620,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       await storage.updateAppointmentStatus(clientId, paramsValidation.data.id, bodyValidation.data.status);
       res.json({ success: true });
     } catch (error) {
-      console.error("Update appointment status error:", error);
+      structuredLogger.error("Update appointment status error:", error);
       res.status(500).json({ error: "Failed to update status" });
     }
   });
@@ -3634,7 +3634,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       await storage.deleteAppointment(clientId, id);
       res.json({ success: true });
     } catch (error) {
-      console.error("Delete appointment error:", error);
+      structuredLogger.error("Delete appointment error:", error);
       res.status(500).json({ error: "Failed to delete appointment" });
     }
   });
@@ -3647,7 +3647,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const settings = await storage.getSettings(clientId);
       res.json(settings);
     } catch (error) {
-      console.error("Get settings error:", error);
+      structuredLogger.error("Get settings error:", error);
       res.status(500).json({ error: "Failed to fetch settings" });
     }
   });
@@ -3663,7 +3663,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const settings = await storage.updateSettings(clientId, validatedData);
       res.json(settings);
     } catch (error) {
-      console.error("Update settings error:", error);
+      structuredLogger.error("Update settings error:", error);
       res.status(400).json({ error: "Failed to update settings" });
     }
   });
@@ -3676,7 +3676,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const analytics = await storage.getAnalytics(clientId);
       res.json(analytics);
     } catch (error) {
-      console.error("Get analytics error:", error);
+      structuredLogger.error("Get analytics error:", error);
       res.status(500).json({ error: "Failed to fetch analytics" });
     }
   });
@@ -3700,7 +3700,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const summary = await storage.getAnalyticsSummary(clientId, start, end);
       res.json(summary);
     } catch (error) {
-      console.error("Get analytics summary error:", error);
+      structuredLogger.error("Get analytics summary error:", error);
       res.status(500).json({ error: "Failed to fetch analytics summary" });
     }
   });
@@ -3750,7 +3750,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
       res.send(csvContent + summaryRow);
     } catch (error) {
-      console.error("Export analytics error:", error);
+      structuredLogger.error("Export analytics error:", error);
       res.status(500).json({ error: "Failed to export analytics" });
     }
   });
@@ -3784,7 +3784,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         },
       });
     } catch (error) {
-      console.error("Notification status error:", error);
+      structuredLogger.error("Notification status error:", error);
       res.status(500).json({ error: "Failed to get notification status" });
     }
   });
@@ -3886,7 +3886,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(400).json({ error: "Invalid notification type" });
       }
     } catch (error) {
-      console.error("Test notification error:", error);
+      structuredLogger.error("Test notification error:", error);
       res.status(500).json({ error: "Failed to send test notification" });
     }
   });
@@ -3910,7 +3910,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json(result);
     } catch (error) {
-      console.error("Get notification logs error:", error);
+      structuredLogger.error("Get notification logs error:", error);
       res.status(500).json({ error: "Failed to get notification logs" });
     }
   });
@@ -3994,7 +3994,7 @@ These suggestions should be relevant to what was just discussed and help guide t
 
       req.session.regenerate((err) => {
         if (err) {
-          console.error("Session regeneration error:", err);
+          structuredLogger.error("Session regeneration error:", err);
           return res.status(500).json({ error: "Session creation failed" });
         }
         req.session.userId = user.id;
@@ -4003,7 +4003,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         req.session.lastSeenAt = Date.now(); // Initialize idle timeout tracking
         req.session.save((saveErr) => {
           if (saveErr) {
-            console.error("Session save error:", saveErr);
+            structuredLogger.error("Session save error:", saveErr);
             return res.status(500).json({ error: "Session save failed" });
           }
           res.json({ 
@@ -4023,7 +4023,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid username or password format" });
       }
-      console.error("Login error:", error);
+      structuredLogger.error("Login error:", error);
       res.status(500).json({ error: "Login failed" });
     }
   });
@@ -4097,16 +4097,16 @@ These suggestions should be relevant to what was just discussed and help guide t
           WHERE sid != ${currentSessionId} 
           AND (sess::json->>'userId')::int = ${user.id}
         `);
-        console.log(`Invalidated other sessions for user ${user.id} after password change`);
+        structuredLogger.info(`Invalidated other sessions for user ${user.id} after password change`);
       } catch (sessionErr) {
         // Don't fail the password change if session cleanup fails
-        console.warn("Failed to invalidate other sessions:", sessionErr);
+        structuredLogger.warn("Failed to invalidate other sessions:", sessionErr);
       }
 
       // Regenerate current session for security
       req.session.regenerate((regenErr) => {
         if (regenErr) {
-          console.warn("Session regeneration failed:", regenErr);
+          structuredLogger.warn("Session regeneration failed:", regenErr);
         }
         // Restore session data after regeneration
         req.session.userId = user.id;
@@ -4117,7 +4117,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         
         req.session.save((saveErr) => {
           if (saveErr) {
-            console.warn("Session save after regeneration failed:", saveErr);
+            structuredLogger.warn("Session save after regeneration failed:", saveErr);
           }
           res.json({ 
             success: true, 
@@ -4131,7 +4131,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         const firstError = error.errors[0];
         return res.status(400).json({ error: firstError.message });
       }
-      console.error("Change password error:", error);
+      structuredLogger.error("Change password error:", error);
       res.status(500).json({ error: "Failed to change password" });
     }
   });
@@ -4265,7 +4265,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       // Auto-login the new user
       req.session.regenerate((err) => {
         if (err) {
-          console.error("Session regeneration error:", err);
+          structuredLogger.error("Session regeneration error:", err);
           return res.status(500).json({ error: "Account created but session failed. Please log in." });
         }
         req.session.userId = newUser.id;
@@ -4274,7 +4274,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         req.session.lastSeenAt = Date.now(); // Initialize idle timeout tracking
         req.session.save((saveErr) => {
           if (saveErr) {
-            console.error("Session save error:", saveErr);
+            structuredLogger.error("Session save error:", saveErr);
             return res.status(500).json({ error: "Account created but session failed. Please log in." });
           }
           res.status(201).json({
@@ -4298,7 +4298,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         const firstError = error.errors[0];
         return res.status(400).json({ error: firstError.message });
       }
-      console.error("Signup error:", error);
+      structuredLogger.error("Signup error:", error);
       res.status(500).json({ error: "Failed to create account. Please try again." });
     }
   });
@@ -4356,7 +4356,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         impersonatedClientName,
       });
     } catch (error) {
-      console.error("Get user error:", error);
+      structuredLogger.error("Get user error:", error);
       res.status(500).json({ error: "Failed to fetch user" });
     }
   });
@@ -4387,7 +4387,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         isDefaultPassword,
       });
     } catch (error) {
-      console.error("Security check error:", error);
+      structuredLogger.error("Security check error:", error);
       res.json({ showDefaultCredentialsWarning: false });
     }
   });
@@ -4422,7 +4422,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       if (!user) {
         // Log without exposing full email in production
         if (process.env.NODE_ENV !== 'production') {
-          console.log(`[PasswordReset] No user found for email: ${normalizedEmail}`);
+          structuredLogger.info(`[PasswordReset] No user found for email: ${normalizedEmail}`);
         }
         return res.json({ success: true, message: successMessage });
       }
@@ -4465,15 +4465,15 @@ These suggestions should be relevant to what was just discussed and help guide t
       );
       
       if (!emailResult.success) {
-        console.error(`[PasswordReset] Failed to send reset email:`, emailResult.error);
+        structuredLogger.error(`[PasswordReset] Failed to send reset email:`, emailResult.error);
         // Still return success to prevent enumeration
       } else if (process.env.NODE_ENV !== 'production') {
-        console.log(`[PasswordReset] Reset email sent/logged for user: ${user.username}`);
+        structuredLogger.info(`[PasswordReset] Reset email sent/logged for user: ${user.username}`);
       }
       
       res.json({ success: true, message: successMessage });
     } catch (error) {
-      console.error("Forgot password error:", error);
+      structuredLogger.error("Forgot password error:", error);
       res.status(500).json({ error: "Failed to process password reset request" });
     }
   });
@@ -4514,7 +4514,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json({ valid: true });
     } catch (error) {
-      console.error("Validate reset token error:", error);
+      structuredLogger.error("Validate reset token error:", error);
       res.status(500).json({ valid: false, error: "Failed to validate token" });
     }
   });
@@ -4598,20 +4598,20 @@ These suggestions should be relevant to what was just discussed and help guide t
         await db.execute(
           sql`DELETE FROM session WHERE sess->>'userId' = ${validRecord.userId.toString()}`
         );
-        console.log(`[PasswordReset] Invalidated all sessions for user ID: ${validRecord.userId}`);
+        structuredLogger.info(`[PasswordReset] Invalidated all sessions for user ID: ${validRecord.userId}`);
       } catch (sessionError) {
         // Non-fatal: log but continue - password was changed successfully
-        console.error(`[PasswordReset] Warning: Could not invalidate sessions for user ID: ${validRecord.userId}`, sessionError);
+        structuredLogger.error(`[PasswordReset] Warning: Could not invalidate sessions for user ID: ${validRecord.userId}`, sessionError);
       }
       
-      console.log(`[PasswordReset] Password successfully reset for user ID: ${validRecord.userId}`);
+      structuredLogger.info(`[PasswordReset] Password successfully reset for user ID: ${validRecord.userId}`);
       
       res.json({ 
         success: true, 
         message: "Your password has been reset. Please sign in with your new password." 
       });
     } catch (error) {
-      console.error("Reset password error:", error);
+      structuredLogger.error("Reset password error:", error);
       res.status(500).json({ error: "Failed to reset password" });
     }
   });
@@ -4640,7 +4640,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         })),
       });
     } catch (error) {
-      console.error("Debug reset tokens error:", error);
+      structuredLogger.error("Debug reset tokens error:", error);
       res.status(500).json({ error: "Failed to fetch debug tokens" });
     }
   });
@@ -4655,7 +4655,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       clearPendingResetTokens();
       res.json({ success: true, message: "Debug tokens cleared" });
     } catch (error) {
-      console.error("Clear debug tokens error:", error);
+      structuredLogger.error("Clear debug tokens error:", error);
       res.status(500).json({ error: "Failed to clear debug tokens" });
     }
   });
@@ -4680,7 +4680,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         displayOrder: t.displayOrder,
       })));
     } catch (error) {
-      console.error("Get templates error:", error);
+      structuredLogger.error("Get templates error:", error);
       res.status(500).json({ error: "Failed to fetch templates" });
     }
   });
@@ -4697,7 +4697,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json(template);
     } catch (error) {
-      console.error("Get template error:", error);
+      structuredLogger.error("Get template error:", error);
       res.status(500).json({ error: "Failed to fetch template" });
     }
   });
@@ -4712,7 +4712,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const workspaceList = await getWorkspaces();
       res.json(workspaceList);
     } catch (error) {
-      console.error("Get workspaces error:", error);
+      structuredLogger.error("Get workspaces error:", error);
       res.status(500).json({ error: "Failed to fetch workspaces" });
     }
   });
@@ -4729,7 +4729,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json(workspace);
     } catch (error) {
-      console.error("Get workspace error:", error);
+      structuredLogger.error("Get workspace error:", error);
       res.status(500).json({ error: "Failed to fetch workspace" });
     }
   });
@@ -4749,7 +4749,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         status: bot.metadata?.isDemo ? 'demo' : 'active',
       })));
     } catch (error) {
-      console.error("Get workspace bots error:", error);
+      structuredLogger.error("Get workspace bots error:", error);
       res.status(500).json({ error: "Failed to fetch workspace bots" });
     }
   });
@@ -4872,7 +4872,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         timestamp: new Date().toISOString()
       });
     } catch (error) {
-      console.error("Workspace diagnostics error:", error);
+      structuredLogger.error("Workspace diagnostics error:", error);
       res.status(500).json({ error: "Failed to run diagnostics" });
     }
   });
@@ -4928,7 +4928,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         timestamp: new Date().toISOString()
       });
     } catch (error) {
-      console.error("Get platform errors error:", error);
+      structuredLogger.error("Get platform errors error:", error);
       res.status(500).json({ error: "Failed to fetch platform errors" });
     }
   });
@@ -4981,7 +4981,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         offset: filters.offset
       });
     } catch (error) {
-      console.error("Get audit logs error:", error);
+      structuredLogger.error("Get audit logs error:", error);
       res.status(500).json({ error: "Failed to fetch audit logs" });
     }
   });
@@ -5062,7 +5062,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json(users);
     } catch (error) {
-      console.error("Get workspace users error:", error);
+      structuredLogger.error("Get workspace users error:", error);
       res.status(500).json({ error: "Failed to fetch workspace users" });
     }
   });
@@ -5118,7 +5118,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors[0].message });
       }
-      console.error("Create client user error:", error);
+      structuredLogger.error("Create client user error:", error);
       res.status(500).json({ error: "Failed to create client user" });
     }
   });
@@ -5172,7 +5172,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors[0].message });
       }
-      console.error("Reset password error:", error);
+      structuredLogger.error("Reset password error:", error);
       res.status(500).json({ error: "Failed to reset password" });
     }
   });
@@ -5216,7 +5216,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json({ success: true, message: "User disabled successfully" });
     } catch (error) {
-      console.error("Disable user error:", error);
+      structuredLogger.error("Disable user error:", error);
       res.status(500).json({ error: "Failed to disable user" });
     }
   });
@@ -5260,7 +5260,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json({ success: true, message: "User enabled successfully" });
     } catch (error) {
-      console.error("Enable user error:", error);
+      structuredLogger.error("Enable user error:", error);
       res.status(500).json({ error: "Failed to enable user" });
     }
   });
@@ -5331,7 +5331,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       });
       
       // Respond immediately for snappy UX
-      console.log(`Super admin ${req.session.userId} started impersonating client: ${clientId}`);
+      structuredLogger.info(`Super admin ${req.session.userId} started impersonating client: ${clientId}`);
       res.json({ 
         success: true, 
         message: isPaused 
@@ -5352,9 +5352,9 @@ These suggestions should be relevant to what was just discussed and help guide t
         ipAddress: req.ip || req.socket.remoteAddress,
         userAgent: req.headers['user-agent'],
         details: { targetClientId: clientId },
-      }).catch(err => console.error("Failed to log impersonation audit event:", err));
+      }).catch(err => structuredLogger.error("Failed to log impersonation audit event:", err));
     } catch (error) {
-      console.error("Impersonation error:", error);
+      structuredLogger.error("Impersonation error:", error);
       res.status(500).json({ error: "Failed to start impersonation" });
     }
   });
@@ -5392,7 +5392,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       });
       
       // Respond immediately for snappy UX
-      console.log(`Super admin ${req.session.userId} stopped impersonating client: ${previousClientId}`);
+      structuredLogger.info(`Super admin ${req.session.userId} stopped impersonating client: ${previousClientId}`);
       res.json({ 
         success: true, 
         message: "Stopped impersonation, returned to super admin view",
@@ -5412,9 +5412,9 @@ These suggestions should be relevant to what was just discussed and help guide t
         ipAddress: req.ip || req.socket.remoteAddress,
         userAgent: req.headers['user-agent'],
         details: { previousClientId },
-      }).catch(err => console.error("Failed to log impersonation audit event:", err));
+      }).catch(err => structuredLogger.error("Failed to log impersonation audit event:", err));
     } catch (error) {
-      console.error("Stop impersonation error:", error);
+      structuredLogger.error("Stop impersonation error:", error);
       res.status(500).json({ error: "Failed to stop impersonation" });
     }
   };
@@ -5464,7 +5464,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json(clientsWithBots);
     } catch (error) {
-      console.error("Get clients error:", error);
+      structuredLogger.error("Get clients error:", error);
       res.status(500).json({ error: "Failed to fetch clients" });
     }
   });
@@ -5491,7 +5491,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         res.status(404).json({ error: result.error || "Failed to update client status" });
       }
     } catch (error) {
-      console.error("Update client status error:", error);
+      structuredLogger.error("Update client status error:", error);
       res.status(500).json({ error: "Failed to update client status" });
     }
   });
@@ -5523,7 +5523,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json(botList);
     } catch (error) {
-      console.error("Get bots error:", error);
+      structuredLogger.error("Get bots error:", error);
       res.status(500).json({ error: "Failed to fetch bots" });
     }
   });
@@ -5541,7 +5541,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json(botConfig);
     } catch (error) {
-      console.error("Get bot config error:", error);
+      structuredLogger.error("Get bot config error:", error);
       res.status(500).json({ error: "Failed to fetch bot config" });
     }
   });
@@ -5573,7 +5573,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         res.status(500).json({ error: "Failed to save bot config" });
       }
     } catch (error) {
-      console.error("Update bot config error:", error);
+      structuredLogger.error("Update bot config error:", error);
       res.status(500).json({ error: "Failed to update bot config" });
     }
   });
@@ -5614,7 +5614,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         res.status(500).json({ error: "Failed to duplicate bot" });
       }
     } catch (error) {
-      console.error("Duplicate bot error:", error);
+      structuredLogger.error("Duplicate bot error:", error);
       res.status(500).json({ error: "Failed to duplicate bot" });
     }
   });
@@ -5795,7 +5795,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         res.status(500).json({ error: "Failed to create bot from template" });
       }
     } catch (error) {
-      console.error("Create bot from template error:", error);
+      structuredLogger.error("Create bot from template error:", error);
       res.status(500).json({ error: "Failed to create bot from template" });
     }
   });
@@ -5829,7 +5829,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         res.status(500).json({ error: "Failed to update bot status" });
       }
     } catch (error) {
-      console.error("Update bot status error:", error);
+      structuredLogger.error("Update bot status error:", error);
       res.status(500).json({ error: "Failed to update bot status" });
     }
   });
@@ -5862,7 +5862,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         res.status(500).json({ success: false, error: result.error, scrapeId: result.scrapeId });
       }
     } catch (error) {
-      console.error("Scrape error:", error);
+      structuredLogger.error("Scrape error:", error);
       res.status(500).json({ error: "Failed to scrape website" });
     }
   });
@@ -5879,7 +5879,7 @@ These suggestions should be relevant to what was just discussed and help guide t
 
       res.json(scrapes);
     } catch (error) {
-      console.error("Get scraped websites error:", error);
+      structuredLogger.error("Get scraped websites error:", error);
       res.status(500).json({ error: "Failed to fetch scraped websites" });
     }
   });
@@ -5895,7 +5895,7 @@ These suggestions should be relevant to what was just discussed and help guide t
 
       res.json(scrape);
     } catch (error) {
-      console.error("Get scraped website error:", error);
+      structuredLogger.error("Get scraped website error:", error);
       res.status(500).json({ error: "Failed to fetch scraped website" });
     }
   });
@@ -5908,7 +5908,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const scrape = await storage.updateScrapedWebsite(id, updates);
       res.json(scrape);
     } catch (error) {
-      console.error("Update scraped website error:", error);
+      structuredLogger.error("Update scraped website error:", error);
       res.status(500).json({ error: "Failed to update scraped website" });
     }
   });
@@ -5932,7 +5932,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         res.status(400).json({ success: false, error: result.error });
       }
     } catch (error) {
-      console.error("Apply scraped data error:", error);
+      structuredLogger.error("Apply scraped data error:", error);
       res.status(500).json({ error: "Failed to apply scraped data" });
     }
   });
@@ -5943,7 +5943,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       await storage.deleteScrapedWebsite(id);
       res.json({ success: true });
     } catch (error) {
-      console.error("Delete scraped website error:", error);
+      structuredLogger.error("Delete scraped website error:", error);
       res.status(500).json({ error: "Failed to delete scraped website" });
     }
   });
@@ -5964,7 +5964,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         normalizedUrl = `https://${normalizedUrl}`;
       }
 
-      console.log(`[Website Import] Starting import for: ${normalizedUrl}`);
+      structuredLogger.info(`[Website Import] Starting import for: ${normalizedUrl}`);
       
       const options: { maxPages?: number; maxDepth?: number } = {};
       if (typeof maxPages === 'number' && maxPages > 0 && maxPages <= 20) {
@@ -5976,7 +5976,7 @@ These suggestions should be relevant to what was just discussed and help guide t
 
       const suggestions = await importWebsite(normalizedUrl, options);
       
-      console.log(`[Website Import] Completed: ${suggestions.pagesScanned} pages, ${suggestions.services.length} services, ${suggestions.faqs.length} FAQs`);
+      structuredLogger.info(`[Website Import] Completed: ${suggestions.pagesScanned} pages, ${suggestions.services.length} services, ${suggestions.faqs.length} FAQs`);
       
       res.json({
         success: true,
@@ -5984,7 +5984,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      console.error("[Website Import] Error:", errorMessage);
+      structuredLogger.error("[Website Import] Error:", errorMessage);
       res.status(500).json({ 
         success: false,
         error: `Failed to import website: ${errorMessage}` 
@@ -6031,7 +6031,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         : process.env.BASE_URL || 'http://localhost:5000';
       const previewUrl = `${baseUrl}/preview/${workspaceSlug}?t=${tokenResult.token}`;
       
-      console.log(`[Preview Link] Generated for ${workspaceSlug}/${botId}, expires: ${tokenResult.expiresAt.toISOString()}`);
+      structuredLogger.info(`[Preview Link] Generated for ${workspaceSlug}/${botId}, expires: ${tokenResult.expiresAt.toISOString()}`);
       
       res.json({
         success: true,
@@ -6043,7 +6043,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         botId,
       });
     } catch (error) {
-      console.error("[Preview Link] Error generating preview link:", error);
+      structuredLogger.error("[Preview Link] Error generating preview link:", error);
       res.status(500).json({ error: "Failed to generate preview link" });
     }
   });
@@ -6069,7 +6069,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const workspaceId = (botConfig as any).workspaceId || botConfig.clientId || "default";
       
       // Trigger re-scrape of the website
-      console.log(`[Rebuild Knowledge] Starting re-scrape for bot ${botId}, URL: ${websiteUrl}`);
+      structuredLogger.info(`[Rebuild Knowledge] Starting re-scrape for bot ${botId}, URL: ${websiteUrl}`);
       const scrapeResult = await scrapeWebsite(websiteUrl, workspaceId, botId);
 
       if (!scrapeResult.success) {
@@ -6089,7 +6089,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         });
       }
 
-      console.log(`[Rebuild Knowledge] Successfully rebuilt knowledge for bot ${botId}`);
+      structuredLogger.info(`[Rebuild Knowledge] Successfully rebuilt knowledge for bot ${botId}`);
       
       res.json({ 
         success: true, 
@@ -6097,7 +6097,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         scrapeId: scrapeResult.scrapeId
       });
     } catch (error) {
-      console.error("[Rebuild Knowledge] Error:", error);
+      structuredLogger.error("[Rebuild Knowledge] Error:", error);
       res.status(500).json({ error: "Failed to rebuild knowledge base" });
     }
   });
@@ -6134,7 +6134,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           ));
         leadsCount = leadsResult[0]?.count || 0;
       } catch (e) {
-        console.error("Error counting leads:", e);
+        structuredLogger.error("Error counting leads:", e);
       }
       
       try {
@@ -6147,7 +6147,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           ));
         appointmentsCount = appointmentsResult[0]?.count || 0;
       } catch (e) {
-        console.error("Error counting appointments:", e);
+        structuredLogger.error("Error counting appointments:", e);
       }
       
       res.json({
@@ -6158,7 +6158,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         avgResponseTime: analytics.avgResponseTimeMs || 0,
       });
     } catch (error) {
-      console.error("Get bot stats error:", error);
+      structuredLogger.error("Get bot stats error:", error);
       res.status(500).json({ error: "Failed to get bot stats" });
     }
   });
@@ -6282,7 +6282,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         const clientResult = registerClient(clientId, clientName, businessType, botId, 'active');
         
         if (!clientResult.success) {
-          console.warn(`Warning: Bot created but client registration failed: ${clientResult.error}`);
+          structuredLogger.warn(`Warning: Bot created but client registration failed: ${clientResult.error}`);
         }
         
         res.status(201).json({ 
@@ -6295,7 +6295,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         res.status(500).json({ error: "Failed to save bot config" });
       }
     } catch (error) {
-      console.error("Create bot error:", error);
+      structuredLogger.error("Create bot error:", error);
       res.status(500).json({ error: "Failed to create bot" });
     }
   });
@@ -6325,7 +6325,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json(templates);
     } catch (error) {
-      console.error("Get templates error:", error);
+      structuredLogger.error("Get templates error:", error);
       res.status(500).json({ error: "Failed to fetch templates" });
     }
   });
@@ -6425,7 +6425,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         config: newConfig,
       });
     } catch (error) {
-      console.error("Create client from template error:", error);
+      structuredLogger.error("Create client from template error:", error);
       res.status(500).json({ error: "Failed to create client from template" });
     }
   });
@@ -6450,7 +6450,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         status: settings?.status || 'active'
       });
     } catch (error) {
-      console.error("Get general settings error:", error);
+      structuredLogger.error("Get general settings error:", error);
       res.status(500).json({ error: "Failed to fetch general settings" });
     }
   });
@@ -6478,7 +6478,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       });
       res.json(settings);
     } catch (error) {
-      console.error("Update general settings error:", error);
+      structuredLogger.error("Update general settings error:", error);
       res.status(400).json({ error: "Failed to update general settings" });
     }
   });
@@ -6498,7 +6498,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         }
       });
     } catch (error) {
-      console.error("Get knowledge error:", error);
+      structuredLogger.error("Get knowledge error:", error);
       res.status(500).json({ error: "Failed to fetch knowledge" });
     }
   });
@@ -6529,7 +6529,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json(newEntry);
     } catch (error) {
-      console.error("Add FAQ error:", error);
+      structuredLogger.error("Add FAQ error:", error);
       res.status(400).json({ error: "Failed to add FAQ" });
     }
   });
@@ -6552,7 +6552,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       await storage.updateSettings(clientId, { faqEntries });
       res.json(updatedEntry);
     } catch (error) {
-      console.error("Update FAQ error:", error);
+      structuredLogger.error("Update FAQ error:", error);
       res.status(400).json({ error: "Failed to update FAQ" });
     }
   });
@@ -6569,7 +6569,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json({ success: true });
     } catch (error) {
-      console.error("Delete FAQ error:", error);
+      structuredLogger.error("Delete FAQ error:", error);
       res.status(400).json({ error: "Failed to delete FAQ" });
     }
   });
@@ -6591,7 +6591,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       await storage.updateSettings(clientId, { longFormKnowledge });
       res.json(longFormKnowledge);
     } catch (error) {
-      console.error("Update long-form knowledge error:", error);
+      structuredLogger.error("Update long-form knowledge error:", error);
       res.status(400).json({ error: "Failed to update long-form knowledge" });
     }
   });
@@ -6603,7 +6603,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const settings = await storage.getSettings(clientId);
       res.json(settings?.appointmentTypesConfig || []);
     } catch (error) {
-      console.error("Get appointment types error:", error);
+      structuredLogger.error("Get appointment types error:", error);
       res.status(500).json({ error: "Failed to fetch appointment types" });
     }
   });
@@ -6621,7 +6621,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       await storage.updateSettings(req.params.clientId, { appointmentTypesConfig });
       res.json(appointmentTypesConfig);
     } catch (error) {
-      console.error("Update appointment types error:", error);
+      structuredLogger.error("Update appointment types error:", error);
       res.status(400).json({ error: "Failed to update appointment types" });
     }
   });
@@ -6633,7 +6633,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const settings = await storage.getSettings(clientId);
       res.json(settings?.preIntakeConfig || []);
     } catch (error) {
-      console.error("Get pre-intake config error:", error);
+      structuredLogger.error("Get pre-intake config error:", error);
       res.status(500).json({ error: "Failed to fetch pre-intake config" });
     }
   });
@@ -6651,7 +6651,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       await storage.updateSettings(clientId, { preIntakeConfig });
       res.json(preIntakeConfig);
     } catch (error) {
-      console.error("Update pre-intake config error:", error);
+      structuredLogger.error("Update pre-intake config error:", error);
       res.status(400).json({ error: "Failed to update pre-intake config" });
     }
   });
@@ -6677,7 +6677,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         },
       });
     } catch (error) {
-      console.error("Get notification settings error:", error);
+      structuredLogger.error("Get notification settings error:", error);
       res.status(500).json({ error: "Failed to fetch notification settings" });
     }
   });
@@ -6690,7 +6690,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       await storage.updateSettings(clientId, { notificationSettings });
       res.json(notificationSettings);
     } catch (error) {
-      console.error("Update notification settings error:", error);
+      structuredLogger.error("Update notification settings error:", error);
       res.status(400).json({ error: "Failed to update notification settings" });
     }
   });
@@ -6740,7 +6740,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         botId: botConfig?.botId,
       });
     } catch (error) {
-      console.error("Get client profile error:", error);
+      structuredLogger.error("Get client profile error:", error);
       res.status(500).json({ error: "Failed to fetch profile" });
     }
   });
@@ -6753,7 +6753,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       // For now, we just log and acknowledge - actual bot config updates would require file writes
       // In a production system, this would update the database or config storage
-      console.log(`Client ${clientId} settings update request:`, { phone, hours, location });
+      structuredLogger.info(`Client ${clientId} settings update request:`, { phone, hours, location });
       
       // Return success - in production this would persist the changes
       res.json({
@@ -6762,7 +6762,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         updates: { phone, hours, location },
       });
     } catch (error) {
-      console.error("Update client settings error:", error);
+      structuredLogger.error("Update client settings error:", error);
       res.status(500).json({ error: "Failed to update settings" });
     }
   });
@@ -6824,7 +6824,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         externalPaymentUrl: settings.externalPaymentUrl,
       });
     } catch (error) {
-      console.error("Get webhook settings error:", error);
+      structuredLogger.error("Get webhook settings error:", error);
       res.status(500).json({ error: "Failed to fetch webhook settings" });
     }
   });
@@ -6931,7 +6931,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         externalPaymentUrl: updated.externalPaymentUrl,
       });
     } catch (error) {
-      console.error("Update webhook settings error:", error);
+      structuredLogger.error("Update webhook settings error:", error);
       res.status(500).json({ error: "Failed to update webhook settings" });
     }
   });
@@ -6956,7 +6956,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         });
       }
     } catch (error) {
-      console.error("Test webhook error:", error);
+      structuredLogger.error("Test webhook error:", error);
       res.status(500).json({ error: "Failed to test webhook" });
     }
   });
@@ -6975,7 +6975,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         message: "New webhook secret generated. Save this value - it will only be shown once.",
       });
     } catch (error) {
-      console.error("Generate webhook secret error:", error);
+      structuredLogger.error("Generate webhook secret error:", error);
       res.status(500).json({ error: "Failed to generate webhook secret" });
     }
   });
@@ -7237,7 +7237,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         overview,
       });
     } catch (error) {
-      console.error("Get client stats error:", error);
+      structuredLogger.error("Get client stats error:", error);
       res.status(500).json({ error: "Failed to fetch stats" });
     }
   });
@@ -7295,7 +7295,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         dbConversations,
       });
     } catch (error) {
-      console.error("Get client conversations error:", error);
+      structuredLogger.error("Get client conversations error:", error);
       res.status(500).json({ error: "Failed to fetch conversations" });
     }
   });
@@ -7319,7 +7319,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         total: appointments.length,
       });
     } catch (error) {
-      console.error("Get client appointments error:", error);
+      structuredLogger.error("Get client appointments error:", error);
       res.status(500).json({ error: "Failed to fetch appointments" });
     }
   });
@@ -7347,7 +7347,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         faqs: botConfig.faqs,
       });
     } catch (error) {
-      console.error("Get client bot config error:", error);
+      structuredLogger.error("Get client bot config error:", error);
       res.status(500).json({ error: "Failed to fetch bot configuration" });
     }
   });
@@ -7407,7 +7407,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         messagesLast7d,
       });
     } catch (error) {
-      console.error("Get client analytics summary error:", error);
+      structuredLogger.error("Get client analytics summary error:", error);
       res.status(500).json({ error: "Failed to fetch analytics summary" });
     }
   });
@@ -7460,7 +7460,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         trends: filledTrends,
       });
     } catch (error) {
-      console.error("Get client analytics trends error:", error);
+      structuredLogger.error("Get client analytics trends error:", error);
       res.status(500).json({ error: "Failed to fetch analytics trends" });
     }
   });
@@ -7486,7 +7486,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         total: sessions.length,
       });
     } catch (error) {
-      console.error("Get client analytics sessions error:", error);
+      structuredLogger.error("Get client analytics sessions error:", error);
       res.status(500).json({ error: "Failed to fetch chat sessions" });
     }
   });
@@ -7562,7 +7562,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         topQuestions,
       });
     } catch (error) {
-      console.error("Get client top questions error:", error);
+      structuredLogger.error("Get client top questions error:", error);
       res.status(500).json({ error: "Failed to fetch top questions" });
     }
   });
@@ -7611,7 +7611,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
       res.send(csvContent + summarySection);
     } catch (error) {
-      console.error("Export client analytics error:", error);
+      structuredLogger.error("Export client analytics error:", error);
       res.status(500).json({ error: "Failed to export analytics" });
     }
   });
@@ -7646,7 +7646,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
       res.send(csvContent);
     } catch (error) {
-      console.error("Export leads error:", error);
+      structuredLogger.error("Export leads error:", error);
       res.status(500).json({ error: "Failed to export leads" });
     }
   });
@@ -7687,7 +7687,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
       res.send(csvContent);
     } catch (error) {
-      console.error("Export sessions error:", error);
+      structuredLogger.error("Export sessions error:", error);
       res.status(500).json({ error: "Failed to export sessions" });
     }
   });
@@ -7721,7 +7721,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         total: messages.length,
       });
     } catch (error) {
-      console.error("Get session messages error:", error);
+      structuredLogger.error("Get session messages error:", error);
       res.status(500).json({ error: "Failed to fetch session messages" });
     }
   });
@@ -7746,7 +7746,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const notes = await storage.getConversationNotes(sessionId, clientId);
       res.json({ notes });
     } catch (error) {
-      console.error("Get notes error:", error);
+      structuredLogger.error("Get notes error:", error);
       res.status(500).json({ error: "Failed to fetch notes" });
     }
   });
@@ -7775,7 +7775,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.status(201).json(note);
     } catch (error) {
-      console.error("Create note error:", error);
+      structuredLogger.error("Create note error:", error);
       res.status(500).json({ error: "Failed to create note" });
     }
   });
@@ -7798,7 +7798,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       if (error.message === 'Note not found or access denied') {
         return res.status(404).json({ error: "Note not found" });
       }
-      console.error("Update note error:", error);
+      structuredLogger.error("Update note error:", error);
       res.status(500).json({ error: "Failed to update note" });
     }
   });
@@ -7814,7 +7814,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       if (error.message === 'Note not found or access denied') {
         return res.status(404).json({ error: "Note not found" });
       }
-      console.error("Delete note error:", error);
+      structuredLogger.error("Delete note error:", error);
       res.status(500).json({ error: "Failed to delete note" });
     }
   });
@@ -7837,7 +7837,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       );
       res.json(state);
     } catch (error) {
-      console.error("Get session state error:", error);
+      structuredLogger.error("Get session state error:", error);
       res.status(500).json({ error: "Failed to fetch session state" });
     }
   });
@@ -7873,7 +7873,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       if (error.message === 'Session state not found or access denied') {
         return res.status(404).json({ error: "Session not found" });
       }
-      console.error("Update session state error:", error);
+      structuredLogger.error("Update session state error:", error);
       res.status(500).json({ error: "Failed to update session state" });
     }
   });
@@ -7892,7 +7892,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json({ states });
     } catch (error) {
-      console.error("Get session states error:", error);
+      structuredLogger.error("Get session states error:", error);
       res.status(500).json({ error: "Failed to fetch session states" });
     }
   });
@@ -7908,7 +7908,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         ...usageSummary,
       });
     } catch (error) {
-      console.error("Get client usage error:", error);
+      structuredLogger.error("Get client usage error:", error);
       res.status(500).json({ error: "Failed to fetch usage summary" });
     }
   });
@@ -7974,7 +7974,7 @@ These suggestions should be relevant to what was just discussed and help guide t
 
       res.json({ success: true, message: "Password updated successfully" });
     } catch (error) {
-      console.error("Change password error:", error);
+      structuredLogger.error("Change password error:", error);
       res.status(500).json({ error: "Failed to change password" });
     }
   });
@@ -8015,7 +8015,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         notificationSettings: settings.notificationSettings,
       });
     } catch (error) {
-      console.error("Get notification preferences error:", error);
+      structuredLogger.error("Get notification preferences error:", error);
       res.status(500).json({ error: "Failed to fetch notification preferences" });
     }
   });
@@ -8095,7 +8095,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         notificationSettings: updated.notificationSettings,
       });
     } catch (error) {
-      console.error("Update notification preferences error:", error);
+      structuredLogger.error("Update notification preferences error:", error);
       res.status(500).json({ error: "Failed to update notification preferences" });
     }
   });
@@ -8123,7 +8123,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         ...result,
       });
     } catch (error) {
-      console.error("Get client leads error:", error);
+      structuredLogger.error("Get client leads error:", error);
       res.status(500).json({ error: "Failed to fetch leads" });
     }
   });
@@ -8140,7 +8140,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json(lead);
     } catch (error) {
-      console.error("Get lead error:", error);
+      structuredLogger.error("Get lead error:", error);
       res.status(500).json({ error: "Failed to fetch lead" });
     }
   });
@@ -8187,7 +8187,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         name: lead.name,
         email: lead.email,
         phone: lead.phone,
-      }).catch(err => console.error('[Automation] Error triggering lead_captured:', err));
+      }).catch(err => structuredLogger.error('[Automation] Error triggering lead_captured:', err));
       
       // Fire webhook for new lead (async, non-blocking)
       sendLeadCreatedWebhook(clientId, {
@@ -8198,11 +8198,11 @@ These suggestions should be relevant to what was just discussed and help guide t
         source: lead.source,
         status: lead.status,
         createdAt: lead.createdAt,
-      }).catch(err => console.error('[Webhook] Error sending lead webhook:', err));
+      }).catch(err => structuredLogger.error('[Webhook] Error sending lead webhook:', err));
       
       res.status(201).json(lead);
     } catch (error) {
-      console.error("Create lead error:", error);
+      structuredLogger.error("Create lead error:", error);
       res.status(500).json({ error: "Failed to create lead" });
     }
   });
@@ -8239,12 +8239,12 @@ These suggestions should be relevant to what was just discussed and help guide t
           name: updated.name || 'Unknown',
           status: updated.status,
           previousStatus,
-        }).catch(err => console.error('[Webhook] Error sending lead update webhook:', err));
+        }).catch(err => structuredLogger.error('[Webhook] Error sending lead update webhook:', err));
       }
       
       res.json(updated);
     } catch (error) {
-      console.error("Update lead error:", error);
+      structuredLogger.error("Update lead error:", error);
       res.status(500).json({ error: "Failed to update lead" });
     }
   });
@@ -8268,7 +8268,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       await storage.deleteLead(clientId, paramsValidation.data.id);
       res.status(204).send();
     } catch (error) {
-      console.error("Delete lead error:", error);
+      structuredLogger.error("Delete lead error:", error);
       res.status(500).json({ error: "Failed to delete lead" });
     }
   });
@@ -8352,7 +8352,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         errors: errors.slice(0, 10), // Limit error messages
       });
     } catch (error) {
-      console.error("Bulk lead action error:", error);
+      structuredLogger.error("Bulk lead action error:", error);
       res.status(500).json({ error: "Failed to perform bulk action" });
     }
   });
@@ -8376,7 +8376,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json(result);
     } catch (error) {
-      console.error("Get booking leads error:", error);
+      structuredLogger.error("Get booking leads error:", error);
       res.status(500).json({ error: "Failed to fetch booking leads" });
     }
   });
@@ -8419,7 +8419,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json(updated);
     } catch (error) {
-      console.error("Update booking status error:", error);
+      structuredLogger.error("Update booking status error:", error);
       res.status(500).json({ error: "Failed to update booking" });
     }
   });
@@ -8438,7 +8438,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json(analytics);
     } catch (error) {
-      console.error("Get booking analytics error:", error);
+      structuredLogger.error("Get booking analytics error:", error);
       res.status(500).json({ error: "Failed to fetch booking analytics" });
     }
   });
@@ -8469,13 +8469,13 @@ These suggestions should be relevant to what was just discussed and help guide t
             bookingUrlUsed: bookingUrl
           });
         } catch (e) {
-          console.warn("Failed to update lead status after link click:", e);
+          structuredLogger.warn("Failed to update lead status after link click:", e);
         }
       }
       
       res.json({ success: true });
     } catch (error) {
-      console.error("Track booking link click error:", error);
+      structuredLogger.error("Track booking link click error:", error);
       res.status(500).json({ error: "Failed to track link click" });
     }
   });
@@ -8495,7 +8495,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         externalPaymentUrl: settings?.externalPaymentUrl || null,
       });
     } catch (error) {
-      console.error("Get client booking settings error:", error);
+      structuredLogger.error("Get client booking settings error:", error);
       res.status(500).json({ error: "Failed to fetch booking settings" });
     }
   });
@@ -8542,7 +8542,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         externalPaymentUrl: updated.externalPaymentUrl,
       });
     } catch (error) {
-      console.error("Update client booking settings error:", error);
+      structuredLogger.error("Update client booking settings error:", error);
       res.status(500).json({ error: "Failed to update booking settings" });
     }
   });
@@ -8564,7 +8564,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         fallbackLeadCaptureEnabled: settings?.fallbackLeadCaptureEnabled ?? true,
       });
     } catch (error) {
-      console.error("Get client behavior settings error:", error);
+      structuredLogger.error("Get client behavior settings error:", error);
       res.status(500).json({ error: "Failed to fetch behavior settings" });
     }
   });
@@ -8603,7 +8603,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         fallbackLeadCaptureEnabled: updated.fallbackLeadCaptureEnabled,
       });
     } catch (error) {
-      console.error("Update client behavior settings error:", error);
+      structuredLogger.error("Update client behavior settings error:", error);
       res.status(500).json({ error: "Failed to update behavior settings" });
     }
   });
@@ -8623,7 +8623,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json(result);
     } catch (error) {
-      console.error("Get admin booking leads error:", error);
+      structuredLogger.error("Get admin booking leads error:", error);
       res.status(500).json({ error: "Failed to fetch booking leads" });
     }
   });
@@ -8642,7 +8642,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json(analytics);
     } catch (error) {
-      console.error("Get admin booking analytics error:", error);
+      structuredLogger.error("Get admin booking analytics error:", error);
       res.status(500).json({ error: "Failed to fetch booking analytics" });
     }
   });
@@ -8699,7 +8699,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         totalBots: allBots.length,
       });
     } catch (error) {
-      console.error("Get super-admin analytics overview error:", error);
+      structuredLogger.error("Get super-admin analytics overview error:", error);
       res.status(500).json({ error: "Failed to fetch analytics overview" });
     }
   });
@@ -8714,7 +8714,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const status = await storage.getSystemStatus();
       res.json(status);
     } catch (error) {
-      console.error("Get system status error:", error);
+      structuredLogger.error("Get system status error:", error);
       res.status(500).json({ error: "Failed to fetch system status" });
     }
   });
@@ -8754,7 +8754,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         } catch (e: any) {
           // Key exists but is invalid or service unavailable
           openaiStatus = 'error';
-          console.log("OpenAI status check failed:", e.message);
+          structuredLogger.info("OpenAI status check failed:", e.message);
         }
       }
       
@@ -8780,7 +8780,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      console.error("Get integrations status error:", error);
+      structuredLogger.error("Get integrations status error:", error);
       res.status(500).json({ error: "Failed to fetch integrations status" });
     }
   });
@@ -8833,7 +8833,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           return res.status(400).json({ error: 'Unknown integration' });
       }
     } catch (error) {
-      console.error("Test integration error:", error);
+      structuredLogger.error("Test integration error:", error);
       res.status(500).json({ error: "Failed to test integration" });
     }
   });
@@ -8858,7 +8858,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const result = await storage.getSystemLogs(filters);
       res.json(result);
     } catch (error) {
-      console.error("Get system logs error:", error);
+      structuredLogger.error("Get system logs error:", error);
       res.status(500).json({ error: "Failed to fetch system logs" });
     }
   });
@@ -8872,7 +8872,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
       res.json(log);
     } catch (error) {
-      console.error("Get system log error:", error);
+      structuredLogger.error("Get system log error:", error);
       res.status(500).json({ error: "Failed to fetch system log" });
     }
   });
@@ -8886,7 +8886,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const resolved = await storage.resolveSystemLog(req.params.id, user?.username || 'super-admin', notes);
       res.json(resolved);
     } catch (error) {
-      console.error("Resolve system log error:", error);
+      structuredLogger.error("Resolve system log error:", error);
       res.status(500).json({ error: "Failed to resolve log" });
     }
   });
@@ -8911,7 +8911,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const log = await storage.createSystemLog(validation.data);
       res.status(201).json(log);
     } catch (error) {
-      console.error("Create system log error:", error);
+      structuredLogger.error("Create system log error:", error);
       res.status(500).json({ error: "Failed to create system log" });
     }
   });
@@ -8932,7 +8932,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       }).from(adminUsers).orderBy(adminUsers.username);
       res.json(users);
     } catch (error) {
-      console.error("Get admin users error:", error);
+      structuredLogger.error("Get admin users error:", error);
       res.status(500).json({ error: "Failed to fetch admin users" });
     }
   });
@@ -8988,7 +8988,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.status(201).json(newUser);
     } catch (error) {
-      console.error("Create admin user error:", error);
+      structuredLogger.error("Create admin user error:", error);
       res.status(500).json({ error: "Failed to create admin user" });
     }
   });
@@ -9047,7 +9047,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json(updated);
     } catch (error) {
-      console.error("Update admin user error:", error);
+      structuredLogger.error("Update admin user error:", error);
       res.status(500).json({ error: "Failed to update admin user" });
     }
   });
@@ -9083,7 +9083,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json({ success: true, message: `User ${username} deleted successfully` });
     } catch (error) {
-      console.error("Delete admin user error:", error);
+      structuredLogger.error("Delete admin user error:", error);
       res.status(500).json({ error: "Failed to delete admin user" });
     }
   });
@@ -9152,7 +9152,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json({ success: true, message: `Bot ${botId} deleted successfully` });
     } catch (error) {
-      console.error("Delete bot error:", error);
+      structuredLogger.error("Delete bot error:", error);
       res.status(500).json({ error: "Failed to delete bot" });
     }
   });
@@ -9241,7 +9241,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         },
       });
     } catch (error) {
-      console.error("Get global analytics error:", error);
+      structuredLogger.error("Get global analytics error:", error);
       res.status(500).json({ error: "Failed to fetch global analytics" });
     }
   });
@@ -9311,7 +9311,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         total: recentActivities.length,
       });
     } catch (error) {
-      console.error("Get recent activity error:", error);
+      structuredLogger.error("Get recent activity error:", error);
       res.status(500).json({ error: "Failed to fetch recent activity" });
     }
   });
@@ -9372,7 +9372,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         total: enrichedWorkspaces.length,
       });
     } catch (error) {
-      console.error("Get workspaces error:", error);
+      structuredLogger.error("Get workspaces error:", error);
       res.status(500).json({ error: "Failed to fetch workspaces" });
     }
   });
@@ -9437,7 +9437,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         bots: botDetails,
       });
     } catch (error) {
-      console.error("Get workspace error:", error);
+      structuredLogger.error("Get workspace error:", error);
       res.status(500).json({ error: "Failed to fetch workspace" });
     }
   });
@@ -9477,7 +9477,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json({ success: true, slug, status });
     } catch (error) {
-      console.error("Update workspace status error:", error);
+      structuredLogger.error("Update workspace status error:", error);
       res.status(500).json({ error: "Failed to update workspace status" });
     }
   });
@@ -9518,7 +9518,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json({ success: true, slug, plan });
     } catch (error) {
-      console.error("Update workspace plan error:", error);
+      structuredLogger.error("Update workspace plan error:", error);
       res.status(500).json({ error: "Failed to update workspace plan" });
     }
   });
@@ -9710,7 +9710,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.status(201).json(response);
     } catch (error) {
-      console.error("Create workspace error:", error);
+      structuredLogger.error("Create workspace error:", error);
       res.status(500).json({ error: "Failed to create workspace" });
     }
   });
@@ -10050,7 +10050,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           await storage.createAutomationWorkflow(automation as any);
           automationsCreated++;
         } catch (err) {
-          console.warn(`Failed to create default automation "${automation.name}":`, err);
+          structuredLogger.warn(`Failed to create default automation "${automation.name}":`, err);
         }
       }
 
@@ -10109,8 +10109,8 @@ These suggestions should be relevant to what was just discussed and help guide t
       });
 
     } catch (error: any) {
-      console.error("New client wizard error:", error);
-      console.error("Error details:", error?.message, error?.stack);
+      structuredLogger.error("New client wizard error:", error);
+      structuredLogger.error("Error details:", error?.message, error?.stack);
       res.status(500).json({ 
         error: "Failed to create client",
         details: error?.message || "Unknown error"
@@ -10157,7 +10157,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json({ demoWorkspaces: enrichedWorkspaces });
     } catch (error) {
-      console.error("Get demo workspaces error:", error);
+      structuredLogger.error("Get demo workspaces error:", error);
       res.status(500).json({ error: "Failed to fetch demo workspaces" });
     }
   });
@@ -10237,7 +10237,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         stats: result.stats,
       });
     } catch (error) {
-      console.error("Reset demo error:", error);
+      structuredLogger.error("Reset demo error:", error);
       res.status(500).json({ error: "Failed to reset demo data" });
     }
   });
@@ -10262,7 +10262,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         availableDemos: getDemoSlugs(),
       });
     } catch (error) {
-      console.error("Seed all demos error:", error);
+      structuredLogger.error("Seed all demos error:", error);
       res.status(500).json({ error: "Failed to seed demo workspaces" });
     }
   });
@@ -10352,7 +10352,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         },
       });
     } catch (error) {
-      console.error("Get integration error:", error);
+      structuredLogger.error("Get integration error:", error);
       res.status(500).json({ error: "Failed to get integration info" });
     }
   });
@@ -10389,7 +10389,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json(workspace);
     } catch (error) {
-      console.error("Update workspace error:", error);
+      structuredLogger.error("Update workspace error:", error);
       res.status(500).json({ error: "Failed to update workspace" });
     }
   });
@@ -10421,7 +10421,7 @@ These suggestions should be relevant to what was just discussed and help guide t
             fs.unlinkSync(configPath);
           }
         } catch (e) {
-          console.error(`Error deleting bot ${bot.botId}:`, e);
+          structuredLogger.error(`Error deleting bot ${bot.botId}:`, e);
         }
       }
       
@@ -10438,7 +10438,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json({ success: true, slug, deletedBots: workspaceBots.length });
     } catch (error) {
-      console.error("Delete workspace error:", error);
+      structuredLogger.error("Delete workspace error:", error);
       res.status(500).json({ error: "Failed to delete workspace" });
     }
   });
@@ -10491,7 +10491,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         total: allConversations.length,
       });
     } catch (error) {
-      console.error("Get workspace conversations error:", error);
+      structuredLogger.error("Get workspace conversations error:", error);
       res.status(500).json({ error: "Failed to fetch workspace conversations" });
     }
   });
@@ -10527,7 +10527,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         total: formattedLeads.length,
       });
     } catch (error) {
-      console.error("Get workspace leads error:", error);
+      structuredLogger.error("Get workspace leads error:", error);
       res.status(500).json({ error: "Failed to fetch workspace leads" });
     }
   });
@@ -10562,7 +10562,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         total: formattedAppointments.length,
       });
     } catch (error) {
-      console.error("Get workspace appointments error:", error);
+      structuredLogger.error("Get workspace appointments error:", error);
       res.status(500).json({ error: "Failed to fetch workspace appointments" });
     }
   });
@@ -10589,7 +10589,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json({ users: workspaceUsers });
     } catch (error) {
-      console.error("Get workspace users error:", error);
+      structuredLogger.error("Get workspace users error:", error);
       res.status(500).json({ error: "Failed to fetch workspace users" });
     }
   });
@@ -10632,7 +10632,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         dateRange: { days, startDate: startDate.toISOString() },
       });
     } catch (error) {
-      console.error("Get bot stats error:", error);
+      structuredLogger.error("Get bot stats error:", error);
       res.status(500).json({ error: "Failed to fetch bot stats" });
     }
   });
@@ -10654,7 +10654,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json({ conversations: flaggedConversations });
     } catch (error) {
-      console.error("Get flagged conversations error:", error);
+      structuredLogger.error("Get flagged conversations error:", error);
       res.status(500).json({ error: "Failed to get flagged conversations" });
     }
   });
@@ -10665,7 +10665,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const count = await storage.getFlaggedConversationsCount();
       res.json({ count });
     } catch (error) {
-      console.error("Get flagged count error:", error);
+      structuredLogger.error("Get flagged count error:", error);
       res.status(500).json({ error: "Failed to get count" });
     }
   });
@@ -10685,7 +10685,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json({ success: true });
     } catch (error) {
-      console.error("Mark reviewed error:", error);
+      structuredLogger.error("Mark reviewed error:", error);
       res.status(500).json({ error: "Failed to mark as reviewed" });
     }
   });
@@ -10700,7 +10700,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json({ success: true });
     } catch (error) {
-      console.error("Dismiss flagged error:", error);
+      structuredLogger.error("Dismiss flagged error:", error);
       res.status(500).json({ error: "Failed to dismiss" });
     }
   });
@@ -10715,7 +10715,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json({ messages, session });
     } catch (error) {
-      console.error("Get session messages error:", error);
+      structuredLogger.error("Get session messages error:", error);
       res.status(500).json({ error: "Failed to get messages" });
     }
   });
@@ -10727,7 +10727,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const notes = await storage.getClientNotes(clientId);
       res.json({ notes });
     } catch (error) {
-      console.error("Get client notes error:", error);
+      structuredLogger.error("Get client notes error:", error);
       res.status(500).json({ error: "Failed to get notes" });
     }
   });
@@ -10747,7 +10747,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json({ note });
     } catch (error) {
-      console.error("Add client note error:", error);
+      structuredLogger.error("Add client note error:", error);
       res.status(500).json({ error: "Failed to add note" });
     }
   });
@@ -10758,7 +10758,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       await storage.deleteClientNote(noteId);
       res.json({ success: true });
     } catch (error) {
-      console.error("Delete client note error:", error);
+      structuredLogger.error("Delete client note error:", error);
       res.status(500).json({ error: "Failed to delete note" });
     }
   });
@@ -10793,19 +10793,19 @@ These suggestions should be relevant to what was just discussed and help guide t
         .limit(1);
       
       if (!workspace) {
-        console.error(`[DEMO RESET] Workspace not found: ${DEMO_CLIENT_ID}`);
+        structuredLogger.error(`[DEMO RESET] Workspace not found: ${DEMO_CLIENT_ID}`);
         return res.status(404).json({ error: "Demo workspace not found" });
       }
       
       if (!workspace.isDemo) {
-        console.error(`[DEMO RESET] SAFETY ABORT: Attempted reset on non-demo workspace: ${DEMO_CLIENT_ID}`);
+        structuredLogger.error(`[DEMO RESET] SAFETY ABORT: Attempted reset on non-demo workspace: ${DEMO_CLIENT_ID}`);
         return res.status(403).json({ 
           error: "Cannot reset non-demo workspace",
           message: "This is a safety feature to prevent accidental data loss on live workspaces."
         });
       }
       
-      console.log(`[DEMO RESET] Starting reset for demo workspace: ${DEMO_CLIENT_ID}`);
+      structuredLogger.info(`[DEMO RESET] Starting reset for demo workspace: ${DEMO_CLIENT_ID}`);
       
       // Delete demo data in order (respecting foreign key constraints)
       // 1. Delete appointments
@@ -10846,7 +10846,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         .where(eq(dailyAnalytics.clientId, DEMO_CLIENT_ID))
         .returning();
       
-      console.log(`[DEMO RESET] Deleted: ${deletedAppointments.length} appointments, ${deletedLeads.length} leads, ${deletedMessages} messages, ${deletedSessions.length} sessions, ${deletedAnalyticsEvents.length} analytics events, ${deletedDailyAnalytics.length} daily analytics`);
+      structuredLogger.info(`[DEMO RESET] Deleted: ${deletedAppointments.length} appointments, ${deletedLeads.length} leads, ${deletedMessages} messages, ${deletedSessions.length} sessions, ${deletedAnalyticsEvents.length} analytics events, ${deletedDailyAnalytics.length} daily analytics`);
       
       // Re-seed demo data
       const now = new Date();
@@ -10968,7 +10968,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         seeded: seededData,
       });
     } catch (error) {
-      console.error("[DEMO RESET] Error resetting demo data:", error);
+      structuredLogger.error("[DEMO RESET] Error resetting demo data:", error);
       res.status(500).json({ error: "Failed to reset demo data" });
     }
   });
@@ -11015,7 +11015,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         },
       });
     } catch (error) {
-      console.error("Get demo status error:", error);
+      structuredLogger.error("Get demo status error:", error);
       res.status(500).json({ error: "Failed to get demo status" });
     }
   });
@@ -11036,19 +11036,19 @@ These suggestions should be relevant to what was just discussed and help guide t
         .limit(1);
       
       if (!workspace) {
-        console.error(`[DEMO RESET] Workspace not found: ${DEMO_CLIENT_ID}`);
+        structuredLogger.error(`[DEMO RESET] Workspace not found: ${DEMO_CLIENT_ID}`);
         return res.status(404).json({ error: "Demo workspace not found" });
       }
       
       if (!workspace.isDemo) {
-        console.error(`[DEMO RESET] SAFETY ABORT: Attempted reset on non-demo workspace: ${DEMO_CLIENT_ID}`);
+        structuredLogger.error(`[DEMO RESET] SAFETY ABORT: Attempted reset on non-demo workspace: ${DEMO_CLIENT_ID}`);
         return res.status(403).json({ 
           error: "Cannot reset non-demo workspace",
           message: "This is a safety feature to prevent accidental data loss on live workspaces."
         });
       }
       
-      console.log(`[DEMO RESET] Starting reset for demo workspace: ${DEMO_CLIENT_ID}`);
+      structuredLogger.info(`[DEMO RESET] Starting reset for demo workspace: ${DEMO_CLIENT_ID}`);
       
       // Delete demo data
       const deletedAppointments = await db.delete(appointments)
@@ -11083,7 +11083,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         .where(eq(dailyAnalytics.clientId, DEMO_CLIENT_ID))
         .returning();
       
-      console.log(`[DEMO RESET] Deleted: ${deletedAppointments.length} appointments, ${deletedLeads.length} leads, ${deletedMessages} messages, ${deletedSessions.length} sessions`);
+      structuredLogger.info(`[DEMO RESET] Deleted: ${deletedAppointments.length} appointments, ${deletedLeads.length} leads, ${deletedMessages} messages, ${deletedSessions.length} sessions`);
       
       // Re-seed demo data for Paws & Suds
       const now = new Date();
@@ -11173,7 +11173,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         seeded: seededData,
       });
     } catch (error) {
-      console.error("[DEMO RESET] Error resetting Paws & Suds demo data:", error);
+      structuredLogger.error("[DEMO RESET] Error resetting Paws & Suds demo data:", error);
       res.status(500).json({ error: "Failed to reset demo data" });
     }
   });
@@ -11219,7 +11219,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         },
       });
     } catch (error) {
-      console.error("Get Paws & Suds demo status error:", error);
+      structuredLogger.error("Get Paws & Suds demo status error:", error);
       res.status(500).json({ error: "Failed to get demo status" });
     }
   });
@@ -11280,7 +11280,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const workflows = await storage.getAutomationWorkflowsByBot(botId);
       res.json({ workflows });
     } catch (error) {
-      console.error("Get automations error:", error);
+      structuredLogger.error("Get automations error:", error);
       res.status(500).json({ error: "Failed to get automation workflows" });
     }
   });
@@ -11301,7 +11301,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json({ workflow });
     } catch (error) {
-      console.error("Get automation error:", error);
+      structuredLogger.error("Get automation error:", error);
       res.status(500).json({ error: "Failed to get automation workflow" });
     }
   });
@@ -11323,7 +11323,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const workflow = await storage.createAutomationWorkflow(validation.data as any);
       res.status(201).json({ workflow });
     } catch (error) {
-      console.error("Create automation error:", error);
+      structuredLogger.error("Create automation error:", error);
       res.status(500).json({ error: "Failed to create automation workflow" });
     }
   });
@@ -11352,7 +11352,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const updated = await storage.updateAutomationWorkflow(workflowId, validation.data as any);
       res.json({ workflow: updated });
     } catch (error) {
-      console.error("Update automation error:", error);
+      structuredLogger.error("Update automation error:", error);
       res.status(500).json({ error: "Failed to update automation workflow" });
     }
   });
@@ -11374,7 +11374,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       await storage.deleteAutomationWorkflow(workflowId);
       res.json({ success: true });
     } catch (error) {
-      console.error("Delete automation error:", error);
+      structuredLogger.error("Delete automation error:", error);
       res.status(500).json({ error: "Failed to delete automation workflow" });
     }
   });
@@ -11397,7 +11397,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const updated = await storage.updateAutomationWorkflow(workflowId, { status: newStatus });
       res.json({ workflow: updated });
     } catch (error) {
-      console.error("Toggle automation error:", error);
+      structuredLogger.error("Toggle automation error:", error);
       res.status(500).json({ error: "Failed to toggle automation status" });
     }
   });
@@ -11419,7 +11419,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const runs = await storage.getAutomationRunsByWorkflow(workflowId, limit);
       res.json({ runs });
     } catch (error) {
-      console.error("Get automation runs error:", error);
+      structuredLogger.error("Get automation runs error:", error);
       res.status(500).json({ error: "Failed to get automation runs" });
     }
   });
@@ -11436,7 +11436,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const runs = await storage.getRecentAutomationRuns(botId, hours);
       res.json({ runs });
     } catch (error) {
-      console.error("Get bot automation runs error:", error);
+      structuredLogger.error("Get bot automation runs error:", error);
       res.status(500).json({ error: "Failed to get automation runs" });
     }
   });
@@ -11503,7 +11503,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json({ testResult });
     } catch (error) {
-      console.error("Test automation error:", error);
+      structuredLogger.error("Test automation error:", error);
       res.status(500).json({ error: "Failed to test automation" });
     }
   });
@@ -11603,7 +11603,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const settings = await storage.getWidgetSettingsWithDefaults(botId);
       res.json({ settings });
     } catch (error) {
-      console.error("Get widget settings error:", error);
+      structuredLogger.error("Get widget settings error:", error);
       res.status(500).json({ error: "Failed to get widget settings" });
     }
   });
@@ -11624,7 +11624,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const settings = await storage.upsertWidgetSettings(botId, validation.data as any);
       res.json({ settings });
     } catch (error) {
-      console.error("Update widget settings error:", error);
+      structuredLogger.error("Update widget settings error:", error);
       res.status(500).json({ error: "Failed to update widget settings" });
     }
   });
@@ -11640,7 +11640,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       await storage.deleteWidgetSettings(botId);
       res.json({ success: true, message: "Widget settings reset to defaults" });
     } catch (error) {
-      console.error("Delete widget settings error:", error);
+      structuredLogger.error("Delete widget settings error:", error);
       res.status(500).json({ error: "Failed to reset widget settings" });
     }
   });
@@ -11705,7 +11705,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         }
       });
     } catch (error) {
-      console.error('Widget full config error:', error);
+      structuredLogger.error('Widget full config error:', error);
       res.status(500).json({ error: 'Failed to load widget configuration' });
     }
   });
@@ -11724,7 +11724,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       res.setHeader('Content-Disposition', `attachment; filename="data_export_${clientId}_${Date.now()}.json"`);
       res.json(data);
     } catch (error) {
-      console.error("Data export error:", error);
+      structuredLogger.error("Data export error:", error);
       res.status(500).json({ error: "Failed to export data" });
     }
   });
@@ -11755,7 +11755,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json(result);
     } catch (error) {
-      console.error("Data deletion error:", error);
+      structuredLogger.error("Data deletion error:", error);
       res.status(500).json({ error: "Failed to delete data" });
     }
   });
@@ -11766,7 +11766,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const config = getRetentionConfig();
       res.json(config);
     } catch (error) {
-      console.error("Get retention config error:", error);
+      structuredLogger.error("Get retention config error:", error);
       res.status(500).json({ error: "Failed to get retention config" });
     }
   });
@@ -11789,7 +11789,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       res.json(result);
     } catch (error) {
-      console.error("Data purge error:", error);
+      structuredLogger.error("Data purge error:", error);
       res.status(500).json({ error: "Failed to purge old data" });
     }
   });
@@ -12011,7 +12011,7 @@ These suggestions should be relevant to what was just discussed and help guide t
             }
           }
         } catch (scrapeError) {
-          console.error('[Agency Onboarding] Scrape failed:', scrapeError);
+          structuredLogger.error('[Agency Onboarding] Scrape failed:', scrapeError);
           // Continue without scraped data
         }
       }
@@ -12045,7 +12045,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         const injected = injectTemplateDefaults(rawKbDraft, template);
         finalKb = injected;
         injectedDefaults = injected.injectedDefaults;
-        console.log(`[Agency Onboarding] KB below minimum, auto-injected template defaults: ${injectedDefaults.join(', ')}`);
+        structuredLogger.info(`[Agency Onboarding] KB below minimum, auto-injected template defaults: ${injectedDefaults.join(', ')}`);
       } else {
         // Use raw KB as-is
         finalKb = {
@@ -12077,7 +12077,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         if (!urlValidation.valid) {
           bookingMode = 'internal';
           failsafeActive = true;
-          console.log(`[Agency Onboarding] FAILSAFE ACTIVATED: External booking URL invalid (${urlValidation.error}), falling back to internal request_callback`);
+          structuredLogger.info(`[Agency Onboarding] FAILSAFE ACTIVATED: External booking URL invalid (${urlValidation.error}), falling back to internal request_callback`);
         } else {
           // Use the normalized URL from validator
           externalBookingUrl = urlValidation.url!;
@@ -12230,7 +12230,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         widgetTheme: template.defaultConfig.theme,
       });
     } catch (error) {
-      console.error('[Agency Onboarding] Generate draft error:', error);
+      structuredLogger.error('[Agency Onboarding] Generate draft error:', error);
       res.status(500).json({ error: 'Failed to generate draft setup' });
     }
   });
@@ -12261,7 +12261,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           };
         }
       } catch (err) {
-        console.error('[Client Health] Failed to get chat activity:', err);
+        structuredLogger.error('[Client Health] Failed to get chat activity:', err);
       }
 
       // Get errors in last 15 minutes for this client
@@ -12287,7 +12287,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           createdAt: log.createdAt.toISOString(),
         }));
       } catch (err) {
-        console.error('[Client Health] Failed to get errors:', err);
+        structuredLogger.error('[Client Health] Failed to get errors:', err);
       }
 
       // Get notification status from client settings
@@ -12306,7 +12306,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           notificationStatus.smsEnabled = settings[0].enableSmsNotifications || false;
         }
       } catch (err) {
-        console.error('[Client Health] Failed to get notification status:', err);
+        structuredLogger.error('[Client Health] Failed to get notification status:', err);
       }
 
       // Get widget fetch status - check if bot exists and is configured
@@ -12322,7 +12322,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           widgetStatus.lastFetchable = true;
         }
       } catch (err) {
-        console.error('[Client Health] Failed to get widget status:', err);
+        structuredLogger.error('[Client Health] Failed to get widget status:', err);
       }
 
       res.json({
@@ -12334,7 +12334,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         widgetStatus,
       });
     } catch (error) {
-      console.error('[Agency Onboarding] Client health error:', error);
+      structuredLogger.error('[Agency Onboarding] Client health error:', error);
       res.status(500).json({ error: 'Failed to get client health' });
     }
   });
@@ -12352,7 +12352,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       }));
       res.json(templates);
     } catch (error) {
-      console.error('[Agency Onboarding] Get templates error:', error);
+      structuredLogger.error('[Agency Onboarding] Get templates error:', error);
       res.status(500).json({ error: 'Failed to get templates' });
     }
   });
@@ -12482,7 +12482,7 @@ ${allPassed ? 'READY FOR LAUNCH' : 'ISSUES FOUND - Review required'}
         readyForGoLive: allPassed,
       });
     } catch (error) {
-      console.error('[Agency Onboarding] QA Gate error:', error);
+      structuredLogger.error('[Agency Onboarding] QA Gate error:', error);
       res.status(500).json({ error: 'Failed to run QA gate' });
     }
   });
@@ -12555,7 +12555,7 @@ ${allPassed ? 'READY FOR LAUNCH' : 'ISSUES FOUND - Review required'}
         instructions: getEmbedInstructions(),
       });
     } catch (error) {
-      console.error('[Agency Onboarding] Go Live error:', error);
+      structuredLogger.error('[Agency Onboarding] Go Live error:', error);
       res.status(500).json({ error: 'Failed to go live' });
     }
   });
@@ -12597,7 +12597,7 @@ ${allPassed ? 'READY FOR LAUNCH' : 'ISSUES FOUND - Review required'}
         res.status(500).json({ error: 'Failed to save updates' });
       }
     } catch (error) {
-      console.error('[Agency Onboarding] Update draft error:', error);
+      structuredLogger.error('[Agency Onboarding] Update draft error:', error);
       res.status(500).json({ error: 'Failed to update draft' });
     }
   });
@@ -12636,7 +12636,7 @@ ${allPassed ? 'READY FOR LAUNCH' : 'ISSUES FOUND - Review required'}
         },
       });
     } catch (error) {
-      console.error('[Agency Onboarding] Get draft error:', error);
+      structuredLogger.error('[Agency Onboarding] Get draft error:', error);
       res.status(500).json({ error: 'Failed to get draft' });
     }
   });
