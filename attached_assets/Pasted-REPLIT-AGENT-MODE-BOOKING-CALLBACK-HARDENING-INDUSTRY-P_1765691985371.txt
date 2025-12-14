@@ -1,0 +1,235 @@
+REPLIT AGENT MODE — BOOKING + CALLBACK HARDENING (INDUSTRY PROFILES) + LINK VALIDATION + EMAIL CAPTURE + FULL QA
+Objective: implement the 6 tasks shown in my queue (booking profile fields, better callback, email capture, server link checks, record callback as appointment, run/fix checks). Follow word-for-word. Keep changes minimal, safe, and tenant-scoped.
+
+NON-NEGOTIABLE GUARDRAILS (BLOCKER IF VIOLATED)
+1) NO PAYMENT PROCESSING — EVER
+- Do NOT add/enable Stripe/Square/PayPal/checkout/payment-intent/tokens/webhooks.
+- Booking “external” must be redirect-only to the client’s external booking/payment site.
+- Any “Book” button on our domain must never collect payment details.
+2) MULTI-TENANT ISOLATION
+- Every read/write must be scoped server-side by req.session.clientId / workspace scope.
+- No query-param clientId overrides for client routes.
+3) SECURITY/PRIVACY
+- Don’t print or log secrets/tokens/reset links.
+- Don’t log raw emails/phones in error logs (keep existing redaction patterns).
+4) KEEP IT SIMPLE
+- Small, targeted changes. No new big UI flows unless required for these tasks.
+
+========================================================
+PHASE 0 — BASELINE (DON’T SKIP)
+========================================================
+A) Pull latest, then run baseline gates and save outputs:
+- bash ./scripts/guard-no-payments.sh
+- npx tsc --noEmit
+- npx vitest run
+- npm run build
+- (if present) bash ./scripts/widget-e2e-test.sh
+If anything fails, fix first before feature changes.
+
+B) Identify the exact current files involved (open and skim):
+- shared/industry-booking-profiles.ts (or shared/industry-booking-profiles*.ts)
+- server/orchestrator.ts (booking + lead capture logic)
+- server/routes.ts (any booking endpoints, link check endpoints)
+- server/storage.ts (appointment creation + lead storage)
+- shared/schema.ts (appointments/leads/client_settings fields)
+- client onboarding
+  - client/src/pages/agency-onboarding*.tsx (or similar)
+  - client/src/pages/widget-settings*.tsx (or similar)
+
+========================================================
+PHASE 1 — UPDATE BOOKING PROFILES WITH NEW FIELDS
+========================================================
+Goal: Expand booking profile intake fields so each industry can collect the right info (without making onboarding harder).
+
+1) Define/confirm a normalized “intake field” contract (if it already exists, reuse it).
+- Ensure each appointment type can declare:
+  - id, label, durationMinutes
+  - internal/external mode behavior
+  - intakeFields: array of fields with:
+    - key (string)
+    - label (string)
+    - type ("text" | "tel" | "email" | "select" | "textarea" | "datetime" | "date" | "time")
+    - required (boolean)
+    - options? (string[]) for select
+    - placeholder? (string)
+    - validation? (min/max/regex)
+- Add only what’s needed. Keep it backward compatible with existing templates.
+
+2) Recovery Housing / Sober Living profile: implement EXACTLY:
+CTAs:
+- schedule_tour (primary) “Schedule a Tour”
+- schedule_call (secondary) “Schedule Phone Call”
+Appointment Types:
+A) schedule_tour (30 min)
+- Intake fields (required unless noted):
+  - name (required)
+  - phone (required)
+  - email (optional)
+  - whoFor (required select: “Myself”, “A loved one”)
+  - preferredTime (required: date+time OR best-day/best-time)
+  - notes (optional textarea: short)
+B) schedule_call (15 min)
+- Intake fields:
+  - name (required)
+  - phone (required)
+  - whoFor (required select)
+  - bestTimeToCall (required: day/time)
+  - email (optional)
+  - notes (optional)
+C) request_callback (universal fallback)
+- must exist everywhere (see Phase 2), used when external is missing/invalid.
+
+3) GLOBAL: “booking details for users globally”
+- Ensure the UI / chat flow consistently asks:
+  - “Name + best phone number” first
+  - optionally email (do not force unless needed)
+  - preferred time window
+  - reason / service type when ambiguous
+- Keep the widget/chat prompts short and supportive.
+
+Acceptance:
+- No template breaks due to missing fields.
+- Existing demo bots still validate with scripts (industry/template sweep should pass).
+
+========================================================
+PHASE 2 — IMPROVE REQUEST_CALLBACK (MORE DETAILS + STRONGER LEAD CAPTURE)
+========================================================
+Goal: request_callback captures enough detail to be useful and always creates an internal trackable record.
+
+1) Update request_callback appointment type definition (universal):
+- Label: “Request a Callback”
+- Duration: 0 or 15 (pick what schema supports)
+- Intake fields (required unless noted):
+  - name (required)
+  - phone (required)
+  - email (optional)
+  - preferredContactMethod (optional select: Phone, Text, Email)
+  - bestTime (required)
+  - reason (required textarea OR select if industry provides options)
+  - urgency (optional select: “Today”, “This week”, “Not urgent”)
+
+2) Update chat/orchestrator fallback copy to use these fields without being pushy:
+- If AI times out / tool fails, fallback must:
+  - ask for name + phone + best time
+  - optionally email
+  - confirm: “We’ll reach out as soon as possible.”
+- Ensure fallback still respects behaviorPreset rules.
+
+Acceptance:
+- Callback flow collects details reliably.
+- Works in widget + dashboard view.
+
+========================================================
+PHASE 3 — GET EMAIL FROM ANY CHAT MESSAGE (SAFE + OPT-IN)
+========================================================
+Goal: If user includes an email naturally in chat, capture it without friction.
+
+Implement a safe email extractor utility:
+- Use conservative regex (avoid false positives).
+- Only capture the FIRST valid email found.
+- Never capture tokens/urls as “emails”.
+- Don’t log it. Store it in lead/appointment metadata or lead record fields if schema supports.
+- Only use it to pre-fill fields; still confirm with user if needed (“Is this the best email to reach you?”).
+
+Where to wire it:
+- When user sends a message, run extractor.
+- If we are in a lead/booking flow and email is missing, auto-fill.
+- If not in a flow, store in session state as “possibleEmail” for later.
+
+Add unit tests:
+- Valid emails, plus-addressing, subdomains
+- Reject “test@localhost”, “x@y” (too short), “a@b.c” if you want stricter
+- Reject “javascript:…”, “data:…”, urls, phone numbers
+
+Acceptance:
+- Email capture improves lead completion without adding steps.
+- No PII printed in logs.
+
+========================================================
+PHASE 4 — SERVER CHECK FOR WEBSITE LINKS (SAFE, FAST, TENANT-SAFE)
+========================================================
+Goal: When onboarding imports a website, validate links server-side so we don’t store broken or unsafe URLs.
+
+Implement a server-side link validator helper:
+- Accept only https:// URLs.
+- Block private/internal network targets:
+  - localhost, 127.0.0.1, 10.*, 172.16-31.*, 192.168.*, link-local, etc.
+- Use HEAD then fallback GET with small timeout (e.g., 5s).
+- Return:
+  - ok boolean
+  - status code
+  - finalUrl after redirects (still must be https)
+  - error message (safe, non-verbose)
+- Cache results briefly (e.g., 5–15 minutes) to avoid repeated hits.
+
+Exposure:
+- Prefer super-admin-only endpoint OR internal-only usage from onboarding route.
+- If you add an endpoint, protect it with requireSuperAdmin (or stronger).
+- Do NOT allow public users to make the server fetch arbitrary URLs.
+
+Acceptance:
+- Prevents saving broken/unsafe website URLs.
+- No SSRF risk introduced.
+
+========================================================
+PHASE 5 — RECORD CALLBACK AS AN APPOINTMENT (TRACKABLE)
+========================================================
+Goal: Every request_callback produces an appointment record so it shows in Bookings and triggers notifications.
+
+Implementation notes:
+- When callback intent is completed (name+phone+bestTime at minimum), create:
+  - appointment row with:
+    - clientId/workspace scope
+    - type: request_callback
+    - status: “requested” or “pending”
+    - scheduledFor: bestTime (if exact) or store in metadata if window
+    - contact info + reason in metadata/details
+- Ensure tenant scoping: appointment writes use req.session.clientId or the bot’s clientId that’s validated server-side.
+- If notification system exists, trigger the same path used for booking intent notifications (email/SMS), but do NOT expose secrets.
+
+Acceptance:
+- Callback requests appear in client Bookings/appointments list.
+- Counts/analytics update correctly (if appointment counts exist).
+- No duplicate records on retries (use dedupe hash / idempotency if available).
+
+========================================================
+PHASE 6 — RUN FULL QUALITY CHECKS + FIX ANY FAILURES
+========================================================
+After code changes, run all gates and FIX until clean:
+
+Required:
+- bash ./scripts/guard-no-payments.sh
+- npx tsc --noEmit
+- npx vitest run
+- npm run build
+- bash ./scripts/widget-e2e-test.sh (if exists)
+
+Also run any template validation already in repo:
+- node scripts/validate-demo-templates.ts (or ts-node/tsx equivalent)
+- node scripts/industry-template-sweep.ts
+
+If any demo bot/template mismatch happens, fix the mapping so:
+- demo page bots are using the intended templateId
+- and validation passes 100%
+
+========================================================
+FINAL DELIVERABLES (MUST OUTPUT)
+========================================================
+1) “What changed” list:
+- files edited/created
+- brief bullet of each change
+2) Proof of behavior:
+- Example of Recovery Housing booking profile after change (CTAs + appointment types + intake fields)
+- Confirmation request_callback now creates appointment records
+- Confirmation email extractor works (tests)
+- Confirmation server link check blocks unsafe/invalid URLs
+3) Quality gate outputs (copy/paste):
+- guard-no-payments result
+- tsc result
+- vitest summary
+- build summary
+- widget-e2e summary (if present)
+- template validation summaries (16/16, 197/197, etc.)
+4) Anything risky you avoided + why (especially SSRF and tenant isolation).
+
+START NOW.

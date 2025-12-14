@@ -82,15 +82,30 @@ export const PREFERRED_DAY_OPTIONS = [
   { value: 'not_sure', label: 'Not sure' },
 ];
 
-// Urgency options for safety triage
+// Preferred time window options - standardized across all templates
+export const PREFERRED_TIME_WINDOW_OPTIONS = [
+  { value: 'morning', label: 'Morning (9am-12pm)' },
+  { value: 'afternoon', label: 'Afternoon (12pm-5pm)' },
+  { value: 'evening', label: 'Evening (5pm-8pm)' },
+  { value: 'anytime', label: 'Anytime' },
+];
+
+// Urgency options for priority triage
 export const URGENCY_OPTIONS = [
-  { value: 'yes', label: 'Yes' },
-  { value: 'no', label: 'No' },
+  { value: 'urgent', label: 'Urgent' },
+  { value: 'not_urgent', label: 'Not urgent' },
   { value: 'not_sure', label: 'Not sure' },
+];
+
+// Who is this for - used by Recovery Housing and similar industries
+export const WHO_FOR_OPTIONS = [
+  { value: 'self', label: 'Myself' },
+  { value: 'loved_one', label: 'A loved one' },
 ];
 
 // Universal fallback appointment type - ALWAYS included in every template
 // This is a proper "mini-appointment" that creates lead + booking intent records
+// NEVER dead-ends - always collects enough info for staff to follow up
 export const UNIVERSAL_REQUEST_CALLBACK: BookingAppointmentType = {
   id: 'request_callback',
   label: 'Request Callback',
@@ -99,14 +114,29 @@ export const UNIVERSAL_REQUEST_CALLBACK: BookingAppointmentType = {
     { key: 'name', label: 'Your Name', required: true, type: 'text', placeholder: 'Full name' },
     { key: 'phone', label: 'Phone Number', required: true, type: 'phone', placeholder: '(555) 123-4567' },
     { key: 'email', label: 'Email (optional)', required: false, type: 'email', placeholder: 'you@example.com' },
-    { key: 'preferredDay', label: 'Preferred Day', required: false, type: 'select', options: PREFERRED_DAY_OPTIONS },
-    { key: 'preferredTime', label: 'Preferred Time', required: false, type: 'text', placeholder: 'e.g., Morning, Afternoon' },
-    { key: 'isUrgent', label: 'Is this urgent?', required: false, type: 'select', options: URGENCY_OPTIONS },
+    { key: 'preferredDay', label: 'Best Day to Call', required: true, type: 'select', options: PREFERRED_DAY_OPTIONS },
+    { key: 'preferredTimeWindow', label: 'Best Time', required: true, type: 'select', options: PREFERRED_TIME_WINDOW_OPTIONS },
+    { key: 'urgency', label: 'How urgent is this?', required: false, type: 'select', options: URGENCY_OPTIONS },
     { key: 'notes', label: 'Message/Notes', required: false, type: 'textarea', placeholder: 'Any additional information...' },
   ],
   confirmationMessage: "Thank you! We've received your request and will call you within 2 hours during business hours.",
   description: 'Request a callback from our team',
   durationMinutes: 15,
+};
+
+// Recovery Housing specific callback with whoFor field
+export const RECOVERY_HOUSING_REQUEST_CALLBACK: BookingAppointmentType = {
+  ...UNIVERSAL_REQUEST_CALLBACK,
+  intakeFields: [
+    { key: 'name', label: 'Your Name', required: true, type: 'text', placeholder: 'Full name' },
+    { key: 'phone', label: 'Phone Number', required: true, type: 'phone', placeholder: '(555) 123-4567' },
+    { key: 'email', label: 'Email (optional)', required: false, type: 'email', placeholder: 'you@example.com' },
+    { key: 'whoFor', label: 'Who is this for?', required: true, type: 'select', options: WHO_FOR_OPTIONS },
+    { key: 'preferredDay', label: 'Best Day to Call', required: true, type: 'select', options: PREFERRED_DAY_OPTIONS },
+    { key: 'preferredTimeWindow', label: 'Best Time', required: true, type: 'select', options: PREFERRED_TIME_WINDOW_OPTIONS },
+    { key: 'urgency', label: 'How urgent is this?', required: false, type: 'select', options: URGENCY_OPTIONS },
+    { key: 'notes', label: 'Message/Notes', required: false, type: 'textarea', placeholder: 'Any additional information...' },
+  ],
 };
 
 // ============================================================================
