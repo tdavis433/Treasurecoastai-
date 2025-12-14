@@ -243,8 +243,8 @@ app.use('/api/chat/:clientId/:botId', tenantChatLimiter, dailyMessageLimiter, ch
 app.use('/api/chat', tenantChatLimiter, dailyMessageLimiter, chatLimiter);
 app.use('/api/', apiLimiter);
 
-if (!process.env.SESSION_SECRET) {
-  throw new Error("SESSION_SECRET environment variable must be set for security. Please set a strong random secret.");
+if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
+  throw new Error("SESSION_SECRET missing or too short (need 32+ chars)");
 }
 
 app.use(session({
@@ -257,10 +257,10 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: "auto",
     httpOnly: true,
     maxAge: 7 * 24 * 60 * 60 * 1000,
-    sameSite: 'lax' // Prevent CSRF while allowing normal navigation
+    sameSite: 'lax'
   }
 }));
 
