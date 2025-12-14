@@ -23,7 +23,7 @@ The platform operates on a two-surface system:
 *   **Needs Review / Flagged Conversations System:** AI automatically flags critical conversations for admin review.
 *   **Chat Widget:** Fully themeable, glassmorphism-designed, mobile-responsive widget with dynamic color theming (CSS variables), business-type-specific icons, and a visual editor. Widget colors automatically match demo page branding via `--tcai-primary`, `--tcai-primary-rgb`, and `--tcai-primary-hover` CSS variables.
 *   **Client Analytics:** Provides view-only access to conversation history, lead management, and booking overviews.
-*   **Super Admin Dashboard:** Centralized hub for platform management, client/assistant management, template galleries, global knowledge, API key management, billing, system logs, and user roles.
+*   **Super Admin Dashboard:** Centralized hub for platform management, client/assistant management, template galleries, global knowledge, API key management, system logs, and user roles.
 *   **Assistant Editor (Bot Builder):** Tools for defining AI persona, knowledge management, automation setup, channel customization, and a testing sandbox.
 *   **AI-Driven In-Chat Booking Collection:** AI can collect booking information directly within conversations and automatically create appointment records.
 *   **Demo & Live Tenant Separation:** Provides distinct environments for demo and live instances with dedicated workspaces and bots.
@@ -38,7 +38,7 @@ The platform operates on a two-surface system:
 *   **Backend:** Express.js, Node.js.
 *   **Database:** PostgreSQL (Neon) with Drizzle ORM.
 *   **AI:** OpenAI GPT-4.
-*   **Payments:** Stripe integration.
+*   **Payments:** None (Option A: Zero-Stripe). See NO_PAYMENTS_COMPLIANCE.md for details.
 *   **Authentication:** Admin and client accounts (clients have view-only access).
 *   **API Endpoints:** Structured for core chat interactions, widget configuration, and protected routes.
 *   **Security:** Rate limiting, HMAC-signed widget tokens, per-bot security settings, domain validation, Helmet for secure HTTP headers and CSP, account lockout, strong password policies, secure password reset flow, SameSite cookies, CSRF protection (double-submit cookie pattern), session invalidation on password change, idle timeout (30 min default, configurable via SESSION_IDLE_TIMEOUT_MINUTES), secure super-admin impersonation (session-based, DB-first tenant validation, audit logged), and 3-tier role-based access control (operational/config/destructive).
@@ -52,4 +52,3 @@ The platform operates on a two-surface system:
 *   **OpenAI GPT-4:** Used for the core AI engine and conversational analysis.
 *   **Neon (PostgreSQL):** Provides managed PostgreSQL database hosting.
 *   **Drizzle ORM:** Utilized as the Object-Relational Mapper for database interactions.
-*   **Stripe:** Integrated for payment processing functionalities.
