@@ -5248,35 +5248,32 @@ These suggestions should be relevant to what was just discussed and help guide t
       req.session.lastSeenAt = Date.now(); // Reset idle timeout on impersonation
       
       // Save session explicitly
-      req.session.save(async (err) => {
-        if (err) {
-          console.error("Session save error during impersonation:", err);
-          return res.status(500).json({ error: "Failed to start impersonation" });
-        }
-        
-        // Audit log impersonation start
-        try {
-          await logAuditEvent({
-            eventType: 'IMPERSONATION_START',
-            userId: req.session.userId || 'unknown',
-            action: `Super admin started impersonating client: ${clientId}`,
-            resourceType: 'client',
-            resourceId: clientId,
-            ipAddress: req.ip || req.socket.remoteAddress,
-            userAgent: req.headers['user-agent'],
-            success: true,
-          });
-        } catch (auditError) {
-          console.error("Failed to log impersonation audit event:", auditError);
-        }
-        
-        console.log(`Super admin ${req.session.userId} started impersonating client: ${clientId}`);
-        res.json({ 
-          success: true, 
-          message: `Now viewing as client: ${clientId}`,
-          effectiveClientId: clientId
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) reject(err);
+          else resolve();
         });
       });
+      
+      // Respond immediately for snappy UX
+      console.log(`Super admin ${req.session.userId} started impersonating client: ${clientId}`);
+      res.json({ 
+        success: true, 
+        message: `Now viewing as client: ${clientId}`,
+        effectiveClientId: clientId
+      });
+      
+      // Fire-and-forget audit logging (non-blocking)
+      logAuditEvent({
+        eventType: 'IMPERSONATION_START',
+        userId: req.session.userId || 'unknown',
+        action: `Super admin started impersonating client: ${clientId}`,
+        resourceType: 'client',
+        resourceId: clientId,
+        ipAddress: req.ip || req.socket.remoteAddress,
+        userAgent: req.headers['user-agent'],
+        success: true,
+      }).catch(err => console.error("Failed to log impersonation audit event:", err));
     } catch (error) {
       console.error("Impersonation error:", error);
       res.status(500).json({ error: "Failed to start impersonation" });
@@ -5303,28 +5300,25 @@ These suggestions should be relevant to what was just discussed and help guide t
         });
       });
       
-      // Audit log impersonation stop
-      try {
-        await logAuditEvent({
-          eventType: 'IMPERSONATION_STOP',
-          userId: req.session.userId || 'unknown',
-          action: `Super admin stopped impersonating client: ${previousClientId}`,
-          resourceType: 'client',
-          resourceId: previousClientId || 'none',
-          ipAddress: req.ip || req.socket.remoteAddress,
-          userAgent: req.headers['user-agent'],
-          success: true,
-        });
-      } catch (auditError) {
-        console.error("Failed to log impersonation audit event:", auditError);
-      }
-      
+      // Respond immediately for snappy UX
       console.log(`Super admin ${req.session.userId} stopped impersonating client: ${previousClientId}`);
       res.json({ 
         success: true, 
         message: "Stopped impersonation, returned to super admin view",
         previousClientId
       });
+      
+      // Fire-and-forget audit logging (non-blocking)
+      logAuditEvent({
+        eventType: 'IMPERSONATION_STOP',
+        userId: req.session.userId || 'unknown',
+        action: `Super admin stopped impersonating client: ${previousClientId}`,
+        resourceType: 'client',
+        resourceId: previousClientId || 'none',
+        ipAddress: req.ip || req.socket.remoteAddress,
+        userAgent: req.headers['user-agent'],
+        success: true,
+      }).catch(err => console.error("Failed to log impersonation audit event:", err));
     } catch (error) {
       console.error("Stop impersonation error:", error);
       res.status(500).json({ error: "Failed to stop impersonation" });
