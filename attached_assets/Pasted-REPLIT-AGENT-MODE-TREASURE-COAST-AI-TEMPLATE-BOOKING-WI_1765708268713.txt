@@ -1,0 +1,146 @@
+REPLIT AGENT MODE — TREASURE COAST AI — “TEMPLATE + BOOKING + WIZARD” FINAL HARDENING PASS
+
+GOAL
+Make the platform “boring reliable” for live demos AND real client embeds:
+- Every industry template behaves correctly on day 1 (booking CTA wording + internal/external behavior)
+- Leads/bookings are logged with correct customer info and scoped to the correct tenant
+- Redirects always go to the correct EXTERNAL booking/payment provider (NO payments on our domain)
+- Super-admin + onboarding wizard changes always persist and never error
+- Widget works on real domains and does not act weird
+- End with a full PASS/FAIL report + list of files changed + commands run
+
+NON-NEGOTIABLE GUARDRails
+1) NO PAYMENT PROCESSING ON OUR DOMAIN (ever)
+- Allowed: redirect externally to client booking/payment provider
+- Not allowed: card capture, checkout UI, payment intents/tokens, subscriptions/invoices inside the app
+2) MULTI-TENANT ISOLATION
+- All reads/writes must be scoped server-side (no “UI-only security”)
+3) DEMO-READINESS
+- No stack traces in UI, no broken buttons, no “coming soon” visible
+4) DO NOT PRINT SECRETS
+- Never echo passwords, tokens, or API keys in output
+
+PHASE 0 — BASELINE
+1) Scan repo structure and identify ALL places that define templates and booking behavior:
+   - server/industryTemplates.ts
+   - bot_templates DB schema + /api/templates
+   - client/src/pages/super-admin.tsx (STARTER_TEMPLATES)
+   - orchestrator booking intent logic
+   - widget booking button rendering
+2) Output a short “current source of truth” map BEFORE changing anything.
+
+PHASE 1 — UNIFY TEMPLATE SOURCE OF TRUTH (CRITICAL)
+Problem: We currently have multiple template systems. Unify so templates come from ONE canonical place.
+Implementation requirements:
+A) Canonical template data must live in bot_templates (DB) and/or a single shared module used everywhere.
+B) The Super Admin “Create from Template” UI must load templates from /api/templates (DB templates), not STARTER_TEMPLATES.
+C) Replace the /api/super-admin/bots/from-template flow so it creates a bot from a DB template by templateId (NOT a legacy botId).
+   - New endpoint suggestion: POST /api/super-admin/bots/from-db-template
+   - Request: { templateId, workspaceId or clientId, botName?, externalBookingUrl?, notes?, behaviorPreset? }
+   - Server pulls template from DB, generates BotConfig + client_settings defaults, saves, returns created bot/workspace info.
+D) Ensure demo page “demo bots” are correctly mapped to the template they claim (templateId/botType match).
+
+Acceptance:
+- No duplicate template systems left active.
+- All 15 industries are present and selectable from DB templates.
+- Demo page shows correct template per demo bot.
+
+PHASE 2 — PER-INDUSTRY BOOKING BEHAVIOR (DAY-1 PERFECT)
+We need templates to “act different” by industry:
+- External redirect templates (examples): barber, med spa, boutique hotel, pet grooming, dental, tattoo
+- Internal request/capture templates (examples): recovery housing (tour/call), wedding venue (consult), fitness center (consult), law firm (consult), home services (estimate), auto shop (service request), real estate (showing), restaurant (reservation request)
+Requirements:
+A) Add/confirm a single booking profile contract used by templates:
+   - defaultMode: INTERNAL | EXTERNAL
+   - CTAs: [{ id, label, kind: primary|secondary }]
+   - appointment types (for INTERNAL): id, label, duration, intakeFields
+   - failsafe: if EXTERNAL but external URL missing/invalid => pivot to INTERNAL request_callback
+B) When a workspace/client is created from a template, auto-seed client_settings with:
+   - bookingMode
+   - primary CTA labels
+   - appointmentTypesConfig + preIntakeConfig (industry-specific)
+C) Add an easy override switch in Admin (per-client) to flip INTERNAL<->EXTERNAL and edit CTA labels + booking URL.
+D) Ensure NO-PAYMENTS policy is respected:
+   - External links may go to a provider that collects payment THERE.
+   - Our platform must not block legit booking links just because path contains “payment” or “checkout”.
+   - Still block dangerous schemes (javascript:, data:, file:) and require https.
+
+Acceptance:
+- Each of the 15 industries uses correct default booking mode and correct CTA wording.
+- Admin can flip mode and it immediately affects widget + bot responses.
+
+PHASE 3 — WIDGET BOOKING CTA + RELIABILITY
+Current issue: widget booking button is generic and only shows for externalBookingUrl.
+Requirements:
+A) Update widget API response meta to include:
+   - bookingCtas (array) and/or primaryBookingCtaLabel
+   - bookingMode
+   - externalBookingUrl (if external)
+   - internalAppointmentTypes (if internal) OR a simple “request callback” form schema
+B) Update public/widget/widget.js:
+   - Render booking button label from meta (not hardcoded)
+   - If INTERNAL mode: show a minimal internal booking/request form (name + phone required; optional email; template-specific extra fields if present)
+   - On submit, call existing appointment/lead endpoint tenant-safely and confirm success UX
+C) Keep existing retry UX.
+
+Acceptance:
+- Sober Living: “Schedule a Tour” + “Schedule Phone Call” internal capture works (logs appointment/lead + notifies).
+- Barber/MedSpa/etc: “Book Now” redirects externally and logs redirect click.
+
+PHASE 4 — SECURE ANALYTICS EVENTS (ANTI-SPAM)
+Fix /api/bookings/link-click:
+- Require widget token OR HMAC validation (the token already exists).
+- Verify token matches clientId + botId before logging event.
+- Add rate limiting to this endpoint.
+- Ensure tenant isolation: cannot log events for another clientId/botId without valid token.
+
+Acceptance:
+- 3 attempted attacks fail (wrong clientId, wrong botId, no token).
+- Legit widget logs clicks normally.
+
+PHASE 5 — STRIPE / PAYMENTS CODE SAFETY (OPTION A)
+User confirmed: NO in-app payments for now.
+Requirements (choose safest):
+A) Preferred: hard-disable Stripe module loading with a feature flag:
+   - ENABLE_STRIPE_BILLING=false by default
+   - If false: do NOT mount webhook route, do NOT allow CSP stripe domains, do NOT expose any Stripe endpoints (return 404/501)
+B) Update guard-no-payments to detect new routes and UI surfaces:
+   - Ensure no client-facing checkout UI exists.
+   - Stripe references allowed only behind feature flag.
+
+Acceptance:
+- guard-no-payments passes
+- CSP no longer includes Stripe unless flag is enabled
+- No active payment endpoints reachable
+
+PHASE 6 — FINAL MEGA TEST + REPORT (MUST RUN)
+After changes, run:
+1) bash ./scripts/guard-no-payments.sh
+2) npx tsc --noEmit
+3) npx vitest run
+4) npm run build
+5) If available: bash scripts/widget-e2e-test.sh
+6) Run demo template validation + industry sweep scripts if present
+7) Run a “template creation smoke”:
+   - create one workspace/bot for 3 different industries (one external, one internal, one hybrid)
+   - verify widget config loads
+   - verify booking CTA correct
+   - verify booking flow logs lead/appointment and redirect clicks
+
+OUTPUT FORMAT (STRICT)
+Produce ONE final report in markdown:
+1) GO / NO-GO
+2) Template Matrix: 15 industries with:
+   - default booking mode
+   - CTA labels
+   - internal vs external behavior
+3) PASS/FAIL checklist for each phase
+4) Findings by severity with reproduction steps + file/line fix references
+5) Proof blocks for:
+   - No payments compliance
+   - Tenant isolation checks
+   - Booking click endpoint token validation
+6) List of files changed
+7) Commands run + results
+DO NOT print any secrets.
+START NOW.
