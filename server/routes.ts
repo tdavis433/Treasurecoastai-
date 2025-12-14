@@ -7983,7 +7983,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Create customer portal session for client - BILLING DISABLED
-  app.post("/api/client/billing/portal", requireClientAuth, async (req, res) => {
+  app.post("/api/client/billing/portal", requireClientAuth, requireConfigAccess, async (req, res) => {
     return res.status(501).json({ 
       error: "Billing temporarily disabled",
       message: "Payment processing is not enabled on this platform. Contact support for billing inquiries."
