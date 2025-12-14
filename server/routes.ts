@@ -570,28 +570,45 @@ function requireAdminRole(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-// RBAC helper for write operations - blocks viewer role from state-changing actions
+// RBAC helper for write operations - uses actual workspace membership roles
 // Use this middleware on routes that create, update, or delete data
+// Membership roles: owner, manager, staff (write allowed) | agent (read-only)
 function requireWriteAccess(req: Request, res: Response, next: NextFunction) {
   if (!req.session.userId) {
     return res.status(401).json({ error: "Authentication required" });
   }
   
-  // Check both global role and workspace membership role
   const globalRole = req.session.userRole as string;
   const membershipRole = (req as any).membershipRole as string | undefined;
   
-  // Viewers cannot perform write operations
-  if (globalRole === "workspace_viewer") {
-    return res.status(403).json({ error: "Viewer access is read-only. Write operations require elevated permissions." });
+  // Super admins always have write access
+  if (globalRole === "super_admin") {
+    return next();
   }
   
-  // Also check workspace membership role if set
-  if (membershipRole === "viewer") {
-    return res.status(403).json({ error: "Your workspace role is read-only. Contact an admin to modify data." });
+  // For client_admin users, check workspace membership role
+  if (globalRole === "client_admin") {
+    // Allowlist: only these roles can write
+    const writeAllowedRoles = ["owner", "manager", "staff"];
+    
+    if (!membershipRole) {
+      // No membership role set - should not happen if requireClientAuth ran first
+      return res.status(403).json({ error: "Access denied. Workspace membership required." });
+    }
+    
+    if (!writeAllowedRoles.includes(membershipRole)) {
+      // agent role (and any future read-only roles) cannot write
+      return res.status(403).json({ 
+        error: "Write access denied", 
+        message: "Your workspace role does not allow modifications. Contact an admin if you need elevated access." 
+      });
+    }
+    
+    return next();
   }
   
-  next();
+  // Unknown role - deny by default
+  return res.status(403).json({ error: "Access denied" });
 }
 
 /**
