@@ -641,29 +641,27 @@ async function requireClientAuth(req: Request, res: Response, next: NextFunction
     return;
   }
   
-  // Super admins MUST specify which client to view via query param
+  // Super admins MUST use session-based impersonation for client context
+  // SECURITY: No longer accepting clientId from query params - use POST /api/super-admin/impersonate
   if (req.session.userRole === "super_admin") {
-    // Validate clientId query param with Zod
-    const queryValidation = superAdminClientQuerySchema.safeParse(req.query);
-    if (!queryValidation.success) {
+    // Use session-based effectiveClientId (set via impersonation endpoints)
+    const effectiveClientId = req.session.effectiveClientId;
+    
+    if (!effectiveClientId) {
       return res.status(400).json({ 
-        error: "Client ID required", 
-        message: "Super admins must specify clientId query parameter to view client data" 
+        error: "Client context required", 
+        message: "Super admins must first impersonate a client via POST /api/super-admin/impersonate to view client data" 
       });
     }
     
-    // Validate the requested clientId exists - check both JSON configs AND database workspaces
-    const requestedClientId = queryValidation.data.clientId;
-    
-    // Check 1: JSON-based bot configs
+    // Validate the session clientId still exists (in case client was deleted)
     const allBots = getAllBotConfigs();
-    const clientExistsInJson = allBots.some(bot => bot.clientId === requestedClientId);
+    const clientExistsInJson = allBots.some(bot => bot.clientId === effectiveClientId);
     
-    // Check 2: Database workspaces (for dynamically created clients like demo workspaces)
     let clientExistsInDb = false;
     if (!clientExistsInJson) {
       try {
-        const workspace = await getWorkspaceBySlug(requestedClientId);
+        const workspace = await getWorkspaceBySlug(effectiveClientId);
         clientExistsInDb = !!workspace;
       } catch (error) {
         console.error("Workspace lookup failed:", error);
@@ -671,10 +669,13 @@ async function requireClientAuth(req: Request, res: Response, next: NextFunction
     }
     
     if (!clientExistsInJson && !clientExistsInDb) {
-      return res.status(404).json({ error: "Client not found" });
+      // Clear invalid impersonation from session
+      req.session.effectiveClientId = null;
+      req.session.isImpersonating = false;
+      return res.status(404).json({ error: "Impersonated client no longer exists" });
     }
     
-    (req as any).effectiveClientId = requestedClientId;
+    (req as any).effectiveClientId = effectiveClientId;
     next();
     return;
   }
@@ -5166,6 +5167,107 @@ These suggestions should be relevant to what was just discussed and help guide t
       console.error("Enable user error:", error);
       res.status(500).json({ error: "Failed to enable user" });
     }
+  });
+
+  // =============================================
+  // SECURE SUPER ADMIN IMPERSONATION
+  // =============================================
+  
+  // Schema for impersonation request
+  const impersonateClientSchema = z.object({
+    clientId: z.string().min(1, "clientId is required").regex(/^[a-zA-Z0-9_-]+$/, "Invalid clientId format"),
+  });
+
+  // Start impersonating a client (sets session-based effectiveClientId)
+  app.post("/api/super-admin/impersonate", requireSuperAdmin, async (req, res) => {
+    try {
+      const validation = impersonateClientSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: "Invalid request", 
+          details: validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
+        });
+      }
+      
+      const { clientId } = validation.data;
+      
+      // Validate the requested clientId exists - check both JSON configs AND database workspaces
+      const allBots = getAllBotConfigs();
+      const clientExistsInJson = allBots.some(bot => bot.clientId === clientId);
+      
+      let clientExistsInDb = false;
+      if (!clientExistsInJson) {
+        try {
+          const workspace = await getWorkspaceBySlug(clientId);
+          clientExistsInDb = !!workspace;
+        } catch (error) {
+          console.error("Workspace lookup failed:", error);
+        }
+      }
+      
+      if (!clientExistsInJson && !clientExistsInDb) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      // Set the effectiveClientId in session (secure server-side storage)
+      req.session.effectiveClientId = clientId;
+      req.session.isImpersonating = true;
+      
+      // Save session explicitly
+      req.session.save((err) => {
+        if (err) {
+          console.error("Session save error during impersonation:", err);
+          return res.status(500).json({ error: "Failed to start impersonation" });
+        }
+        
+        console.log(`Super admin ${req.session.userId} started impersonating client: ${clientId}`);
+        res.json({ 
+          success: true, 
+          message: `Now viewing as client: ${clientId}`,
+          effectiveClientId: clientId
+        });
+      });
+    } catch (error) {
+      console.error("Impersonation error:", error);
+      res.status(500).json({ error: "Failed to start impersonation" });
+    }
+  });
+
+  // Stop impersonating (clears effectiveClientId from session)
+  app.post("/api/super-admin/stop-impersonate", requireSuperAdmin, async (req, res) => {
+    try {
+      const previousClientId = req.session.effectiveClientId;
+      
+      // Clear impersonation from session
+      req.session.effectiveClientId = null;
+      req.session.isImpersonating = false;
+      
+      // Save session explicitly
+      req.session.save((err) => {
+        if (err) {
+          console.error("Session save error during stop impersonation:", err);
+          return res.status(500).json({ error: "Failed to stop impersonation" });
+        }
+        
+        console.log(`Super admin ${req.session.userId} stopped impersonating client: ${previousClientId}`);
+        res.json({ 
+          success: true, 
+          message: "Stopped impersonation, returned to super admin view",
+          previousClientId
+        });
+      });
+    } catch (error) {
+      console.error("Stop impersonation error:", error);
+      res.status(500).json({ error: "Failed to stop impersonation" });
+    }
+  });
+
+  // Get current impersonation status
+  app.get("/api/super-admin/impersonation-status", requireSuperAdmin, async (req, res) => {
+    res.json({
+      isImpersonating: req.session.isImpersonating || false,
+      effectiveClientId: req.session.effectiveClientId || null
+    });
   });
 
   // =============================================

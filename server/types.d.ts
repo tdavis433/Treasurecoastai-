@@ -6,6 +6,8 @@ declare module "express-session" {
     username?: string;
     userRole?: 'super_admin' | 'client_admin' | 'agency_user' | 'client_owner' | 'client_user' | 'workspace_admin' | 'workspace_viewer';
     clientId?: string | null;
+    // Secure super-admin impersonation: server-side client context
+    effectiveClientId?: string | null;
     // Impersonation fields
     isImpersonating?: boolean;
     originalUserId?: string;
