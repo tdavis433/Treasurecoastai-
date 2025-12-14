@@ -5302,6 +5302,15 @@ These suggestions should be relevant to what was just discussed and help guide t
     try {
       const previousClientId = req.session.effectiveClientId;
       
+      // Handle "not impersonating" case explicitly (cleaner for demos)
+      if (!previousClientId || !req.session.isImpersonating) {
+        return res.json({ 
+          success: true, 
+          message: "Already not impersonating",
+          previousClientId: null
+        });
+      }
+      
       // Clear impersonation from session
       req.session.effectiveClientId = null;
       req.session.isImpersonating = false;
