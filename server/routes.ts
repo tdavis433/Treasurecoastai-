@@ -673,10 +673,19 @@ async function requireClientAuth(req: Request, res: Response, next: NextFunction
       const workspace = await storage.getWorkspaceByClientId(effectiveClientId);
       
       if (!workspace) {
-        // Clear invalid impersonation from session
+        // Clear invalid impersonation from session and PERSIST the change
+        // This prevents "sticky impersonation" edge cases across refresh/back button/multiple tabs
         console.warn(`Super admin impersonation invalid - workspace not found: ${effectiveClientId}`);
         req.session.effectiveClientId = null;
         req.session.isImpersonating = false;
+        
+        await new Promise<void>((resolve) => {
+          req.session.save((err) => {
+            if (err) console.error("Failed to save session after clearing impersonation:", err);
+            resolve();
+          });
+        });
+        
         return res.status(404).json({ error: "Impersonated client no longer exists" });
       }
       
@@ -687,6 +696,14 @@ async function requireClientAuth(req: Request, res: Response, next: NextFunction
       console.error("Workspace lookup failed for super admin impersonation:", error);
       req.session.effectiveClientId = null;
       req.session.isImpersonating = false;
+      
+      await new Promise<void>((resolve) => {
+        req.session.save((err) => {
+          if (err) console.error("Failed to save session after clearing impersonation:", err);
+          resolve();
+        });
+      });
+      
       return res.status(500).json({ error: "Client validation failed. Please try again." });
     }
     
