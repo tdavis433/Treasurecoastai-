@@ -73,7 +73,24 @@ export interface BookingProfile {
   disclaimers?: BookingDisclaimer;
 }
 
+// Preferred day options - reusable across booking profiles
+export const PREFERRED_DAY_OPTIONS = [
+  { value: 'today', label: 'Today' },
+  { value: 'tomorrow', label: 'Tomorrow' },
+  { value: 'this_week', label: 'This week' },
+  { value: 'weekend', label: 'Weekend' },
+  { value: 'not_sure', label: 'Not sure' },
+];
+
+// Urgency options for safety triage
+export const URGENCY_OPTIONS = [
+  { value: 'yes', label: 'Yes' },
+  { value: 'no', label: 'No' },
+  { value: 'not_sure', label: 'Not sure' },
+];
+
 // Universal fallback appointment type - ALWAYS included in every template
+// This is a proper "mini-appointment" that creates lead + booking intent records
 export const UNIVERSAL_REQUEST_CALLBACK: BookingAppointmentType = {
   id: 'request_callback',
   label: 'Request Callback',
@@ -82,10 +99,12 @@ export const UNIVERSAL_REQUEST_CALLBACK: BookingAppointmentType = {
     { key: 'name', label: 'Your Name', required: true, type: 'text', placeholder: 'Full name' },
     { key: 'phone', label: 'Phone Number', required: true, type: 'phone', placeholder: '(555) 123-4567' },
     { key: 'email', label: 'Email (optional)', required: false, type: 'email', placeholder: 'you@example.com' },
-    { key: 'preferredTime', label: 'Preferred Time', required: false, type: 'text', placeholder: 'e.g., Weekday mornings' },
+    { key: 'preferredDay', label: 'Preferred Day', required: false, type: 'select', options: PREFERRED_DAY_OPTIONS },
+    { key: 'preferredTime', label: 'Preferred Time', required: false, type: 'text', placeholder: 'e.g., Morning, Afternoon' },
+    { key: 'isUrgent', label: 'Is this urgent?', required: false, type: 'select', options: URGENCY_OPTIONS },
     { key: 'notes', label: 'Message/Notes', required: false, type: 'textarea', placeholder: 'Any additional information...' },
   ],
-  confirmationMessage: "Thank you! We've received your request and will reach out to you shortly.",
+  confirmationMessage: "Thank you! We've received your request and will call you within 2 hours during business hours.",
   description: 'Request a callback from our team',
   durationMinutes: 15,
 };

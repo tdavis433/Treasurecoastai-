@@ -1,0 +1,182 @@
+REPLIT AGENT MODE — BOOKING PROFILE HARDENING (RECOVERY HOUSING + GLOBAL) — FIX + VERIFY + REPORT
+
+Objective
+
+Implement the 6 tasks below end-to-end, verify they work in runtime, and finish with a full proof summary + test outputs.
+Non-negotiables:
+	•	NO payment processing ever (no Stripe/Square/checkout/payment-intent UI or API).
+	•	External booking is redirect-only and must be HTTPS-only.
+	•	Multi-tenant isolation must remain intact.
+
+Context (current state)
+	•	Booking profiles live in shared/industry-booking-profiles.ts (seen in edits).
+	•	Widget already blocks unsafe booking URLs client-side; we must mirror validation server-side too.
+	•	Recovery Housing/Sober Living profile uses internal appointment types: schedule_tour, schedule_call, and fallback request_callback.
+
+⸻
+
+TASKS (DO IN ORDER)
+
+1) Update booking profiles with new fields (Global + Recovery Housing)
+
+What to add (standardize across all templates)
+
+Add these fields to the booking profile schema/types and ensure each industry profile has defaults:
+
+New fields (recommended minimal + powerful):
+	•	preferredDay (enum): today | tomorrow | this_week | weekend | not_sure
+	•	preferredTimeWindow (enum): morning | afternoon | evening | anytime
+	•	urgency (enum, optional): urgent | not_urgent | not_sure
+	•	notes (string, optional)
+
+Recovery Housing specific (must reflect your flow)
+	•	For schedule_tour: collect preferredDay, preferredTimeWindow, and whoFor (already: myself / loved one)
+	•	For schedule_call: collect preferredDay, preferredTimeWindow, and whoFor
+	•	Keep email optional but store it if present anywhere (Task #3)
+
+Acceptance checks
+	•	No breaking changes to other templates.
+	•	TypeScript compiles.
+	•	Existing tests updated/added if needed.
+	•	Ensure UI text remains friendly and short.
+
+⸻
+
+2) Improve request_callback (universal fallback) with more details
+
+Required behavior
+
+When the bot falls back to request_callback, it must:
+	•	Ask for: Name + Phone (required)
+	•	Ask for: preferredDay + preferredTimeWindow (required)
+	•	Ask for: whoFor when the industry profile supports it (Recovery Housing must include it)
+	•	Allow optional notes
+
+Acceptance checks
+	•	request_callback never dead-ends.
+	•	It creates a consistent record (see Task #5).
+
+⸻
+
+3) Capture email from ANY chat message (not only forms)
+
+Goal
+
+If the user drops an email in a normal chat message (not inside lead form), the system should:
+	•	Detect it reliably
+	•	Attach it to the current session lead/contact record (tenant-scoped)
+	•	Avoid overwriting an existing email unless the new one is higher confidence (or keep first valid)
+
+Implementation notes (do it cleanly)
+	•	Add a shared extractContactSignals(text) utility:
+	•	email regex
+	•	phone regex (already likely exists)
+	•	Call it in the orchestrator/message ingest pipeline before persisting the message.
+	•	Update storage layer to upsert lead/contact for the session/client safely.
+
+Acceptance checks
+	•	Works from a normal message like: “email me at name@domain.com”
+	•	Doesn’t false-positive on “@” in other contexts
+	•	Doesn’t leak contact info cross-tenant
+
+⸻
+
+4) Add server-side check for website links (booking + imported links)
+
+Goal
+
+Do not rely only on widget-side validation. Add server validation that:
+	•	Blocks javascript:, data:, file:
+	•	Blocks http: (must be https:)
+	•	Requires a sane hostname
+
+Where to enforce
+	•	Any endpoint that saves:
+	•	externalBookingUrl
+	•	externalPaymentUrl (still allowed to store as informational redirect, but HTTPS-only)
+	•	website import discovered links
+	•	Any endpoint that returns booking CTAs should only expose validated safe URLs.
+
+Acceptance checks
+	•	Invalid URLs are rejected with a friendly error (400) and clear message.
+	•	If an external-booking industry profile is missing/invalid URL, orchestrator must pivot to internal request_callback (failsafe stays true).
+
+⸻
+
+5) Record request_callback as an appointment (so it shows in dashboards)
+
+Goal
+
+When request_callback completes, create an internal appointment record so:
+	•	It appears in Bookings/Appointments
+	•	It increments booking intent metrics
+	•	It is tenant-scoped and tied to the conversation/session/lead
+
+Required fields
+	•	clientId/workspaceId
+	•	type: request_callback
+	•	status: requested (or equivalent)
+	•	captured fields: name, phone, email (if found), preferredDay, preferredTimeWindow, whoFor (if any), notes
+	•	link to conversation/session id
+
+Acceptance checks
+	•	Client dashboard shows it immediately
+	•	Admin dashboard parity matches
+	•	No duplicates on refresh/double-submit (idempotency: use sessionId + type + timestamp window or dedupe hash)
+
+⸻
+
+6) Run checks to ensure code quality (AND FIX FAILURES)
+
+Run in terminal and fix anything failing:
+	1.	bash ./scripts/guard-no-payments.sh
+	2.	npx tsc --noEmit
+	3.	npx vitest run
+	4.	npm run build
+	5.	If present: bash scripts/widget-e2e-test.sh
+
+If any check fails
+	•	Fix it immediately (no leaving broken)
+	•	Re-run until all pass
+	•	Do not introduce payment processing code
+
+⸻
+
+MANUAL RUNTIME VERIFICATION (MUST DO)
+
+After code + tests pass, verify in the running app:
+
+A) Recovery Housing bot flow
+	•	Ask: “Can I schedule a tour tomorrow afternoon?”
+	•	Should choose schedule_tour
+	•	Should request preferred day/time window if missing
+	•	Ask: “Can someone call me tonight?”
+	•	Should choose schedule_call
+	•	Ask: “Email me at demo+lead@testmail.com”
+	•	Email should be captured even if not in a form
+	•	Trigger missing/invalid external URL scenario
+	•	Must pivot to internal request_callback
+
+B) Dashboard verification
+	•	Confirm request_callback appears as an appointment under Bookings/Appointments
+	•	Confirm lead record has email if it was typed in chat
+
+⸻
+
+OUTPUT REQUIRED (PASTE IN CHAT WHEN DONE)
+
+Create a final summary with:
+	1.	✅ What changed (file list + brief bullets)
+	2.	✅ Proof booking profile fields exist + Recovery Housing fields included
+	3.	✅ Proof email-from-chat works (example + where stored)
+	4.	✅ Proof server URL validation exists (function + where enforced)
+	5.	✅ Proof request_callback creates appointment (record type + dashboard visibility)
+	6.	✅ Command outputs:
+	•	guard-no-payments PASS
+	•	tsc PASS
+	•	vitest PASS
+	•	build PASS
+	•	widget-e2e-test PASS (if available)
+	7.	Any follow-up recommendations (only if truly necessary)
+
+DO NOT include any passwords, secrets, or reset tokens in output. Redact if needed.

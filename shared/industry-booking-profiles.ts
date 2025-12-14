@@ -2,6 +2,8 @@ import {
   BookingProfile,
   BookingAppointmentType,
   UNIVERSAL_REQUEST_CALLBACK,
+  PREFERRED_DAY_OPTIONS,
+  URGENCY_OPTIONS,
 } from './schema';
 
 // ============================================================================
@@ -204,7 +206,9 @@ export const RECOVERY_HOUSING_BOOKING_PROFILE: BookingProfile = {
         { key: 'phone', label: 'Phone Number', required: true, type: 'phone', placeholder: '(555) 123-4567' },
         { key: 'email', label: 'Email', required: false, type: 'email', placeholder: 'you@example.com' },
         { key: 'lookingFor', label: 'Who is this for?', required: true, type: 'select', options: [{ value: 'self', label: 'Myself' }, { value: 'loved_one', label: 'A loved one' }] },
-        { key: 'preferredTime', label: 'Preferred Time', required: false, type: 'text', placeholder: 'e.g., Weekday afternoons' },
+        { key: 'preferredDay', label: 'Preferred Day', required: false, type: 'select', options: PREFERRED_DAY_OPTIONS },
+        { key: 'preferredTime', label: 'Preferred Time', required: false, type: 'text', placeholder: 'e.g., Morning, Afternoon, Evening' },
+        { key: 'isUrgent', label: 'Is this urgent?', required: false, type: 'select', options: URGENCY_OPTIONS },
       ],
       confirmationMessage: "Thank you! We've received your tour request and will reach out shortly to confirm.",
       description: 'Visit our facility in person',
@@ -217,10 +221,13 @@ export const RECOVERY_HOUSING_BOOKING_PROFILE: BookingProfile = {
       intakeFields: [
         { key: 'name', label: 'Your Name', required: true, type: 'text', placeholder: 'Full name' },
         { key: 'phone', label: 'Phone Number', required: true, type: 'phone', placeholder: '(555) 123-4567' },
+        { key: 'email', label: 'Email', required: false, type: 'email', placeholder: 'you@example.com' },
         { key: 'lookingFor', label: 'Who is this for?', required: true, type: 'select', options: [{ value: 'self', label: 'Myself' }, { value: 'loved_one', label: 'A loved one' }] },
-        { key: 'preferredTime', label: 'Best Time to Call', required: false, type: 'text', placeholder: 'e.g., Mornings before noon' },
+        { key: 'preferredDay', label: 'Preferred Day', required: false, type: 'select', options: PREFERRED_DAY_OPTIONS },
+        { key: 'preferredTime', label: 'Best Time to Call', required: false, type: 'text', placeholder: 'e.g., Morning, Afternoon, Evening' },
+        { key: 'isUrgent', label: 'Is this urgent?', required: false, type: 'select', options: URGENCY_OPTIONS },
       ],
-      confirmationMessage: "Thank you! We'll call you at the time you indicated.",
+      confirmationMessage: "Thank you! We'll call you within 2 hours during business hours.",
       description: 'Speak with our team by phone',
       durationMinutes: 15,
     },
