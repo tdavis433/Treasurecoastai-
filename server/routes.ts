@@ -3417,16 +3417,12 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
-  app.get("/api/appointments", requireAuth, async (req, res) => {
+  app.get("/api/appointments", requireClientAuth, async (req, res) => {
     try {
-      const { status, startDate, endDate, search, limit, offset, clientId: queryClientId } = req.query;
+      const { status, startDate, endDate, search, limit, offset } = req.query;
       
-      // Derive clientId: use session clientId for client_admin, query param for super_admin
-      const clientId = req.session.clientId || (queryClientId as string);
-      
-      if (!clientId) {
-        return res.status(400).json({ error: "Client ID required" });
-      }
+      // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
+      const clientId = (req as any).effectiveClientId;
       
       const filters: any = {};
       if (status) filters.status = status as string;
@@ -3731,7 +3727,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // CSV Export endpoint for analytics
-  app.get("/api/analytics/export", requireAuth, async (req, res) => {
+  app.get("/api/analytics/export", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
       const queryValidation = validateRequest(analyticsDateRangeQuerySchema, req.query);
       if (!queryValidation.success) {
@@ -3741,13 +3737,8 @@ These suggestions should be relevant to what was just discussed and help guide t
       // Only allow date range from query; tenant scope comes from the session.
       const { startDate, endDate } = queryValidation.data;
 
-      // SECURITY: Use helper to enforce session-only clientId (no query override)
-      let clientId: string;
-      try {
-        clientId = requireExportClientId(req.session.clientId);
-      } catch {
-        return res.status(400).json({ error: "Client ID required" });
-      }
+      // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
+      const clientId = (req as any).effectiveClientId;
 
       const start = startDate ? new Date(startDate) : undefined;
       const end = endDate ? new Date(endDate) : undefined;
@@ -11632,7 +11623,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Get all automation runs for a bot (recent 24h by default)
-  app.get("/api/bots/:botId/automation-runs", requireAuth, async (req, res) => {
+  app.get("/api/bots/:botId/automation-runs", requireClientAuth, async (req, res) => {
     try {
       const { botId } = req.params;
       const hours = parseInt(req.query.hours as string) || 24;
@@ -11800,7 +11791,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Get widget settings for a bot
-  app.get("/api/bots/:botId/widget-settings", requireAuth, async (req, res) => {
+  app.get("/api/bots/:botId/widget-settings", requireClientAuth, async (req, res) => {
     try {
       const { botId } = req.params;
       
@@ -11837,7 +11828,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Delete widget settings for a bot (reset to defaults)
-  app.delete("/api/bots/:botId/widget-settings", requireAuth, async (req, res) => {
+  app.delete("/api/bots/:botId/widget-settings", requireClientAuth, requireDestructiveAccess, async (req, res) => {
     try {
       const { botId } = req.params;
       
