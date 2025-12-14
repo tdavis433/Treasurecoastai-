@@ -150,7 +150,7 @@ export interface ExtractedBookingInfo {
   preferredTime?: string;
   scheduledAt?: string; // ISO datetime parsed from preferredTime
   notes?: string;
-  bookingType: 'tour' | 'phone_call';
+  bookingType: 'tour' | 'phone_call' | 'request_callback';
   isComplete: boolean;
 }
 
@@ -292,8 +292,17 @@ export function extractBookingInfoFromConversation(
 
   const tourKeywords = /\b(tour|visit|come see|check out|see the house|see the place|come by|stop by|look around|walk through)\b/i;
   const callKeywords = /\b(call|phone|speak with|talk to|phone call|give .* a call|chat with|speak to someone)\b/i;
+  const callbackKeywords = /\b(call\s*(?:me\s*)?back|callback|request\s*(?:a\s*)?call|get\s*back\s*to\s*me|reach\s*out|contact\s*me|follow\s*up)\b/i;
   
-  const bookingType: 'tour' | 'phone_call' = callKeywords.test(userMessages) ? 'phone_call' : 'tour';
+  // Determine booking type: callback > call > tour (more specific wins)
+  let bookingType: 'tour' | 'phone_call' | 'request_callback';
+  if (callbackKeywords.test(userMessages)) {
+    bookingType = 'request_callback';
+  } else if (callKeywords.test(userMessages)) {
+    bookingType = 'phone_call';
+  } else {
+    bookingType = 'tour';
+  }
 
   let name: string | undefined;
   let phone: string | undefined;
@@ -1587,13 +1596,22 @@ class ConversationOrchestrator {
     
     if (bookingInfo && bookingInfo.isComplete) {
       try {
-        // Check if we already created a booking for this session
+        // DEDUPLICATION: Check for existing appointment by session ID first
         const existingAppointment = await storage.getAppointmentBySessionId(
           sessionData.sessionId,
           clientId
         );
         
-        if (!existingAppointment) {
+        // Also check for any appointment with same type in last 5 minutes (duplicate prevention)
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+        const allAppointments = await storage.getAllAppointments(clientId);
+        const isDuplicateRecent = allAppointments.some(apt => 
+          apt.sessionId === sessionData.sessionId &&
+          apt.appointmentType === bookingInfo.bookingType &&
+          apt.createdAt && new Date(apt.createdAt) > fiveMinutesAgo
+        );
+        
+        if (!existingAppointment && !isDuplicateRecent) {
           console.log(`[Orchestrator] Creating AI-driven booking for session ${sessionData.sessionId}`, {
             clientId,
             botId,
@@ -1635,7 +1653,9 @@ class ConversationOrchestrator {
           });
         } else {
           console.log(`[Orchestrator] Skipping duplicate booking for session ${sessionData.sessionId}`, {
-            existingAppointmentId: existingAppointment.id,
+            reason: existingAppointment ? 'existing_session_appointment' : 'recent_duplicate_type',
+            existingAppointmentId: existingAppointment?.id,
+            bookingType: bookingInfo.bookingType,
           });
         }
       } catch (error: any) {

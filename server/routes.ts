@@ -90,6 +90,7 @@ import { retryFetch, createNotificationRetryLogger } from './retryUtils';
 import { exportClientData, deleteClientData, getRetentionConfig, purgeOldData } from './dataLifecycle';
 import { INDUSTRY_TEMPLATES, type IndustryTemplate } from './industryTemplates';
 import { generatePreviewToken, verifyPreviewToken, getTokenTimeRemaining, type PreviewTokenPayload } from './previewToken';
+import { validateBookingUrl } from './urlValidator';
 
 // =============================================
 // PHASE 2.4: SIGNED WIDGET TOKENS
@@ -6635,9 +6636,29 @@ These suggestions should be relevant to what was just discussed and help guide t
         updates.webhookEvents = { ...currentEvents, ...validation.data.webhookEvents };
       }
       if (validation.data.externalBookingUrl !== undefined) {
-        updates.externalBookingUrl = validation.data.externalBookingUrl;
+        // Validate booking URL using comprehensive validator (blocks http://, javascript:, payment URLs, etc.)
+        if (validation.data.externalBookingUrl && validation.data.externalBookingUrl.trim()) {
+          const urlValidation = validateBookingUrl(validation.data.externalBookingUrl);
+          if (!urlValidation.valid) {
+            return res.status(400).json({ error: `Invalid booking URL: ${urlValidation.error}` });
+          }
+          updates.externalBookingUrl = urlValidation.url; // Use normalized URL
+        } else {
+          updates.externalBookingUrl = validation.data.externalBookingUrl;
+        }
       }
       if (validation.data.externalPaymentUrl !== undefined) {
+        // Basic validation for payment URL - require HTTPS
+        if (validation.data.externalPaymentUrl && validation.data.externalPaymentUrl.trim()) {
+          try {
+            const parsed = new URL(validation.data.externalPaymentUrl);
+            if (parsed.protocol !== 'https:') {
+              return res.status(400).json({ error: "Payment URL must use HTTPS" });
+            }
+          } catch {
+            return res.status(400).json({ error: "Invalid payment URL format" });
+          }
+        }
         updates.externalPaymentUrl = validation.data.externalPaymentUrl;
       }
       
@@ -8278,18 +8299,21 @@ These suggestions should be relevant to what was just discussed and help guide t
       const { clientId } = req.params;
       const { externalBookingUrl, externalPaymentUrl } = req.body;
       
-      // Basic URL validation if provided
+      // Validate booking URL using comprehensive validator (blocks http://, javascript:, payment URLs, etc.)
       if (externalBookingUrl && typeof externalBookingUrl === 'string') {
-        try {
-          new URL(externalBookingUrl);
-        } catch {
-          return res.status(400).json({ error: "Invalid booking URL format" });
+        const urlValidation = validateBookingUrl(externalBookingUrl);
+        if (!urlValidation.valid) {
+          return res.status(400).json({ error: `Invalid booking URL: ${urlValidation.error}` });
         }
       }
       
+      // Basic URL validation for payment URL (payment URLs blocked in booking URL validator)
       if (externalPaymentUrl && typeof externalPaymentUrl === 'string') {
         try {
-          new URL(externalPaymentUrl);
+          const parsed = new URL(externalPaymentUrl);
+          if (parsed.protocol !== 'https:') {
+            return res.status(400).json({ error: "Payment URL must use HTTPS" });
+          }
         } catch {
           return res.status(400).json({ error: "Invalid payment URL format" });
         }
@@ -12043,11 +12067,16 @@ These suggestions should be relevant to what was just discussed and help guide t
       let failsafeActive = false;
 
       // FAILSAFE: If external mode but no valid HTTPS URL, fallback to internal
+      // Use comprehensive validateBookingUrl to block dangerous URLs (javascript:, http:, payment URLs)
       if (bookingMode === 'external') {
-        if (!externalBookingUrl || !externalBookingUrl.startsWith('https://')) {
+        const urlValidation = validateBookingUrl(externalBookingUrl);
+        if (!urlValidation.valid) {
           bookingMode = 'internal';
           failsafeActive = true;
-          console.log(`[Agency Onboarding] FAILSAFE ACTIVATED: External booking URL missing/invalid, falling back to internal request_callback`);
+          console.log(`[Agency Onboarding] FAILSAFE ACTIVATED: External booking URL invalid (${urlValidation.error}), falling back to internal request_callback`);
+        } else {
+          // Use the normalized URL from validator
+          externalBookingUrl = urlValidation.url!;
         }
       }
 
