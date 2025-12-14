@@ -151,6 +151,9 @@ interface AuthUser {
   username: string;
   role: 'super_admin' | 'client_admin';
   clientId?: string;
+  isImpersonating?: boolean;
+  effectiveClientId?: string | null;
+  impersonatedClientName?: string | null;
 }
 
 function formatHoursForDisplay(hours?: Record<string, string>): string {
@@ -871,6 +874,27 @@ export default function SuperAdmin() {
     window.location.href = "/login";
   };
 
+  // Stop impersonation handler
+  const handleStopImpersonation = async () => {
+    try {
+      const response = await fetch("/api/super-admin/stop-impersonate", { 
+        method: "POST", 
+        credentials: "include",
+        headers: { "Content-Type": "application/json" }
+      });
+      if (response.ok) {
+        // Refetch auth state to update UI
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+        toast({
+          title: "Impersonation Ended",
+          description: "You are no longer viewing as a client.",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to stop impersonation:", error);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
@@ -922,6 +946,28 @@ export default function SuperAdmin() {
              systemStatus?.status === 'degraded' ? `${systemStatus.errorCount} Warnings` :
              `System Incident (${systemStatus?.errorCount || 0} Errors)`}
           </Badge>
+          {/* Impersonation Context Indicator */}
+          {currentUser?.isImpersonating && (
+            <div 
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/20 border border-purple-500/30"
+              data-testid="impersonation-indicator"
+            >
+              <Eye className="h-4 w-4 text-purple-400" />
+              <span className="text-sm text-purple-300">
+                Viewing: <span className="font-medium">{currentUser.impersonatedClientName || currentUser.effectiveClientId}</span>
+              </span>
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                onClick={handleStopImpersonation}
+                className="h-6 px-2 text-purple-300 hover:text-white hover:bg-purple-500/30 ml-1"
+                data-testid="button-stop-impersonation"
+              >
+                <X className="h-3 w-3 mr-1" />
+                Exit
+              </Button>
+            </div>
+          )}
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
             <div className="h-6 w-6 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-xs font-bold text-white">
               {currentUser?.username?.charAt(0).toUpperCase()}

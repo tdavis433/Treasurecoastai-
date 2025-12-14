@@ -4267,7 +4267,27 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(404).json({ error: "User not found" });
       }
       
-      res.json(user[0]);
+      // Include impersonation state for super admins
+      const isImpersonating = !!req.session.isImpersonating && !!req.session.effectiveClientId;
+      const effectiveClientId = req.session.effectiveClientId || null;
+      
+      // Get workspace name if impersonating
+      let impersonatedClientName: string | null = null;
+      if (isImpersonating && effectiveClientId) {
+        try {
+          const workspace = await storage.getWorkspaceByClientId(effectiveClientId);
+          impersonatedClientName = workspace?.name || effectiveClientId;
+        } catch (e) {
+          impersonatedClientName = effectiveClientId;
+        }
+      }
+      
+      res.json({
+        ...user[0],
+        isImpersonating,
+        effectiveClientId,
+        impersonatedClientName,
+      });
     } catch (error) {
       console.error("Get user error:", error);
       res.status(500).json({ error: "Failed to fetch user" });
