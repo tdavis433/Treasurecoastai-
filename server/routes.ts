@@ -617,23 +617,35 @@ async function requireClientAuth(req: Request, res: Response, next: NextFunction
       return res.status(403).json({ error: "Client configuration required. Please contact your administrator." });
     }
     
-    // Phase 2.3: Validate workspace membership for client admins
+    // SECURITY: Enforce workspace membership - no silent drift allowed
     try {
       const workspace = await storage.getWorkspaceByClientId(req.session.clientId);
-      if (workspace) {
-        // Check if user has active membership in this workspace
-        const membership = await storage.checkWorkspaceMembership(req.session.userId, workspace.id);
-        if (!membership) {
-          // User doesn't have workspace membership - log for audit but allow access
-          // (Legacy clients may not have workspace memberships set up yet)
-          console.warn(`Client admin ${req.session.userId} accessing ${req.session.clientId} without workspace membership`);
-        }
-        (req as any).workspaceId = workspace.id;
-        (req as any).membershipRole = membership?.role;
+      
+      // Workspace MUST exist for the clientId
+      if (!workspace) {
+        console.error(`Client admin ${req.session.userId} has invalid clientId ${req.session.clientId} - workspace not found`);
+        return res.status(403).json({ 
+          error: "Workspace not found", 
+          message: "Your account configuration is invalid. Please contact your administrator." 
+        });
       }
+      
+      // Membership MUST exist in the workspace
+      const membership = await storage.checkWorkspaceMembership(req.session.userId, workspace.id);
+      if (!membership) {
+        console.error(`Client admin ${req.session.userId} denied access - no membership in workspace ${workspace.id} (${req.session.clientId})`);
+        return res.status(403).json({ 
+          error: "Access denied", 
+          message: "You no longer have access to this workspace. Please contact your administrator." 
+        });
+      }
+      
+      (req as any).workspaceId = workspace.id;
+      (req as any).membershipRole = membership.role;
     } catch (error) {
-      // Log error but don't block access - workspace validation is additive
-      console.error("Workspace membership check failed:", error);
+      // Validation failure = deny access (fail secure)
+      console.error("Workspace membership validation failed:", error);
+      return res.status(500).json({ error: "Access validation failed. Please try again." });
     }
     
     (req as any).effectiveClientId = req.session.clientId;
