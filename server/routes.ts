@@ -93,6 +93,7 @@ import { INDUSTRY_TEMPLATES, type IndustryTemplate } from './industryTemplates';
 import { generatePreviewToken, verifyPreviewToken, getTokenTimeRemaining, type PreviewTokenPayload } from './previewToken';
 import { validateBookingUrl } from './urlValidator';
 import { csrfProtection } from './csrfMiddleware';
+import { structuredLogger } from './structuredLogger';
 
 // =============================================
 // PHASE 2.4: SIGNED WIDGET TOKENS
