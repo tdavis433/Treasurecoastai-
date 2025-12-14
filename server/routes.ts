@@ -388,27 +388,34 @@ const createFromTemplateSchema = z.object({
   })).optional(),
 });
 
+// Phone validation pattern - allows digits, spaces, dashes, parentheses, plus, dots (7-20 chars)
+const phoneRegex = /^[\d\s\-\(\)\+\.]{7,20}$/;
+const phoneValidation = z.string()
+  .refine((val) => !val || phoneRegex.test(val), { message: "Invalid phone format" })
+  .optional()
+  .or(z.literal(""));
+
 // Lead schemas - botId is optional because client leads may derive it from session context
 const createLeadSchema = z.object({
-  name: z.string().optional(),
+  name: z.string().max(100, "Name is too long").optional(),
   email: z.string().email().optional().or(z.literal("")),
-  phone: z.string().optional(),
+  phone: phoneValidation,
   source: z.enum(["chat", "widget", "manual"]).optional().default("manual"),
   status: z.enum(["new", "contacted", "qualified", "converted", "lost"]).optional().default("new"),
   priority: z.enum(["low", "medium", "high"]).optional().default("medium"),
-  notes: z.string().optional(),
-  tags: z.array(z.string()).optional(),
+  notes: z.string().max(5000, "Notes are too long").optional(),
+  tags: z.array(z.string().max(50)).max(20).optional(),
   botId: z.string().optional(),
 });
 
 const updateLeadSchema = z.object({
-  name: z.string().optional(),
+  name: z.string().max(100, "Name is too long").optional(),
   email: z.string().email().optional().or(z.literal("")),
-  phone: z.string().optional(),
+  phone: phoneValidation,
   status: z.enum(["new", "contacted", "qualified", "converted", "lost"]).optional(),
   priority: z.enum(["low", "medium", "high"]).optional(),
-  notes: z.string().optional(),
-  tags: z.array(z.string()).optional(),
+  notes: z.string().max(5000, "Notes are too long").optional(),
+  tags: z.array(z.string().max(50)).max(20).optional(),
 });
 
 // =============================================
@@ -6144,7 +6151,6 @@ These suggestions should be relevant to what was just discussed and help guide t
         leadsCollected: leadsCount,
         bookingsInitiated: appointmentsCount,
         avgResponseTime: analytics.avgResponseTimeMs || 0,
-        satisfactionRate: 0,
       });
     } catch (error) {
       console.error("Get bot stats error:", error);

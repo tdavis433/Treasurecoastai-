@@ -1414,7 +1414,6 @@ interface BotStats {
   leadsCollected: number;
   bookingsInitiated: number;
   avgResponseTime: number;
-  satisfactionRate: number;
 }
 
 function BotOverviewTab({ botId, botConfig }: { botId: string; botConfig: BotConfig }) {
@@ -1448,7 +1447,6 @@ function BotOverviewTab({ botId, botConfig }: { botId: string; botConfig: BotCon
           leadsCollected: 0,
           bookingsInitiated: 0,
           avgResponseTime: 0,
-          satisfactionRate: 0,
         };
       }
       return response.json();
