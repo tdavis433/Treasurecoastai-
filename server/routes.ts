@@ -5270,7 +5270,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Stop impersonating (clears effectiveClientId from session)
-  app.post("/api/super-admin/stop-impersonate", requireSuperAdmin, async (req, res) => {
+  // Primary endpoint: /api/super-admin/impersonate/stop
+  // Legacy alias: /api/super-admin/stop-impersonate
+  const stopImpersonationHandler = async (req: Request, res: Response) => {
     try {
       const previousClientId = req.session.effectiveClientId;
       
@@ -5279,41 +5281,47 @@ These suggestions should be relevant to what was just discussed and help guide t
       req.session.isImpersonating = false;
       req.session.lastSeenAt = Date.now(); // Reset idle timeout on stop impersonation
       
-      // Save session explicitly
-      req.session.save(async (err) => {
-        if (err) {
-          console.error("Session save error during stop impersonation:", err);
-          return res.status(500).json({ error: "Failed to stop impersonation" });
-        }
-        
-        // Audit log impersonation end
-        try {
-          await logAuditEvent({
-            eventType: 'IMPERSONATION_END',
-            userId: req.session.userId || 'unknown',
-            action: `Super admin stopped impersonating client: ${previousClientId}`,
-            resourceType: 'client',
-            resourceId: previousClientId || 'none',
-            ipAddress: req.ip || req.socket.remoteAddress,
-            userAgent: req.headers['user-agent'],
-            success: true,
-          });
-        } catch (auditError) {
-          console.error("Failed to log impersonation audit event:", auditError);
-        }
-        
-        console.log(`Super admin ${req.session.userId} stopped impersonating client: ${previousClientId}`);
-        res.json({ 
-          success: true, 
-          message: "Stopped impersonation, returned to super admin view",
-          previousClientId
+      // Save session explicitly - CRITICAL for multi-tab and demo consistency
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) reject(err);
+          else resolve();
         });
+      });
+      
+      // Audit log impersonation stop
+      try {
+        await logAuditEvent({
+          eventType: 'IMPERSONATION_STOP',
+          userId: req.session.userId || 'unknown',
+          action: `Super admin stopped impersonating client: ${previousClientId}`,
+          resourceType: 'client',
+          resourceId: previousClientId || 'none',
+          ipAddress: req.ip || req.socket.remoteAddress,
+          userAgent: req.headers['user-agent'],
+          success: true,
+        });
+      } catch (auditError) {
+        console.error("Failed to log impersonation audit event:", auditError);
+      }
+      
+      console.log(`Super admin ${req.session.userId} stopped impersonating client: ${previousClientId}`);
+      res.json({ 
+        success: true, 
+        message: "Stopped impersonation, returned to super admin view",
+        previousClientId
       });
     } catch (error) {
       console.error("Stop impersonation error:", error);
       res.status(500).json({ error: "Failed to stop impersonation" });
     }
-  });
+  };
+  
+  // Primary endpoint
+  app.post("/api/super-admin/impersonate/stop", requireSuperAdmin, stopImpersonationHandler);
+  
+  // Legacy alias for backward compatibility - delegates to the same handler
+  app.post("/api/super-admin/stop-impersonate", requireSuperAdmin, stopImpersonationHandler);
 
   // Get current impersonation status
   app.get("/api/super-admin/impersonation-status", requireSuperAdmin, async (req, res) => {

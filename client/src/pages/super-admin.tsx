@@ -906,7 +906,7 @@ export default function SuperAdmin() {
   // Stop impersonation handler (CSRF-protected via apiRequest)
   const handleStopImpersonation = async () => {
     try {
-      const response = await apiRequest("POST", "/api/super-admin/stop-impersonate", {});
+      const response = await apiRequest("POST", "/api/super-admin/impersonate/stop", {});
       if (response.ok) {
         // Refetch auth state to update UI
         queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
