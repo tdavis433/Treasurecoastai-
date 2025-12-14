@@ -411,9 +411,21 @@ const updateLeadSchema = z.object({
   tags: z.array(z.string()).optional(),
 });
 
-// Query schema for pagination/filtering
+// =============================================
+// PAGINATION SAFETY: Cap all limits to prevent DoS
+// =============================================
+const MAX_PAGINATION_LIMIT = 1000;
+const DEFAULT_PAGINATION_LIMIT = 50;
+
+// Helper to safely cap pagination limit
+function safeLimit(limit: number | undefined, maxLimit: number = MAX_PAGINATION_LIMIT): number {
+  const parsed = limit ?? DEFAULT_PAGINATION_LIMIT;
+  return Math.min(Math.max(1, parsed), maxLimit);
+}
+
+// Query schema for pagination/filtering with capped limits
 const paginationQuerySchema = z.object({
-  limit: z.string().regex(/^\d+$/).transform(Number).optional(),
+  limit: z.string().regex(/^\d+$/).transform(n => Math.min(parseInt(n, 10), MAX_PAGINATION_LIMIT)).optional(),
   offset: z.string().regex(/^\d+$/).transform(Number).optional(),
 });
 
@@ -422,7 +434,7 @@ const appointmentQuerySchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   search: z.string().optional(),
-  limit: z.string().regex(/^\d+$/).transform(Number).optional(),
+  limit: z.string().regex(/^\d+$/).transform(n => Math.min(parseInt(n, 10), MAX_PAGINATION_LIMIT)).optional(),
   offset: z.string().regex(/^\d+$/).transform(Number).optional(),
 });
 
@@ -434,17 +446,17 @@ const analyticsDateRangeQuerySchema = z.object({
 
 const analyticsTrendsQuerySchema = z.object({
   botId: z.string().optional(),
-  days: z.preprocess((val) => val ?? "30", z.string().regex(/^\d+$/).transform(Number)),
+  days: z.preprocess((val) => val ?? "30", z.string().regex(/^\d+$/).transform(n => Math.min(parseInt(n, 10), 365))),
 });
 
 const analyticsSessionsQuerySchema = z.object({
   botId: z.string().optional(),
-  limit: z.preprocess((val) => val ?? "50", z.string().regex(/^\d+$/).transform(Number)),
+  limit: z.preprocess((val) => val ?? "50", z.string().regex(/^\d+$/).transform(n => Math.min(parseInt(n, 10), MAX_PAGINATION_LIMIT))),
 });
 
 const conversationsQuerySchema = z.object({
   botId: z.string().optional(),
-  limit: z.preprocess((val) => val ?? "50", z.string().regex(/^\d+$/).transform(Number)),
+  limit: z.preprocess((val) => val ?? "50", z.string().regex(/^\d+$/).transform(n => Math.min(parseInt(n, 10), MAX_PAGINATION_LIMIT))),
   offset: z.preprocess((val) => val ?? "0", z.string().regex(/^\d+$/).transform(Number)),
 });
 

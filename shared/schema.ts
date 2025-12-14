@@ -4,6 +4,107 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // ============================================================================
+// ENHANCED VALIDATION SCHEMAS - Reusable validators for forms and API
+// ============================================================================
+
+/**
+ * E.164 phone number validation
+ * Format: +[country code][number] e.g. +14155551234
+ * Allows 1-15 digits after the + sign
+ */
+export const e164PhoneSchema = z.string()
+  .regex(/^\+[1-9]\d{1,14}$/, "Phone must be in E.164 format (e.g. +14155551234)")
+  .max(16, "Phone number too long");
+
+/**
+ * Optional E.164 phone - allows empty string or valid E.164
+ */
+export const optionalE164PhoneSchema = z.string()
+  .refine(
+    (val) => val === "" || /^\+[1-9]\d{1,14}$/.test(val),
+    "Phone must be empty or in E.164 format (e.g. +14155551234)"
+  )
+  .optional();
+
+/**
+ * Loose phone validation for user-friendly input
+ * Accepts common formats: (555) 123-4567, 555-123-4567, 5551234567
+ */
+export const loosePhoneSchema = z.string()
+  .regex(/^[\d\s\-\(\)\+\.]{7,20}$/, "Invalid phone number format")
+  .optional();
+
+/**
+ * Standard max length constants for text fields
+ */
+export const MAX_LENGTHS = {
+  SHORT_TEXT: 100,     // Names, titles
+  MEDIUM_TEXT: 200,    // Business names, labels
+  DESCRIPTION: 500,    // Short descriptions
+  LONG_TEXT: 2000,     // Notes, detailed content
+  EXTENDED_TEXT: 5000, // Knowledge base entries
+  URL: 2048,           // URLs
+  EMAIL: 254,          // Email addresses (RFC 5321)
+} as const;
+
+/**
+ * Business name with max length validation
+ */
+export const businessNameSchema = z.string()
+  .min(1, "Business name is required")
+  .max(MAX_LENGTHS.MEDIUM_TEXT, `Business name must be ${MAX_LENGTHS.MEDIUM_TEXT} characters or less`);
+
+/**
+ * Person name with max length validation
+ */
+export const personNameSchema = z.string()
+  .min(1, "Name is required")
+  .max(MAX_LENGTHS.SHORT_TEXT, `Name must be ${MAX_LENGTHS.SHORT_TEXT} characters or less`);
+
+/**
+ * Description with max length validation
+ */
+export const descriptionSchema = z.string()
+  .max(MAX_LENGTHS.DESCRIPTION, `Description must be ${MAX_LENGTHS.DESCRIPTION} characters or less`)
+  .optional();
+
+/**
+ * Notes/long text with max length validation
+ */
+export const notesSchema = z.string()
+  .max(MAX_LENGTHS.LONG_TEXT, `Notes must be ${MAX_LENGTHS.LONG_TEXT} characters or less`)
+  .optional();
+
+/**
+ * URL with max length validation
+ */
+export const urlSchema = z.string()
+  .url("Invalid URL format")
+  .max(MAX_LENGTHS.URL, `URL must be ${MAX_LENGTHS.URL} characters or less`)
+  .optional();
+
+/**
+ * Email with max length validation
+ */
+export const emailSchema = z.string()
+  .email("Invalid email format")
+  .max(MAX_LENGTHS.EMAIL, `Email must be ${MAX_LENGTHS.EMAIL} characters or less`);
+
+/**
+ * Optional email - allows empty string or valid email
+ */
+export const optionalEmailSchema = z.string()
+  .refine(
+    (val) => val === "" || z.string().email().safeParse(val).success,
+    "Invalid email format"
+  )
+  .refine(
+    (val) => val.length <= MAX_LENGTHS.EMAIL,
+    `Email must be ${MAX_LENGTHS.EMAIL} characters or less`
+  )
+  .optional();
+
+// ============================================================================
 // BOOKING PROFILE - Industry Template Behavior Contract
 // ============================================================================
 
