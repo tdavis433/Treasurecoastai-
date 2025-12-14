@@ -1602,14 +1602,22 @@ class ConversationOrchestrator {
           clientId
         );
         
-        // Also check for any appointment with same type in last 5 minutes (duplicate prevention)
+        // CROSS-SESSION DEDUPLICATION: Check for any appointment with same type + contact info 
+        // within 5-minute window to prevent spam across different sessions (e.g., widget refresh)
         const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
         const allAppointments = await storage.getAllAppointments(clientId);
-        const isDuplicateRecent = allAppointments.some(apt => 
-          apt.sessionId === sessionData.sessionId &&
-          apt.appointmentType === bookingInfo.bookingType &&
-          apt.createdAt && new Date(apt.createdAt) > fiveMinutesAgo
-        );
+        const isDuplicateRecent = allAppointments.some(apt => {
+          if (!apt.createdAt || new Date(apt.createdAt) <= fiveMinutesAgo) return false;
+          if (apt.appointmentType !== bookingInfo.bookingType) return false;
+          
+          // Match by contact info (phone or email) for cross-session dedupe
+          // Also match by sessionId for same-session dedupe
+          const sameSession = apt.sessionId === sessionData.sessionId;
+          const samePhone = bookingInfo.phone && apt.contact === bookingInfo.phone;
+          const sameEmail = bookingInfo.email && apt.email === bookingInfo.email;
+          
+          return sameSession || samePhone || sameEmail;
+        });
         
         if (!existingAppointment && !isDuplicateRecent) {
           console.log(`[Orchestrator] Creating AI-driven booking for session ${sessionData.sessionId}`, {
