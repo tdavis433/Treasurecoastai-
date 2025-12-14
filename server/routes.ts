@@ -658,8 +658,11 @@ async function requireClientAuth(req: Request, res: Response, next: NextFunction
   if (req.session.userRole === "super_admin") {
     // Use session-based effectiveClientId (set via impersonation endpoints)
     const effectiveClientId = req.session.effectiveClientId;
+    const isImpersonating = req.session.isImpersonating === true;
     
-    if (!effectiveClientId) {
+    // SECURITY: Require BOTH effectiveClientId AND isImpersonating flag
+    // This prevents bugs/old code from accidentally setting effectiveClientId without proper impersonation flow
+    if (!effectiveClientId || !isImpersonating) {
       return res.status(400).json({ 
         error: "Client context required", 
         message: "Super admins must first impersonate a client via POST /api/super-admin/impersonate to view client data" 
