@@ -145,11 +145,20 @@ const allowedWidgetOrigins = parseAllowedOrigins();
 const widgetCorsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps, curl, or server-side requests)
+    // This is safe because widget uses token-based auth, not cookies
     if (!origin) return callback(null, true);
     
-    // If no allowed origins configured, allow all (backwards compatibility)
-    if (allowedWidgetOrigins.length === 0) {
+    // In development, be permissive for easier testing
+    if (isDev) {
       return callback(null, true);
+    }
+    
+    // PRODUCTION: Require explicit allowlist configuration
+    // If no origins configured, block all cross-origin requests
+    if (allowedWidgetOrigins.length === 0) {
+      console.warn(`[CORS] No WIDGET_ALLOWED_ORIGINS configured - blocking origin: ${origin}`);
+      callback(new Error('CORS not configured. Set WIDGET_ALLOWED_ORIGINS environment variable.'));
+      return;
     }
     
     // Check if origin is in the allow-list
@@ -157,17 +166,11 @@ const widgetCorsOptions: cors.CorsOptions = {
       return callback(null, true);
     }
     
-    // In development, be more permissive
-    if (isDev) {
-      console.log(`[CORS] Allowing dev origin: ${origin}`);
-      return callback(null, true);
-    }
-    
-    // Origin not allowed
+    // Origin not in allowlist
     console.warn(`[CORS] Blocked origin: ${origin}`);
     callback(new Error('Not allowed by CORS'));
   },
-  credentials: false, // Widget doesn't need credentials
+  credentials: false, // Widget doesn't need credentials - token-based auth only
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type'],
 };
