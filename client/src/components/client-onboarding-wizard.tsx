@@ -647,15 +647,19 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
                       const isSelected = data.selectedTemplateId === template.templateId;
                       
                       return (
-                        <GlassCard
+                        <button
                           key={template.templateId}
+                          type="button"
+                          onClick={() => updateData({ selectedTemplateId: template.templateId })}
+                          className="text-left w-full"
+                          data-testid={`template-${template.templateId}`}
+                        >
+                        <GlassCard
                           hover
                           glow={isSelected}
-                          onClick={() => updateData({ selectedTemplateId: template.templateId })}
                           className={`cursor-pointer transition-all ${
                             isSelected ? 'ring-2 ring-cyan-500/50 bg-cyan-500/10' : ''
                           }`}
-                          data-testid={`template-${template.templateId}`}
                         >
                           <GlassCardContent className="p-4">
                             <div className="flex items-start gap-3">
@@ -672,6 +676,7 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
                             </div>
                           </GlassCardContent>
                         </GlassCard>
+                        </button>
                       );
                     })}
                   </div>

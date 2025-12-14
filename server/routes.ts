@@ -6300,30 +6300,22 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
-  // Get templates (demo bots with isTemplate flag or isDemo flag)
-  app.get("/api/super-admin/templates", requireSuperAdmin, (req, res) => {
+  // Get templates from database (for client onboarding wizard)
+  app.get("/api/super-admin/templates", requireSuperAdmin, async (req, res) => {
     try {
-      const allBots = getAllBotConfigs();
-      
-      // Templates are bots with isTemplate or isDemo metadata flag
-      const templates = allBots
-        .filter(bot => bot.metadata?.isTemplate || bot.metadata?.isDemo || bot.clientId === 'demo')
-        .map(bot => ({
-          botId: bot.botId,
-          clientId: bot.clientId,
-          metadata: {
-            name: bot.name,
-            description: bot.description,
-            businessType: bot.businessProfile?.type,
-            isTemplate: true,
-            templateCategory: bot.businessProfile?.type || bot.metadata?.templateCategory
-          },
-          businessProfile: bot.businessProfile,
-          faqs: bot.faqs,
-          safetyRules: bot.rules,
-        }));
-      
-      res.json(templates);
+      const templates = await getAllTemplates();
+      res.json(templates.map(t => ({
+        id: t.id,
+        templateId: t.templateId,
+        name: t.name,
+        description: t.description,
+        botType: t.botType,
+        icon: t.icon,
+        previewImage: t.previewImage,
+        isActive: t.isActive,
+        displayOrder: t.displayOrder,
+        defaultConfig: t.defaultConfig,
+      })));
     } catch (error) {
       structuredLogger.error("Get templates error:", error);
       res.status(500).json({ error: "Failed to fetch templates" });
