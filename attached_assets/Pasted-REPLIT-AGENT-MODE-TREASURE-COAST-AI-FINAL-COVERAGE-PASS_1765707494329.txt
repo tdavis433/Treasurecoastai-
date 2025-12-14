@@ -1,0 +1,112 @@
+REPLIT AGENT MODE — TREASURE COAST AI — FINAL COVERAGE PASS (NO GAPS)
+
+GOAL
+Scan every file, every route, every UI page, every script, and every template. Run the app, run the full test suite, and fix anything that could fail during a live demo or after real client onboarding.
+
+NON-NEGOTIABLE GUARDRAILS
+1) NO PAYMENT PROCESSING (Option A)
+- Platform must not collect/process/store payments.
+- “Book Now” is redirect-only to the client’s external booking/payment provider.
+- Billing/Stripe endpoints must remain disabled (501) OR be fully removed. No functional Stripe flows on our domain.
+2) Multi-tenant isolation (server-side) is mandatory. UI hiding is not security.
+3) Demo readiness: no dead buttons, placeholders, stack traces, or broken flows visible to prospects/clients.
+
+WHAT TO DO (IN ORDER)
+
+PHASE 1 — Repo-wide scan
+1) Identify stack + entrypoints:
+- server/index-dev.ts, server/index-prod.ts, server/app.ts, server/routes.ts
+- shared/schema.ts
+- public/widget/* (embed.js, widget.js, widget-test.html)
+- scripts/* and tests/*
+2) Generate a ROUTE MAP:
+- List every API route and classify: public / requireAuth / requireClientAuth / requireSuperAdmin
+- For requireClientAuth routes: confirm they use effectiveClientId from session (never query/body).
+3) Secrets & credentials scan:
+- Search for leaked keys/tokens/passwords in repo. Ensure none committed.
+- Confirm docs never instruct to commit secrets.
+
+PHASE 2 — Payments enforcement (Option A)
+1) Search entire repo for:
+stripe, square, paypal, checkout, payment, payment_intent, client_secret, card, ach, invoice, subscription, billing, webhook
+2) Confirm:
+- No UI collects payment info.
+- All billing/stripe endpoints return 501 (or are removed).
+- Stripe schema init/sync is NOT running unless BILLING_ENABLED=true (default false).
+3) If any Stripe code runs automatically at startup (migrations/sync), gate it behind BILLING_ENABLED and default false.
+4) Update scripts/guard-no-payments.sh and scripts/predeploy-gate.sh if needed so they accurately enforce Option A.
+
+PHASE 3 — RBAC + workspace membership hardening
+1) Confirm middleware correctness:
+- requireAuth, requireSuperAdmin, requireClientAuth
+- requireOperationalAccess / requireConfigAccess / requireDestructiveAccess
+2) Ensure workspace membership is enforced (no “warn and continue” for missing membership).
+3) Confirm agent role restrictions:
+- Agent allowed: view leads/convos/analytics, update lead status, reply to inbox, update appointment status.
+- Agent blocked: settings changes, widget settings, automations, webhooks, exports, deletions, team management.
+4) Add/extend tests in tests/ (vitest) to prove:
+- agent cannot hit config/destructive routes
+- super-admin impersonation required for client context
+- stop-impersonate is CSRF protected and idempotent (200 is OK)
+
+PHASE 4 — Template behavior verification (15 industries)
+1) Validate every demo bot uses the correct template on the demo page.
+2) Validate booking profiles per industry:
+- EXTERNAL default industries must redirect to external booking URL (https only) and never pivot to payment UI.
+- INTERNAL default industries must create internal appointment request + notify (email/SMS if configured).
+3) Run:
+- scripts/validate-demo-templates.ts
+- scripts/industry-template-sweep.ts
+Fix any failing template configs, missing CTAs, missing appointment types, or broken defaults.
+
+PHASE 5 — Widget reliability + embed readiness
+1) Confirm widget works:
+- iframe mode (normal)
+- noIframe test mode at /widget-test.html?noIframe=1 (dev only gating)
+2) Confirm booking URL validation:
+- blocks javascript:, data:, file:, http:
+- requires https:
+3) Confirm CORS:
+- widget endpoints credentials=false
+- allowlist logic correct
+4) Run:
+- bash scripts/widget-e2e-test.sh
+Fix any failures.
+
+PHASE 6 — Mega test & quality gates
+Run and REQUIRE green:
+- bash scripts/guard-no-payments.sh
+- npx tsc --noEmit
+- npx vitest run
+- npm run build
+- bash scripts/run-all-checks.sh (if present)
+- bash scripts/daily-self-check.sh (if configured)
+Fix any failures (TypeScript, tests, runtime bugs, broken routes, missing schema sync).
+
+PHASE 7 — Output deliverables (WRITE FILES)
+Create/update these files with full details:
+1) FINAL_MEGA_TEST_REPORT.md
+- PASS/FAIL checklist
+- findings by severity (BLOCKER/HIGH/MED/LOW) with reproduction steps
+- exact file paths and line numbers for fixes
+2) NO_PAYMENTS_COMPLIANCE.md
+- proof: redirect-only booking
+- proof: billing endpoints disabled or removed
+- list all payment-related artifacts and how they’re gated/disabled
+3) TEMPLATE_BEHAVIOR_MATRIX.md
+- each industry template: default booking mode, CTAs, failsafe behavior, internal vs external rules
+4) DEMO_SAFE_PATH.md
+- 60-second “never fails” demo path
+- 15–20 minute in-person demo script steps
+
+FINAL STEP
+Print a final summary:
+- GO / NO-GO
+- What changed (bullets)
+- What to re-test (bullets)
+- Anything risky left (must be NONE for GO)
+
+DO NOT:
+- commit or print secrets
+- enable payment processing
+- weaken tenant isolation
