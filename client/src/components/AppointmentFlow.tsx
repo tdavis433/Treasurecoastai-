@@ -23,7 +23,9 @@ interface AppointmentFlowProps {
 const isValidPhone = (phone: string): boolean => {
   const trimmed = phone.trim();
   if (!trimmed) return false;
-  return /^[\d\s\-\(\)\+\.]{7,20}$/.test(trimmed);
+  if (/[a-zA-Z]/.test(trimmed)) return false;
+  const digitsOnly = trimmed.replace(/\D/g, '');
+  return digitsOnly.length >= 7 && digitsOnly.length <= 15;
 };
 
 const isValidEmail = (email: string): boolean => {

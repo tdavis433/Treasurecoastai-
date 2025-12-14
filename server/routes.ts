@@ -388,10 +388,14 @@ const createFromTemplateSchema = z.object({
   })).optional(),
 });
 
-// Phone validation pattern - allows digits, spaces, dashes, parentheses, plus, dots (7-20 chars)
-const phoneRegex = /^[\d\s\-\(\)\+\.]{7,20}$/;
+// Phone validation - rejects letters, extracts digits, validates 7-15 digit count (E.164 compatible)
 const phoneValidation = z.string()
-  .refine((val) => !val || phoneRegex.test(val), { message: "Invalid phone format" })
+  .refine((val) => {
+    if (!val) return true;
+    if (/[a-zA-Z]/.test(val)) return false;
+    const digitsOnly = val.replace(/\D/g, '');
+    return digitsOnly.length >= 7 && digitsOnly.length <= 15;
+  }, { message: "Phone must have 7-15 digits and no letters" })
   .optional()
   .or(z.literal(""));
 
