@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,8 +20,26 @@ interface AppointmentFlowProps {
   language: string;
 }
 
+const isValidPhone = (phone: string): boolean => {
+  const trimmed = phone.trim();
+  if (!trimmed) return false;
+  return /^[\d\s\-\(\)\+\.]{7,20}$/.test(trimmed);
+};
+
+const isValidEmail = (email: string): boolean => {
+  const trimmed = email?.trim() || "";
+  if (!trimmed) return true;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+};
+
+const isValidName = (name: string): boolean => {
+  const trimmed = name.trim();
+  return trimmed.length > 0 && trimmed.length <= 100;
+};
+
 export default function AppointmentFlow({ onComplete, onCancel, language }: AppointmentFlowProps) {
   const [step, setStep] = useState(1);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [data, setData] = useState<AppointmentData>({
     name: "",
     contact: "",
@@ -32,6 +50,36 @@ export default function AppointmentFlow({ onComplete, onCancel, language }: Appo
     notes: "",
   });
 
+  const validationErrors = useMemo(() => {
+    const errors: Record<string, string> = {};
+    
+    if (!isValidName(data.name)) {
+      if (data.name.trim().length === 0) {
+        errors.name = language === "es" ? "El nombre es obligatorio" : "Name is required";
+      } else if (data.name.length > 100) {
+        errors.name = language === "es" ? "El nombre es demasiado largo (máx. 100 caracteres)" : "Name is too long (max 100 characters)";
+      }
+    }
+    
+    if (!isValidPhone(data.contact)) {
+      if (data.contact.trim().length === 0) {
+        errors.contact = language === "es" ? "El teléfono es obligatorio" : "Phone number is required";
+      } else {
+        errors.contact = language === "es" ? "Por favor ingresa un número de teléfono válido" : "Please enter a valid phone number";
+      }
+    }
+    
+    if (!isValidEmail(data.email || "")) {
+      errors.email = language === "es" ? "Por favor ingresa un correo electrónico válido" : "Please enter a valid email address";
+    }
+    
+    if (!data.preferredTime.trim()) {
+      errors.preferredTime = language === "es" ? "Por favor indica tu horario preferido" : "Please indicate your preferred time";
+    }
+    
+    return errors;
+  }, [data, language]);
+
   const handleNext = () => {
     if (step === 6) {
       onComplete(data);
@@ -40,14 +88,18 @@ export default function AppointmentFlow({ onComplete, onCancel, language }: Appo
     }
   };
 
+  const markTouched = (field: string) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+  };
+
   const canProceed = () => {
     switch (step) {
       case 1:
-        return data.name.trim().length > 0;
+        return isValidName(data.name);
       case 2:
-        return data.contact.trim().length > 0;
+        return isValidPhone(data.contact);
       case 3:
-        return true;
+        return isValidEmail(data.email || "");
       case 4:
         return data.contactPreference.trim().length > 0;
       case 5:
@@ -72,10 +124,15 @@ export default function AppointmentFlow({ onComplete, onCancel, language }: Appo
               data-testid="input-appointment-name"
               value={data.name}
               onChange={(e) => setData({ ...data, name: e.target.value })}
+              onBlur={() => markTouched("name")}
               placeholder={language === "es" ? "Ingresa tu nombre completo" : "Enter your full name"}
-              className="w-full"
+              className={`w-full ${touched.name && validationErrors.name ? "border-destructive" : ""}`}
               autoFocus
+              maxLength={100}
             />
+            {touched.name && validationErrors.name && (
+              <p className="text-xs text-destructive" data-testid="error-name">{validationErrors.name}</p>
+            )}
           </div>
         )}
 
@@ -89,10 +146,14 @@ export default function AppointmentFlow({ onComplete, onCancel, language }: Appo
               data-testid="input-appointment-contact"
               value={data.contact}
               onChange={(e) => setData({ ...data, contact: e.target.value })}
+              onBlur={() => markTouched("contact")}
               placeholder={language === "es" ? "Número de teléfono" : "Phone number"}
-              className="w-full"
+              className={`w-full ${touched.contact && validationErrors.contact ? "border-destructive" : ""}`}
               autoFocus
             />
+            {touched.contact && validationErrors.contact && (
+              <p className="text-xs text-destructive" data-testid="error-contact">{validationErrors.contact}</p>
+            )}
           </div>
         )}
 
@@ -107,10 +168,14 @@ export default function AppointmentFlow({ onComplete, onCancel, language }: Appo
               type="email"
               value={data.email}
               onChange={(e) => setData({ ...data, email: e.target.value })}
+              onBlur={() => markTouched("email")}
               placeholder={language === "es" ? "Correo electrónico" : "Email address"}
-              className="w-full"
+              className={`w-full ${touched.email && validationErrors.email ? "border-destructive" : ""}`}
               autoFocus
             />
+            {touched.email && validationErrors.email && (
+              <p className="text-xs text-destructive" data-testid="error-email">{validationErrors.email}</p>
+            )}
           </div>
         )}
 
@@ -171,9 +236,13 @@ export default function AppointmentFlow({ onComplete, onCancel, language }: Appo
               data-testid="input-appointment-time"
               value={data.preferredTime}
               onChange={(e) => setData({ ...data, preferredTime: e.target.value })}
+              onBlur={() => markTouched("preferredTime")}
               placeholder={language === "es" ? "Ej: Mañana por la tarde" : "e.g., Tomorrow afternoon"}
-              className="w-full mt-3"
+              className={`w-full mt-3 ${touched.preferredTime && validationErrors.preferredTime ? "border-destructive" : ""}`}
             />
+            {touched.preferredTime && validationErrors.preferredTime && (
+              <p className="text-xs text-destructive" data-testid="error-preferredTime">{validationErrors.preferredTime}</p>
+            )}
           </div>
         )}
 

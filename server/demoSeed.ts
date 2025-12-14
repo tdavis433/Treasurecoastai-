@@ -15,6 +15,10 @@ import { eq, and } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { nanoid } from "nanoid";
 
+// Demo password - configurable via environment variable for security
+// In production, set DEMO_ACCOUNT_PASSWORD to a strong password
+const DEMO_PASSWORD = process.env.DEMO_ACCOUNT_PASSWORD || "demo123";
+
 interface DemoWorkspaceConfig {
   slug: string;
   name: string;
@@ -71,7 +75,7 @@ interface DemoWorkspaceConfig {
  * There are multiple Faith House workspaces in the system:
  * 
  * 1. "faith_house" (CANONICAL) - The primary Faith House workspace
- *    - Used by client login: demo_faith_house (password: demo123)
+ *    - Used by client login: demo_faith_house (password: set via DEMO_ACCOUNT_PASSWORD env var)
  *    - Used by admin when viewing "Faith House" in super-admin panel
  *    - Contains real/production-like data for demos
  * 
@@ -872,7 +876,7 @@ async function getOrCreateDemoUser(): Promise<string> {
     return existing.id;
   }
 
-  const hashedPassword = await bcrypt.hash("demo123", 10);
+  const hashedPassword = await bcrypt.hash(DEMO_PASSWORD, 10);
   const [newUser] = await db
     .insert(adminUsers)
     .values({
@@ -887,23 +891,24 @@ async function getOrCreateDemoUser(): Promise<string> {
 }
 
 // Demo client login configurations - each demo has unique credentials
+// Password is configurable via DEMO_ACCOUNT_PASSWORD environment variable
 export const DEMO_CLIENT_LOGINS: Record<string, { username: string; password: string; businessName: string }> = {
-  faith_house_demo: { username: "faithhouse", password: "demo123", businessName: "Faith House Recovery" },
-  demo_paws_suds_grooming_demo: { username: "pawssuds", password: "demo123", businessName: "Paws & Suds Grooming" },
-  demo_coastal_breeze: { username: "coastalbreeze", password: "demo123", businessName: "Coastal Breeze Grill" },
-  demo_coastline_auto: { username: "coastlineauto", password: "demo123", businessName: "Coastline Auto Care" },
-  demo_fade_factory: { username: "fadefactory", password: "demo123", businessName: "Fade Factory Barbershop" },
-  demo_ink_soul: { username: "inksoul", password: "demo123", businessName: "Ink & Soul Tattoo" },
-  demo_iron_coast_fitness: { username: "ironcoast", password: "demo123", businessName: "Iron Coast Fitness" },
-  demo_new_horizons: { username: "newhorizons", password: "demo123", businessName: "New Horizons Recovery" },
-  demo_premier_properties: { username: "premier", password: "demo123", businessName: "Premier Properties" },
-  demo_radiance_medspa: { username: "radiance", password: "demo123", businessName: "Radiance Med Spa" },
-  demo_tc_handyman: { username: "tchandyman", password: "demo123", businessName: "TC Pro Handyman" },
-  demo_harper_law: { username: "harperlaw", password: "demo123", businessName: "Harper & Associates" },
-  demo_coastal_smiles: { username: "coastalsmiles", password: "demo123", businessName: "Coastal Smiles Dental" },
-  demo_palm_resort: { username: "palmresort", password: "demo123", businessName: "Palm Resort & Spa" },
-  demo_tc_roofing: { username: "tcroofing", password: "demo123", businessName: "TC Roofing Pros" },
-  demo_oceanview_gardens: { username: "oceanviewgardens", password: "demo123", businessName: "Oceanview Gardens" },
+  faith_house_demo: { username: "faithhouse", password: DEMO_PASSWORD, businessName: "Faith House Recovery" },
+  demo_paws_suds_grooming_demo: { username: "pawssuds", password: DEMO_PASSWORD, businessName: "Paws & Suds Grooming" },
+  demo_coastal_breeze: { username: "coastalbreeze", password: DEMO_PASSWORD, businessName: "Coastal Breeze Grill" },
+  demo_coastline_auto: { username: "coastlineauto", password: DEMO_PASSWORD, businessName: "Coastline Auto Care" },
+  demo_fade_factory: { username: "fadefactory", password: DEMO_PASSWORD, businessName: "Fade Factory Barbershop" },
+  demo_ink_soul: { username: "inksoul", password: DEMO_PASSWORD, businessName: "Ink & Soul Tattoo" },
+  demo_iron_coast_fitness: { username: "ironcoast", password: DEMO_PASSWORD, businessName: "Iron Coast Fitness" },
+  demo_new_horizons: { username: "newhorizons", password: DEMO_PASSWORD, businessName: "New Horizons Recovery" },
+  demo_premier_properties: { username: "premier", password: DEMO_PASSWORD, businessName: "Premier Properties" },
+  demo_radiance_medspa: { username: "radiance", password: DEMO_PASSWORD, businessName: "Radiance Med Spa" },
+  demo_tc_handyman: { username: "tchandyman", password: DEMO_PASSWORD, businessName: "TC Pro Handyman" },
+  demo_harper_law: { username: "harperlaw", password: DEMO_PASSWORD, businessName: "Harper & Associates" },
+  demo_coastal_smiles: { username: "coastalsmiles", password: DEMO_PASSWORD, businessName: "Coastal Smiles Dental" },
+  demo_palm_resort: { username: "palmresort", password: DEMO_PASSWORD, businessName: "Palm Resort & Spa" },
+  demo_tc_roofing: { username: "tcroofing", password: DEMO_PASSWORD, businessName: "TC Roofing Pros" },
+  demo_oceanview_gardens: { username: "oceanviewgardens", password: DEMO_PASSWORD, businessName: "Oceanview Gardens" },
 };
 
 async function getOrCreateDemoClientUser(slug: string): Promise<string> {

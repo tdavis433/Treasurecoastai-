@@ -52,13 +52,23 @@ const cspConnectSrc = isDev
   ? ["'self'", "https://api.openai.com", "ws:", "wss:"]
   : ["'self'", "https://api.openai.com"];
 
+// Script CSP: Only allow unsafe-inline/eval in development (needed for Vite HMR)
+// Production uses strict CSP - inline scripts must use nonces or be external
+const cspScriptSrc = isDev
+  ? ["'self'", "'unsafe-inline'", "'unsafe-eval'"]
+  : ["'self'"]; // Strict in production - no inline/eval
+
+const cspScriptSrcAttr = isDev
+  ? ["'self'", "'unsafe-inline'"]
+  : ["'self'"]; // Strict in production
+
 // Security: Helmet for secure HTTP headers
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-      scriptSrcAttr: ["'self'", "'unsafe-inline'"],
+      scriptSrc: cspScriptSrc,
+      scriptSrcAttr: cspScriptSrcAttr,
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https:"],
