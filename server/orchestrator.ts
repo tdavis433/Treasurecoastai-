@@ -38,6 +38,7 @@ import {
 import { checkMessageLimit, incrementMessageCount, incrementAutomationCount } from './planLimits';
 import { getClientStatus } from './botConfig';
 import { addDays, addWeeks, setHours, setMinutes, startOfDay, format, getDay } from 'date-fns';
+import { extractContactSignals, mergeContactSignals } from '@shared/contactSignals';
 
 /**
  * SAFE RETRY WRAPPER FOR CRITICAL WRITES
@@ -1510,8 +1511,20 @@ class ConversationOrchestrator {
       sessionData.appointmentRequested = true;
     }
 
-    // Lead capture from message content
+    // Lead capture from message content - use both extractors for maximum capture
     const contactInfo = extractContactInfo(userMessage);
+    
+    // Also use extractContactSignals for careful email/phone extraction from any message
+    const contactSignals = extractContactSignals(userMessage);
+    
+    // Merge signals into contactInfo if not already captured
+    if (contactSignals.email && !contactInfo.email) {
+      contactInfo.email = contactSignals.email;
+    }
+    if (contactSignals.phone && !contactInfo.phone) {
+      contactInfo.phone = contactSignals.phone;
+    }
+    
     const leadCaptured = !!(contactInfo.email || contactInfo.phone);
 
     if (leadCaptured && !sessionData.leadCaptured) {
