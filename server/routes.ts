@@ -3901,6 +3901,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         req.session.userId = user.id;
         req.session.userRole = (user.role as AdminRole) || "client_admin";
         req.session.clientId = user.clientId || null;
+        req.session.lastSeenAt = Date.now(); // Initialize idle timeout tracking
         req.session.save((saveErr) => {
           if (saveErr) {
             console.error("Session save error:", saveErr);
@@ -4013,6 +4014,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         req.session.username = user.username;
         req.session.userRole = user.role as typeof req.session.userRole;
         req.session.clientId = user.clientId || null;
+        req.session.lastSeenAt = Date.now(); // Reset idle timeout tracking
         
         req.session.save((saveErr) => {
           if (saveErr) {
@@ -4170,6 +4172,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         req.session.userId = newUser.id;
         req.session.userRole = "client_admin";
         req.session.clientId = uniqueSlug;
+        req.session.lastSeenAt = Date.now(); // Initialize idle timeout tracking
         req.session.save((saveErr) => {
           if (saveErr) {
             console.error("Session save error:", saveErr);
@@ -5186,6 +5189,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       // Set the effectiveClientId in session (secure server-side storage)
       req.session.effectiveClientId = clientId;
       req.session.isImpersonating = true;
+      req.session.lastSeenAt = Date.now(); // Reset idle timeout on impersonation
       
       // Save session explicitly
       req.session.save(async (err) => {
@@ -5231,6 +5235,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       // Clear impersonation from session
       req.session.effectiveClientId = null;
       req.session.isImpersonating = false;
+      req.session.lastSeenAt = Date.now(); // Reset idle timeout on stop impersonation
       
       // Save session explicitly
       req.session.save(async (err) => {
@@ -9470,6 +9475,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       req.session.isImpersonating = true;
       req.session.clientId = clientId;
       req.session.userRole = 'client_admin';
+      req.session.lastSeenAt = Date.now(); // Reset idle timeout on impersonation
       
       await new Promise<void>((resolve, reject) => {
         req.session.save((err) => {
@@ -9515,6 +9521,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       req.session.isImpersonating = false;
       req.session.originalUserId = undefined;
       req.session.originalRole = undefined;
+      req.session.lastSeenAt = Date.now(); // Reset idle timeout on end impersonation
       
       await new Promise<void>((resolve, reject) => {
         req.session.save((err) => {

@@ -12,5 +12,7 @@ declare module "express-session" {
     isImpersonating?: boolean;
     originalUserId?: string;
     originalRole?: 'super_admin' | 'client_admin' | 'agency_user' | 'client_owner' | 'client_user' | 'workspace_admin' | 'workspace_viewer';
+    // Idle timeout tracking: timestamp of last activity
+    lastSeenAt?: number;
   }
 }

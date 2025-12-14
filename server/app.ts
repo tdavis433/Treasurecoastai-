@@ -264,6 +264,42 @@ app.use(session({
   }
 }));
 
+// Idle timeout configuration (default: 30 minutes)
+const SESSION_IDLE_TIMEOUT_MINUTES = parseInt(process.env.SESSION_IDLE_TIMEOUT_MINUTES || '30', 10);
+const SESSION_IDLE_TIMEOUT_MS = SESSION_IDLE_TIMEOUT_MINUTES * 60 * 1000;
+
+// Idle timeout middleware: enforces server-side inactivity logout
+app.use((req: Request, res: Response, next: NextFunction) => {
+  // Only check authenticated sessions
+  if (req.session && req.session.userId) {
+    const now = Date.now();
+    const lastSeen = req.session.lastSeenAt;
+    
+    // Check if session is stale (idle timeout exceeded)
+    if (lastSeen && (now - lastSeen) > SESSION_IDLE_TIMEOUT_MS) {
+      // Session is stale - destroy it
+      const username = req.session.username;
+      req.session.destroy((err) => {
+        if (err) {
+          console.error('Error destroying stale session:', err);
+        } else {
+          console.log(`Session expired due to inactivity for user: ${username}`);
+        }
+      });
+      return res.status(401).json({ 
+        error: 'Session expired due to inactivity. Please log in again.',
+        code: 'SESSION_IDLE_TIMEOUT'
+      });
+    }
+    
+    // Update lastSeenAt for activity tracking and touch to persist the change
+    req.session.lastSeenAt = now;
+    req.session.touch();
+  }
+  
+  next();
+});
+
 // Cookie parser for CSRF tokens
 app.use(cookieParser());
 
