@@ -1,0 +1,174 @@
+REPLIT AGENT MODE — TREASURE COAST AI — TEMPLATE + ONBOARDING AIRTIGHT HARDENING (COPY/PASTE)
+
+OBJECTIVE
+Refactor the template + onboarding system so there is ONE canonical template source (DB bot_templates), every industry template provisions a working bot + client_settings with correct booking behavior/CTA wording, and demo templates always match. Remove production reliance on starter/in-code templates. Add validation + tests + a final GO/NO-GO report with exact file/line diffs.
+
+NON-NEGOTIABLE GUARDRAILS
+1) NO PAYMENT PROCESSING — EVER
+- No checkout UI, no card/ACH capture, no Stripe payment intents, no billing portal flows in production runtime.
+- External booking is allowed ONLY as: log intent internally → redirect externally to client’s booking/payment provider.
+2) MULTI-TENANT ISOLATION
+- All reads/writes must be scoped by session-derived effectiveClientId (never trust clientId from query/body).
+3) DEMO-READINESS
+- No “silent fallbacks” that create wrong bots. Fail loudly with clear admin errors.
+
+SCOPE OF WORK (DO ALL)
+A) CANONICALIZE TEMPLATE SOURCE (DB ONLY)
+1) Make bot_templates DB table the ONLY runtime source for templates.
+2) Replace /api/agency-onboarding/templates to return DB templates (same source as /api/templates).
+3) Keep INDUSTRY_TEMPLATES only as seed/dev tooling (not served at runtime).
+4) Remove or hard-gate STARTER_TEMPLATES + any “starter-*” server fallbacks:
+   - In production (NODE_ENV=production), starter templates must be DISABLED.
+   - In development only, starter templates may remain to help local dev, but should never silently apply in prod.
+
+B) FIX TEMPLATE “WRITE/APPLY” PIPELINE (templateId, not templateBotId)
+1) Update endpoints to accept templateId (DB key) instead of templateBotId:
+   - POST /api/super-admin/clients/from-template
+   - POST /api/super-admin/bots/from-template (if still needed)
+2) Load template using getTemplateById(templateId) from bot_templates.
+3) Add hard null-checks:
+   - If template not found → 404 with friendly error (no crashes).
+4) Separate concerns:
+   - If you want “clone existing bot config by botId” keep it as a separate endpoint named clearly like:
+     POST /api/super-admin/clients/clone-bot
+     POST /api/super-admin/bots/clone
+   - Do NOT mix bot cloning with template provisioning.
+
+C) CENTRALIZE TEMPLATE APPLICATION (NO DUPLICATED MERGE LOGIC)
+Create a single helper module used by ALL provisioning paths:
+- File: server/templates/buildClientFromTemplate.ts (or similar)
+Export:
+- buildClientFromTemplate({ templateRow, overrides }) => {
+    botConfig,
+    clientSettingsSeed,
+    widgetSettingsSeed (optional),
+    bookingProfileSeed,
+    faqSeed
+  }
+
+This helper must:
+1) Merge business profile fields:
+   - template defaults
+   - then overrides
+   - always enforce businessName = clientName
+2) Merge FAQs:
+   - template FAQs + custom FAQs (dedupe by normalized question)
+3) Apply booking profile defaults EXPLICITLY to client_settings:
+   - bookingMode default (INTERNAL or EXTERNAL)
+   - appointment types + intake fields
+   - CTA labels (industry-specific: e.g., “Schedule Tour”, “Consultation”, “Book Now”)
+   - externalBookingUrl (if external) and provider name
+   - failsafe behavior flags
+4) Apply behaviorPreset defaults (support_lead_focused default unless specified)
+5) Produce safe metadata:
+   - clonedFrom: templateId
+   - isTemplate: false
+   - createdAt: YYYY-MM-DD
+6) Validate all required fields exist before returning. If missing → return a structured error describing missing fields.
+
+D) BOOKING BEHAVIOR MUST BE CONSISTENT PER INDUSTRY
+Implement/ensure industry booking profile rules are enforced as follows:
+1) EXTERNAL default industries must always:
+   - show correct CTA wording
+   - only redirect to https:// external booking url
+   - never host payment UI
+   - if missing/invalid externalBookingUrl → FAILSAFE pivots to INTERNAL request-callback flow (and logs a warning)
+2) INTERNAL default industries must:
+   - create an internal booking request/appointment in DB
+   - capture required intake fields
+   - trigger notifications if enabled
+3) Add per-appointment-type override support:
+   - client_settings.appointmentTypeMode (or equivalent) should override default bookingMode for each appointment type if present.
+
+E) LOCK DOWN TEMPLATE DETAIL ENDPOINTS
+1) /api/templates should remain public list (safe fields only).
+2) /api/templates/:templateId must NOT expose full template row publicly.
+Do one of:
+- Option A (recommended): requireAuth or requireSuperAdmin and return full row
+- Option B: keep public but sanitize (return only safe fields and a limited preview)
+Implement whichever is simplest for current UI but ensure no private prompts/KB/policies leak.
+
+F) STANDARDIZE INDUSTRY KEYS EVERYWHERE
+Define one canonical “industryKey” string set and use it consistently:
+- bot_templates.botType
+- botConfig.businessProfile.type
+- demo config business.type
+- icons/colors map keys
+Add a validator that fails if any demo page industryKey does not exist in bot_templates.
+
+G) ORDERING + STABILITY
+Ensure template list is stable:
+- Order by displayOrder ASC then name ASC in DB queries OR sort in API response.
+
+H) SECURITY + QUALITY CHECKS
+1) Ensure all provisioning writes are tenant-safe:
+   - super-admin provisioning should write correct clientId/workspace slug
+2) Ensure booking redirect click logging cannot be spoofed:
+   - If any endpoint logs booking redirects, it must derive clientId/botId from widget token/session, not from body/query.
+   - Rate limit it.
+   - Optionally validate bookingUrl equals stored externalBookingUrl for that client.
+3) Logging: keep structuredLogger usage consistent (object payload).
+
+I) TESTS + VALIDATION (MUST IMPLEMENT)
+1) Add/Update scripts:
+- scripts/validate-db-templates.ts
+  - checks all bot_templates have required fields: templateId, botType, defaultConfig, booking profile, CTA labels, appointment types
+  - checks ordering fields exist or provides fallback sort
+- scripts/validate-demo-templates.ts
+  - ensures every demo config industryKey maps to an existing DB templateId/botType
+  - ensures demo bots are using correct template association (if tracked)
+- scripts/industry-template-sweep.ts
+  - for each template, simulate buildClientFromTemplate and assert:
+    - correct bookingMode
+    - correct CTA labels
+    - correct failsafe behavior
+    - required intake fields exist
+
+2) Add unit tests (Vitest):
+- tests/unit/templateProvisioning.test.ts
+  - tests buildClientFromTemplate merges businessProfile, FAQs (dedupe), booking profiles
+  - tests missing external URL triggers failsafe pivot for EXTERNAL industries
+  - tests invalid template returns clean error
+- tests/unit/templateIndexConsistency.test.ts
+  - demo industry keys must exist in DB templates
+
+Run: npx vitest run
+
+J) MIGRATIONS / DB SYNC (DRIZZLE)
+If schema changes are required:
+- Update shared/schema.ts accordingly
+- Run: npm run db:push
+Do not apply raw SQL unless absolutely required; if you do, also update schema and ensure db:push becomes stable afterward.
+
+DELIVERABLES REQUIRED (END OF RUN)
+1) A concise report:
+- What changed (file-by-file)
+- Why (risk removed)
+- Commands run and results (tsc, vitest, build, scripts)
+- Any remaining TODOs (should be none for this scope)
+2) A “Template System GO/NO-GO” decision.
+3) Proof that:
+- onboarding uses DB templates only
+- starter templates disabled in production
+- booking CTAs per industry are correct
+- external booking always redirects https:// and failsafe works
+- demo page template mapping matches DB templates
+
+EXECUTION ORDER (DO NOT SKIP)
+1) Implement centralized buildClientFromTemplate helper
+2) Refactor /clients/from-template to use templateId + helper
+3) Refactor /agency-onboarding/templates to DB
+4) Lock down /api/templates/:templateId
+5) Disable starter fallbacks in prod
+6) Add validators/scripts
+7) Add unit tests
+8) Run gates:
+   - npx tsc --noEmit
+   - npx vitest run
+   - npm run build
+   - node scripts/validate-db-templates.ts (or ts-node/tsx as appropriate)
+   - node scripts/validate-demo-templates.ts
+   - node scripts/industry-template-sweep.ts
+9) Output final report + GO/NO-GO
+
+START NOW.

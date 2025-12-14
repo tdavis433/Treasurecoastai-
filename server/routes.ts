@@ -94,6 +94,7 @@ import { generatePreviewToken, verifyPreviewToken, getTokenTimeRemaining, type P
 import { validateBookingUrl } from './urlValidator';
 import { csrfProtection } from './csrfMiddleware';
 import { structuredLogger } from './structuredLogger';
+import { buildClientFromTemplate, validateTemplateForProvisioning, type TemplateOverrides } from './templates';
 
 // =============================================
 // PHASE 2.4: SIGNED WIDGET TOKENS
@@ -369,9 +370,9 @@ const updateClientStatusSchema = z.object({
   status: z.enum(["active", "paused", "suspended"]),
 });
 
-// Template creation schema
+// Template creation schema - uses templateId (DB templates) not templateBotId
 const createFromTemplateSchema = z.object({
-  templateBotId: z.string().min(1, "templateBotId is required"),
+  templateId: z.string().min(1, "templateId is required"),
   clientId: z.string().min(1, "clientId is required").regex(/^[a-zA-Z0-9_-]+$/),
   clientName: z.string().min(1, "clientName is required"),
   type: z.string().optional(),
@@ -387,6 +388,9 @@ const createFromTemplateSchema = z.object({
     question: z.string(),
     answer: z.string(),
   })).optional(),
+  externalBookingUrl: z.string().url().optional().or(z.literal("")),
+  behaviorPreset: z.enum(["support_lead_focused", "sales_focused_soft", "support_only", "compliance_strict", "sales_heavy"]).optional(),
+  timezone: z.string().optional(),
 });
 
 // Phone validation - rejects letters, extracts digits, validates 7-15 digit count (E.164 compatible)
@@ -4686,7 +4690,8 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Get a specific template by ID
-  app.get("/api/templates/:templateId", async (req, res) => {
+  // Protected: Template details require super admin access (contains bot config data)
+  app.get("/api/templates/:templateId", requireSuperAdmin, async (req, res) => {
     try {
       const { templateId } = req.params;
       const template = await getTemplateById(templateId);
@@ -6322,15 +6327,16 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
-  // Create client from template (full workflow)
+  // Create client from template (full workflow) - uses DB templates via buildClientFromTemplate
   app.post("/api/super-admin/clients/from-template", requireSuperAdmin, async (req, res) => {
     try {
-      const { templateBotId, clientId, clientName, type, businessProfile, contact, billing, customFaqs } = req.body;
-      
-      // Validate required fields
-      if (!templateBotId || !clientId || !clientName) {
-        return res.status(400).json({ error: "templateBotId, clientId, and clientName are required" });
+      // Validate request body with Zod schema
+      const validation = validateRequest(createFromTemplateSchema, req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: validation.error });
       }
+      
+      const { templateId, clientId, clientName, type, businessProfile, contact, billing, customFaqs, externalBookingUrl, behaviorPreset, timezone } = validation.data;
       
       // Check if clientId already exists
       const existingClient = getClientById(clientId);
@@ -6338,54 +6344,54 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(409).json({ error: `Client with ID '${clientId}' already exists` });
       }
       
-      // Get template config
-      const templateConfig = getBotConfigByBotId(templateBotId);
-      if (!templateConfig) {
-        return res.status(404).json({ error: `Template bot not found: ${templateBotId}` });
+      // Get template from database
+      const templateRow = await getTemplateById(templateId);
+      if (!templateRow) {
+        return res.status(404).json({ error: `Template not found: ${templateId}` });
       }
       
-      // Create new bot ID based on client ID
-      const newBotId = `${clientId}_main`;
+      // Validate template has required fields
+      const templateValidation = validateTemplateForProvisioning(templateRow);
+      if (!templateValidation.valid) {
+        return res.status(400).json({ 
+          error: "Template validation failed", 
+          details: templateValidation.errors 
+        });
+      }
       
       // Check if bot already exists
+      const newBotId = `${clientId}_main`;
       const existingBot = getBotConfigByBotId(newBotId);
       if (existingBot) {
         return res.status(409).json({ error: `Bot with ID '${newBotId}' already exists` });
       }
       
-      // Clone template and apply overrides
-      const mergedBusinessProfile = {
-        ...templateConfig.businessProfile,
-        ...(businessProfile || {}),
-        businessName: clientName,
-        type: type || templateConfig.businessProfile?.type,
-      };
-      
-      // Merge FAQs if customFaqs provided
-      const mergedFaqs = customFaqs && customFaqs.length > 0
-        ? [...(templateConfig.faqs || []), ...customFaqs]
-        : templateConfig.faqs;
-      
-      const newConfig: BotConfig = {
-        ...templateConfig,
-        botId: newBotId,
-        clientId: clientId,
-        name: clientName,
-        description: `AI assistant for ${clientName}`,
-        businessProfile: mergedBusinessProfile,
-        faqs: mergedFaqs,
-        metadata: {
-          isDemo: false,
-          isTemplate: false,
-          clonedFrom: templateBotId,
-          createdAt: new Date().toISOString().split('T')[0],
-          version: '1.0',
+      // Build client configuration using centralized helper
+      const overrides: TemplateOverrides = {
+        clientId,
+        clientName,
+        businessProfile: {
+          ...businessProfile,
+          type: type || businessProfile?.type,
         },
+        contact,
+        customFaqs,
+        plan: billing?.plan,
+        externalBookingUrl: externalBookingUrl || undefined,
+        behaviorPreset: behaviorPreset || 'support_lead_focused',
+        timezone: timezone || 'America/New_York',
       };
       
-      // Create the new bot config (use createBotConfig for new bots)
-      const saveSuccess = createBotConfig(newConfig);
+      const buildResult = buildClientFromTemplate(templateRow, overrides);
       
+      if (!buildResult.success) {
+        return res.status(400).json({ error: buildResult.error, code: buildResult.code });
+      }
+      
+      const { botConfig, clientSettingsSeed } = buildResult.data;
+      
+      // Create the new bot config
+      const saveSuccess = createBotConfig(botConfig);
       if (!saveSuccess) {
         return res.status(500).json({ error: "Failed to save bot config" });
       }
@@ -6400,7 +6406,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const clientResult = registerClient(
         clientId, 
         clientName, 
-        type || templateConfig.businessProfile?.type || 'general', 
+        clientSettingsSeed.businessType, 
         newBotId, 
         'active'
       );
@@ -6414,7 +6420,12 @@ These suggestions should be relevant to what was just discussed and help guide t
         clientId: clientId,
         client: clientResult.client,
         botId: newBotId,
-        config: newConfig,
+        config: botConfig,
+        seeds: {
+          clientSettings: clientSettingsSeed,
+          widgetSettings: buildResult.data.widgetSettingsSeed,
+          bookingProfile: buildResult.data.bookingProfileSeed,
+        },
       });
     } catch (error) {
       structuredLogger.error("Create client from template error:", error);
@@ -11917,11 +11928,35 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
 
       const intake = validation.data;
-      const template = INDUSTRY_TEMPLATES[intake.industryTemplate];
       
-      if (!template) {
-        return res.status(400).json({ error: `Unknown industry template: ${intake.industryTemplate}` });
+      // Use database template - NO FALLBACK to hardcoded templates in production
+      const dbTemplate = await getTemplateById(intake.industryTemplate);
+      
+      if (!dbTemplate) {
+        // In production, fail loudly - no fallback to hardcoded templates
+        if (process.env.NODE_ENV === 'production') {
+          structuredLogger.error('[Agency Onboarding] Template not found in DB and fallback disabled in production', { templateId: intake.industryTemplate });
+          return res.status(400).json({ error: `Template not found in database: ${intake.industryTemplate}. DB templates are required in production.` });
+        }
+        // In development, allow fallback but log warning
+        const fallbackTemplate = INDUSTRY_TEMPLATES[intake.industryTemplate];
+        if (!fallbackTemplate) {
+          return res.status(400).json({ error: `Unknown industry template: ${intake.industryTemplate}` });
+        }
+        structuredLogger.warn('[Agency Onboarding] Using fallback INDUSTRY_TEMPLATES - migrate to DB templates', { templateId: intake.industryTemplate });
       }
+      
+      // Build a unified template shape for compatibility
+      const template = dbTemplate ? {
+        id: dbTemplate.templateId,
+        name: dbTemplate.name,
+        icon: dbTemplate.icon,
+        description: dbTemplate.description,
+        botType: dbTemplate.botType,
+        defaultConfig: dbTemplate.defaultConfig,
+        ctaButtons: dbTemplate.defaultConfig?.bookingProfile?.ctas || [],
+        disclaimer: dbTemplate.defaultConfig?.bookingProfile?.disclaimers?.text || '',
+      } : INDUSTRY_TEMPLATES[intake.industryTemplate];
 
       // Generate slugified client/workspace ID
       const clientId = intake.businessName
@@ -12332,15 +12367,19 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Get industry templates list
-  app.get("/api/agency-onboarding/templates", requireSuperAdmin, (_req, res) => {
+  app.get("/api/agency-onboarding/templates", requireSuperAdmin, async (_req, res) => {
     try {
-      const templates = Object.values(INDUSTRY_TEMPLATES).map(t => ({
-        id: t.id,
+      // Use database templates instead of hardcoded INDUSTRY_TEMPLATES
+      const dbTemplates = await getAllTemplates();
+      
+      const templates = dbTemplates.filter(t => t.isActive).map(t => ({
+        id: t.templateId,
         name: t.name,
         icon: t.icon,
         description: t.description,
-        bookingProfile: t.bookingProfile,
-        primaryCTA: t.bookingProfile.primaryCTA,
+        botType: t.botType,
+        bookingProfile: t.defaultConfig?.bookingProfile,
+        primaryCTA: t.defaultConfig?.bookingProfile?.ctas?.find((cta: any) => cta.kind === 'primary'),
       }));
       res.json(templates);
     } catch (error) {
@@ -12605,7 +12644,26 @@ ${allPassed ? 'READY FOR LAUNCH' : 'ISSUES FOUND - Review required'}
       }
 
       const workspace = await getWorkspaceBySlug(clientId);
-      const template = INDUSTRY_TEMPLATES[(botConfig.metadata as any)?.industryTemplate];
+      
+      // Get template from DB, fallback to INDUSTRY_TEMPLATES only in development
+      const industryTemplateId = (botConfig.metadata as any)?.industryTemplate;
+      let templateData: any = null;
+      if (industryTemplateId) {
+        const dbTemplate = await getTemplateById(industryTemplateId);
+        if (dbTemplate) {
+          templateData = {
+            disclaimer: dbTemplate.defaultConfig?.bookingProfile?.disclaimers?.text || '',
+            ctaButtons: dbTemplate.defaultConfig?.bookingProfile?.ctas || [],
+            defaultConfig: dbTemplate.defaultConfig,
+          };
+        } else if (process.env.NODE_ENV !== 'production') {
+          // Development fallback only
+          const fallback = INDUSTRY_TEMPLATES[industryTemplateId];
+          if (fallback) {
+            templateData = fallback;
+          }
+        }
+      }
 
       res.json({
         clientId,
@@ -12613,18 +12671,18 @@ ${allPassed ? 'READY FOR LAUNCH' : 'ISSUES FOUND - Review required'}
         status: (botConfig.metadata as any)?.onboardingStatus || 'draft',
         workspaceStatus: workspace?.status || 'unknown',
         businessName: botConfig.businessProfile?.businessName,
-        industryTemplate: (botConfig.metadata as any)?.industryTemplate,
+        industryTemplate: industryTemplateId,
         kbDraft: {
           services: botConfig.businessProfile?.services || [],
           faqs: botConfig.faqs || [],
-          policies: (botConfig.metadata as any)?.disclaimer || template?.disclaimer || '',
+          policies: (botConfig.metadata as any)?.disclaimer || templateData?.disclaimer || '',
           hours: botConfig.businessProfile?.hours || {},
         },
         bookingConfig: (botConfig as any).automations?.bookingCapture,
-        ctaButtons: botConfig.quickActions || template?.ctaButtons || [],
+        ctaButtons: botConfig.quickActions || templateData?.ctaButtons || [],
         widgetTheme: {
-          primaryColor: template?.defaultConfig.theme.primaryColor || '#00E5CC',
-          welcomeMessage: template?.defaultConfig.theme.welcomeMessage || 'Hello! How can I help?',
+          primaryColor: templateData?.defaultConfig?.theme?.primaryColor || '#00E5CC',
+          welcomeMessage: templateData?.defaultConfig?.theme?.welcomeMessage || 'Hello! How can I help?',
         },
       });
     } catch (error) {
