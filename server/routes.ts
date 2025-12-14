@@ -10751,53 +10751,20 @@ These suggestions should be relevant to what was just discussed and help guide t
   // STRIPE BILLING ENDPOINTS
   // =============================================
 
-  // Get Stripe publishable key
+  // Get Stripe publishable key - BILLING DISABLED
   app.get("/api/stripe/publishable-key", async (req, res) => {
-    try {
-      const { getStripePublishableKey } = await import('./stripeClient');
-      const key = await getStripePublishableKey();
-      res.json({ publishableKey: key });
-    } catch (error) {
-      console.error("Get Stripe publishable key error:", error);
-      res.status(500).json({ error: "Stripe not configured" });
-    }
+    return res.status(501).json({ 
+      error: "Billing temporarily disabled",
+      message: "Payment processing is not enabled on this platform. Contact support for billing inquiries."
+    });
   });
 
-  // List available products and prices for subscription
+  // List available products and prices for subscription - BILLING DISABLED
   app.get("/api/stripe/products", async (req, res) => {
-    try {
-      const { stripeService } = await import('./stripeService');
-      const rows = await stripeService.listProductsWithPrices();
-
-      const productsMap = new Map();
-      for (const row of rows as any[]) {
-        if (!productsMap.has(row.product_id)) {
-          productsMap.set(row.product_id, {
-            id: row.product_id,
-            name: row.product_name,
-            description: row.product_description,
-            active: row.product_active,
-            metadata: row.product_metadata,
-            prices: []
-          });
-        }
-        if (row.price_id) {
-          productsMap.get(row.product_id).prices.push({
-            id: row.price_id,
-            unit_amount: row.unit_amount,
-            currency: row.currency,
-            recurring: row.recurring,
-            active: row.price_active,
-            metadata: row.price_metadata,
-          });
-        }
-      }
-
-      res.json({ products: Array.from(productsMap.values()) });
-    } catch (error) {
-      console.error("List Stripe products error:", error);
-      res.status(500).json({ error: "Failed to list products" });
-    }
+    return res.status(501).json({ 
+      error: "Billing temporarily disabled",
+      message: "Payment processing is not enabled on this platform. Contact support for billing inquiries."
+    });
   });
 
   // Create checkout session for client subscription - BILLING DISABLED
