@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, createContext, useContext, useRef } f
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { getWidgetBaseUrl } from "@/lib/idUtils";
 
 // Save lock context to prevent concurrent saves across panels
 interface SaveLockContextType {
@@ -4908,7 +4909,7 @@ function ChannelsPanel({ bot, client }: { bot: BotConfig; client: Client | null 
   });
 
   // Use bot.clientId (the workspace slug) for embed code - this is required for the widget to work
-  const embedCode = `<script src="${window.location.origin}/widget/embed.js" data-client-id="${bot.clientId}" data-bot-id="${bot.botId}"></script>`;
+  const embedCode = `<script src="${getWidgetBaseUrl()}/widget/embed.js" data-client-id="${bot.clientId}" data-bot-id="${bot.botId}"></script>`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(embedCode);
@@ -7043,7 +7044,7 @@ function InstallPanel({ bot, client }: { bot: BotConfig; client: Client }) {
   const [primaryColor, setPrimaryColor] = useState("#2563eb");
   const [greeting, setGreeting] = useState(`Hi! How can I help you today?`);
   
-  const baseUrl = window.location.origin;
+  const baseUrl = getWidgetBaseUrl();
   
   // Use bot.clientId (the workspace slug) for embed code - this is required for the widget to work
   const embedCode = `<script

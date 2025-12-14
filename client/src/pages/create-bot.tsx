@@ -32,6 +32,7 @@ import {
   FileText,
   Check,
 } from "lucide-react";
+import { generateBotId, generateClientId } from "@/lib/idUtils";
 
 interface BotTemplate {
   botId: string;
@@ -146,8 +147,8 @@ export default function CreateBot() {
   const selectTemplate = (template: BotTemplate) => {
     setSelectedTemplate(template.botId);
     
-    const suggestedBotId = `${template.businessType}_new_${Date.now().toString(36)}`;
-    const suggestedClientId = `client_${Date.now().toString(36)}`;
+    const suggestedBotId = generateBotId(template.businessType);
+    const suggestedClientId = generateClientId();
     
     form.setValue("botId", suggestedBotId);
     form.setValue("clientId", suggestedClientId);
@@ -157,16 +158,9 @@ export default function CreateBot() {
 
   const generateIds = () => {
     const businessName = form.getValues("businessName");
-    const timestamp = Date.now().toString(36);
     
-    if (businessName) {
-      const slug = businessName.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
-      form.setValue("botId", `${slug}_bot_${timestamp}`);
-      form.setValue("clientId", `${slug}_${timestamp}`);
-    } else {
-      form.setValue("botId", `new_bot_${timestamp}`);
-      form.setValue("clientId", `new_client_${timestamp}`);
-    }
+    form.setValue("botId", generateBotId(businessName));
+    form.setValue("clientId", generateClientId(businessName));
   };
 
   return (

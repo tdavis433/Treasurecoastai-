@@ -208,6 +208,23 @@ const dailyMessageLimiter = rateLimit({
   },
 });
 
+// Request timeout middleware (30 seconds) to prevent hung connections
+const REQUEST_TIMEOUT_MS = parseInt(process.env.REQUEST_TIMEOUT_MS || '30000', 10);
+app.use((req: Request, res: Response, next: NextFunction) => {
+  res.setTimeout(REQUEST_TIMEOUT_MS, () => {
+    if (!res.headersSent) {
+      structuredLogger.warn('Request timeout', {
+        requestId: req.requestId,
+        method: req.method,
+        path: req.path,
+        timeoutMs: REQUEST_TIMEOUT_MS,
+      });
+      res.status(408).json({ error: 'Request timeout. Please try again.' });
+    }
+  });
+  next();
+});
+
 // Apply rate limiting to specific routes (after body parsers)
 app.use('/api/auth/login', authLimiter);
 // Apply tenant + daily + burst limits to all chat routes (both with and without path params)

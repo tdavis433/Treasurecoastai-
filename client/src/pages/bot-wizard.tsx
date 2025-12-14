@@ -39,6 +39,7 @@ import {
   Wrench,
   X,
 } from "lucide-react";
+import { generateBotId, generateClientId, getWidgetBaseUrl } from "@/lib/idUtils";
 
 interface BotTemplate {
   id: string;
@@ -138,8 +139,8 @@ export default function BotWizard() {
 
   const createBotMutation = useMutation({
     mutationFn: async (data: WizardFormData) => {
-      const botId = `bot_${data.businessName.toLowerCase().replace(/[^a-z0-9]+/g, "_")}_${Date.now().toString(36)}`;
-      const clientId = `client_${Date.now().toString(36)}`;
+      const botId = generateBotId(data.businessName);
+      const clientId = generateClientId(data.businessName);
       
       const payload = {
         botId,
@@ -185,13 +186,14 @@ export default function BotWizard() {
   });
 
   const generateWidgetCode = (clientId: string, botId: string) => {
+    const baseUrl = getWidgetBaseUrl();
     return `<!-- Treasure Coast AI Chat Widget -->
 <script>
   (function() {
     var w = document.createElement('script');
     w.type = 'text/javascript';
     w.async = true;
-    w.src = '${window.location.origin}/widget/widget.js';
+    w.src = '${baseUrl}/widget/widget.js';
     w.setAttribute('data-client-id', '${clientId}');
     w.setAttribute('data-bot-id', '${botId}');
     var s = document.getElementsByTagName('script')[0];

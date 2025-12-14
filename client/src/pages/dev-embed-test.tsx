@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Code, RefreshCw, ExternalLink } from "lucide-react";
 import { useLocation } from "wouter";
+import { getWidgetBaseUrl } from "@/lib/idUtils";
 
 interface Bot {
   botId: string;
@@ -52,7 +53,7 @@ export default function DevEmbedTest() {
 
   const generateEmbedCode = () => {
     if (!selectedClientId || !selectedBotId) return "";
-    return `<script src="${window.location.origin}/widget/embed.js" data-client-id="${selectedClientId}" data-bot-id="${selectedBotId}"></script>`;
+    return `<script src="${getWidgetBaseUrl()}/widget/embed.js" data-client-id="${selectedClientId}" data-bot-id="${selectedBotId}"></script>`;
   };
 
   const handleRefresh = () => {

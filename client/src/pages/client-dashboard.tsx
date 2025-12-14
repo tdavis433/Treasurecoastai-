@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { getWidgetBaseUrl } from "@/lib/idUtils";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { GlassCard, GlassCardHeader, GlassCardTitle, GlassCardDescription, GlassCardContent } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
@@ -511,9 +512,10 @@ export default function ClientDashboard() {
   const handleCopyWidgetCode = () => {
     const botId = profile?.botId || stats?.botId || '';
     const clientId = profile?.clientId || stats?.clientId || urlClientId || '';
+    const widgetBaseUrl = getWidgetBaseUrl();
     // Use simple script tag format with data attributes for proper widget identification
     const embedCode = `<!-- Treasure Coast AI Widget -->
-<script src="${window.location.origin}/widget/embed.js" data-client-id="${clientId}" data-bot-id="${botId}"></script>`;
+<script src="${widgetBaseUrl}/widget/embed.js" data-client-id="${clientId}" data-bot-id="${botId}"></script>`;
     
     navigator.clipboard.writeText(embedCode);
     setCopied(true);
@@ -2877,7 +2879,7 @@ export default function ClientDashboard() {
           <div className="relative">
             <pre className="p-4 bg-black/40 border border-white/10 rounded-lg overflow-x-auto text-sm font-mono text-white/80">
 {`<!-- Treasure Coast AI Widget -->
-<script src="${window.location.origin}/widget/embed.js" data-client-id="${clientId}" data-bot-id="${botId}"></script>`}
+<script src="${getWidgetBaseUrl()}/widget/embed.js" data-client-id="${clientId}" data-bot-id="${botId}"></script>`}
             </pre>
             <Button
               onClick={handleCopyWidgetCode}
