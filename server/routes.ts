@@ -611,6 +611,147 @@ function requireWriteAccess(req: Request, res: Response, next: NextFunction) {
   return res.status(403).json({ error: "Access denied" });
 }
 
+// =============================================
+// 3-TIER ACCESS CONTROL MIDDLEWARES
+// =============================================
+// These middlewares provide granular access control based on workspace membership roles.
+// Use AFTER requireClientAuth to ensure membershipRole is set.
+
+/**
+ * OPERATIONAL ACCESS - For day-to-day operations that agents CAN perform
+ * Allowed roles: owner, manager, staff, agent
+ * 
+ * Use on routes like:
+ * - PATCH lead status (mark as contacted, update notes)
+ * - POST inbox reply
+ * - POST appointment create
+ * - PATCH appointment status/time
+ * - Add notes, update statuses, etc.
+ */
+function requireOperationalAccess(req: Request, res: Response, next: NextFunction) {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+  
+  const globalRole = req.session.userRole as string;
+  const membershipRole = (req as any).membershipRole as string | undefined;
+  
+  // Super admins always have access
+  if (globalRole === "super_admin") {
+    return next();
+  }
+  
+  // For client_admin users, check workspace membership role
+  if (globalRole === "client_admin") {
+    const operationalRoles = ["owner", "manager", "staff", "agent"];
+    
+    if (!membershipRole) {
+      return res.status(403).json({ error: "Access denied. Workspace membership required." });
+    }
+    
+    if (!operationalRoles.includes(membershipRole)) {
+      return res.status(403).json({ 
+        error: "Operational access denied", 
+        message: "Your workspace role does not allow this operation." 
+      });
+    }
+    
+    return next();
+  }
+  
+  return res.status(403).json({ error: "Access denied" });
+}
+
+/**
+ * CONFIG ACCESS - For bot/widget configuration that agents CANNOT modify
+ * Allowed roles: owner, manager, staff (excludes agent)
+ * 
+ * Use on routes like:
+ * - Bot settings / knowledge base / behavior presets
+ * - Widget theme / booking configuration
+ * - FAQ management
+ * - Automation rules
+ * - Any configuration changes
+ */
+function requireConfigAccess(req: Request, res: Response, next: NextFunction) {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+  
+  const globalRole = req.session.userRole as string;
+  const membershipRole = (req as any).membershipRole as string | undefined;
+  
+  // Super admins always have access
+  if (globalRole === "super_admin") {
+    return next();
+  }
+  
+  // For client_admin users, check workspace membership role
+  if (globalRole === "client_admin") {
+    const configRoles = ["owner", "manager", "staff"];
+    
+    if (!membershipRole) {
+      return res.status(403).json({ error: "Access denied. Workspace membership required." });
+    }
+    
+    if (!configRoles.includes(membershipRole)) {
+      return res.status(403).json({ 
+        error: "Configuration access denied", 
+        message: "Your workspace role does not allow configuration changes. Contact an admin for elevated access." 
+      });
+    }
+    
+    return next();
+  }
+  
+  return res.status(403).json({ error: "Access denied" });
+}
+
+/**
+ * DESTRUCTIVE ACCESS - For destructive/admin operations that only owners/managers can perform
+ * Allowed roles: owner, manager only
+ * 
+ * Use on routes like:
+ * - DELETE routes (leads, appointments, conversations)
+ * - Data exports
+ * - Team management (invite/remove members)
+ * - User permission changes
+ * - Bulk operations
+ */
+function requireDestructiveAccess(req: Request, res: Response, next: NextFunction) {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+  
+  const globalRole = req.session.userRole as string;
+  const membershipRole = (req as any).membershipRole as string | undefined;
+  
+  // Super admins always have access
+  if (globalRole === "super_admin") {
+    return next();
+  }
+  
+  // For client_admin users, check workspace membership role
+  if (globalRole === "client_admin") {
+    const destructiveRoles = ["owner", "manager"];
+    
+    if (!membershipRole) {
+      return res.status(403).json({ error: "Access denied. Workspace membership required." });
+    }
+    
+    if (!destructiveRoles.includes(membershipRole)) {
+      return res.status(403).json({ 
+        error: "Destructive action denied", 
+        message: "Only workspace owners and managers can perform this action." 
+      });
+    }
+    
+    return next();
+  }
+  
+  return res.status(403).json({ error: "Access denied" });
+}
+
 /**
  * MULTI-TENANT ISOLATION MIDDLEWARE
  * 
@@ -3521,7 +3662,7 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
-  app.patch("/api/appointments/:id", requireClientAuth, async (req, res) => {
+  app.patch("/api/appointments/:id", requireClientAuth, requireOperationalAccess, async (req, res) => {
     try {
       // Validate params
       const paramsValidation = validateRequest(idParamSchema, req.params);
@@ -3551,7 +3692,7 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
-  app.patch("/api/appointments/:id/status", requireClientAuth, async (req, res) => {
+  app.patch("/api/appointments/:id/status", requireClientAuth, requireOperationalAccess, async (req, res) => {
     try {
       // Validate params and body
       const paramsValidation = validateRequest(idParamSchema, req.params);
@@ -3602,7 +3743,7 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
-  app.patch("/api/settings", requireClientAuth, async (req, res) => {
+  app.patch("/api/settings", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
       // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
       // Ignore any clientId from request body - only use session-based client context
@@ -6737,7 +6878,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Update client settings (limited fields: phone, hours, location)
-  app.patch("/api/client/settings", requireClientAuth, async (req, res) => {
+  app.patch("/api/client/settings", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
       const clientId = (req as any).effectiveClientId;
       const { phone, hours, location } = req.body;
@@ -6821,7 +6962,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Update webhook settings
-  app.patch("/api/client/webhooks", requireClientAuth, async (req, res) => {
+  app.patch("/api/client/webhooks", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
       const clientId = (req as any).effectiveClientId;
       
@@ -6928,7 +7069,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Test webhook endpoint
-  app.post("/api/client/webhooks/test", requireClientAuth, async (req, res) => {
+  app.post("/api/client/webhooks/test", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
       const clientId = (req as any).effectiveClientId;
       const result = await testWebhook(clientId);
@@ -6953,7 +7094,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Generate new webhook secret
-  app.post("/api/client/webhooks/generate-secret", requireClientAuth, async (req, res) => {
+  app.post("/api/client/webhooks/generate-secret", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
       const clientId = (req as any).effectiveClientId;
       const newSecret = crypto.randomBytes(32).toString('hex');
@@ -7743,7 +7884,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Create a note
-  app.post("/api/client/inbox/sessions/:sessionId/notes", requireClientAuth, async (req, res) => {
+  app.post("/api/client/inbox/sessions/:sessionId/notes", requireClientAuth, requireOperationalAccess, async (req, res) => {
     try {
       const clientId = (req as any).effectiveClientId;
       const { sessionId } = req.params;
@@ -7772,7 +7913,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Update a note
-  app.patch("/api/client/inbox/notes/:noteId", requireClientAuth, async (req, res) => {
+  app.patch("/api/client/inbox/notes/:noteId", requireClientAuth, requireOperationalAccess, async (req, res) => {
     try {
       const clientId = (req as any).effectiveClientId;
       const { noteId } = req.params;
@@ -7795,7 +7936,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Delete a note
-  app.delete("/api/client/inbox/notes/:noteId", requireClientAuth, async (req, res) => {
+  app.delete("/api/client/inbox/notes/:noteId", requireClientAuth, requireDestructiveAccess, async (req, res) => {
     try {
       const clientId = (req as any).effectiveClientId;
       // Pass clientId for tenant verification
@@ -7834,7 +7975,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Update session state (mark as read, change status, etc.)
-  app.patch("/api/client/inbox/sessions/:sessionId/state", requireClientAuth, async (req, res) => {
+  app.patch("/api/client/inbox/sessions/:sessionId/state", requireClientAuth, requireOperationalAccess, async (req, res) => {
     try {
       const clientId = (req as any).effectiveClientId;
       const { sessionId } = req.params;
@@ -8032,7 +8173,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Update notification preferences
-  app.patch("/api/client/notifications", requireClientAuth, async (req, res) => {
+  app.patch("/api/client/notifications", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
       const clientId = (req as any).effectiveClientId;
       
@@ -8157,7 +8298,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Create a new lead
-  app.post("/api/client/leads", requireClientAuth, async (req, res) => {
+  app.post("/api/client/leads", requireClientAuth, requireOperationalAccess, async (req, res) => {
     try {
       // Validate body
       const bodyValidation = validateRequest(createLeadSchema, req.body);
@@ -8219,7 +8360,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Update a lead
-  app.patch("/api/client/leads/:id", requireClientAuth, async (req, res) => {
+  app.patch("/api/client/leads/:id", requireClientAuth, requireOperationalAccess, async (req, res) => {
     try {
       // Validate params
       const paramsValidation = validateRequest(idParamSchema, req.params);
@@ -8261,7 +8402,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Delete a lead
-  app.delete("/api/client/leads/:id", requireClientAuth, async (req, res) => {
+  app.delete("/api/client/leads/:id", requireClientAuth, requireDestructiveAccess, async (req, res) => {
     try {
       // Validate params
       const paramsValidation = validateRequest(idParamSchema, req.params);
@@ -8296,7 +8437,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Bulk update leads
-  app.post("/api/client/leads/bulk", requireClientAuth, async (req, res) => {
+  app.post("/api/client/leads/bulk", requireClientAuth, requireDestructiveAccess, async (req, res) => {
     try {
       const bodyValidation = validateRequest(bulkLeadActionSchema, req.body);
       if (!bodyValidation.success) {
@@ -8398,7 +8539,7 @@ These suggestions should be relevant to what was just discussed and help guide t
     notes: z.string().optional(),
   });
 
-  app.patch("/api/client/bookings/:id", requireClientAuth, async (req, res) => {
+  app.patch("/api/client/bookings/:id", requireClientAuth, requireOperationalAccess, async (req, res) => {
     try {
       const { id } = req.params;
       const clientId = (req as any).effectiveClientId;
@@ -11847,7 +11988,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // =============================================
 
   // Client data export (GDPR-style)
-  app.get("/api/client/data/export", requireClientAuth, async (req, res) => {
+  app.get("/api/client/data/export", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
       const clientId = (req as any).effectiveClientId;
       const data = await exportClientData(clientId);
@@ -11862,7 +12003,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Client data deletion (right to be forgotten)
-  app.delete("/api/client/data", requireClientAuth, requireWriteAccess, async (req, res) => {
+  app.delete("/api/client/data", requireClientAuth, requireDestructiveAccess, async (req, res) => {
     try {
       const clientId = (req as any).effectiveClientId;
       const { deleteLeads, deleteAppointments, deleteChatSessions, deleteAnalytics } = req.body;
