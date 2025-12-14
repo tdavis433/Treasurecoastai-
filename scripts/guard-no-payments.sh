@@ -8,25 +8,27 @@ echo "ZERO-STRIPE GUARD CHECK (Option A)"
 echo "============================================"
 echo ""
 
-# Only scan runtime code dirs - not scripts (which contain guard patterns)
+# Scan all runtime code directories
 SCAN_DIRS="server client shared"
 EXCLUDE_PATTERNS="node_modules|\.git|dist|\.md$"
 
-# Patterns that indicate ACTIVE Stripe usage (not just mentions)
-STRIPE_PATTERNS="js\.stripe\.com|api\.stripe\.com|stripe-signature|stripeClient|stripeService|stripeSync|webhookHandlers|new Stripe\(|stripe\.customers\.|stripe\.subscriptions\.|stripe\.checkout\."
+# Comprehensive patterns that indicate ACTIVE Stripe usage
+# This catches: SDK imports, API calls, webhook handlers, client instantiation
+STRIPE_PATTERNS="from ['\"]stripe['\"]|require\(['\"]stripe['\"]\)|new Stripe\(|stripe\.customers\.|stripe\.subscriptions\.|stripe\.checkout\.|stripe\.paymentIntents\.|stripe\.invoices\.|stripe\.charges\.|stripe\.webhooks\.|js\.stripe\.com|api\.stripe\.com|stripe-signature|stripeClient|stripeService|stripeSync|webhookHandlers|/api/stripe/|createCheckoutSession|handleStripeWebhook"
 
 # Files that are ALLOWED to mention stripe for security/audit purposes
-ALLOWED_FILES="auditLogger\.ts|urlValidator\.ts|secrets-scan\.sh|predeploy-gate\.sh|guard-no-payments\.sh"
+# These files block/filter Stripe as a security measure, not enable it
+ALLOWED_FILES="auditLogger\.ts|urlValidator\.ts"
 
 FOUND_CRITICAL=0
 
 echo "Scanning for ACTIVE Stripe integration code..."
-echo "(Security filters and guard scripts are excluded)"
+echo "(Security filters are excluded: auditLogger.ts, urlValidator.ts)"
 echo ""
 
 for dir in $SCAN_DIRS; do
     if [ -d "$dir" ]; then
-        MATCHES=$(grep -r -n -i -E "$STRIPE_PATTERNS" "$dir" 2>/dev/null | grep -v -E "$EXCLUDE_PATTERNS" | grep -v -E "$ALLOWED_FILES")
+        MATCHES=$(grep -r -n -E "$STRIPE_PATTERNS" "$dir" 2>/dev/null | grep -v -E "$EXCLUDE_PATTERNS" | grep -v -E "$ALLOWED_FILES")
         
         if [ -n "$MATCHES" ]; then
             echo "CRITICAL: Found active Stripe code in $dir:"
