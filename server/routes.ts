@@ -7629,7 +7629,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // =============================================
 
   // Export client analytics trends to CSV
-  app.get("/api/client/analytics/export", requireClientAuth, async (req, res) => {
+  app.get("/api/client/analytics/export", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
       const queryValidation = validateRequest(analyticsTrendsQuerySchema, req.query);
       if (!queryValidation.success) {
@@ -7674,7 +7674,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Export leads to CSV
-  app.get("/api/client/leads/export", requireClientAuth, async (req, res) => {
+  app.get("/api/client/leads/export", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
       const clientId = (req as any).effectiveClientId;
       const { leads } = await storage.getLeads(clientId, { limit: 10000 });
@@ -7709,7 +7709,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Export sessions to CSV
-  app.get("/api/client/analytics/sessions/export", requireClientAuth, async (req, res) => {
+  app.get("/api/client/analytics/sessions/export", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
       const clientId = (req as any).effectiveClientId;
       const queryValidation = validateRequest(analyticsSessionsQuerySchema, req.query);
