@@ -58,7 +58,7 @@ export async function checkMessageLimit(clientId: string): Promise<UsageCheckRes
   if (usage.messagesUsed >= limits.messagesPerMonth) {
     return {
       allowed: false,
-      reason: `Monthly message limit (${limits.messagesPerMonth}) reached. Please upgrade your plan.`,
+      reason: `Monthly message limit (${limits.messagesPerMonth}) reached. Please try again next month.`,
       usage: {
         messagesUsed: usage.messagesUsed,
         messagesLimit: limits.messagesPerMonth,

@@ -66,7 +66,6 @@ export function getSkipCsrfPaths(): string[] {
     "/api/auth/reset-password",
     "/api/chat",
     "/api/widget",
-    "/api/stripe/webhook",
     "/api/health",
   ];
 }

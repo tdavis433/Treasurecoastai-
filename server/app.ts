@@ -49,21 +49,21 @@ declare module 'http' {
 // Build CSP directives based on environment
 const isDev = process.env.NODE_ENV !== 'production';
 const cspConnectSrc = isDev 
-  ? ["'self'", "https://api.openai.com", "https://api.stripe.com", "ws:", "wss:"]
-  : ["'self'", "https://api.openai.com", "https://api.stripe.com"];
+  ? ["'self'", "https://api.openai.com", "ws:", "wss:"]
+  : ["'self'", "https://api.openai.com"];
 
 // Security: Helmet for secure HTTP headers
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://js.stripe.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
       scriptSrcAttr: ["'self'", "'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https:"],
       connectSrc: cspConnectSrc,
-      frameSrc: ["'self'", "https://js.stripe.com"],
+      frameSrc: ["'self'"],
     },
   },
   crossOriginEmbedderPolicy: false, // Allow widget embedding
@@ -71,37 +71,6 @@ app.use(helmet({
 
 // Request ID middleware - generates unique ID per request for tracing
 app.use(requestIdMiddleware);
-
-// Stripe webhook MUST come before json body parser (needs raw body)
-app.post(
-  '/api/stripe/webhook/:uuid',
-  express.raw({ type: 'application/json' }),
-  async (req, res) => {
-    const signature = req.headers['stripe-signature'];
-
-    if (!signature) {
-      return res.status(400).json({ error: 'Missing stripe-signature' });
-    }
-
-    try {
-      const { WebhookHandlers } = await import('./webhookHandlers');
-      const sig = Array.isArray(signature) ? signature[0] : signature;
-
-      if (!Buffer.isBuffer(req.body)) {
-        console.error('STRIPE WEBHOOK ERROR: req.body is not a Buffer');
-        return res.status(500).json({ error: 'Webhook processing error' });
-      }
-
-      const { uuid } = req.params;
-      await WebhookHandlers.processWebhook(req.body as Buffer, sig, uuid);
-
-      res.status(200).json({ received: true });
-    } catch (error: any) {
-      console.error('Webhook error:', error.message);
-      res.status(400).json({ error: 'Webhook processing error' });
-    }
-  }
-);
 
 // Body parsers with payload limits - MUST come before rate limiting and routes
 // Limit JSON payloads to 100KB to prevent abuse
@@ -188,8 +157,8 @@ const apiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
-    // Skip rate limiting for Stripe webhooks and health check
-    return req.path.startsWith('/api/stripe/webhook') || req.path === '/api/health';
+    // Skip rate limiting for health check endpoint
+    return req.path === '/api/health';
   },
 });
 
@@ -229,7 +198,7 @@ const tenantChatLimiter = rateLimit({
 const dailyMessageLimiter = rateLimit({
   windowMs: 24 * 60 * 60 * 1000, // 24 hours
   max: isDev ? 10000 : 2000, // 2000 messages per day per tenant in production
-  message: { error: 'Daily message limit reached. Please try again tomorrow or upgrade your plan.' },
+  message: { error: 'Daily message limit reached. Please try again tomorrow.' },
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => {

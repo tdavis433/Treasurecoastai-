@@ -198,7 +198,7 @@ export default function SuperAdmin() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
-  const [dashboardSection, setDashboardSection] = useState<'overview' | 'workspaces' | 'assistants' | 'templates' | 'knowledge' | 'integrations' | 'billing' | 'analytics' | 'logs' | 'users' | 'requests' | 'client-logins'>('overview');
+  const [dashboardSection, setDashboardSection] = useState<'overview' | 'workspaces' | 'assistants' | 'templates' | 'knowledge' | 'integrations' | 'analytics' | 'logs' | 'users' | 'requests' | 'client-logins'>('overview');
   const [logFilters, setLogFilters] = useState({ level: 'all', source: 'all', isResolved: 'all', clientId: 'all' });
   const [analyticsRange, setAnalyticsRange] = useState<number>(7);
   const [selectedBots, setSelectedBots] = useState<Set<string>>(new Set());
@@ -1333,19 +1333,6 @@ export default function SuperAdmin() {
                   <User className="h-4 w-4 mr-2" />
                   Client Logins
                 </Button>
-                <Button
-                  data-testid="button-section-billing"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setDashboardSection('billing')}
-                  className={dashboardSection === 'billing' 
-                    ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_12px_rgba(0,212,255,0.3)] border border-cyan-400/30 transition-all duration-200' 
-                    : 'text-white/70 hover:text-white hover:bg-white/10 transition-all duration-200'}
-                >
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  Billing
-                </Button>
-                
                 <div className="flex-1" />
                 <Button
                   data-testid="button-refresh-data"
@@ -2883,7 +2870,6 @@ export default function SuperAdmin() {
                         <SelectItem value="chat" className="text-white">Chat</SelectItem>
                         <SelectItem value="webhook" className="text-white">Webhook</SelectItem>
                         <SelectItem value="scraper" className="text-white">Scraper</SelectItem>
-                        <SelectItem value="stripe" className="text-white">Stripe</SelectItem>
                         <SelectItem value="auth" className="text-white">Auth</SelectItem>
                         <SelectItem value="system" className="text-white">System</SelectItem>
                       </SelectContent>
@@ -3109,12 +3095,6 @@ export default function SuperAdmin() {
                 <BotRequestsSectionPanel />
               )}
 
-              {/* Billing & Plans Section */}
-              {dashboardSection === 'billing' && (
-                <BillingSectionPanel 
-                  workspaces={workspacesData?.workspaces || []}
-                />
-              )}
             </div>
           </main>
 
@@ -3289,7 +3269,6 @@ export default function SuperAdmin() {
                     {[
                       { value: 'analytics', icon: BarChart3, label: 'Analytics' },
                       { value: 'logs', icon: MessageSquare, label: 'Logs' },
-                      { value: 'billing', icon: CreditCard, label: 'Billing' },
                     ].map(tab => (
                       <Button
                         key={tab.value}
@@ -3332,10 +3311,6 @@ export default function SuperAdmin() {
 
                   {activeTab === 'channels' && (
                     <ChannelsPanel bot={selectedBot} client={selectedClient} />
-                  )}
-
-                  {activeTab === 'billing' && (
-                    <BillingPanel clientId={selectedClient?.id || selectedBot.clientId} clientName={selectedClient?.name || selectedBot.name} status={selectedClient?.status || 'active'} />
                   )}
 
                   {activeTab === 'analytics' && (
@@ -3863,148 +3838,6 @@ function OverviewPanel({ bot, client }: { bot: BotConfig; client: Client | null 
               <div className="text-sm text-white/55">Special Instructions</div>
             </div>
           </div>
-        </GlassCardContent>
-      </GlassCard>
-    </div>
-  );
-}
-
-// Billing Panel - Stripe subscription management
-function BillingPanel({ clientId, clientName, status }: { clientId: string; clientName: string; status: string }) {
-  const { toast } = useToast();
-
-  const { data: subscription, isLoading } = useQuery({
-    queryKey: ["/api/stripe/subscription", clientId],
-    queryFn: async () => {
-      const response = await fetch(`/api/stripe/subscription/${clientId}`, { credentials: "include" });
-      if (!response.ok) return null;
-      return response.json();
-    },
-  });
-
-  const createCheckoutMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/stripe/checkout", { clientId });
-      return response.json();
-    },
-    onSuccess: (data) => {
-      if (data.url) {
-        window.open(data.url, '_blank');
-      }
-    },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to create checkout session.", variant: "destructive" });
-    },
-  });
-
-  const openPortalMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/stripe/portal", { clientId });
-      return response.json();
-    },
-    onSuccess: (data) => {
-      if (data.url) {
-        window.open(data.url, '_blank');
-      }
-    },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to open billing portal.", variant: "destructive" });
-    },
-  });
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        {[1, 2, 3].map(i => (
-          <GlassCard key={i}>
-            <div className="p-6 animate-pulse">
-              <div className="h-5 bg-white/10 rounded w-32 mb-4" />
-              <div className="h-4 bg-white/10 rounded w-48" />
-            </div>
-          </GlassCard>
-        ))}
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* Current Status */}
-      <GlassCard>
-        <GlassCardHeader>
-          <GlassCardTitle>Subscription Status</GlassCardTitle>
-          <GlassCardDescription>Current billing status for {clientName}</GlassCardDescription>
-        </GlassCardHeader>
-        <GlassCardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-white/55">Current Status</p>
-              <div className="flex items-center gap-2 mt-1">
-                {status === 'active' && <Badge className="bg-green-500/20 text-green-400 border border-green-500/30">ACTIVE</Badge>}
-                {status === 'paused' && <Badge className="bg-red-500/20 text-red-400 border border-red-500/30">PAUSED</Badge>}
-                {status === 'demo' && <Badge className="bg-blue-500/20 text-blue-400 border border-blue-500/30">DEMO</Badge>}
-              </div>
-            </div>
-            {subscription?.plan && (
-              <div className="text-right">
-                <p className="text-sm text-white/55">Plan</p>
-                <p className="font-medium text-white">{subscription.plan}</p>
-              </div>
-            )}
-          </div>
-
-          {subscription?.currentPeriodEnd && (
-            <div>
-              <p className="text-sm text-white/55">Next Billing Date</p>
-              <p className="font-medium text-white">{new Date(subscription.currentPeriodEnd).toLocaleDateString()}</p>
-            </div>
-          )}
-        </GlassCardContent>
-      </GlassCard>
-
-      {/* Actions */}
-      <GlassCard>
-        <GlassCardHeader>
-          <GlassCardTitle>Billing Actions</GlassCardTitle>
-          <GlassCardDescription>Manage subscription and payments</GlassCardDescription>
-        </GlassCardHeader>
-        <GlassCardContent className="space-y-3">
-          {!subscription ? (
-            <Button 
-              data-testid="button-create-subscription"
-              onClick={() => createCheckoutMutation.mutate()}
-              disabled={createCheckoutMutation.isPending}
-              className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
-            >
-              <CreditCard className="h-4 w-4 mr-2" />
-              {createCheckoutMutation.isPending ? 'Creating...' : 'Set Up Subscription'}
-            </Button>
-          ) : (
-            <Button 
-              data-testid="button-manage-billing"
-              variant="outline"
-              onClick={() => openPortalMutation.mutate()}
-              disabled={openPortalMutation.isPending}
-              className="w-full border-white/10 text-white/85 hover:bg-white/10 hover:text-white"
-            >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              {openPortalMutation.isPending ? 'Opening...' : 'Manage Billing in Stripe'}
-            </Button>
-          )}
-        </GlassCardContent>
-      </GlassCard>
-
-      {/* Billing History Note */}
-      <GlassCard>
-        <GlassCardHeader>
-          <GlassCardTitle>Billing Notes</GlassCardTitle>
-        </GlassCardHeader>
-        <GlassCardContent>
-          <ul className="text-sm text-white/55 space-y-2">
-            <li>• Subscription status is synced automatically via Stripe webhooks</li>
-            <li>• Failed payments will automatically pause the account</li>
-            <li>• Use the Stripe portal to update payment methods or cancel</li>
-          </ul>
         </GlassCardContent>
       </GlassCard>
     </div>
@@ -6416,17 +6249,6 @@ function CreateFromTemplateModal({
       toast({ title: "Bot Created", description: `Successfully created: ${formData.clientName}` });
       resetWizard(); // Reset wizard state for next use
       onSuccess(data.botId || `${formData.clientId}_bot`);
-      
-      // PDF requirement: "Stripe link generated" - redirect to checkout if available
-      if (data.checkoutUrl) {
-        toast({ 
-          title: "Billing Setup", 
-          description: "Redirecting to Stripe checkout...",
-        });
-        setTimeout(() => {
-          window.open(data.checkoutUrl, '_blank');
-        }, 1000);
-      }
     },
     onError: (error: any) => {
       toast({ 
@@ -9050,7 +8872,6 @@ function IntegrationsSectionPanel() {
   
   interface IntegrationStatus {
     openai: { configured: boolean; status: string; baseUrl: string | null };
-    stripe: { configured: boolean; status: string };
     database: { configured: boolean; status: string; latencyMs?: number };
     email: { configured: boolean; status: string };
     sms: { configured: boolean; status: string };
@@ -9120,17 +8941,6 @@ function IntegrationsSectionPanel() {
       configured: status?.openai?.configured,
       colorClass: 'bg-cyan-500/20 text-cyan-400',
       details: status?.openai?.baseUrl ? `Using ${new URL(status.openai.baseUrl).hostname}` : null,
-      canTest: true,
-    },
-    {
-      id: 'stripe',
-      name: 'Stripe',
-      description: 'Payment processing and billing',
-      icon: CreditCard,
-      status: status?.stripe?.status,
-      configured: status?.stripe?.configured,
-      colorClass: 'bg-purple-500/20 text-purple-400',
-      details: null,
       canTest: true,
     },
     {
@@ -9267,7 +9077,7 @@ function IntegrationsSectionPanel() {
               <GlassCardDescription>Required secrets and configuration</GlassCardDescription>
             </div>
             <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30">
-              {[status?.openai?.configured, status?.stripe?.configured, status?.database?.configured].filter(Boolean).length}/3 Configured
+              {[status?.openai?.configured, status?.database?.configured].filter(Boolean).length}/2 Configured
             </Badge>
           </div>
         </GlassCardHeader>
@@ -9283,18 +9093,6 @@ function IntegrationsSectionPanel() {
               </div>
               <Badge className={status?.openai?.configured ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>
                 {status?.openai?.configured ? 'Configured' : 'Missing'}
-              </Badge>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10">
-              <div className="flex items-center gap-3">
-                <CreditCard className="h-4 w-4 text-purple-400" />
-                <div>
-                  <span className="text-sm text-white block">STRIPE_SECRET_KEY</span>
-                  <span className="text-xs text-white/40">Payment processing</span>
-                </div>
-              </div>
-              <Badge className={status?.stripe?.configured ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>
-                {status?.stripe?.configured ? 'Configured' : 'Missing'}
               </Badge>
             </div>
             <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10">
@@ -9321,24 +9119,6 @@ function IntegrationsSectionPanel() {
         </GlassCardHeader>
         <GlassCardContent>
           <div className="space-y-3">
-            <div className="p-3 bg-white/5 rounded-lg border border-white/10">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-purple-400" />
-                  <span className="text-sm font-medium text-white">Stripe Webhook</span>
-                </div>
-                <Badge className="bg-green-500/20 text-green-400">Active</Badge>
-              </div>
-              <div className="flex items-center gap-2">
-                <code className="text-xs text-white/60 bg-white/5 px-2 py-1 rounded flex-1">/api/stripe/webhook</code>
-                <Button variant="ghost" size="sm" className="h-7 px-2 text-white/50" onClick={() => {
-                  navigator.clipboard.writeText(`${window.location.origin}/api/stripe/webhook`);
-                  toast({ title: 'Copied', description: 'Webhook URL copied to clipboard' });
-                }}>
-                  <Copy className="h-3 w-3" />
-                </Button>
-              </div>
-            </div>
             <div className="p-3 bg-white/5 rounded-lg border border-white/10">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">

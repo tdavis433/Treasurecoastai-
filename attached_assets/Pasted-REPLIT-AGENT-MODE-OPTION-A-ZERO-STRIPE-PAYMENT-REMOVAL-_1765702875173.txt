@@ -1,0 +1,170 @@
+REPLIT AGENT MODE — OPTION A “ZERO STRIPE” PAYMENT REMOVAL PASS
+(Stripe removed entirely from runtime code + configs + docs)
+GOAL: The platform must have NO payment processing code at all. Client “Book Now” remains redirect-only to the client’s external booking/payment provider.
+
+IMPORTANT RULES
+- Do not print secrets/tokens/passwords in output.
+- Do not add any new payment provider code.
+- Keep changes minimal and reversible (small commits, clear diffs).
+- After edits: all gates must pass (guard, tsc, vitest, build).
+
+========================================================
+PHASE 0 — BASELINE + INVENTORY
+========================================================
+0.1 Run baseline commands and capture output:
+- bash ./scripts/guard-no-payments.sh
+- npx tsc --noEmit
+- npx vitest run
+- npm run build
+
+0.2 Full repo payment scan (must do)
+Run ripgrep across the repo for payment/Stripe artifacts:
+- rg -n -S "stripe|js\.stripe\.com|api\.stripe\.com|stripe-signature|checkout|billing|portal|subscription|invoice|webhook" .
+Also search package deps:
+- cat package.json | rg -n "stripe|checkout|billing"
+
+Produce a short list of EVERY match with:
+- file path
+- line number(s)
+- what it is (route, import, CSP, doc, UI, etc.)
+- whether it is runtime-critical or documentation-only
+
+========================================================
+PHASE 1 — REMOVE STRIPE FROM RUNTIME (HARD REQUIREMENT)
+========================================================
+1.1 Remove Stripe webhook endpoint(s)
+Find and DELETE any Stripe webhook routes, typically like:
+- POST /api/stripe/webhook/:uuid
+- Any handler references to “stripe-signature”
+Also remove any “Stripe webhook must come before json parser” comments/ordering logic if it exists.
+
+1.2 Remove Stripe billing/checkout/portal routes
+Remove ALL endpoints related to billing/Stripe, such as any of:
+- /api/client/billing
+- /api/client/billing/portal
+- /api/stripe/checkout
+- /api/stripe/portal
+- /api/super-admin/billing/*
+If some UI expects these endpoints, make the UI hide/disable the billing section entirely.
+DO NOT leave “disabled 501” stubs—Option A means these routes should not exist.
+
+1.3 Remove Stripe service/module usage
+If a stripeService/stripe client exists:
+- Delete the module OR remove all exports and ensure no imports remain.
+- Remove any code that creates Stripe customers, subscriptions, checkout sessions, portals, invoices, etc.
+
+1.4 Remove Stripe from CSP and allowlists
+In server/app.ts (Helmet CSP):
+- Remove "https://js.stripe.com" from scriptSrc/frameSrc
+- Remove "https://api.stripe.com" from connectSrc (dev and prod)
+Also remove any allowlist logic that references Stripe domains.
+
+1.5 Remove Stripe from rate-limit skips / special casing
+If you have any limiter.skip(...) or body-parser ordering dedicated to Stripe webhook, remove it.
+
+========================================================
+PHASE 2 — REMOVE STRIPE FROM DEPENDENCIES + ENV + DOCS
+========================================================
+2.1 package.json dependency cleanup
+If “stripe” is in dependencies/devDependencies:
+- Remove it.
+- Run npm install (or the equivalent Replit install) and ensure build still works.
+
+2.2 Remove Stripe env vars references everywhere
+Search and remove references to:
+- STRIPE_SECRET_KEY
+- STRIPE_WEBHOOK_SECRET
+- STRIPE_*
+From:
+- RELEASE_RUNBOOK.md
+- DEPLOYMENT docs
+- any .env.example templates
+- any UI “billing” text
+
+Option A means docs should NOT imply Stripe is supported right now.
+
+2.3 Remove “upgrade your plan” language anywhere
+Search for billing phrasing and replace with neutral wording:
+- “Please try again tomorrow.” (or similar)
+No pricing/billing wording should appear in system messages.
+
+========================================================
+PHASE 3 — HARDEN THE GUARD SCRIPT (NO STRIPE ANYWHERE)
+========================================================
+3.1 Update scripts/guard-no-payments.sh so Option A is enforced:
+- The guard must FAIL if it finds ANY Stripe/payment plumbing in runtime code.
+- Scan only runtime folders:
+  server/ client/ shared/ public/ scripts/
+- Exclude:
+  node_modules/ .git/ dist/ build outputs
+- Also scan docs, but treat docs as WARN-only OR remove all Stripe mentions entirely (preferred in Option A).
+  (If you keep WARN-only, output should still show exact matches.)
+
+Add patterns that MUST trigger failure (case-insensitive):
+- stripe
+- js.stripe.com
+- api.stripe.com
+- stripe-signature
+- checkout
+- billing
+- portal
+- subscription
+- invoice
+- webhook (when near stripe or payment terms)
+
+Guard output must:
+- print the matched lines with file:line
+- exit 1 on any match in runtime code dirs
+
+========================================================
+PHASE 4 — VERIFY UI STILL MAKES SENSE (NO BILLING SECTIONS)
+========================================================
+4.1 Run app and click through:
+- Admin dashboard
+- Client dashboard
+Confirm:
+- No billing/settings pages mention payments
+- No “upgrade plan” messages
+- Booking remains redirect-only to client external booking/payment provider
+
+4.2 Confirm “No Payments” booking rule still holds
+- Widget Book Now logs intent and redirects externally
+- No payment forms exist on our domain
+
+========================================================
+PHASE 5 — FINAL QUALITY GATES (MUST PASS)
+========================================================
+Run and paste outputs:
+- bash ./scripts/guard-no-payments.sh
+- npx tsc --noEmit
+- npx vitest run
+- npm run build
+
+Also run this proof grep (should return nothing meaningful in runtime):
+- rg -n -S "stripe|js\.stripe\.com|api\.stripe\.com|stripe-signature|checkout|billing|portal|subscription|invoice|/api/stripe|/api/client/billing|/api/super-admin/billing" server client shared public scripts
+
+========================================================
+PHASE 6 — REPORT BACK (STRICT FORMAT)
+========================================================
+Return a final markdown report containing:
+
+1) Executive Summary
+- Stripe removed entirely: YES/NO
+- No payments (redirect-only booking): YES/NO
+
+2) Files changed (list)
+- With 1-line reason per file
+
+3) Removed routes list
+- Every removed endpoint path
+
+4) Guard script result
+- Proof that it fails on Stripe mentions and passes after removal
+
+5) Command outputs
+- guard PASS
+- tsc PASS
+- vitest PASS
+- build PASS
+
+START NOW.

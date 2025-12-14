@@ -1491,56 +1491,8 @@ async function logNotification(params: {
   }
 }
 
-async function initStripe() {
-  const databaseUrl = process.env.DATABASE_URL;
-
-  if (!databaseUrl) {
-    console.log('Stripe: DATABASE_URL not set, skipping Stripe initialization');
-    return;
-  }
-
-  try {
-    console.log('Initializing Stripe schema...');
-    const { runMigrations } = await import('stripe-replit-sync');
-    await runMigrations({ databaseUrl });
-    console.log('Stripe schema ready');
-
-    const { getStripeSync } = await import('./stripeClient');
-    const stripeSync = await getStripeSync();
-
-    if (!stripeSync) {
-      console.log('Stripe: Not configured, webhook and sync skipped');
-      return;
-    }
-
-    console.log('Setting up managed webhook...');
-    const webhookBaseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
-    const { webhook, uuid } = await stripeSync.findOrCreateManagedWebhook(
-      `${webhookBaseUrl}/api/stripe/webhook`,
-      {
-        enabled_events: ['*'],
-        description: 'Managed webhook for Stripe sync',
-      }
-    );
-    console.log(`Stripe webhook configured: ${webhook.url} (UUID: ${uuid})`);
-
-    console.log('Syncing Stripe data in background...');
-    stripeSync.syncBackfill()
-      .then(() => {
-        console.log('Stripe data synced');
-      })
-      .catch((err: Error) => {
-        console.error('Error syncing Stripe data:', err);
-      });
-  } catch (error) {
-    console.error('Failed to initialize Stripe:', error);
-  }
-}
-
 export async function registerRoutes(app: Express): Promise<Server> {
   await ensureAdminUserExists();
-  
-  initStripe().catch(console.error);
   
   // =============================================
   // HEALTH CHECK ENDPOINTS
@@ -6442,49 +6394,12 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(500).json({ error: clientResult.error || "Failed to register client" });
       }
       
-      // Generate Stripe checkout URL for the new client (PDF requirement: "Stripe link generated")
-      let checkoutUrl = null;
-      try {
-        const { stripeService } = await import('./stripeService');
-        const email = businessProfile?.email || contact?.email || `${clientId}@placeholder.com`;
-        
-        // Create Stripe customer
-        const customer = await stripeService.createCustomer(email, clientId, clientName);
-        
-        // Get default product/price for billing plan
-        const products = await stripeService.listProductsWithPrices(true, 10, 0);
-        if (products && products.length > 0) {
-          const defaultProduct = products[0];
-          const priceId = defaultProduct.price_id as string;
-          
-          if (priceId && typeof priceId === 'string') {
-            const baseUrl = process.env.REPLIT_DEV_DOMAIN 
-              ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-              : 'http://localhost:5000';
-            
-            const session = await stripeService.createCheckoutSession(
-              customer.id,
-              priceId,
-              clientId,
-              `${baseUrl}/super-admin?checkout=success&clientId=${clientId}`,
-              `${baseUrl}/super-admin?checkout=canceled&clientId=${clientId}`
-            );
-            
-            checkoutUrl = session.url;
-          }
-        }
-      } catch (stripeError) {
-        console.log("Stripe checkout generation skipped (not configured or no products):", stripeError);
-        // Continue without Stripe - not a failure condition
-      }
-      
       res.status(201).json({ 
         success: true,
         clientId: clientId,
         client: clientResult.client,
         botId: newBotId,
         config: newConfig,
-        checkoutUrl: checkoutUrl, // PDF: "Stripe link generated"
       });
     } catch (error) {
       console.error("Create client from template error:", error);
@@ -7976,26 +7891,6 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // =============================================
-  // CLIENT BILLING ENDPOINTS
-  // =============================================
-
-  // Get client subscription info - BILLING DISABLED
-  app.get("/api/client/billing", requireClientAuth, async (req, res) => {
-    return res.status(501).json({ 
-      error: "Billing temporarily disabled",
-      message: "Payment processing is not enabled on this platform. Contact support for billing inquiries."
-    });
-  });
-
-  // Create customer portal session for client - BILLING DISABLED
-  app.post("/api/client/billing/portal", requireClientAuth, requireConfigAccess, async (req, res) => {
-    return res.status(501).json({ 
-      error: "Billing temporarily disabled",
-      message: "Payment processing is not enabled on this platform. Contact support for billing inquiries."
-    });
-  });
-
-  // =============================================
   // CLIENT ACCOUNT SETTINGS ENDPOINTS
   // =============================================
 
@@ -8801,7 +8696,7 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
-  // Get integrations status (OpenAI, Stripe, Database, etc)
+  // Get integrations status (OpenAI, Database, etc)
   app.get("/api/super-admin/integrations/status", requireSuperAdmin, async (req, res) => {
     try {
       const { getOpenAIConfig } = await import("./env");
@@ -8809,16 +8704,6 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       // Check database health
       const dbCheck = await storage.healthCheck?.() ?? { status: 'ok' };
-      
-      // Check Stripe configuration
-      let stripeConfigured = false;
-      try {
-        const { getStripeSecretKey } = await import("./stripeClient");
-        const stripeKey = await getStripeSecretKey();
-        stripeConfigured = !!stripeKey;
-      } catch (e) {
-        stripeConfigured = false;
-      }
       
       // Verify OpenAI key with a lightweight API call
       let openaiStatus: 'connected' | 'error' | 'not_configured' = 'not_configured';
@@ -8855,10 +8740,6 @@ These suggestions should be relevant to what was just discussed and help guide t
           configured: !!openAIConfig?.apiKey,
           baseUrl: openAIConfig?.baseURL || null,
           status: openaiStatus,
-        },
-        stripe: {
-          configured: stripeConfigured,
-          status: stripeConfigured ? 'connected' : 'not_configured',
         },
         database: {
           configured: !!process.env.DATABASE_URL,
@@ -8923,20 +8804,6 @@ These suggestions should be relevant to what was just discussed and help guide t
             latencyMs: dbCheck.latencyMs || Date.now() - startTime,
             error: dbCheck.status !== 'ok' ? 'Database connection failed' : undefined,
           });
-        }
-        
-        case 'stripe': {
-          try {
-            const { getStripeSecretKey } = await import("./stripeClient");
-            const key = await getStripeSecretKey();
-            if (!key) {
-              return res.json({ success: false, error: 'Stripe not configured', latencyMs: 0 });
-            }
-            // Could add a test API call here
-            return res.json({ success: true, latencyMs: Date.now() - startTime });
-          } catch (e: any) {
-            return res.json({ success: false, error: e.message, latencyMs: Date.now() - startTime });
-          }
         }
         
         default:
@@ -10745,66 +10612,6 @@ These suggestions should be relevant to what was just discussed and help guide t
       console.error("Get bot stats error:", error);
       res.status(500).json({ error: "Failed to fetch bot stats" });
     }
-  });
-
-  // =============================================
-  // STRIPE BILLING ENDPOINTS
-  // =============================================
-
-  // Get Stripe publishable key - BILLING DISABLED
-  app.get("/api/stripe/publishable-key", async (req, res) => {
-    return res.status(501).json({ 
-      error: "Billing temporarily disabled",
-      message: "Payment processing is not enabled on this platform. Contact support for billing inquiries."
-    });
-  });
-
-  // List available products and prices for subscription - BILLING DISABLED
-  app.get("/api/stripe/products", async (req, res) => {
-    return res.status(501).json({ 
-      error: "Billing temporarily disabled",
-      message: "Payment processing is not enabled on this platform. Contact support for billing inquiries."
-    });
-  });
-
-  // Create checkout session for client subscription - BILLING DISABLED
-  app.post("/api/stripe/checkout", requireSuperAdmin, async (req, res) => {
-    return res.status(501).json({ 
-      error: "Billing temporarily disabled",
-      message: "Payment processing is not enabled on this platform. Contact support for billing inquiries."
-    });
-  });
-
-  // Get client subscription status - BILLING DISABLED
-  app.get("/api/stripe/subscription/:clientId", requireSuperAdmin, async (req, res) => {
-    return res.status(501).json({ 
-      error: "Billing temporarily disabled",
-      message: "Payment processing is not enabled on this platform. Contact support for billing inquiries."
-    });
-  });
-
-  // Create customer portal session for managing subscription - BILLING DISABLED
-  app.post("/api/stripe/portal", requireSuperAdmin, async (req, res) => {
-    return res.status(501).json({ 
-      error: "Billing temporarily disabled",
-      message: "Payment processing is not enabled on this platform. Contact support for billing inquiries."
-    });
-  });
-
-  // Get billing overview for super admin dashboard - BILLING DISABLED
-  app.get("/api/super-admin/billing/overview", requireSuperAdmin, async (req, res) => {
-    return res.status(501).json({ 
-      error: "Billing temporarily disabled",
-      message: "Payment processing is not enabled on this platform. Contact support for billing inquiries."
-    });
-  });
-
-  // Get recent invoices for super admin dashboard - BILLING DISABLED
-  app.get("/api/super-admin/billing/invoices", requireSuperAdmin, async (req, res) => {
-    return res.status(501).json({ 
-      error: "Billing temporarily disabled",
-      message: "Payment processing is not enabled on this platform. Contact support for billing inquiries."
-    });
   });
 
   // =============================================

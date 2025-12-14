@@ -1333,7 +1333,7 @@ export const systemLogs = pgTable("system_logs", {
   
   // Log classification
   level: text("level").notNull().default("info"), // debug, info, warn, error, critical
-  source: text("source").notNull(), // Route or component: api/chat, stripe/webhook, auth, system, etc.
+  source: text("source").notNull(), // Route or component: api/chat, widget, auth, system, etc.
   
   // Context
   workspaceId: varchar("workspace_id"), // Nullable - for workspace-specific logs
