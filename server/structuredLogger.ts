@@ -72,6 +72,34 @@ export function redactObject(obj: unknown): unknown {
   return obj;
 }
 
+/**
+ * Normalize context to LogContext format.
+ * Handles Error objects, strings, and unknown types from catch blocks.
+ */
+function normalizeContext(context: unknown): LogContext | undefined {
+  if (context === undefined || context === null) {
+    return undefined;
+  }
+  
+  if (context instanceof Error) {
+    return {
+      error: context.message,
+      stack: context.stack,
+      name: context.name,
+    };
+  }
+  
+  if (typeof context === 'string') {
+    return { error: context };
+  }
+  
+  if (typeof context === 'object') {
+    return context as LogContext;
+  }
+  
+  return { value: String(context) };
+}
+
 function formatLog(level: LogLevel, message: string, context?: LogContext): string {
   const log: StructuredLog = {
     timestamp: new Date().toISOString(),
@@ -88,22 +116,22 @@ function formatLog(level: LogLevel, message: string, context?: LogContext): stri
 }
 
 export const structuredLogger = {
-  debug(message: string, context?: LogContext) {
+  debug(message: string, context?: unknown) {
     if (process.env.LOG_LEVEL === 'debug') {
-      console.log(formatLog('debug', message, context));
+      console.log(formatLog('debug', message, normalizeContext(context)));
     }
   },
   
-  info(message: string, context?: LogContext) {
-    console.log(formatLog('info', message, context));
+  info(message: string, context?: unknown) {
+    console.log(formatLog('info', message, normalizeContext(context)));
   },
   
-  warn(message: string, context?: LogContext) {
-    console.warn(formatLog('warn', message, context));
+  warn(message: string, context?: unknown) {
+    console.warn(formatLog('warn', message, normalizeContext(context)));
   },
   
-  error(message: string, context?: LogContext) {
-    console.error(formatLog('error', message, context));
+  error(message: string, context?: unknown) {
+    console.error(formatLog('error', message, normalizeContext(context)));
   },
 };
 

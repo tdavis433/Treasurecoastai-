@@ -3406,6 +3406,9 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       
       const filters: any = {};
       if (status) filters.status = status as string;
@@ -3563,6 +3566,9 @@ These suggestions should be relevant to what was just discussed and help guide t
     try {
       // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       
       const appointment = await storage.getAppointmentById(clientId, req.params.id);
       if (!appointment) {
@@ -3596,6 +3602,9 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       
       const appointment = await storage.updateAppointment(clientId, paramsValidation.data.id, updates);
       res.json(appointment);
@@ -3620,6 +3629,9 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       
       await storage.updateAppointmentStatus(clientId, paramsValidation.data.id, bodyValidation.data.status);
       res.json({ success: true });
@@ -3634,6 +3646,9 @@ These suggestions should be relevant to what was just discussed and help guide t
       const { id } = req.params;
       // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       
       await storage.deleteAppointment(clientId, id);
       res.json({ success: true });
@@ -3647,6 +3662,9 @@ These suggestions should be relevant to what was just discussed and help guide t
     try {
       // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       
       const settings = await storage.getSettings(clientId);
       res.json(settings);
@@ -3662,6 +3680,9 @@ These suggestions should be relevant to what was just discussed and help guide t
       // Ignore any clientId from request body - only use session-based client context
       const { clientId: _ignoredClientId, ...settingsData } = req.body;
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       
       const validatedData = insertClientSettingsSchema.partial().parse(settingsData);
       const settings = await storage.updateSettings(clientId, validatedData);
@@ -3676,6 +3697,9 @@ These suggestions should be relevant to what was just discussed and help guide t
     try {
       // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       
       const analytics = await storage.getAnalytics(clientId);
       res.json(analytics);
@@ -3697,6 +3721,9 @@ These suggestions should be relevant to what was just discussed and help guide t
       // Ignore any clientId from query params
       const { startDate, endDate } = queryValidation.data;
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       
       const start = startDate ? new Date(startDate) : undefined;
       const end = endDate ? new Date(endDate) : undefined;
@@ -3722,6 +3749,9 @@ These suggestions should be relevant to what was just discussed and help guide t
 
       // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
 
       const start = startDate ? new Date(startDate) : undefined;
       const end = endDate ? new Date(endDate) : undefined;
@@ -5928,7 +5958,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(400).json({ error: "botId is required" });
       }
 
-      const result = await applyScrapedDataToBot(id, botId, user?.id || "admin");
+      const result = await applyScrapedDataToBot(id, botId, String(user?.id ?? "admin"));
 
       if (result.success) {
         const scrape = await storage.getScrapedWebsiteById(id);
@@ -6085,7 +6115,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
 
       // Apply the scraped data to the bot
-      const applyResult = await applyScrapedDataToBot(scrapeResult.scrapeId, botId, user?.id || "admin");
+      const applyResult = await applyScrapedDataToBot(scrapeResult.scrapeId, botId, String(user?.id ?? "admin"));
       
       if (!applyResult.success) {
         return res.status(500).json({ 
@@ -6717,6 +6747,9 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
 
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       let botConfig = null;
       let businessInfo = null;
 
@@ -6752,6 +6785,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.patch("/api/client/settings", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const { phone, hours, location } = req.body;
       
       // For now, we just log and acknowledge - actual bot config updates would require file writes
@@ -6793,6 +6829,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.get("/api/client/webhooks", requireClientAuth, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const settings = await storage.getSettings(clientId);
       
       if (!settings) {
@@ -6836,6 +6875,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.patch("/api/client/webhooks", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       
       const validation = validateRequest(webhookSettingsSchema, req.body);
       if (!validation.success) {
@@ -6943,6 +6985,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.post("/api/client/webhooks/test", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const result = await testWebhook(clientId);
       
       if (result.success) {
@@ -6968,6 +7013,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.post("/api/client/webhooks/generate-secret", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const newSecret = crypto.randomBytes(32).toString('hex');
       
       await storage.updateSettings(clientId, { webhookSecret: newSecret } as any);
@@ -6987,6 +7035,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.get("/api/client/stats", requireClientAuth, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       
       // Parse optional days parameter (7, 30, or all)
       const daysParam = req.query.days as string | undefined;
@@ -7255,6 +7306,9 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
       
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const { limit, offset } = queryValidation.data;
       
       // Get bot config for this client
@@ -7307,6 +7361,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.get("/api/client/appointments", requireClientAuth, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       
       // Get appointments for any valid client
       const appointments = await storage.getAllAppointments(clientId);
@@ -7331,6 +7388,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.get("/api/client/bot-config", requireClientAuth, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       
       const allBots = getAllBotConfigs();
       const botConfig = allBots.find(bot => bot.clientId === clientId);
@@ -7374,6 +7434,9 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
       
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const { botId, startDate, endDate } = queryValidation.data;
       const start = startDate ? new Date(startDate) : undefined;
       const end = endDate ? new Date(endDate) : undefined;
@@ -7425,6 +7488,9 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
       
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const { botId, days } = queryValidation.data as { botId?: string; days: number };
       
       const trends = await storage.getClientDailyTrends(clientId, botId, days);
@@ -7478,6 +7544,9 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
       
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const { botId, limit } = queryValidation.data as { botId?: string; limit: number };
       
       const sessions = await storage.getClientRecentSessions(clientId, botId, limit);
@@ -7498,6 +7567,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.get("/api/client/analytics/top-questions", requireClientAuth, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const days = parseInt(req.query.days as string) || 30;
       const limit = parseInt(req.query.limit as string) || 10;
       
@@ -7583,6 +7655,9 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
       
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const { botId, days } = queryValidation.data as { botId?: string; days: number };
       
       const trends = await storage.getClientDailyTrends(clientId, botId, days);
@@ -7623,6 +7698,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.get("/api/client/leads/export", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const { leads } = await storage.getLeads(clientId, { limit: 10000 });
       
       // Build CSV content
@@ -7658,6 +7736,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.get("/api/client/analytics/sessions/export", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const queryValidation = validateRequest(analyticsSessionsQuerySchema, req.query);
       if (!queryValidation.success) {
         return res.status(400).json({ error: queryValidation.error });
@@ -7703,6 +7784,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.get("/api/client/inbox/sessions/:sessionId", requireClientAuth, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const { sessionId } = req.params;
       
       const rawMessages = await storage.getSessionMessages(sessionId, clientId);
@@ -7744,6 +7828,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.get("/api/client/inbox/sessions/:sessionId/notes", requireClientAuth, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const { sessionId } = req.params;
       
       const notes = await storage.getConversationNotes(sessionId, clientId);
@@ -7758,6 +7845,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.post("/api/client/inbox/sessions/:sessionId/notes", requireClientAuth, requireOperationalAccess, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const { sessionId } = req.params;
       const user = req.user;
       
@@ -7771,7 +7861,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         clientId,
         botId: bodyValidation.data.botId,
         content: bodyValidation.data.content,
-        authorId: user?.id || 'unknown',
+        authorId: String(user?.id ?? 'unknown'),
         authorName: user?.username || 'Unknown User',
         isPinned: bodyValidation.data.isPinned || false,
       });
@@ -7787,6 +7877,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.patch("/api/client/inbox/notes/:noteId", requireClientAuth, requireOperationalAccess, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const { noteId } = req.params;
       const { content, isPinned } = req.body;
       
@@ -7810,6 +7903,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.delete("/api/client/inbox/notes/:noteId", requireClientAuth, requireDestructiveAccess, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       // Pass clientId for tenant verification
       await storage.deleteConversationNote(req.params.noteId, clientId);
       res.status(204).send();
@@ -7830,6 +7926,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.get("/api/client/inbox/sessions/:sessionId/state", requireClientAuth, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const { sessionId } = req.params;
       const { botId } = req.query;
       
@@ -7849,6 +7948,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.patch("/api/client/inbox/sessions/:sessionId/state", requireClientAuth, requireOperationalAccess, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const { sessionId } = req.params;
       const user = req.user;
       const { status, isRead, priority, assignedToUserId, tags } = req.body;
@@ -7885,6 +7987,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.get("/api/client/inbox/states", requireClientAuth, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const { status, isRead, assignedToUserId } = req.query;
       
       const states = await storage.getSessionStates(clientId, {
@@ -7904,6 +8009,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.get("/api/client/usage", requireClientAuth, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const usageSummary = await getUsageSummary(clientId);
       
       res.json({
@@ -7986,6 +8094,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.get("/api/client/notifications", requireClientAuth, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
 
       const [settings] = await db.select().from(clientSettings).where(eq(clientSettings.clientId, clientId)).limit(1);
       if (!settings) {
@@ -8027,6 +8138,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.patch("/api/client/notifications", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       
       // Validate request body
       const bodyValidation = validateRequest(notificationUpdateSchema, req.body);
@@ -8111,6 +8225,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.get("/api/client/leads", requireClientAuth, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const { status, priority, search, limit, offset } = req.query;
       
       const result = await storage.getLeads(clientId, {
@@ -8135,6 +8252,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.get("/api/client/leads/:id", requireClientAuth, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const lead = await storage.getLeadById(clientId, req.params.id);
       
       if (!lead) {
@@ -8158,6 +8278,9 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
       
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       
       // If botId not provided, try to get default bot for this client
       let botId = bodyValidation.data.botId;
@@ -8226,6 +8349,9 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
       
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const lead = await storage.getLeadById(clientId, paramsValidation.data.id);
       
       if (!lead) {
@@ -8262,6 +8388,9 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
       
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const lead = await storage.getLeadById(clientId, paramsValidation.data.id);
       
       if (!lead) {
@@ -8297,6 +8426,9 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       const { leadIds, action, status, priority } = bodyValidation.data;
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       
       // SECURITY: Pre-validate ALL leads belong to this client before processing any
       const validationErrors: string[] = [];
@@ -8368,6 +8500,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.get("/api/client/bookings", requireClientAuth, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const { status, search, limit, offset } = req.query;
       
       const result = await storage.getBookingLeads(clientId, {
@@ -8394,6 +8529,9 @@ These suggestions should be relevant to what was just discussed and help guide t
     try {
       const { id } = req.params;
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       
       // Validate body
       const bodyValidation = validateRequest(updateBookingStatusSchema, req.body);
@@ -8431,6 +8569,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.get("/api/client/bookings/analytics", requireClientAuth, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const { startDate, endDate } = req.query;
       
       const analytics = await storage.getBookingAnalytics(
@@ -10112,8 +10253,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       });
 
     } catch (error: any) {
-      structuredLogger.error("New client wizard error:", error);
-      structuredLogger.error("Error details:", error?.message, error?.stack);
+      structuredLogger.error("New client wizard error:", { error: error?.message, stack: error?.stack });
       res.status(500).json({ 
         error: "Failed to create client",
         details: error?.message || "Unknown error"
@@ -10196,7 +10336,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           source: 'super-admin',
           message: `Demo workspace ${slug} data cleared (no seed config)`,
           workspaceId: (workspace as any).id,
-          details: { resetBy: req.session?.userId },
+          details: { resetBy: req.session?.userId?.toString() || 'unknown' } as any,
         });
         
         return res.json({ 
@@ -11721,6 +11861,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.get("/api/client/data/export", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const data = await exportClientData(clientId);
       
       res.setHeader('Content-Type', 'application/json');
@@ -11736,6 +11879,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.delete("/api/client/data", requireClientAuth, requireDestructiveAccess, async (req, res) => {
     try {
       const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
       const { deleteLeads, deleteAppointments, deleteChatSessions, deleteAnalytics } = req.body;
       
       const result = await deleteClientData(clientId, {
@@ -11954,6 +12100,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         description: dbTemplate.description,
         botType: dbTemplate.botType,
         defaultConfig: dbTemplate.defaultConfig,
+        bookingProfile: dbTemplate.defaultConfig?.bookingProfile || { mode: 'internal' as const, primaryCTA: 'call' as const, failsafeEnabled: true },
         ctaButtons: dbTemplate.defaultConfig?.bookingProfile?.ctas || [],
         disclaimer: dbTemplate.defaultConfig?.bookingProfile?.disclaimers?.text || '',
       } : INDUSTRY_TEMPLATES[intake.industryTemplate];
