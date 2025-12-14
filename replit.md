@@ -41,7 +41,8 @@ The platform operates on a two-surface system:
 *   **Payments:** Stripe integration.
 *   **Authentication:** Admin and client accounts (clients have view-only access).
 *   **API Endpoints:** Structured for core chat interactions, widget configuration, and protected routes.
-*   **Security:** Rate limiting, HMAC-signed widget tokens, per-bot security settings, domain validation, Helmet for secure HTTP headers and CSP, account lockout, strong password policies, secure password reset flow, SameSite cookies, CSRF protection (double-submit cookie pattern), session invalidation on password change, idle timeout (30 min default, configurable via SESSION_IDLE_TIMEOUT_MINUTES), and secure super-admin impersonation (session-based, DB-first tenant validation, audit logged).
+*   **Security:** Rate limiting, HMAC-signed widget tokens, per-bot security settings, domain validation, Helmet for secure HTTP headers and CSP, account lockout, strong password policies, secure password reset flow, SameSite cookies, CSRF protection (double-submit cookie pattern), session invalidation on password change, idle timeout (30 min default, configurable via SESSION_IDLE_TIMEOUT_MINUTES), secure super-admin impersonation (session-based, DB-first tenant validation, audit logged), and 3-tier role-based access control (operational/config/destructive).
+*   **3-Tier Access Control:** Workspace membership roles control access: `owner`/`manager` (full access), `staff` (operational + config), `agent` (operational only - day-to-day ops like updating leads/notes/bookings but no config changes or deletions).
 *   **Key Architecture Components:** Unified Conversation Orchestrator, Enhanced Bot Config Cache, Multi-Tenant Data Isolation, Session Data Tracking, Daily Analytics.
 *   **Resilient Persistence:** When OpenAI API fails, the orchestrator extracts contact info and saves leads/bookings to prevent data loss.
 *   **Form Validation:** Inline validation for critical forms.
