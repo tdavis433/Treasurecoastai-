@@ -24,7 +24,7 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction) 
         maxAge: 24 * 60 * 60 * 1000,
       });
     }
-    (req as any).csrfToken = token;
+    req.csrfToken = token;
     return next();
   }
   

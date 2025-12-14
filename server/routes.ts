@@ -603,7 +603,7 @@ function requireWriteAccess(req: Request, res: Response, next: NextFunction) {
   }
   
   const globalRole = req.session.userRole as string;
-  const membershipRole = (req as any).membershipRole as string | undefined;
+  const membershipRole = req.membershipRole as string | undefined;
   
   // Super admins always have write access
   if (globalRole === "super_admin") {
@@ -655,7 +655,7 @@ function requireWorkspaceRole(allowed: WorkspaceRole[]) {
       return next();
     }
     
-    const role = (req as any).membershipRole as WorkspaceRole | undefined;
+    const role = req.membershipRole as WorkspaceRole | undefined;
     
     if (!role) {
       return res.status(403).json({ error: "Workspace membership required" });
@@ -717,7 +717,7 @@ const requireDestructiveAccess = requireWorkspaceRole(["owner"]);
  * - For client_admin users: clientId is derived from session (set at login)
  * - For super_admin users: clientId MUST be specified via query param
  * 
- * The resulting (req as any).effectiveClientId is then used by all client routes
+ * The resulting req.effectiveClientId is then used by all client routes
  * to scope data queries. ALL storage methods that access leads, bookings, 
  * conversations, and appointments MUST use this clientId to filter results.
  * 
@@ -758,15 +758,15 @@ async function requireClientAuth(req: Request, res: Response, next: NextFunction
         });
       }
       
-      (req as any).workspaceId = workspace.id;
-      (req as any).membershipRole = membership.role;
+      req.workspaceId = workspace.id;
+      req.membershipRole = membership.role;
     } catch (error) {
       // Validation failure = deny access (fail secure)
       structuredLogger.error("Workspace membership validation failed:", error);
       return res.status(500).json({ error: "Access validation failed. Please try again." });
     }
     
-    (req as any).effectiveClientId = req.session.clientId;
+    req.effectiveClientId = req.session.clientId;
     next();
     return;
   }
@@ -811,7 +811,7 @@ async function requireClientAuth(req: Request, res: Response, next: NextFunction
       }
       
       // Store workspace info for downstream use
-      (req as any).workspaceId = workspace.id;
+      req.workspaceId = workspace.id;
     } catch (error) {
       // Validation failure = deny access (fail secure)
       structuredLogger.error("Workspace lookup failed for super admin impersonation:", error);
@@ -828,7 +828,7 @@ async function requireClientAuth(req: Request, res: Response, next: NextFunction
       return res.status(500).json({ error: "Client validation failed. Please try again." });
     }
     
-    (req as any).effectiveClientId = effectiveClientId;
+    req.effectiveClientId = effectiveClientId;
     next();
     return;
   }
@@ -878,7 +878,7 @@ async function validateBotAccess(req: Request, res: Response, botId: string): Pr
           return false;
         }
         // Store membership role for downstream access control
-        (req as any).membershipRole = membership.role;
+        req.membershipRole = membership.role;
       }
       
       return true;
@@ -3401,7 +3401,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const { status, startDate, endDate, search, limit, offset } = req.query;
       
       // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       
       const filters: any = {};
       if (status) filters.status = status as string;
@@ -3558,7 +3558,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.get("/api/appointments/:id", requireClientAuth, async (req, res) => {
     try {
       // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       
       const appointment = await storage.getAppointmentById(clientId, req.params.id);
       if (!appointment) {
@@ -3591,7 +3591,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
       
       // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       
       const appointment = await storage.updateAppointment(clientId, paramsValidation.data.id, updates);
       res.json(appointment);
@@ -3615,7 +3615,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
       
       // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       
       await storage.updateAppointmentStatus(clientId, paramsValidation.data.id, bodyValidation.data.status);
       res.json({ success: true });
@@ -3629,7 +3629,7 @@ These suggestions should be relevant to what was just discussed and help guide t
     try {
       const { id } = req.params;
       // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       
       await storage.deleteAppointment(clientId, id);
       res.json({ success: true });
@@ -3642,7 +3642,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.get("/api/settings", requireClientAuth, async (req, res) => {
     try {
       // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       
       const settings = await storage.getSettings(clientId);
       res.json(settings);
@@ -3657,7 +3657,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
       // Ignore any clientId from request body - only use session-based client context
       const { clientId: _ignoredClientId, ...settingsData } = req.body;
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       
       const validatedData = insertClientSettingsSchema.partial().parse(settingsData);
       const settings = await storage.updateSettings(clientId, validatedData);
@@ -3671,7 +3671,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.get("/api/analytics", requireClientAuth, async (req, res) => {
     try {
       // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       
       const analytics = await storage.getAnalytics(clientId);
       res.json(analytics);
@@ -3692,7 +3692,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
       // Ignore any clientId from query params
       const { startDate, endDate } = queryValidation.data;
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       
       const start = startDate ? new Date(startDate) : undefined;
       const end = endDate ? new Date(endDate) : undefined;
@@ -3717,7 +3717,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       const { startDate, endDate } = queryValidation.data;
 
       // SECURITY: Use effectiveClientId from middleware (session-based tenant isolation)
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
 
       const start = startDate ? new Date(startDate) : undefined;
       const end = endDate ? new Date(endDate) : undefined;
@@ -5917,7 +5917,7 @@ These suggestions should be relevant to what was just discussed and help guide t
     try {
       const { id } = req.params;
       const { botId } = req.body;
-      const user = (req as any).user;
+      const user = req.user;
 
       if (!botId) {
         return res.status(400).json({ error: "botId is required" });
@@ -6052,7 +6052,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.post("/api/super-admin/bots/:botId/rebuild-knowledge", requireSuperAdmin, async (req, res) => {
     try {
       const { botId } = req.params;
-      const user = (req as any).user;
+      const user = req.user;
       
       // Get bot config to find website URL
       const botConfig = await getBotConfigByBotIdAsync(botId) || getBotConfigByBotId(botId);
@@ -6713,7 +6713,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(404).json({ error: "User not found" });
       }
 
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       let botConfig = null;
       let businessInfo = null;
 
@@ -6748,7 +6748,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Update client settings (limited fields: phone, hours, location)
   app.patch("/api/client/settings", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const { phone, hours, location } = req.body;
       
       // For now, we just log and acknowledge - actual bot config updates would require file writes
@@ -6789,7 +6789,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Get webhook settings
   app.get("/api/client/webhooks", requireClientAuth, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const settings = await storage.getSettings(clientId);
       
       if (!settings) {
@@ -6832,7 +6832,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Update webhook settings
   app.patch("/api/client/webhooks", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       
       const validation = validateRequest(webhookSettingsSchema, req.body);
       if (!validation.success) {
@@ -6939,7 +6939,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Test webhook endpoint
   app.post("/api/client/webhooks/test", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const result = await testWebhook(clientId);
       
       if (result.success) {
@@ -6964,7 +6964,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Generate new webhook secret
   app.post("/api/client/webhooks/generate-secret", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const newSecret = crypto.randomBytes(32).toString('hex');
       
       await storage.updateSettings(clientId, { webhookSecret: newSecret } as any);
@@ -6983,7 +6983,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Get client dashboard stats
   app.get("/api/client/stats", requireClientAuth, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       
       // Parse optional days parameter (7, 30, or all)
       const daysParam = req.query.days as string | undefined;
@@ -7251,7 +7251,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(400).json({ error: queryValidation.error });
       }
       
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const { limit, offset } = queryValidation.data;
       
       // Get bot config for this client
@@ -7303,7 +7303,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Get client's appointments (for business types that support them)
   app.get("/api/client/appointments", requireClientAuth, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       
       // Get appointments for any valid client
       const appointments = await storage.getAllAppointments(clientId);
@@ -7327,7 +7327,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Get bot configuration for the client (read-only view)
   app.get("/api/client/bot-config", requireClientAuth, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       
       const allBots = getAllBotConfigs();
       const botConfig = allBots.find(bot => bot.clientId === clientId);
@@ -7370,7 +7370,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(400).json({ error: queryValidation.error });
       }
       
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const { botId, startDate, endDate } = queryValidation.data;
       const start = startDate ? new Date(startDate) : undefined;
       const end = endDate ? new Date(endDate) : undefined;
@@ -7421,7 +7421,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(400).json({ error: queryValidation.error });
       }
       
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const { botId, days } = queryValidation.data as { botId?: string; days: number };
       
       const trends = await storage.getClientDailyTrends(clientId, botId, days);
@@ -7474,7 +7474,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(400).json({ error: queryValidation.error });
       }
       
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const { botId, limit } = queryValidation.data as { botId?: string; limit: number };
       
       const sessions = await storage.getClientRecentSessions(clientId, botId, limit);
@@ -7494,7 +7494,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Get top questions/topics for client - analyzes conversation themes
   app.get("/api/client/analytics/top-questions", requireClientAuth, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const days = parseInt(req.query.days as string) || 30;
       const limit = parseInt(req.query.limit as string) || 10;
       
@@ -7579,7 +7579,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(400).json({ error: queryValidation.error });
       }
       
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const { botId, days } = queryValidation.data as { botId?: string; days: number };
       
       const trends = await storage.getClientDailyTrends(clientId, botId, days);
@@ -7619,7 +7619,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Export leads to CSV
   app.get("/api/client/leads/export", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const { leads } = await storage.getLeads(clientId, { limit: 10000 });
       
       // Build CSV content
@@ -7654,7 +7654,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Export sessions to CSV
   app.get("/api/client/analytics/sessions/export", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const queryValidation = validateRequest(analyticsSessionsQuerySchema, req.query);
       if (!queryValidation.success) {
         return res.status(400).json({ error: queryValidation.error });
@@ -7699,7 +7699,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Get messages for a specific session
   app.get("/api/client/inbox/sessions/:sessionId", requireClientAuth, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const { sessionId } = req.params;
       
       const rawMessages = await storage.getSessionMessages(sessionId, clientId);
@@ -7740,7 +7740,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Get notes for a session
   app.get("/api/client/inbox/sessions/:sessionId/notes", requireClientAuth, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const { sessionId } = req.params;
       
       const notes = await storage.getConversationNotes(sessionId, clientId);
@@ -7754,9 +7754,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Create a note
   app.post("/api/client/inbox/sessions/:sessionId/notes", requireClientAuth, requireOperationalAccess, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const { sessionId } = req.params;
-      const user = (req as any).user;
+      const user = req.user;
       
       const bodyValidation = validateRequest(createNoteSchema, { ...req.body, sessionId });
       if (!bodyValidation.success) {
@@ -7783,7 +7783,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Update a note
   app.patch("/api/client/inbox/notes/:noteId", requireClientAuth, requireOperationalAccess, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const { noteId } = req.params;
       const { content, isPinned } = req.body;
       
@@ -7806,7 +7806,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Delete a note
   app.delete("/api/client/inbox/notes/:noteId", requireClientAuth, requireDestructiveAccess, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       // Pass clientId for tenant verification
       await storage.deleteConversationNote(req.params.noteId, clientId);
       res.status(204).send();
@@ -7826,7 +7826,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Get or create session state
   app.get("/api/client/inbox/sessions/:sessionId/state", requireClientAuth, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const { sessionId } = req.params;
       const { botId } = req.query;
       
@@ -7845,9 +7845,9 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Update session state (mark as read, change status, etc.)
   app.patch("/api/client/inbox/sessions/:sessionId/state", requireClientAuth, requireOperationalAccess, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const { sessionId } = req.params;
-      const user = (req as any).user;
+      const user = req.user;
       const { status, isRead, priority, assignedToUserId, tags } = req.body;
       
       const updates: any = {};
@@ -7881,7 +7881,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Get all session states for filtering
   app.get("/api/client/inbox/states", requireClientAuth, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const { status, isRead, assignedToUserId } = req.query;
       
       const states = await storage.getSessionStates(clientId, {
@@ -7900,7 +7900,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Get client usage summary (plan limits and current usage)
   app.get("/api/client/usage", requireClientAuth, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const usageSummary = await getUsageSummary(clientId);
       
       res.json({
@@ -7982,7 +7982,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Get notification preferences
   app.get("/api/client/notifications", requireClientAuth, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
 
       const [settings] = await db.select().from(clientSettings).where(eq(clientSettings.clientId, clientId)).limit(1);
       if (!settings) {
@@ -8023,7 +8023,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Update notification preferences
   app.patch("/api/client/notifications", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       
       // Validate request body
       const bodyValidation = validateRequest(notificationUpdateSchema, req.body);
@@ -8107,7 +8107,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Get all leads for client
   app.get("/api/client/leads", requireClientAuth, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const { status, priority, search, limit, offset } = req.query;
       
       const result = await storage.getLeads(clientId, {
@@ -8131,7 +8131,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Get single lead by ID
   app.get("/api/client/leads/:id", requireClientAuth, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const lead = await storage.getLeadById(clientId, req.params.id);
       
       if (!lead) {
@@ -8154,7 +8154,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(400).json({ error: bodyValidation.error });
       }
       
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       
       // If botId not provided, try to get default bot for this client
       let botId = bodyValidation.data.botId;
@@ -8222,7 +8222,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(400).json({ error: bodyValidation.error });
       }
       
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const lead = await storage.getLeadById(clientId, paramsValidation.data.id);
       
       if (!lead) {
@@ -8258,7 +8258,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(400).json({ error: paramsValidation.error });
       }
       
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const lead = await storage.getLeadById(clientId, paramsValidation.data.id);
       
       if (!lead) {
@@ -8293,7 +8293,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
       
       const { leadIds, action, status, priority } = bodyValidation.data;
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       
       // SECURITY: Pre-validate ALL leads belong to this client before processing any
       const validationErrors: string[] = [];
@@ -8364,7 +8364,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Get booking leads for client (view-only)
   app.get("/api/client/bookings", requireClientAuth, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const { status, search, limit, offset } = req.query;
       
       const result = await storage.getBookingLeads(clientId, {
@@ -8390,7 +8390,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.patch("/api/client/bookings/:id", requireClientAuth, requireOperationalAccess, async (req, res) => {
     try {
       const { id } = req.params;
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       
       // Validate body
       const bodyValidation = validateRequest(updateBookingStatusSchema, req.body);
@@ -8427,7 +8427,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Get booking analytics for client (view-only)
   app.get("/api/client/bookings/analytics", requireClientAuth, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const { startDate, endDate } = req.query;
       
       const analytics = await storage.getBookingAnalytics(
@@ -8881,7 +8881,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   app.post("/api/super-admin/system/logs/:id/resolve", requireSuperAdmin, async (req, res) => {
     try {
       const { notes } = req.body;
-      const user = (req as any).user;
+      const user = req.user;
       
       const resolved = await storage.resolveSystemLog(req.params.id, user?.username || 'super-admin', notes);
       res.json(resolved);
@@ -10193,7 +10193,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           source: 'super-admin',
           message: `Demo workspace ${slug} data cleared (no seed config)`,
           workspaceId: (workspace as any).id,
-          details: { resetBy: (req as any).session?.userId },
+          details: { resetBy: req.session?.userId },
         });
         
         return res.json({ 
@@ -10214,7 +10214,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         message: `Demo workspace ${slug} data reset and reseeded`,
         workspaceId: (workspace as any).id,
         details: { 
-          resetBy: (req as any).session?.userId,
+          resetBy: req.session?.userId,
           stats: result.stats,
         } as any,
       });
@@ -11717,7 +11717,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Client data export (GDPR-style)
   app.get("/api/client/data/export", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const data = await exportClientData(clientId);
       
       res.setHeader('Content-Type', 'application/json');
@@ -11732,7 +11732,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   // Client data deletion (right to be forgotten)
   app.delete("/api/client/data", requireClientAuth, requireDestructiveAccess, async (req, res) => {
     try {
-      const clientId = (req as any).effectiveClientId;
+      const clientId = req.effectiveClientId;
       const { deleteLeads, deleteAppointments, deleteChatSessions, deleteAnalytics } = req.body;
       
       const result = await deleteClientData(clientId, {

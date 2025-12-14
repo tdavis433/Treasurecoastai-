@@ -78,14 +78,14 @@ export function extractRequestInfo(req: Request): { ipAddress: string; userAgent
     || req.socket?.remoteAddress 
     || 'unknown';
   const userAgent = (req.headers['user-agent'] as string) || 'unknown';
-  const requestId = (req.headers['x-request-id'] as string) || (req as any).requestId;
+  const requestId = (req.headers['x-request-id'] as string) || req.requestId;
   
   return { ipAddress, userAgent, requestId };
 }
 
 export function createAuditHelper(req: Request) {
   const { ipAddress, userAgent, requestId } = extractRequestInfo(req);
-  const session = (req as any).session;
+  const session = req.session;
   
   return {
     log: async (
@@ -103,11 +103,11 @@ export function createAuditHelper(req: Request) {
       await logAuditEvent({
         userId: session?.userId || 'system',
         username: session?.username || 'system',
-        userRole: session?.role,
+        userRole: session?.userRole,
         action,
         resourceType,
         resourceId: options.resourceId,
-        clientId: options.clientId || session?.clientId,
+        clientId: options.clientId || session?.clientId || undefined,
         workspaceId: options.workspaceId,
         beforeData: options.beforeData,
         afterData: options.afterData,

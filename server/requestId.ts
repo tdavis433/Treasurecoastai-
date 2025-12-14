@@ -5,6 +5,16 @@ declare global {
   namespace Express {
     interface Request {
       requestId?: string;
+      effectiveClientId?: string;
+      workspaceId?: string;
+      membershipRole?: string;
+      user?: {
+        id: number;
+        username: string;
+        role: string;
+        clientId?: string | null;
+      };
+      csrfToken?: string;
     }
   }
 }

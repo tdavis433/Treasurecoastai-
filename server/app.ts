@@ -331,7 +331,7 @@ app.use((req, res, next) => {
         method: req.method,
         path: redactPII(path),
         statusCode: res.statusCode,
-        userId: (req.session as any)?.userId,
+        userId: req.session?.userId ? parseInt(req.session.userId, 10) : undefined,
       });
     }
   });

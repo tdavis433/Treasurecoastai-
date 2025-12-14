@@ -262,7 +262,19 @@ function loadBotFromJson(clientId: string, botId: string): BotConfig | null {
     for (const file of botFiles) {
       const filePath = path.join(BOTS_DIR, file);
       const content = fs.readFileSync(filePath, 'utf-8');
-      const config: BotConfig = JSON.parse(content);
+      
+      let config: BotConfig;
+      try {
+        config = JSON.parse(content);
+      } catch (parseError) {
+        structuredLogger.error('Failed to parse bot config file in loadBotFromJson', {
+          filePath,
+          clientId,
+          botId,
+          error: parseError instanceof Error ? parseError.message : String(parseError)
+        });
+        continue;
+      }
       
       if (config.clientId === clientId && config.botId === botId) {
         // Extract booking URL from businessProfile if not set at top level
@@ -287,7 +299,18 @@ function loadBotFromJsonByBotId(botId: string): BotConfig | null {
     for (const file of botFiles) {
       const filePath = path.join(BOTS_DIR, file);
       const content = fs.readFileSync(filePath, 'utf-8');
-      const config: BotConfig = JSON.parse(content);
+      
+      let config: BotConfig;
+      try {
+        config = JSON.parse(content);
+      } catch (parseError) {
+        structuredLogger.error('Failed to parse bot config file in loadBotFromJsonByBotId', {
+          filePath,
+          botId,
+          error: parseError instanceof Error ? parseError.message : String(parseError)
+        });
+        continue;
+      }
       
       if (config.botId === botId) {
         // Extract booking URL from businessProfile if not set at top level
@@ -412,7 +435,17 @@ export function getAllBotConfigs(): BotConfig[] {
     for (const file of botFiles) {
       const filePath = path.join(BOTS_DIR, file);
       const content = fs.readFileSync(filePath, 'utf-8');
-      const config: BotConfig = JSON.parse(content);
+      
+      let config: BotConfig;
+      try {
+        config = JSON.parse(content);
+      } catch (parseError) {
+        structuredLogger.error('Failed to parse bot config file in getAllBotConfigs', {
+          filePath,
+          error: parseError instanceof Error ? parseError.message : String(parseError)
+        });
+        continue;
+      }
       
       // Normalize booking URL from businessProfile if not set at top level
       if (!config.externalBookingUrl && config.businessProfile?.booking?.onlineBookingUrl) {
@@ -491,7 +524,17 @@ export function getClients(): ClientsData {
   try {
     if (fs.existsSync(CLIENTS_FILE)) {
       const content = fs.readFileSync(CLIENTS_FILE, 'utf-8');
-      clientsCache = JSON.parse(content);
+      
+      try {
+        clientsCache = JSON.parse(content);
+      } catch (parseError) {
+        structuredLogger.error('Failed to parse clients.json file', {
+          filePath: CLIENTS_FILE,
+          error: parseError instanceof Error ? parseError.message : String(parseError)
+        });
+        return { clients: [] };
+      }
+      
       cacheTimestamp = Date.now();
       return clientsCache!;
     }
@@ -1140,7 +1183,18 @@ export function saveBotConfig(botId: string, config: BotConfig): boolean {
     for (const file of botFiles) {
       const filePath = path.join(BOTS_DIR, file);
       const content = fs.readFileSync(filePath, 'utf-8');
-      const existingConfig: BotConfig = JSON.parse(content);
+      
+      let existingConfig: BotConfig;
+      try {
+        existingConfig = JSON.parse(content);
+      } catch (parseError) {
+        structuredLogger.error('Failed to parse bot config file in saveBotConfig', {
+          filePath,
+          botId,
+          error: parseError instanceof Error ? parseError.message : String(parseError)
+        });
+        continue;
+      }
       
       if (existingConfig.botId === botId) {
         const updatedConfig = {
@@ -1193,7 +1247,18 @@ export function getBotFileName(botId: string): string | null {
     for (const file of botFiles) {
       const filePath = path.join(BOTS_DIR, file);
       const content = fs.readFileSync(filePath, 'utf-8');
-      const config: BotConfig = JSON.parse(content);
+      
+      let config: BotConfig;
+      try {
+        config = JSON.parse(content);
+      } catch (parseError) {
+        structuredLogger.error('Failed to parse bot config file in getBotFileName', {
+          filePath,
+          botId,
+          error: parseError instanceof Error ? parseError.message : String(parseError)
+        });
+        continue;
+      }
       
       if (config.botId === botId) {
         return file;
