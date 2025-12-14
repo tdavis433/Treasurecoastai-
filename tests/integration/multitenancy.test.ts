@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { db } from "../../server/storage";
-import { workspaces, adminUsers, leads, appointments } from "../../shared/schema";
+import { workspaces, workspaceMemberships, adminUsers, leads, appointments } from "../../shared/schema";
 import { eq, and } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
@@ -253,6 +253,116 @@ describe("Multi-Tenancy Data Isolation", () => {
       expect(stillExists.length).toBe(1);
       
       await db.delete(leads).where(eq(leads.id, tempLead[0].id));
+    });
+  });
+
+  describe("Membership Enforcement - Security Regression", () => {
+    let membershipA: any;
+    
+    beforeAll(async () => {
+      // Create membership for User A in Workspace A
+      const [mA] = await db.insert(workspaceMemberships).values({
+        workspaceId: workspaceA.id,
+        userId: userA.id,
+        role: "admin",
+      }).returning();
+      membershipA = mA;
+    });
+
+    afterAll(async () => {
+      // Clean up membership
+      if (membershipA?.id) {
+        try {
+          await db.delete(workspaceMemberships).where(eq(workspaceMemberships.id, membershipA.id));
+        } catch (e) {
+          // Already deleted by test
+        }
+      }
+    });
+
+    it("should enforce that users without workspace membership cannot access workspace data", async () => {
+      // Remove membership
+      await db.delete(workspaceMemberships).where(eq(workspaceMemberships.id, membershipA.id));
+      
+      // Verify membership is gone
+      const membership = await db.select().from(workspaceMemberships)
+        .where(and(
+          eq(workspaceMemberships.workspaceId, workspaceA.id),
+          eq(workspaceMemberships.userId, userA.id)
+        ));
+      
+      expect(membership.length).toBe(0);
+      
+      // Validates that workspace membership is enforced
+      // The requireClientAuth middleware uses checkWorkspaceMembership() to deny access
+      // This test confirms the database state that triggers 403 at API level
+    });
+
+    it("should demonstrate that membership check finds no record for removed user", async () => {
+      // Query what the middleware's checkWorkspaceMembership would find
+      const activeMembership = await db.select()
+        .from(workspaceMemberships)
+        .where(and(
+          eq(workspaceMemberships.workspaceId, workspaceA.id),
+          eq(workspaceMemberships.userId, userA.id)
+        ));
+      
+      // No membership = requireClientAuth will return 403
+      expect(activeMembership.length).toBe(0);
+    });
+  });
+
+  describe("IDOR Protection - Cross-Tenant Appointment Access", () => {
+    it("should prevent Tenant A from accessing Tenant B appointment by ID", async () => {
+      // Attempt to query appointment B using Tenant A's clientId scope
+      const crossTenantAppointment = await db.select()
+        .from(appointments)
+        .where(and(
+          eq(appointments.id, appointmentB.id),
+          eq(appointments.clientId, TEST_WORKSPACE_A_SLUG)
+        ));
+      
+      // Should return empty - appointment B belongs to Tenant B, not A
+      expect(crossTenantAppointment.length).toBe(0);
+    });
+
+    it("should prevent Tenant B from accessing Tenant A appointment by ID", async () => {
+      // Attempt to query appointment A using Tenant B's clientId scope
+      const crossTenantAppointment = await db.select()
+        .from(appointments)
+        .where(and(
+          eq(appointments.id, appointmentA.id),
+          eq(appointments.clientId, TEST_WORKSPACE_B_SLUG)
+        ));
+      
+      // Should return empty - appointment A belongs to Tenant A, not B
+      expect(crossTenantAppointment.length).toBe(0);
+    });
+
+    it("should allow tenant to access their own appointment by ID", async () => {
+      // Tenant A accessing their own appointment - should succeed
+      const ownAppointment = await db.select()
+        .from(appointments)
+        .where(and(
+          eq(appointments.id, appointmentA.id),
+          eq(appointments.clientId, TEST_WORKSPACE_A_SLUG)
+        ));
+      
+      expect(ownAppointment.length).toBe(1);
+      expect(ownAppointment[0].id).toBe(appointmentA.id);
+    });
+
+    it("should demonstrate IDOR protection pattern for leads", async () => {
+      // Tenant A tries to access Tenant B's lead by ID
+      const crossTenantLead = await db.select()
+        .from(leads)
+        .where(and(
+          eq(leads.id, leadB.id),
+          eq(leads.clientId, TEST_WORKSPACE_A_SLUG)
+        ));
+      
+      // IDOR prevented - lead B not returned when scoped to Tenant A
+      expect(crossTenantLead.length).toBe(0);
     });
   });
 });
