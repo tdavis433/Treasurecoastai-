@@ -667,24 +667,27 @@ async function requireClientAuth(req: Request, res: Response, next: NextFunction
     }
     
     // Validate the session clientId still exists (in case client was deleted)
-    const allBots = getAllBotConfigs();
-    const clientExistsInJson = allBots.some(bot => bot.clientId === effectiveClientId);
-    
-    let clientExistsInDb = false;
-    if (!clientExistsInJson) {
-      try {
-        const workspace = await getWorkspaceBySlug(effectiveClientId);
-        clientExistsInDb = !!workspace;
-      } catch (error) {
-        console.error("Workspace lookup failed:", error);
+    // SECURITY: Use database as the canonical source of truth (not bot JSON cache)
+    // This prevents false positives from stale cached configs or deleted workspaces
+    try {
+      const workspace = await storage.getWorkspaceByClientId(effectiveClientId);
+      
+      if (!workspace) {
+        // Clear invalid impersonation from session
+        console.warn(`Super admin impersonation invalid - workspace not found: ${effectiveClientId}`);
+        req.session.effectiveClientId = null;
+        req.session.isImpersonating = false;
+        return res.status(404).json({ error: "Impersonated client no longer exists" });
       }
-    }
-    
-    if (!clientExistsInJson && !clientExistsInDb) {
-      // Clear invalid impersonation from session
+      
+      // Store workspace info for downstream use
+      (req as any).workspaceId = workspace.id;
+    } catch (error) {
+      // Validation failure = deny access (fail secure)
+      console.error("Workspace lookup failed for super admin impersonation:", error);
       req.session.effectiveClientId = null;
       req.session.isImpersonating = false;
-      return res.status(404).json({ error: "Impersonated client no longer exists" });
+      return res.status(500).json({ error: "Client validation failed. Please try again." });
     }
     
     (req as any).effectiveClientId = effectiveClientId;
@@ -5180,21 +5183,11 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       const { clientId } = validation.data;
       
-      // Validate the requested clientId exists - check both JSON configs AND database workspaces
-      const allBots = getAllBotConfigs();
-      const clientExistsInJson = allBots.some(bot => bot.clientId === clientId);
+      // SECURITY: Use database as the canonical source of truth (not bot JSON cache)
+      // This prevents false positives from stale cached configs or deleted workspaces
+      const workspace = await storage.getWorkspaceByClientId(clientId);
       
-      let clientExistsInDb = false;
-      if (!clientExistsInJson) {
-        try {
-          const workspace = await getWorkspaceBySlug(clientId);
-          clientExistsInDb = !!workspace;
-        } catch (error) {
-          console.error("Workspace lookup failed:", error);
-        }
-      }
-      
-      if (!clientExistsInJson && !clientExistsInDb) {
+      if (!workspace) {
         return res.status(404).json({ error: "Client not found" });
       }
       
@@ -9475,8 +9468,8 @@ These suggestions should be relevant to what was just discussed and help guide t
       const { clientId } = req.params;
       const superAdminId = req.session.userId;
       
-      // Verify client exists
-      const workspace = await getWorkspaceBySlug(clientId);
+      // SECURITY: Use database as the canonical source of truth (not bot JSON cache)
+      const workspace = await storage.getWorkspaceByClientId(clientId);
       if (!workspace) {
         return res.status(404).json({ error: "Client not found" });
       }
