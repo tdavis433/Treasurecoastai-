@@ -5242,6 +5242,18 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(404).json({ error: "Client not found" });
       }
       
+      // Validate tenant status before allowing impersonation
+      const workspaceStatus = (workspace as any).status || 'active';
+      if (workspaceStatus === 'deleted' || workspaceStatus === 'disabled') {
+        return res.status(403).json({ 
+          error: "Cannot impersonate disabled client", 
+          message: "This client has been disabled or deleted and cannot be accessed." 
+        });
+      }
+      
+      // Track if workspace is paused for warning message
+      const isPaused = workspaceStatus === 'paused' || workspaceStatus === 'suspended';
+      
       // Set the effectiveClientId in session (secure server-side storage)
       req.session.effectiveClientId = clientId;
       req.session.isImpersonating = true;
@@ -5259,8 +5271,11 @@ These suggestions should be relevant to what was just discussed and help guide t
       console.log(`Super admin ${req.session.userId} started impersonating client: ${clientId}`);
       res.json({ 
         success: true, 
-        message: `Now viewing as client: ${clientId}`,
-        effectiveClientId: clientId
+        message: isPaused 
+          ? `Now viewing as client: ${clientId} (Warning: This client is currently ${workspaceStatus})`
+          : `Now viewing as client: ${clientId}`,
+        effectiveClientId: clientId,
+        warning: isPaused ? `This client is currently ${workspaceStatus}` : undefined
       });
       
       // Fire-and-forget audit logging (non-blocking)
