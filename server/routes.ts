@@ -617,140 +617,74 @@ function requireWriteAccess(req: Request, res: Response, next: NextFunction) {
 // These middlewares provide granular access control based on workspace membership roles.
 // Use AFTER requireClientAuth to ensure membershipRole is set.
 
+type WorkspaceRole = "owner" | "manager" | "staff" | "agent";
+
+/**
+ * Factory function to create role-based access control middleware.
+ * Super admins (in impersonation context) always have access.
+ * For client_admin users, checks workspace membership role against allowed roles.
+ */
+function requireWorkspaceRole(allowed: WorkspaceRole[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    // Super admin in impersonation context is always allowed
+    if (req.session.userRole === "super_admin") {
+      return next();
+    }
+    
+    const role = (req as any).membershipRole as WorkspaceRole | undefined;
+    
+    if (!role) {
+      return res.status(403).json({ error: "Workspace membership required" });
+    }
+    
+    if (!allowed.includes(role)) {
+      return res.status(403).json({ 
+        error: "Insufficient permissions",
+        message: `This action requires one of these roles: ${allowed.join(", ")}`
+      });
+    }
+    
+    next();
+  };
+}
+
 /**
  * OPERATIONAL ACCESS - For day-to-day operations that agents CAN perform
  * Allowed roles: owner, manager, staff, agent
  * 
  * Use on routes like:
  * - PATCH lead status (mark as contacted, update notes)
- * - POST inbox reply
+ * - POST inbox reply / add notes
  * - POST appointment create
  * - PATCH appointment status/time
- * - Add notes, update statuses, etc.
  */
-function requireOperationalAccess(req: Request, res: Response, next: NextFunction) {
-  if (!req.session.userId) {
-    return res.status(401).json({ error: "Authentication required" });
-  }
-  
-  const globalRole = req.session.userRole as string;
-  const membershipRole = (req as any).membershipRole as string | undefined;
-  
-  // Super admins always have access
-  if (globalRole === "super_admin") {
-    return next();
-  }
-  
-  // For client_admin users, check workspace membership role
-  if (globalRole === "client_admin") {
-    const operationalRoles = ["owner", "manager", "staff", "agent"];
-    
-    if (!membershipRole) {
-      return res.status(403).json({ error: "Access denied. Workspace membership required." });
-    }
-    
-    if (!operationalRoles.includes(membershipRole)) {
-      return res.status(403).json({ 
-        error: "Operational access denied", 
-        message: "Your workspace role does not allow this operation." 
-      });
-    }
-    
-    return next();
-  }
-  
-  return res.status(403).json({ error: "Access denied" });
-}
+const requireOperationalAccess = requireWorkspaceRole(["owner", "manager", "staff", "agent"]);
 
 /**
  * CONFIG ACCESS - For bot/widget configuration that agents CANNOT modify
  * Allowed roles: owner, manager, staff (excludes agent)
  * 
  * Use on routes like:
- * - Bot settings / knowledge base / behavior presets
- * - Widget theme / booking configuration
- * - FAQ management
- * - Automation rules
- * - Any configuration changes
+ * - Bot settings / knowledge base / FAQs
+ * - Behavior presets
+ * - Widget theme + branding
+ * - Booking profile settings / external URLs
+ * - Automations configuration
+ * - Webhook settings
  */
-function requireConfigAccess(req: Request, res: Response, next: NextFunction) {
-  if (!req.session.userId) {
-    return res.status(401).json({ error: "Authentication required" });
-  }
-  
-  const globalRole = req.session.userRole as string;
-  const membershipRole = (req as any).membershipRole as string | undefined;
-  
-  // Super admins always have access
-  if (globalRole === "super_admin") {
-    return next();
-  }
-  
-  // For client_admin users, check workspace membership role
-  if (globalRole === "client_admin") {
-    const configRoles = ["owner", "manager", "staff"];
-    
-    if (!membershipRole) {
-      return res.status(403).json({ error: "Access denied. Workspace membership required." });
-    }
-    
-    if (!configRoles.includes(membershipRole)) {
-      return res.status(403).json({ 
-        error: "Configuration access denied", 
-        message: "Your workspace role does not allow configuration changes. Contact an admin for elevated access." 
-      });
-    }
-    
-    return next();
-  }
-  
-  return res.status(403).json({ error: "Access denied" });
-}
+const requireConfigAccess = requireWorkspaceRole(["owner", "manager", "staff"]);
 
 /**
- * DESTRUCTIVE ACCESS - For destructive/admin operations that only owners/managers can perform
- * Allowed roles: owner, manager only
+ * DESTRUCTIVE ACCESS - For irreversible operations that only owners can perform
+ * Allowed roles: owner only (safest tier)
  * 
  * Use on routes like:
  * - DELETE routes (leads, appointments, conversations)
- * - Data exports
- * - Team management (invite/remove members)
- * - User permission changes
- * - Bulk operations
+ * - Delete workspace / client data
+ * - Bulk delete operations
+ * - Any irreversible action
  */
-function requireDestructiveAccess(req: Request, res: Response, next: NextFunction) {
-  if (!req.session.userId) {
-    return res.status(401).json({ error: "Authentication required" });
-  }
-  
-  const globalRole = req.session.userRole as string;
-  const membershipRole = (req as any).membershipRole as string | undefined;
-  
-  // Super admins always have access
-  if (globalRole === "super_admin") {
-    return next();
-  }
-  
-  // For client_admin users, check workspace membership role
-  if (globalRole === "client_admin") {
-    const destructiveRoles = ["owner", "manager"];
-    
-    if (!membershipRole) {
-      return res.status(403).json({ error: "Access denied. Workspace membership required." });
-    }
-    
-    if (!destructiveRoles.includes(membershipRole)) {
-      return res.status(403).json({ 
-        error: "Destructive action denied", 
-        message: "Only workspace owners and managers can perform this action." 
-      });
-    }
-    
-    return next();
-  }
-  
-  return res.status(403).json({ error: "Access denied" });
-}
+const requireDestructiveAccess = requireWorkspaceRole(["owner"]);
 
 /**
  * MULTI-TENANT ISOLATION MIDDLEWARE
@@ -5369,7 +5303,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   const impersonationLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
     max: 20, // 20 requests per minute per session/IP
-    keyGenerator: (req) => req.session?.userId?.toString() || req.ip || 'unknown',
+    keyGenerator: (req) => req.session?.userId?.toString() || 'unknown',
     message: { error: "Too many impersonation requests", message: "Please wait a moment before switching clients again." },
     standardHeaders: true,
     legacyHeaders: false,
@@ -11543,7 +11477,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // List automation workflows for a bot
-  app.get("/api/bots/:botId/automations", requireAuth, async (req, res) => {
+  app.get("/api/bots/:botId/automations", requireClientAuth, async (req, res) => {
     try {
       const { botId } = req.params;
       
@@ -11559,7 +11493,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Get a single automation workflow
-  app.get("/api/bots/:botId/automations/:workflowId", requireAuth, async (req, res) => {
+  app.get("/api/bots/:botId/automations/:workflowId", requireClientAuth, async (req, res) => {
     try {
       const { botId, workflowId } = req.params;
       
@@ -11580,7 +11514,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Create a new automation workflow
-  app.post("/api/bots/:botId/automations", requireAuth, async (req, res) => {
+  app.post("/api/bots/:botId/automations", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
       const { botId } = req.params;
       
@@ -11602,7 +11536,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Update an automation workflow
-  app.patch("/api/bots/:botId/automations/:workflowId", requireAuth, async (req, res) => {
+  app.patch("/api/bots/:botId/automations/:workflowId", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
       const { botId, workflowId } = req.params;
       
@@ -11653,7 +11587,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Toggle automation status (quick action)
-  app.post("/api/bots/:botId/automations/:workflowId/toggle", requireAuth, async (req, res) => {
+  app.post("/api/bots/:botId/automations/:workflowId/toggle", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
       const { botId, workflowId } = req.params;
       
@@ -11676,7 +11610,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Get automation run history for a workflow
-  app.get("/api/bots/:botId/automations/:workflowId/runs", requireAuth, async (req, res) => {
+  app.get("/api/bots/:botId/automations/:workflowId/runs", requireClientAuth, async (req, res) => {
     try {
       const { botId, workflowId } = req.params;
       const limit = parseInt(req.query.limit as string) || 50;
@@ -11715,7 +11649,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Test an automation workflow (dry run)
-  app.post("/api/bots/:botId/automations/:workflowId/test", requireAuth, async (req, res) => {
+  app.post("/api/bots/:botId/automations/:workflowId/test", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
       const { botId, workflowId } = req.params;
       const { testMessage, testContext } = req.body;
@@ -11882,7 +11816,7 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // Update widget settings for a bot (upsert)
-  app.put("/api/bots/:botId/widget-settings", requireAuth, async (req, res) => {
+  app.put("/api/bots/:botId/widget-settings", requireClientAuth, requireConfigAccess, async (req, res) => {
     try {
       const { botId } = req.params;
       
