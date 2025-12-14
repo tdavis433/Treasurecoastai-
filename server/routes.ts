@@ -1,6 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import express from "express";
+import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import { storage, db } from "./storage";
 import { insertAppointmentSchema, insertClientSettingsSchema, adminUsers, type AdminRole, bots, botSettings, leads, appointments, clientSettings, workspaces, workspaceMemberships, botRequests, insertBotRequestSchema, chatSessions, conversationMessages, chatAnalyticsEvents, dailyAnalytics, passwordResetTokens, systemLogs } from "@shared/schema";
@@ -5205,13 +5206,23 @@ These suggestions should be relevant to what was just discussed and help guide t
   // SECURE SUPER ADMIN IMPERSONATION
   // =============================================
   
+  // Rate limiter for impersonation endpoints (prevents spam-clicking during demos)
+  const impersonationLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 20, // 20 requests per minute per session/IP
+    keyGenerator: (req) => req.session?.userId?.toString() || req.ip || 'unknown',
+    message: { error: "Too many impersonation requests", message: "Please wait a moment before switching clients again." },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  
   // Schema for impersonation request
   const impersonateClientSchema = z.object({
     clientId: z.string().min(1, "clientId is required").regex(/^[a-zA-Z0-9_-]+$/, "Invalid clientId format"),
   });
 
   // Start impersonating a client (sets session-based effectiveClientId)
-  app.post("/api/super-admin/impersonate", requireSuperAdmin, async (req, res) => {
+  app.post("/api/super-admin/impersonate", requireSuperAdmin, impersonationLimiter, async (req, res) => {
     try {
       const validation = impersonateClientSchema.safeParse(req.body);
       if (!validation.success) {
@@ -5320,11 +5331,11 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   };
   
-  // Primary endpoint
-  app.post("/api/super-admin/impersonate/stop", requireSuperAdmin, stopImpersonationHandler);
+  // Primary endpoint (with rate limiting)
+  app.post("/api/super-admin/impersonate/stop", requireSuperAdmin, impersonationLimiter, stopImpersonationHandler);
   
-  // Legacy alias for backward compatibility - delegates to the same handler
-  app.post("/api/super-admin/stop-impersonate", requireSuperAdmin, stopImpersonationHandler);
+  // Legacy alias for backward compatibility - delegates to the same handler (with rate limiting)
+  app.post("/api/super-admin/stop-impersonate", requireSuperAdmin, impersonationLimiter, stopImpersonationHandler);
 
   // Get current impersonation status
   app.get("/api/super-admin/impersonation-status", requireSuperAdmin, async (req, res) => {
