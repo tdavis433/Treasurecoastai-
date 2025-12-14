@@ -874,14 +874,39 @@ export default function SuperAdmin() {
     window.location.href = "/login";
   };
 
-  // Stop impersonation handler
+  // Start impersonation handler (CSRF-protected via apiRequest)
+  const handleStartImpersonation = async (clientId: string, clientName?: string) => {
+    try {
+      const response = await apiRequest("POST", "/api/super-admin/impersonate", { clientId });
+      if (response.ok) {
+        // Refetch auth state to update UI with impersonation badge
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+        toast({
+          title: "Impersonation Started",
+          description: `Now viewing as ${clientName || clientId}. Use the header badge to exit.`,
+        });
+      } else {
+        const data = await response.json();
+        toast({
+          title: "Impersonation Failed",
+          description: data.error || "Failed to start impersonation.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to start impersonation:", error);
+      toast({
+        title: "Error",
+        description: "Failed to start impersonation.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Stop impersonation handler (CSRF-protected via apiRequest)
   const handleStopImpersonation = async () => {
     try {
-      const response = await fetch("/api/super-admin/stop-impersonate", { 
-        method: "POST", 
-        credentials: "include",
-        headers: { "Content-Type": "application/json" }
-      });
+      const response = await apiRequest("POST", "/api/super-admin/stop-impersonate", {});
       if (response.ok) {
         // Refetch auth state to update UI
         queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
@@ -2188,16 +2213,12 @@ export default function SuperAdmin() {
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      className={demoWorkspace.usersCount > 0 
-                                        ? "border-white/10 text-white/85 hover:bg-white/10" 
-                                        : "border-white/10 text-white/40 cursor-not-allowed"}
-                                      onClick={() => demoWorkspace.usersCount > 0 && window.open(`/client/dashboard?clientId=${demoWorkspace.slug}`, '_blank')}
-                                      disabled={demoWorkspace.usersCount === 0}
-                                      title={demoWorkspace.usersCount === 0 ? "No client logins exist for this workspace" : undefined}
+                                      className="border-white/10 text-white/85 hover:bg-white/10"
+                                      onClick={() => handleStartImpersonation(demoWorkspace.slug, demoWorkspace.name)}
                                       data-testid={`demo-view-as-client-${demoWorkspace.slug}`}
                                     >
                                       <Eye className="h-3 w-3 mr-1" />
-                                      {demoWorkspace.usersCount === 0 ? "No Client Logins" : "View as Client"}
+                                      View as Client
                                     </Button>
                                     <Button
                                       size="sm"
@@ -2341,20 +2362,15 @@ export default function SuperAdmin() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="bg-[#1a1d24] border-white/10 min-w-[160px]" onClick={(e) => e.stopPropagation()}>
                                   <DropdownMenuItem 
-                                    className={workspace.usersCount > 0 
-                                      ? "text-cyan-400 hover:bg-cyan-500/10 gap-2" 
-                                      : "text-white/40 gap-2 cursor-not-allowed"}
+                                    className="text-cyan-400 hover:bg-cyan-500/10 gap-2"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      if (workspace.usersCount > 0) {
-                                        window.open(`/client/dashboard?clientId=${workspace.slug}`, '_blank');
-                                      }
+                                      handleStartImpersonation(workspace.slug, workspace.name);
                                     }}
-                                    disabled={workspace.usersCount === 0}
                                     data-testid={`button-view-as-client-${workspace.slug}`}
                                   >
                                     <Eye className="h-4 w-4" />
-                                    {workspace.usersCount === 0 ? "No Client Logins" : "View as Client"}
+                                    View as Client
                                   </DropdownMenuItem>
                                   <DropdownMenuItem 
                                     className="text-white hover:bg-white/10 gap-2"

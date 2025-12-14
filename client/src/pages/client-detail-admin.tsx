@@ -426,6 +426,35 @@ export default function ClientDetailAdmin() {
     },
   });
 
+  // Start impersonation handler (CSRF-protected via apiRequest)
+  const handleStartImpersonation = async () => {
+    if (!workspaceData) return;
+    try {
+      const response = await apiRequest("POST", "/api/super-admin/impersonate", { clientId: workspaceData.slug });
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+        toast({
+          title: "Impersonation Started",
+          description: `Now viewing as ${workspaceData.name}. Return to super-admin dashboard to exit.`,
+        });
+      } else {
+        const data = await response.json();
+        toast({
+          title: "Impersonation Failed",
+          description: data.error || "Failed to start impersonation.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to start impersonation:", error);
+      toast({
+        title: "Error",
+        description: "Failed to start impersonation.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
@@ -1126,7 +1155,8 @@ export default function ClientDetailAdmin() {
                       variant="outline"
                       size="sm"
                       className="border-white/10 text-white/70 hover:bg-white/10"
-                      onClick={() => window.open(`/client/dashboard?clientId=${workspaceData.slug}`, '_blank')}
+                      onClick={handleStartImpersonation}
+                      data-testid="button-view-as-client"
                     >
                       <Eye className="h-4 w-4 mr-2" />
                       View as Client
