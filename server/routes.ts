@@ -5367,14 +5367,15 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       // Fire-and-forget audit logging (non-blocking)
       logAuditEvent({
-        eventType: 'IMPERSONATION_START',
         userId: req.session.userId || 'unknown',
-        action: `Super admin started impersonating client: ${clientId}`,
+        username: req.session.username || 'super_admin',
+        userRole: 'super_admin',
+        action: 'IMPERSONATION_START',
         resourceType: 'client',
         resourceId: clientId,
         ipAddress: req.ip || req.socket.remoteAddress,
         userAgent: req.headers['user-agent'],
-        success: true,
+        details: { targetClientId: clientId },
       }).catch(err => console.error("Failed to log impersonation audit event:", err));
     } catch (error) {
       console.error("Impersonation error:", error);
@@ -5426,14 +5427,15 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       // Fire-and-forget audit logging (non-blocking)
       logAuditEvent({
-        eventType: 'IMPERSONATION_STOP',
         userId: req.session.userId || 'unknown',
-        action: `Super admin stopped impersonating client: ${previousClientId}`,
+        username: req.session.username || 'super_admin',
+        userRole: 'super_admin',
+        action: 'IMPERSONATION_STOP',
         resourceType: 'client',
         resourceId: previousClientId || 'none',
         ipAddress: req.ip || req.socket.remoteAddress,
         userAgent: req.headers['user-agent'],
-        success: true,
+        details: { previousClientId },
       }).catch(err => console.error("Failed to log impersonation audit event:", err));
     } catch (error) {
       console.error("Stop impersonation error:", error);

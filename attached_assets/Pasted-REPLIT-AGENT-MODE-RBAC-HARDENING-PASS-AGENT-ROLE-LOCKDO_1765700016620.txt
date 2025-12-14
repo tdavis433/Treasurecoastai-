@@ -1,0 +1,178 @@
+REPLIT AGENT MODE — RBAC HARDENING PASS (AGENT ROLE LOCKDOWN) — SCAN → CLASSIFY → FIX → TEST → REPORT
+
+OBJECTIVE
+Lock down permissions so “agent” can do support work (view + reply + qualify leads) but cannot change bot configuration or delete/export data. Enforce workspace membership strictly. Prevent demo weirdness and post-onboarding drift.
+
+NON-NEGOTIABLE GUARDRAILS
+1) NO PAYMENT PROCESSING — EVER (do not add/enable Stripe/Square/checkout/payment-intent/tokens/webhooks)
+2) MULTI-TENANT ISOLATION (all reads/writes must be tenant/workspace scoped server-side)
+3) SECURITY/PRIVACY (don’t print secrets/reset tokens; keep PII redaction)
+4) MINIMAL CHANGE SET (targeted RBAC + tests only)
+
+CURRENT ROLE MODEL
+Workspace membership roles: owner | manager | staff | agent (status: active/pending/revoked)
+Desired “agent” permissions:
+✅ View leads/conversations/analytics/appointments
+✅ Update lead status + add notes (qualify/contact)
+✅ Reply to inbox/conversations
+✅ Create/update appointments (non-destructive)
+❌ Change bot settings / KB / behavior preset / widget settings / booking config / automations config
+❌ Manage team/workspace/users
+❌ Export data (prefer blocked for agent)
+❌ Delete anything (appointments/leads/conversations/client data)
+
+DELIVERABLES (MUST OUTPUT AT END)
+1) GO/NO-GO summary
+2) Route inventory: every POST/PUT/PATCH/DELETE categorized as Operational vs Config vs Destructive
+3) Exact middleware applied per category + file/line ranges
+4) Proof tests added and passing (agent blocked from config; agent allowed for operational)
+5) Quality gates outputs: guard-no-payments, tsc, vitest, build
+
+========================================================
+PHASE 0 — BASELINE GATES (RUN FIRST)
+========================================================
+Run and record output:
+- bash ./scripts/guard-no-payments.sh
+- npx tsc --noEmit
+- npx vitest run
+- npm run build
+
+If any fail, fix them first before RBAC edits.
+
+========================================================
+PHASE 1 — CREATE/CONFIRM RBAC MIDDLEWARES
+========================================================
+A) Enforce membership strictly in requireClientAuth (CRITICAL)
+In requireClientAuth for client_admin:
+- If req.session.clientId missing → 403
+- Look up workspace by clientId → MUST exist, else 403
+- checkWorkspaceMembership(userId, workspace.id) → MUST exist + active, else 403 (do NOT just warn)
+- Set:
+  (req as any).workspaceId
+  (req as any).membershipRole
+  (req as any).effectiveClientId = req.session.clientId
+
+B) Define role-check helpers (single source of truth)
+Create server/utils/rbac.ts (or similar) with:
+- type WorkspaceRole = "owner" | "manager" | "staff" | "agent"
+- function requireWorkspaceRole(allowedRoles: WorkspaceRole[]) middleware:
+  - super_admin bypass allowed (since they are already protected by requireSuperAdmin or impersonation context)
+  - reads membershipRole from req set by requireClientAuth
+  - 403 if missing or not allowed
+
+C) Define three RBAC middlewares (export them)
+- requireOperationalAccess = requireWorkspaceRole(["owner","manager","staff","agent"])
+- requireConfigAccess      = requireWorkspaceRole(["owner","manager","staff"])
+- requireDestructiveAccess = requireWorkspaceRole(["owner"])  (OR owner+manager if you strongly want; default owner-only)
+
+NOTE: Remove/stop using legacy checks for viewer/workspace_viewer (schema doesn’t include them).
+
+========================================================
+PHASE 2 — ROUTE SWEEP + CLASSIFICATION (MANDATORY)
+========================================================
+A) Automatically inventory all write routes
+Search server/routes.ts (and any other router files) for:
+- app.post(
+- app.put(
+- app.patch(
+- app.delete(
+
+Produce a list of ALL write endpoints and classify each as:
+1) OPERATIONAL WRITE (agent allowed)
+   Examples: lead status update, inbox reply, appointment create/update/status, mark contacted, add note
+2) CONFIG WRITE (agent blocked)
+   Examples: bot settings, widget settings, KB/FAQ/policies updates, booking settings/mode/external links, automations config, website import/apply
+3) DESTRUCTIVE (agent blocked; owner only)
+   Examples: any delete endpoints, “delete client data”, reset, purge, revoke, disable, irreversible actions
+4) EXPORT (recommend treat as config or destructive; agent blocked)
+   Examples: analytics export, leads export, conversation export
+
+B) Apply RBAC middleware consistently
+For each write route:
+- Ensure requireClientAuth is present when it’s client-scoped
+- Ensure validateBotAccess or equivalent is used for botId routes
+- Add the correct RBAC middleware:
+  - OPERATIONAL: add requireOperationalAccess
+  - CONFIG: add requireConfigAccess
+  - DESTRUCTIVE/EXPORT: add requireDestructiveAccess (or requireConfigAccess if you decide export is not destructive but still restricted)
+
+IMPORTANT:
+- Do NOT break public widget routes (/api/widget/*, public chat endpoints) — these should remain public/token-based as designed.
+- Super-admin routes under /api/super-admin/* remain protected by requireSuperAdmin + CSRF (already done).
+
+C) Pay special attention to these known gaps (must verify)
+Find and lock down:
+- lead update endpoints (status, notes)
+- inbox reply endpoints
+- appointments create/update endpoints
+- any endpoints that update client settings, booking config, behavior preset, KB, website import
+- any export endpoints (analytics export, leads export) — block agent
+
+========================================================
+PHASE 3 — ADD REGRESSION TESTS (REQUIRED)
+========================================================
+Add unit/integration tests using existing test framework (vitest + supertest if present). Minimum set:
+
+TEST SET A — Agent allowed operational
+1) As agent (membershipRole="agent", status active):
+   - PATCH lead status succeeds (200)
+   - POST inbox reply succeeds (200)
+   - POST appointment create succeeds (200)
+
+TEST SET B — Agent blocked config/destructive/export
+2) As agent:
+   - PUT widget settings returns 403
+   - PATCH automations workflow returns 403
+   - Any KB/settings update endpoint returns 403 (find the exact route)
+   - DELETE /api/client/data returns 403
+   - GET /api/analytics/export returns 403 (if requireAuth only today, update route to include RBAC)
+
+TEST SET C — Membership enforcement
+3) As client_admin with missing membership:
+   - Any requireClientAuth route returns 403 (not 200)
+
+TEST SET D — Super-admin impersonation unaffected
+4) As super_admin with effectiveClientId set:
+   - client-scoped read route works (200)
+   - config route works (200) (super_admin should still function)
+
+Implementation notes for tests:
+- Do not use real passwords.
+- Mock session with a helper that sets req.session fields or uses your existing test auth helper.
+- Seed minimal DB rows for workspace + membership + lead/appointment as needed.
+
+========================================================
+PHASE 4 — RUN FULL QUALITY GATES + FIX UNTIL CLEAN
+========================================================
+Run and fix until all pass:
+- bash ./scripts/guard-no-payments.sh
+- npx tsc --noEmit
+- npx vitest run
+- npm run build
+
+========================================================
+PHASE 5 — FINAL OUTPUT (MUST PROVIDE)
+========================================================
+Return a complete report containing:
+
+1) EXEC SUMMARY
+- Demo-ready? YES/NO
+- Any remaining RBAC risks? (should be none)
+
+2) ROUTE INVENTORY TABLE
+For each write route:
+- Method + path
+- Category (Operational/Config/Destructive/Export)
+- Middleware stack (requireClientAuth + requireOperationalAccess/config/destructive + validateBotAccess etc.)
+- Notes if changed
+
+3) CODE CHANGES
+- Files changed + what changed
+- Key code snippets for new RBAC helpers
+
+4) TEST RESULTS
+- What tests were added
+- Vitest summary (pass count)
+- Confirm agent restrictions match desired behavior
+
+START NOW.
