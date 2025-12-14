@@ -845,13 +845,16 @@ async function validateBotAccess(req: Request, res: Response, botId: string): Pr
         return false;
       }
       
-      // Additional workspace membership check if workspace exists
+      // Enforce workspace membership if workspace exists
       if (bot.workspaceId) {
         const membership = await storage.checkWorkspaceMembership(userId, bot.workspaceId);
         if (!membership) {
-          console.warn(`Client admin ${userId} has no workspace membership for bot ${botId}`);
-          // Log warning but allow access for backwards compatibility
+          console.warn(`Client admin ${userId} denied access - no workspace membership for bot ${botId}`);
+          res.status(403).json({ error: "Access denied - workspace membership required" });
+          return false;
         }
+        // Store membership role for downstream access control
+        (req as any).membershipRole = membership.role;
       }
       
       return true;
