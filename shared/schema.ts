@@ -282,6 +282,60 @@ export const insertAppointmentSchema = createInsertSchema(appointments).omit({
 export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;
 export type Appointment = typeof appointments.$inferSelect;
 
+// Booking intents - tracks all booking attempts (including partials) for proper handling
+export const bookingIntents = pgTable("booking_intents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull(),
+  clientId: varchar("client_id").notNull(), // Same as workspaceId for consistency
+  leadId: varchar("lead_id"), // Nullable until lead is identified
+  sessionId: varchar("session_id").notNull(),
+  conversationId: varchar("conversation_id"), // Links to chat_sessions if available
+  
+  // Booking details
+  bookingType: text("booking_type").notNull().default("appointment"), // tour, phone_call, consultation, service_booking, etc.
+  serviceName: text("service_name"), // e.g., "Full Grooming", "Oil Change"
+  requestedDateTime: text("requested_datetime"), // User's preferred time/date as text
+  scheduledAt: timestamp("scheduled_at"), // Parsed datetime if available
+  notes: text("notes"),
+  
+  // Handling mode
+  handling: text("handling").notNull().default("internal"), // 'internal' or 'external'
+  externalUrl: text("external_url"), // URL for external redirects
+  externalProviderName: text("external_provider_name"), // e.g., "Square", "Calendly"
+  
+  // Contact info collected during intent
+  contactName: text("contact_name"),
+  contactPhone: text("contact_phone"),
+  contactEmail: text("contact_email"),
+  
+  // Status tracking
+  status: text("status").notNull().default("intent"), // intent, confirmed, redirected, abandoned, cancelled
+  
+  // Metadata
+  metadata: json("metadata").$type<Record<string, any>>().default({}),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  confirmedAt: timestamp("confirmed_at"),
+  redirectedAt: timestamp("redirected_at"),
+}, (table) => ({
+  workspaceIdIdx: index("booking_intents_workspace_id_idx").on(table.workspaceId),
+  sessionIdIdx: index("booking_intents_session_id_idx").on(table.sessionId),
+  statusIdx: index("booking_intents_status_idx").on(table.status),
+  createdAtIdx: index("booking_intents_created_at_idx").on(table.createdAt),
+}));
+
+export const insertBookingIntentSchema = createInsertSchema(bookingIntents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  confirmedAt: true,
+  redirectedAt: true,
+});
+
+export type InsertBookingIntent = z.infer<typeof insertBookingIntentSchema>;
+export type BookingIntent = typeof bookingIntents.$inferSelect;
+export type BookingIntentStatus = 'intent' | 'confirmed' | 'redirected' | 'abandoned' | 'cancelled';
+
 export const clientSettings = pgTable("client_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   clientId: varchar("client_id").notNull().unique(),

@@ -1,0 +1,173 @@
+
+You are a senior full-stack engineer working on Treasure Coast AI (Express + Drizzle + Postgres + React/Vite).
+
+DEMO FAILURE CONTEXT (must be fixed systemically)
+
+During a live demo, templates failed in multiple ways:
+	•	Assistant reaches “to finalize, click Book Now” but no Book Now button renders
+	•	Booking handling is wrong (external redirect when it should be internal)
+	•	Leads, bookings, and conversations do not save, so client + admin dashboards stay empty
+	•	Partial forms (user starts but doesn’t finish) are NOT being saved as leads
+	•	Seed Demo Data button does nothing / silently fails / does not populate any records
+
+HARD GUARDRAIL
+
+No payment processing or checkout UI in our platform. External providers handle payments.
+
+⸻
+
+GOAL (P0)
+
+Make ALL templates work perfectly and consistently:
+	1.	Service booking (paid/real appointment/reservation) → EXTERNAL redirect to client’s booking provider URL
+	2.	Phone call / tour / consultation / discovery → INTERNAL booking (no redirect)
+	3.	Always save:
+	•	conversation + all messages
+	•	lead (even partial/incomplete)
+	•	booking intent and booking confirmations (internal) OR redirect intents (external)
+	4.	Fix seeding:
+	•	Seed works for every template
+	•	Never silent
+	•	Idempotent (no duplicates)
+	•	Reset per-template demo workspace and reseed
+
+⸻
+
+PHASE 1 — TEMPLATE INVENTORY + CONFIG VALIDATION
+	1.	Enumerate all templates/demos and print a list:
+
+	•	templateKey, demo route, workspaceId/clientId, botId/assistantId
+	•	booking types supported per template
+	•	externalBookingUrl (if applicable)
+
+	2.	Add a validator that fails loudly (dev) if any template is missing:
+
+	•	workspaceId, botId, booking config, or booking URL when required
+
+⸻
+
+PHASE 2 — ENFORCE ONE BOOKING POLICY ENGINE
+
+Implement ONE deterministic function used everywhere:
+
+resolveBookingHandling(workspaceId, bookingType) -> { handling: "internal"|"external", externalUrl?: string }
+
+Rules:
+	•	INTERNAL booking types: PHONE_CALL, TOUR, CONSULTATION, DISCOVERY_CALL, INFO_CALL
+	•	EXTERNAL booking types: SERVICE_BOOKING, APPOINTMENT, RESERVATION, PAID_SERVICE (actual service bookings)
+	•	If EXTERNAL required but URL missing:
+	•	still save lead + booking intent
+	•	show friendly fallback message + contact option (no crash)
+
+⸻
+
+PHASE 3 — FIX “BOOK NOW” BUTTON WITH A HARD UI CONTRACT
+
+Backend must return a deterministic action payload when finalization is needed:
+
+{
+“assistantMessage”: “…click Book Now”,
+“actions”: [{
+“type”: “BOOKING_FINALIZE”,
+“handling”: “internal” | “external”,
+“bookingIntentId”: “uuid”,
+“label”: “Book Now”,
+“externalUrl”: “https://…” // ONLY if handling=external
+}]
+}
+
+Requirements:
+	•	bookingIntentId must be created server-side before response is returned
+	•	Works for all templates + all booking flows
+	•	Never rely on the LLM to format the button payload
+
+Frontend widget requirements:
+	•	Render a Book Now button if actions include BOOKING_FINALIZE
+	•	On click:
+	•	internal → finalize API creates booking and returns success
+	•	external → finalize API logs redirect + returns redirectUrl then redirect browser
+	•	Add loading + success + friendly error bubble (no scary red toasts)
+	•	If action payload missing/invalid, show a safe fallback message rather than failing silently
+
+⸻
+
+PHASE 4 — PERSIST EVERYTHING (INCLUDING PARTIALS)
+
+Lead rules:
+	•	If user provides ANY lead signal (name/email/phone/service/date/time/notes), upsert a lead immediately
+	•	If they don’t finalize booking, set status/tag to “incomplete/partial_intent”
+	•	If booking confirmed internally, update lead to “booked”
+
+Booking intent rules:
+	•	Create/ensure booking_intents table:
+	•	id, workspaceId, leadId (nullable until known), conversationId/sessionId
+	•	bookingType, serviceName, requestedDateTime, notes
+	•	handling (internal/external), externalUrl
+	•	status (intent/confirmed/redirected/abandoned), timestamps
+
+Finalize endpoint:
+	•	internal → create confirmed booking row linked to lead + conversation, mark intent confirmed
+	•	external → mark intent redirected + log booking_redirect, return redirect url
+	•	Do NOT mark external as confirmed booking unless webhook/confirmation exists
+	•	If shown in UI, label clearly as “Redirected (Intent)”
+
+Conversations:
+	•	Every message must save to conversation thread with correct workspaceId.
+
+⸻
+
+PHASE 5 — FIX TENANT MAPPING + STALE CONFIG
+	•	Every widget request must include workspaceId + botId/assistantId + sessionId
+	•	Validate bot belongs to workspace; reject mismatches with friendly message
+	•	Ensure writes and reads both use the same workspaceId filters
+	•	Fix caching: cache keys must include workspaceId+botId; invalidate properly; short TTL for demos
+
+⸻
+
+PHASE 6 — FIX SEEDING (MUST NOT BE SILENT)
+	1.	Find the “Seed Demo Data” button and ensure it calls a real admin endpoint and shows success/failure UI.
+	2.	Create admin-only endpoints:
+
+	•	POST /api/admin/demo/seed { templateKey } → returns counts created/updated/skipped
+	•	POST /api/admin/demo/reset { templateKey } → wipes ONLY that demo workspace’s demo rows, then reseeds, returns deleted+created counts
+
+	3.	Seeding must be idempotent:
+
+	•	Use stable seed keys so repeat runs don’t duplicate
+
+	4.	UI:
+
+	•	disable button while running
+	•	show toast with counts
+	•	refetch dashboards after success
+	•	show “Last seeded at” timestamp
+
+⸻
+
+PHASE 7 — AUTOMATED SMOKE TESTS ACROSS ALL TEMPLATES (P0)
+
+Add tests that loop through every template and validate:
+	•	widget config resolves correct workspaceId+botId
+	•	partial lead capture creates lead status=incomplete
+	•	booking finalization returns BOOKING_FINALIZE with correct handling
+	•	internal finalize creates booking and links lead+conversation
+	•	external finalize marks intent redirected and returns redirect url
+	•	dashboards return the created records for the template workspace
+Fail CI if any template fails.
+
+⸻
+
+ACCEPTANCE CRITERIA (ALL MUST PASS)
+
+✅ All templates obey internal vs external rules
+✅ Book Now button always renders when required
+✅ Leads/bookings/conversations persist and show in both dashboards
+✅ Partial/incomplete attempts save as leads
+✅ Seeding works, is visible, idempotent, and resettable per template
+✅ No payment UI added
+
+Deliver:
+	•	root causes found
+	•	files changed
+	•	tests added
+	•	fastest manual verification steps (2 minutes per template)

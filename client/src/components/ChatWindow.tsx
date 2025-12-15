@@ -5,6 +5,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { useState, useEffect, useRef, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
+// Action types from orchestrator
+interface BookingFinalizeAction {
+  type: 'BOOKING_FINALIZE';
+  handling: 'internal' | 'external';
+  bookingIntentId: string;
+  label: string;
+  externalUrl?: string;
+  bookingType?: string;
+}
+
+type OrchestratorAction = BookingFinalizeAction;
+
 interface Message {
   role: "assistant" | "user";
   content: string;
@@ -13,6 +25,7 @@ interface Message {
   bookingMode?: 'internal' | 'external';
   bookingProviderName?: string | null;
   paymentUrl?: string | null;
+  actions?: OrchestratorAction[];  // New structured action payloads
 }
 
 interface QuickAction {
@@ -40,6 +53,7 @@ interface ChatWindowProps {
   onHumanHandoff?: () => void;
   showHumanHandoff?: boolean;
   onBookingClick?: (url: string, type: 'booking' | 'payment') => void;
+  onBookingFinalize?: (action: BookingFinalizeAction) => void;  // Handler for internal booking finalization
 }
 
 const defaultQuickActions: QuickAction[] = [
@@ -69,6 +83,7 @@ export default function ChatWindow({
   onHumanHandoff,
   showHumanHandoff = false,
   onBookingClick,
+  onBookingFinalize,
 }: ChatWindowProps) {
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -189,39 +204,89 @@ export default function ChatWindow({
                 {message.content}
               </div>
             </div>
-            {message.role === "assistant" && message.bookingUrl && index === messages.length - 1 && !isLoading && (
-              <div className="flex flex-col gap-2 pl-2 mt-2">
-                <a
-                  href={message.bookingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => onBookingClick?.(message.bookingUrl!, 'booking')}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-cyan-600 text-white font-medium text-sm shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:from-cyan-600 hover:to-cyan-700 transition-all duration-200"
-                  data-testid="button-book-appointment"
-                >
-                  <Calendar className="h-4 w-4" />
-                  {message.bookingMode === 'external' && message.bookingProviderName
-                    ? (language === "es" 
-                        ? `Continuar reserva en ${message.bookingProviderName}` 
-                        : `Continue to book on ${message.bookingProviderName}`)
-                    : (language === "es" ? "Completar Reserva" : "Complete Booking")}
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-                {message.paymentUrl && (
-                  <a
-                    href={message.paymentUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => onBookingClick?.(message.paymentUrl!, 'payment')}
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-purple-600 text-white font-medium text-sm shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 hover:from-purple-600 hover:to-purple-700 transition-all duration-200"
-                    data-testid="button-payment"
-                  >
-                    {language === "es" ? "Proceder al Pago" : "Proceed to Payment"}
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                )}
-              </div>
-            )}
+            {/* Render booking button from actions array (new structured approach) or legacy bookingUrl */}
+            {message.role === "assistant" && index === messages.length - 1 && !isLoading && (() => {
+              // Find BOOKING_FINALIZE action if present
+              const bookingAction = message.actions?.find(a => a.type === 'BOOKING_FINALIZE') as BookingFinalizeAction | undefined;
+              
+              // Check if action has a valid intent ID (empty string = fallback mode)
+              const hasValidAction = bookingAction && bookingAction.bookingIntentId;
+              const hasFallbackAction = bookingAction && !bookingAction.bookingIntentId;
+              const hasLegacyBookingUrl = !!message.bookingUrl;
+              
+              // Determine which button to show:
+              // 1. Valid action with intent ID -> use action
+              // 2. Fallback action (empty intent ID) with external URL -> use external URL from action
+              // 3. Fallback action with internal mode -> still trigger finalize flow (handler will prompt for contact)
+              // 4. Legacy bookingUrl -> use legacy link
+              
+              if (!hasValidAction && !hasFallbackAction && !hasLegacyBookingUrl) return null;
+              
+              return (
+                <div className="flex flex-col gap-2 pl-2 mt-2">
+                  {bookingAction ? (
+                    // Action-based booking button (valid or fallback)
+                    bookingAction.handling === 'external' && bookingAction.externalUrl ? (
+                      // External mode with URL - always link
+                      <a
+                        href={bookingAction.externalUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => onBookingClick?.(bookingAction.externalUrl!, 'booking')}
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-cyan-600 text-white font-medium text-sm shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:from-cyan-600 hover:to-cyan-700 transition-all duration-200"
+                        data-testid="button-book-appointment"
+                      >
+                        <Calendar className="h-4 w-4" />
+                        {bookingAction.label}
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    ) : (
+                      // Internal booking - button triggers finalization flow
+                      // Works for both valid intent IDs and fallback mode (handler checks for empty ID)
+                      <button
+                        onClick={() => onBookingFinalize?.(bookingAction)}
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-cyan-600 text-white font-medium text-sm shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:from-cyan-600 hover:to-cyan-700 transition-all duration-200"
+                        data-testid="button-book-appointment"
+                      >
+                        <Calendar className="h-4 w-4" />
+                        {bookingAction.label}
+                      </button>
+                    )
+                  ) : (
+                    // Legacy bookingUrl fallback (only when no action present)
+                    <a
+                      href={message.bookingUrl!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => onBookingClick?.(message.bookingUrl!, 'booking')}
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-cyan-600 text-white font-medium text-sm shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:from-cyan-600 hover:to-cyan-700 transition-all duration-200"
+                      data-testid="button-book-appointment"
+                    >
+                      <Calendar className="h-4 w-4" />
+                      {message.bookingMode === 'external' && message.bookingProviderName
+                        ? (language === "es" 
+                            ? `Continuar reserva en ${message.bookingProviderName}` 
+                            : `Continue to book on ${message.bookingProviderName}`)
+                        : (language === "es" ? "Completar Reserva" : "Complete Booking")}
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                  {message.paymentUrl && (
+                    <a
+                      href={message.paymentUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => onBookingClick?.(message.paymentUrl!, 'payment')}
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-purple-600 text-white font-medium text-sm shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 hover:from-purple-600 hover:to-purple-700 transition-all duration-200"
+                      data-testid="button-payment"
+                    >
+                      {language === "es" ? "Proceder al Pago" : "Proceed to Payment"}
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                </div>
+              );
+            })()}
             {message.role === "assistant" && message.suggestedReplies && message.suggestedReplies.length > 0 && index === messages.length - 1 && !isLoading && (
               <div className="flex flex-wrap gap-1.5 pl-2">
                 {message.suggestedReplies.map((reply, replyIndex) => (

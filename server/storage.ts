@@ -39,6 +39,8 @@ import {
   type InsertKnowledgeChunk,
   type ScrapedWebsite,
   type InsertScrapedWebsite,
+  type BookingIntent,
+  type InsertBookingIntent,
   appointments,
   clientSettings,
   conversationAnalytics,
@@ -68,6 +70,7 @@ import {
   knowledgeChunks,
   scrapedWebsites,
   notificationLogs,
+  bookingIntents,
   type InsertNotificationLog,
   type NotificationLog,
 } from "@shared/schema";
@@ -169,6 +172,15 @@ export interface IStorage {
   }>;
   logBookingIntentEvent(data: { clientId: string; botId: string; sessionId: string; leadId?: string }): Promise<void>;
   logBookingLinkClickEvent(data: { clientId: string; botId: string; sessionId: string; leadId?: string; bookingUrl: string }): Promise<void>;
+  
+  // Booking intents - proper tracking table for booking flows
+  createBookingIntent(intent: InsertBookingIntent): Promise<BookingIntent>;
+  getBookingIntentById(id: string): Promise<BookingIntent | undefined>;
+  getBookingIntentBySessionId(sessionId: string, workspaceId: string): Promise<BookingIntent | undefined>;
+  updateBookingIntent(id: string, updates: Partial<BookingIntent>): Promise<BookingIntent>;
+  getBookingIntents(workspaceId: string, filters?: { status?: string; limit?: number }): Promise<BookingIntent[]>;
+  confirmBookingIntent(id: string): Promise<BookingIntent>;
+  markBookingIntentRedirected(id: string): Promise<BookingIntent>;
   
   // Inbox - conversation messages (overloaded - clientId optional for admin access)
   getSessionMessages(sessionId: string, clientId?: string): Promise<ChatAnalyticsEvent[]>;
@@ -1158,6 +1170,87 @@ export class DbStorage implements IStorage {
         timestamp: new Date().toISOString() 
       }
     });
+  }
+
+  // Booking intent CRUD operations
+  async createBookingIntent(intent: InsertBookingIntent): Promise<BookingIntent> {
+    const [created] = await db
+      .insert(bookingIntents)
+      .values(intent as any)
+      .returning();
+    return created;
+  }
+
+  async getBookingIntentById(id: string): Promise<BookingIntent | undefined> {
+    const [intent] = await db
+      .select()
+      .from(bookingIntents)
+      .where(eq(bookingIntents.id, id))
+      .limit(1);
+    return intent;
+  }
+
+  async getBookingIntentBySessionId(sessionId: string, workspaceId: string): Promise<BookingIntent | undefined> {
+    const [intent] = await db
+      .select()
+      .from(bookingIntents)
+      .where(and(
+        eq(bookingIntents.sessionId, sessionId),
+        eq(bookingIntents.workspaceId, workspaceId)
+      ))
+      .orderBy(desc(bookingIntents.createdAt))
+      .limit(1);
+    return intent;
+  }
+
+  async updateBookingIntent(id: string, updates: Partial<BookingIntent>): Promise<BookingIntent> {
+    const [updated] = await db
+      .update(bookingIntents)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(bookingIntents.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getBookingIntents(workspaceId: string, filters?: { status?: string; limit?: number }): Promise<BookingIntent[]> {
+    const conditions = [eq(bookingIntents.workspaceId, workspaceId)];
+    if (filters?.status) {
+      conditions.push(eq(bookingIntents.status, filters.status));
+    }
+    
+    let query = db.select().from(bookingIntents).where(and(...conditions)).orderBy(desc(bookingIntents.createdAt));
+    
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as any;
+    }
+    
+    return query;
+  }
+
+  async confirmBookingIntent(id: string): Promise<BookingIntent> {
+    const [updated] = await db
+      .update(bookingIntents)
+      .set({ 
+        status: 'confirmed', 
+        confirmedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(bookingIntents.id, id))
+      .returning();
+    return updated;
+  }
+
+  async markBookingIntentRedirected(id: string): Promise<BookingIntent> {
+    const [updated] = await db
+      .update(bookingIntents)
+      .set({ 
+        status: 'redirected', 
+        redirectedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(bookingIntents.id, id))
+      .returning();
+    return updated;
   }
 
   async getSessionMessages(sessionId: string, clientId?: string): Promise<ChatAnalyticsEvent[]> {

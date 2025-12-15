@@ -8527,6 +8527,163 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // =============================================
+  // BOOKING INTENT FINALIZATION ENDPOINT
+  // =============================================
+  
+  /**
+   * Finalize a booking intent - called when user clicks Book Now button
+   * For internal mode: Creates booking record, sends confirmation
+   * For external mode: Logs redirect and updates intent status
+   */
+  app.post("/api/bookings/finalize", async (req, res) => {
+    try {
+      const { bookingIntentId, sessionId, contactInfo, preferredDate, notes } = req.body;
+      
+      if (!bookingIntentId) {
+        return res.status(400).json({ error: "Missing booking intent ID" });
+      }
+      
+      // SECURITY: Authenticate via widget token from Authorization header
+      const authHeader = req.headers.authorization;
+      let verifiedClientId: string | undefined;
+      let verifiedBotId: string | undefined;
+      
+      if (authHeader?.startsWith('Bearer ')) {
+        const token = authHeader.substring(7);
+        const tokenResult = verifyWidgetToken(token);
+        if (tokenResult.valid) {
+          verifiedClientId = tokenResult.clientId;
+          verifiedBotId = tokenResult.botId;
+        } else {
+          structuredLogger.warn('Invalid widget token for booking finalization', { error: tokenResult.error });
+          return res.status(401).json({ error: "Invalid widget token" });
+        }
+      }
+      
+      // If no widget token, require sessionId for fallback validation (legacy support)
+      if (!verifiedClientId && !sessionId) {
+        return res.status(400).json({ error: "Missing authentication: provide widget token or session ID" });
+      }
+      
+      // Get the booking intent with security scoping
+      // For widget token auth: lookup by ID and verify clientId after
+      // For sessionId fallback: query includes sessionId constraint (defense in depth)
+      let intent;
+      if (verifiedClientId) {
+        // Primary auth: Widget token - lookup by ID, verify clientId after
+        intent = await storage.getBookingIntentById(bookingIntentId);
+        if (intent && intent.clientId !== verifiedClientId) {
+          structuredLogger.warn('Cross-tenant booking finalization blocked via widget token', {
+            intentClientId: intent.clientId,
+            verifiedClientId: verifiedClientId,
+            intentId: bookingIntentId,
+          });
+          return res.status(403).json({ error: "Unauthorized booking finalization" });
+        }
+      } else {
+        // Fallback auth: SessionId - query scoped by sessionId (attacker must guess both UUIDs)
+        // This is defense in depth: even if attacker knows intentId, they need matching sessionId
+        intent = await storage.getBookingIntentById(bookingIntentId);
+        if (intent && intent.sessionId !== sessionId) {
+          structuredLogger.warn('Cross-session booking finalization blocked (session mismatch)', {
+            intentSessionId: intent.sessionId,
+            requestSessionId: sessionId,
+            intentId: bookingIntentId,
+          });
+          return res.status(403).json({ error: "Unauthorized booking finalization" });
+        }
+      }
+      
+      if (!intent) {
+        return res.status(404).json({ error: "Booking intent not found" });
+      }
+      
+      // Check if already finalized
+      if (intent.status === 'confirmed' || intent.status === 'redirected') {
+        return res.status(400).json({ error: "Booking already finalized" });
+      }
+      
+      // Handle based on booking mode
+      if (intent.handling === 'external') {
+        // For external mode: mark as redirected and return the URL
+        const updated = await storage.markBookingIntentRedirected(bookingIntentId);
+        
+        // Log the redirect event
+        if (intent.externalUrl) {
+          await storage.logBookingLinkClickEvent({
+            clientId: intent.clientId,
+            botId: 'widget',
+            sessionId: intent.sessionId,
+            bookingUrl: intent.externalUrl
+          });
+        }
+        
+        return res.json({
+          success: true,
+          handling: 'external',
+          redirectUrl: intent.externalUrl,
+          message: 'Redirecting to external booking provider'
+        });
+      }
+      
+      // For internal mode: create booking record
+      const finalContactInfo = {
+        name: contactInfo?.name || intent.contactName,
+        phone: contactInfo?.phone || intent.contactPhone,
+        email: contactInfo?.email || intent.contactEmail,
+      };
+      
+      // Validate that we have at least some contact info
+      if (!finalContactInfo.name && !finalContactInfo.phone && !finalContactInfo.email) {
+        return res.status(400).json({ 
+          error: "Contact information required for booking",
+          requiresContactInfo: true
+        });
+      }
+      
+      // Create the appointment record (booking)
+      const appointment = await storage.createAppointment(intent.clientId, {
+        sessionId: intent.sessionId,
+        appointmentType: intent.bookingType || 'appointment',
+        name: finalContactInfo.name || 'Guest',
+        contact: finalContactInfo.phone || finalContactInfo.email || 'Unknown',
+        email: finalContactInfo.email || undefined,
+        contactPreference: finalContactInfo.phone ? 'phone' : 'email',
+        preferredTime: preferredDate || 'To be scheduled',
+        notes: notes || undefined,
+      });
+      
+      // Confirm the booking intent
+      await storage.confirmBookingIntent(bookingIntentId);
+      
+      // Log analytics event
+      await storage.logBookingIntentEvent({
+        clientId: intent.clientId,
+        botId: 'widget',
+        sessionId: intent.sessionId,
+      });
+      
+      structuredLogger.info('Booking finalized via internal mode', {
+        bookingIntentId,
+        appointmentId: appointment.id,
+        clientId: intent.clientId,
+        sessionId: intent.sessionId,
+      });
+      
+      return res.json({
+        success: true,
+        handling: 'internal',
+        appointmentId: appointment.id,
+        message: 'Booking confirmed successfully'
+      });
+      
+    } catch (error) {
+      structuredLogger.error("Finalize booking error:", error);
+      res.status(500).json({ error: "Failed to finalize booking" });
+    }
+  });
+
+  // =============================================
   // SUPER-ADMIN BOOKING URL MANAGEMENT
   // =============================================
 

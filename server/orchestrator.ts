@@ -40,6 +40,7 @@ import { getClientStatus } from './botConfig';
 import { addDays, addWeeks, setHours, setMinutes, startOfDay, format, getDay } from 'date-fns';
 import { extractContactSignals, mergeContactSignals } from '@shared/contactSignals';
 import { structuredLogger } from './structuredLogger';
+import { resolveBookingHandling, getBookingButtonLabel } from './bookingPolicy';
 
 /**
  * SAFE RETRY WRAPPER FOR CRITICAL WRITES
@@ -667,6 +668,18 @@ export interface OrchestratorRequest {
   widgetToken?: string;
 }
 
+// Action types for structured UI control
+export interface BookingFinalizeAction {
+  type: 'BOOKING_FINALIZE';
+  handling: 'internal' | 'external';
+  bookingIntentId: string;
+  label: string;
+  externalUrl?: string;  // Only if handling=external
+  bookingType?: string;
+}
+
+export type OrchestratorAction = BookingFinalizeAction;
+
 export interface OrchestratorMeta {
   clientId: string;
   botId: string;
@@ -686,6 +699,7 @@ export interface OrchestratorMeta {
   bookingSaved?: boolean;  // When booking was saved during resilient persistence
   contactInfo?: { name?: string; email?: string; phone?: string };
   failsafeActivated?: boolean;  // True when external URL was invalid and we pivoted to internal
+  actions?: OrchestratorAction[];  // Structured action payloads for frontend UI control
 }
 
 export interface OrchestratorResponse {
@@ -842,41 +856,94 @@ class ConversationOrchestrator {
 
       // 12. Get client settings for external URLs and booking mode
       const clientSettings = await configCache.getClientSettings(clientId);
-      let bookingMode = (clientSettings?.bookingMode as 'internal' | 'external') || 'internal';
-      let bookingUrl: string | null = null;
-      let failsafeActivated = false;
-
-      // 13. BOOKING FAILSAFE: Check if external URL is valid AND reachable when mode is external
-      if (postProcessResult.showBooking && bookingMode === 'external') {
-        const candidateUrl = clientSettings?.externalBookingUrl || botConfig.externalBookingUrl || null;
-        
-        if (isValidExternalBookingUrl(candidateUrl)) {
-          // URL format is valid - now check if it's actually reachable
-          const reachabilityCheck = await isUrlReachable(candidateUrl!);
+      
+      // 13. Use booking policy engine to resolve handling
+      const bookingResolution = resolveBookingHandling({
+        workspaceId: clientId,
+        botId,
+        bookingType: postProcessResult.bookingType,
+        clientSettings: clientSettings ? {
+          bookingMode: clientSettings.bookingMode as 'internal' | 'external',
+          externalBookingUrl: clientSettings.externalBookingUrl,
+          externalBookingProviderName: clientSettings.externalBookingProviderName,
+          enableBookingFailsafe: clientSettings.enableBookingFailsafe,
+          appointmentTypeModes: clientSettings.appointmentTypeModes as any,
+        } : undefined,
+      });
+      
+      const bookingMode = bookingResolution.handling;
+      const bookingUrl = bookingResolution.externalUrl || null;
+      const failsafeActivated = bookingResolution.failsafeActivated;
+      
+      // 14. Create booking intent and action payload when finalization is needed
+      let actions: OrchestratorAction[] = [];
+      
+      if (postProcessResult.showBooking) {
+        try {
+          // Create a booking intent record server-side for tracking
+          const bookingIntent = await storage.createBookingIntent({
+            workspaceId: clientId,
+            clientId: clientId,
+            sessionId,
+            bookingType: postProcessResult.bookingType || 'appointment',
+            handling: bookingMode,
+            externalUrl: bookingUrl || undefined,
+            externalProviderName: clientSettings?.externalBookingProviderName || undefined,
+            contactName: postProcessResult.contactInfo?.name || undefined,
+            contactPhone: postProcessResult.contactInfo?.phone || undefined,
+            contactEmail: postProcessResult.contactInfo?.email || undefined,
+            status: 'intent',
+          });
           
-          if (reachabilityCheck.reachable) {
-            // URL is valid and reachable - use external mode
-            bookingUrl = candidateUrl;
-          } else {
-            // FAILSAFE: URL format valid but not reachable (404, timeout, etc.) - pivot to internal mode
-            structuredLogger.warn('FAILSAFE ACTIVATED: External booking URL unreachable. Pivoting to internal mode', { 
-              clientId, 
-              botId, 
-              url: candidateUrl,
-              statusCode: reachabilityCheck.statusCode,
-              cached: reachabilityCheck.cached
-            });
-            bookingMode = 'internal';
-            failsafeActivated = true;
-          }
-        } else {
-          // FAILSAFE: External URL missing/invalid format - pivot to internal mode
-          structuredLogger.warn('FAILSAFE ACTIVATED: External booking URL missing/invalid. Pivoting to internal mode', { clientId, botId });
-          bookingMode = 'internal';
-          failsafeActivated = true;
+          // Build BOOKING_FINALIZE action for frontend
+          const buttonLabel = getBookingButtonLabel(
+            postProcessResult.bookingType,
+            bookingMode,
+            clientSettings?.externalBookingProviderName,
+            language
+          );
           
-          // Note: The widget/frontend will display the internal booking form
-          // when bookingMode is 'internal' and showBooking is true
+          actions.push({
+            type: 'BOOKING_FINALIZE',
+            handling: bookingMode,
+            bookingIntentId: bookingIntent.id,
+            label: buttonLabel,
+            externalUrl: bookingMode === 'external' ? bookingUrl || undefined : undefined,
+            bookingType: postProcessResult.bookingType,
+          });
+          
+          structuredLogger.info('Booking intent created with action payload', {
+            clientId,
+            botId,
+            sessionId,
+            intentId: bookingIntent.id,
+            handling: bookingMode,
+            bookingType: postProcessResult.bookingType,
+          });
+        } catch (err) {
+          structuredLogger.error('Failed to create booking intent', { error: err, clientId, botId, sessionId });
+          
+          // FALLBACK: Emit action without intent ID so button still appears
+          // Widget can handle this by using legacy bookingUrl or prompting for contact info
+          const fallbackLabel = getBookingButtonLabel(
+            postProcessResult.bookingType,
+            bookingMode,
+            clientSettings?.externalBookingProviderName,
+            language
+          );
+          
+          actions.push({
+            type: 'BOOKING_FINALIZE',
+            handling: bookingMode,
+            bookingIntentId: '', // Empty indicates fallback mode - widget should use legacy flow
+            label: fallbackLabel,
+            externalUrl: bookingMode === 'external' ? bookingUrl || undefined : undefined,
+            bookingType: postProcessResult.bookingType,
+          });
+          
+          structuredLogger.warn('Booking action emitted with fallback (no intent ID)', {
+            clientId, botId, sessionId, handling: bookingMode
+          });
         }
       }
       
@@ -897,7 +964,8 @@ class ConversationOrchestrator {
           suggestedReplies: [],
           leadCaptured: postProcessResult.leadCaptured,
           contactInfo: postProcessResult.contactInfo,
-          failsafeActivated, // Signal that failsafe was triggered
+          failsafeActivated,
+          actions: actions.length > 0 ? actions : undefined,
         },
       };
     } catch (error: any) {
@@ -1215,38 +1283,92 @@ class ConversationOrchestrator {
       );
       await incrementMessageCount(clientId);
 
-      // 10. Send final meta with FAILSAFE validation
-      let streamBookingMode = (clientSettings?.bookingMode as 'internal' | 'external') || 'internal';
-      let bookingUrl: string | null = null;
-      let failsafeActivated = false;
+      // 10. Use booking policy engine to resolve handling (same as non-streaming path)
+      const bookingResolution = resolveBookingHandling({
+        workspaceId: clientId,
+        botId,
+        bookingType: postProcessResult.bookingType,
+        clientSettings: clientSettings ? {
+          bookingMode: clientSettings.bookingMode as 'internal' | 'external',
+          externalBookingUrl: clientSettings.externalBookingUrl,
+          externalBookingProviderName: clientSettings.externalBookingProviderName,
+          enableBookingFailsafe: clientSettings.enableBookingFailsafe,
+          appointmentTypeModes: clientSettings.appointmentTypeModes as any,
+        } : undefined,
+      });
+      
+      const streamBookingMode = bookingResolution.handling;
+      const bookingUrl = bookingResolution.externalUrl || null;
+      const failsafeActivated = bookingResolution.failsafeActivated;
 
-      // BOOKING FAILSAFE: Validate external URL AND reachability when mode is external
-      if (postProcessResult.showBooking && streamBookingMode === 'external') {
-        const candidateUrl = clientSettings?.externalBookingUrl || botConfig.externalBookingUrl || null;
-        
-        if (isValidExternalBookingUrl(candidateUrl)) {
-          // URL format is valid - now check if it's actually reachable
-          const reachabilityCheck = await isUrlReachable(candidateUrl!);
+      // 11. Create booking intent and action payload when finalization is needed
+      let streamActions: OrchestratorAction[] = [];
+      
+      if (postProcessResult.showBooking) {
+        try {
+          // Create a booking intent record server-side for tracking
+          const bookingIntent = await storage.createBookingIntent({
+            workspaceId: clientId,
+            clientId: clientId,
+            sessionId,
+            bookingType: postProcessResult.bookingType || 'appointment',
+            handling: streamBookingMode,
+            externalUrl: bookingUrl || undefined,
+            externalProviderName: clientSettings?.externalBookingProviderName || undefined,
+            contactName: postProcessResult.contactInfo?.name || undefined,
+            contactPhone: postProcessResult.contactInfo?.phone || undefined,
+            contactEmail: postProcessResult.contactInfo?.email || undefined,
+            status: 'intent',
+          });
           
-          if (reachabilityCheck.reachable) {
-            bookingUrl = candidateUrl;
-          } else {
-            // FAILSAFE: URL format valid but not reachable (404, timeout, etc.) - pivot to internal
-            structuredLogger.warn('FAILSAFE ACTIVATED (stream): External booking URL unreachable. Pivoting to internal', { 
-              clientId, 
-              botId,
-              url: candidateUrl,
-              statusCode: reachabilityCheck.statusCode,
-              cached: reachabilityCheck.cached
-            });
-            streamBookingMode = 'internal';
-            failsafeActivated = true;
-          }
-        } else {
-          // FAILSAFE: Pivot to internal mode
-          structuredLogger.warn('FAILSAFE ACTIVATED (stream): External booking URL missing/invalid. Pivoting to internal', { clientId, botId });
-          streamBookingMode = 'internal';
-          failsafeActivated = true;
+          // Build BOOKING_FINALIZE action for frontend
+          const buttonLabel = getBookingButtonLabel(
+            postProcessResult.bookingType,
+            streamBookingMode,
+            clientSettings?.externalBookingProviderName,
+            language
+          );
+          
+          streamActions.push({
+            type: 'BOOKING_FINALIZE',
+            handling: streamBookingMode,
+            bookingIntentId: bookingIntent.id,
+            label: buttonLabel,
+            externalUrl: streamBookingMode === 'external' ? bookingUrl || undefined : undefined,
+            bookingType: postProcessResult.bookingType,
+          });
+          
+          structuredLogger.info('Booking intent created (streaming) with action payload', {
+            clientId,
+            botId,
+            sessionId,
+            intentId: bookingIntent.id,
+            handling: streamBookingMode,
+            bookingType: postProcessResult.bookingType,
+          });
+        } catch (err) {
+          structuredLogger.error('Failed to create booking intent (streaming)', { error: err, clientId, botId, sessionId });
+          
+          // FALLBACK: Emit action without intent ID so button still appears
+          const fallbackLabel = getBookingButtonLabel(
+            postProcessResult.bookingType,
+            streamBookingMode,
+            clientSettings?.externalBookingProviderName,
+            language
+          );
+          
+          streamActions.push({
+            type: 'BOOKING_FINALIZE',
+            handling: streamBookingMode,
+            bookingIntentId: '', // Empty indicates fallback mode
+            label: fallbackLabel,
+            externalUrl: streamBookingMode === 'external' ? bookingUrl || undefined : undefined,
+            bookingType: postProcessResult.bookingType,
+          });
+          
+          structuredLogger.warn('Booking action emitted with fallback (streaming, no intent ID)', {
+            clientId, botId, sessionId, handling: streamBookingMode
+          });
         }
       }
 
@@ -1273,6 +1395,7 @@ class ConversationOrchestrator {
           bookingSaved: postProcessResult.bookingSaved || false,
           contactInfo: postProcessResult.contactInfo,
           failsafeActivated,
+          actions: streamActions.length > 0 ? streamActions : undefined,
         },
       };
 
