@@ -352,8 +352,9 @@ export default function ClientDashboard() {
     retry: false,
   });
 
-  // Clients (client_admin) are view-only - only super_admin can edit lead/booking statuses
-  const canEditStatus = currentUser?.role === 'super_admin';
+  // Allow both super_admin and client_admin to edit lead/booking statuses
+  // Client admins are workspace owners/managers who need to manage their data
+  const canEditStatus = currentUser?.role === 'super_admin' || currentUser?.role === 'client_admin';
 
   useEffect(() => {
     if (!authLoading && !currentUser) {
