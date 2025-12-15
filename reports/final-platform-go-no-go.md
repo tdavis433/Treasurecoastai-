@@ -226,7 +226,7 @@ All legacy/starter template paths have been removed. The platform now enforces I
 **Enforcement:**
 - Any attempt to use a legacy template ID (e.g., "starter-general", "general") will return:
   - `400 Bad Request: "Invalid industry: X. Valid options: sober_living, restaurant, barber, ..."`
-- Only the 15 templates in INDUSTRY_TEMPLATES are valid
+- Only the 9 templates with DB records are valid for provisioning
 
 ---
 
