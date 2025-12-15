@@ -12,6 +12,33 @@ The Template System Hardening initiative has been completed successfully. All cr
 
 ---
 
+## GO/NO-GO Standards
+
+| Criterion | Requirement | Waiver Process |
+|-----------|-------------|----------------|
+| Unit Tests | All tests must pass | NO-GO if any test fails |
+| Production Build | Must complete successfully | NO-GO if build fails |
+| **TypeScript Errors** | **Zero errors required** | **NO-GO unless explicitly waived by stakeholder with documented justification** |
+| Template Validation | All INDUSTRY_TEMPLATES must exist in DB | NO-GO if any missing |
+| Security Review | No new vulnerabilities | NO-GO if critical/high severity found |
+
+### TypeScript Zero-Error Policy
+
+**Effective Date:** December 15, 2025
+
+TypeScript pre-existing errors are now a **NO-GO condition**. This policy ensures:
+- Type safety across the entire codebase
+- Early detection of potential runtime errors
+- Maintainable and refactorable code
+
+**Waiver Requirements:**
+1. Written justification from project stakeholder
+2. List of specific errors being waived
+3. Remediation timeline (max 30 days)
+4. Documented risk acceptance
+
+---
+
 ## Gate Status
 
 | Gate | Status | Details |
