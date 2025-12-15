@@ -1555,6 +1555,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return { counts: errorsLast15m, total };
   }
 
+  // Temporary endpoint to download project files
+  app.get('/api/download-project-zip', (_req, res) => {
+    const zipPath = path.join(process.cwd(), 'download-me.zip');
+    if (fs.existsSync(zipPath)) {
+      res.download(zipPath, 'treasure-coast-ai.zip');
+    } else {
+      res.status(404).json({ error: 'Zip file not found' });
+    }
+  });
+
   // PUBLIC health endpoint - safe for uptime monitoring services
   // Only exposes: ok, timestamp, db status, ai configured, uptime, build info
   // NO sensitive data: no error details, no client IDs, no tokens
