@@ -19,11 +19,14 @@ export function getCurrentMonth(): string {
 }
 
 export async function getClientPlan(clientId: string): Promise<PlanTier> {
-  // Demo clients get enterprise (unlimited) - detect by clientId pattern
+  // Demo clients get enterprise (unlimited) - detect by explicit patterns
+  // Patterns: starts with "demo_", ends with "_demo", or exact match "demo"
   // This ensures demo pages work without hitting message limits
-  const isDemoClient = clientId.includes('demo') || 
+  const isDemoClient = clientId === 'demo' ||
                        clientId.startsWith('demo_') || 
-                       clientId.endsWith('_demo');
+                       clientId.endsWith('_demo') ||
+                       clientId === 'barber_demo' ||
+                       clientId === 'gym_demo';
   
   if (isDemoClient) {
     return 'enterprise'; // Unlimited messages for demos
