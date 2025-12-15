@@ -452,7 +452,8 @@ async function getWorkspaceInfo(workspaceSlug: string) {
     .where(eq(bots.workspaceId, workspace.id))
     .limit(1);
   
-  return { clientId: workspace.id, botId: bot?.botId || null, source: "workspaces" };
+  // Use workspace.slug as clientId (not workspace.id) since that's what admin_users.client_id uses
+  return { clientId: workspace.slug, botId: bot?.botId || null, source: "workspaces" };
 }
 
 async function resetDemoWorkspace(workspaceSlug: string) {
