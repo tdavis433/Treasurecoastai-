@@ -43,10 +43,11 @@ TypeScript pre-existing errors are now a **NO-GO condition**. This policy ensure
 
 | Gate | Status | Details |
 |------|--------|---------|
-| Unit Tests | **PASS** | 311/311 tests passing |
+| Unit Tests | **PASS** | 507/507 tests passing |
 | Production Build | **PASS** | vite build + esbuild completed successfully |
 | TypeScript Check | **PASS** | Zero errors - `npx tsc --noEmit` clean |
-| Template Validation Script | **PASS** | 9/9 DB templates validated, all active |
+| Template Validation Script | **PASS** | 15/15 DB templates validated, all active |
+| Provisioning Smoke Test | **PASS** | All 15 templates pass buildClientFromTemplate dry-run |
 | Legacy Template Audit | **PASS** | All legacy patterns removed and blocked |
 | Zero-Stripe Guard | **PASS** | No payment processing code detected |
 
@@ -82,7 +83,7 @@ All 82 pre-existing TypeScript errors have been fixed:
    - Returns 400 with valid options list if invalid industry provided
 
 **Valid Template Sources:**
-Only the 9 templates with corresponding DB records are validated: `sober_living`, `restaurant`, `barber`, `auto`, `home_services`, `gym`, `real_estate`, `med_spa`, `tattoo`
+All 15 INDUSTRY_TEMPLATES are now seeded in the database and validated: `sober_living`, `restaurant`, `barber`, `auto`, `home_services`, `gym`, `real_estate`, `med_spa`, `tattoo`, `law_firm`, `dental`, `hotel`, `roofing`, `wedding`, `pet_grooming`
 
 ---
 
@@ -118,7 +119,28 @@ Only the 9 templates with corresponding DB records are validated: `sober_living`
 - Reports additional templates in "ADDITIONAL TEMPLATES" section
 - Exit code 1 if any required template missing or invalid
 
-### 4. Unit Tests (311 tests total)
+### 4. Shared Template ID Mapping
+**File:** `server/templates/templateIdMap.ts`
+
+- Single source of truth for industry key → DB template ID mapping
+- Exports: `getDbTemplateId()`, `getAllIndustryKeys()`, `INDUSTRY_TEMPLATE_COUNT`
+- Used by seed script, validation script, and smoke test
+
+### 5. Template Seeding Script
+**File:** `scripts/seed-bot-templates.ts`
+
+- Idempotent upsert script for all 15 templates
+- Derives templates from INDUSTRY_TEMPLATES in code
+- Updates existing or inserts new templates
+
+### 6. Provisioning Smoke Test
+**File:** `scripts/provisioning-smoke-test.ts`
+
+- Dry-run validation of buildClientFromTemplate for each template
+- Tests validation AND provisioning for all 15 templates
+- Provides comprehensive pass/fail report
+
+### 7. Unit Tests (507 tests total)
 
 **File:** `tests/unit/templateProvisioning.test.ts` (29 tests)
 - Validation error handling
@@ -144,13 +166,24 @@ Only the 9 templates with corresponding DB records are validated: `sober_living`
 ```
  RUN  v4.0.14 /home/runner/workspace
 
- tests/unit/templateProvisioning.test.ts (29 tests) 17ms
- tests/unit/templateIndexConsistency.test.ts (282 tests) 76ms
+ tests/unit/templateIndexConsistency.test.ts (282 tests) 132ms
+ tests/unit/rbac.test.ts (13 tests) 354ms
+ tests/unit/automations.test.ts (21 tests) 124ms
+ tests/unit/conversationLogger.test.ts (8 tests) 31ms
+ tests/unit/previewToken.test.ts (20 tests) 22ms
+ tests/integration/multitenancy.test.ts (17 tests) 1327ms
+ tests/unit/templateProvisioning.test.ts (29 tests) 21ms
+ tests/unit/mergeEngine.test.ts (22 tests) 24ms
+ tests/unit/behaviorPreset.test.ts (33 tests) 21ms
+ tests/unit/utils.test.ts (13 tests) 11ms
+ tests/unit/urlValidator.test.ts (34 tests) 39ms
+ tests/unit/tenantScope.test.ts (9 tests) 16ms
+ tests/unit/planLimits.test.ts (6 tests) 6ms
 
- Test Files  2 passed (2)
-      Tests  311 passed (311)
+ Test Files  15 passed (15)
+      Tests  507 passed (507)
 Type Errors  no errors
-   Duration  875ms
+   Duration  13.01s
 ```
 
 ---
@@ -195,8 +228,11 @@ Type Errors  no errors
 | File | Action | Purpose |
 |------|--------|---------|
 | `server/templates/buildClientFromTemplate.ts` | Created | Centralized provisioning helper |
+| `server/templates/templateIdMap.ts` | Created | Shared industry → DB template ID mapping |
 | `server/templates/index.ts` | Created | Module exports |
+| `scripts/seed-bot-templates.ts` | Created | Idempotent template upsert script |
 | `scripts/validate-db-templates.ts` | Created | Database template validation |
+| `scripts/provisioning-smoke-test.ts` | Created | Dry-run provisioning validation |
 | `tests/unit/templateProvisioning.test.ts` | Created | Helper unit tests |
 | `tests/unit/templateIndexConsistency.test.ts` | Created | INDUSTRY_TEMPLATES tests |
 
@@ -249,8 +285,10 @@ The Template System Hardening work is complete and ready for production. All cri
 |-----------|--------|
 | `npx tsc --noEmit` | **0 errors** |
 | Legacy Template Audit | **All patterns blocked** |
-| Unit Tests | **311/311 passing** |
+| Unit Tests | **507/507 passing** |
 | Production Build | **Success** |
+| Template Validation | **15/15 templates in DB** |
+| Provisioning Smoke Test | **15/15 templates pass** |
 
 **Both reliability gaps are now CLOSED:**
 1. **TypeScript = 0 errors** — No pre-existing errors, no waivers needed
@@ -260,7 +298,7 @@ The Template System Hardening work is complete and ready for production. All cri
 
 ## Appendix: Template Validation Coverage
 
-### Required Templates (9)
+### All 15 Required Templates — ALL SEEDED & VALIDATED
 
 The validation script maps INDUSTRY_TEMPLATES keys to their corresponding database template IDs:
 
@@ -275,6 +313,12 @@ The validation script maps INDUSTRY_TEMPLATES keys to their corresponding databa
 | real_estate | real_estate_template | ✓ Active, Valid |
 | med_spa | med_spa_template | ✓ Active, Valid |
 | tattoo | tattoo_template | ✓ Active, Valid |
+| law_firm | law_firm_template | ✓ Active, Valid |
+| dental | dental_template | ✓ Active, Valid |
+| hotel | hotel_template | ✓ Active, Valid |
+| roofing | roofing_template | ✓ Active, Valid |
+| wedding | wedding_template | ✓ Active, Valid |
+| pet_grooming | pet_grooming_template | ✓ Active, Valid |
 
 ### Additional Templates in DB (1)
 
@@ -282,18 +326,18 @@ The validation script maps INDUSTRY_TEMPLATES keys to their corresponding databa
 |----------------|--------|
 | generic_template | ✓ Active, Valid |
 
-### Templates Defined in INDUSTRY_TEMPLATES but NOT in DB
+### Verification Commands
 
-The following INDUSTRY_TEMPLATES entries exist in code but have no corresponding database records. They are available for future seeding but are NOT required for validation:
+```bash
+# Seed all 15 templates (idempotent upsert)
+npx tsx scripts/seed-bot-templates.ts
 
-- law_firm
-- dental
-- hotel
-- roofing
-- wedding
-- pet_grooming
+# Validate all 15 templates in DB
+npx tsx scripts/validate-db-templates.ts
 
-**Note:** The validation script only gates templates that have a mapping to existing DB records. These 6 templates can be seeded later if needed.
+# Run provisioning smoke test
+npx tsx scripts/provisioning-smoke-test.ts
+```
 
 ---
 
