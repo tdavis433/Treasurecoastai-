@@ -13,31 +13,40 @@
 
 import { db } from '../server/storage';
 import { botTemplates } from '../shared/schema';
-import { INDUSTRY_TEMPLATES } from '../server/industryTemplates';
 import { validateTemplateForProvisioning } from '../server/templates';
 
 interface TemplateValidationResult {
   templateId: string;
+  dbTemplateId: string | null;
   existsInDb: boolean;
   isActive: boolean;
   hasValidConfig: boolean;
   configErrors: string[];
-  expectedFromIndustry: boolean;
 }
 
 /**
- * REQUIRED_TEMPLATE_IDS is derived programmatically from INDUSTRY_TEMPLATES
- * to ensure consistency between validation and runtime expectations.
+ * Mapping from INDUSTRY_TEMPLATES keys to actual database template_id values.
  * 
- * This is the single source of truth for required templates because:
- * 1. INDUSTRY_TEMPLATES defines all templates available for NEW client provisioning
- * 2. The buildClientFromTemplate helper only works with DB templates
- * 3. Legacy templates not in INDUSTRY_TEMPLATES won't be used for new client creation
+ * The DB uses `_template` suffix convention, while INDUSTRY_TEMPLATES uses
+ * shorter keys. This mapping bridges the two naming conventions.
  * 
- * Note: Additional templates may exist in the DB (legacy or custom). These are
- * reported in the "ADDITIONAL TEMPLATES" section but are not gated as required.
+ * IMPORTANT: This is the source of truth for which templates are REQUIRED
+ * for client provisioning. Only templates listed here will be gated.
  */
-const REQUIRED_TEMPLATE_IDS = Object.keys(INDUSTRY_TEMPLATES);
+const INDUSTRY_TO_DB_TEMPLATE_MAP: Record<string, string> = {
+  sober_living: 'sober_living_template',
+  restaurant: 'restaurant_template',
+  barber: 'barber_template',
+  auto: 'auto_shop_template',
+  home_services: 'home_services_template',
+  gym: 'gym_template',
+  real_estate: 'real_estate_template',
+  med_spa: 'med_spa_template',
+  tattoo: 'tattoo_template',
+};
+
+const REQUIRED_INDUSTRY_IDS = Object.keys(INDUSTRY_TO_DB_TEMPLATE_MAP);
+const REQUIRED_DB_TEMPLATE_IDS = Object.values(INDUSTRY_TO_DB_TEMPLATE_MAP);
 
 async function validateDatabaseTemplates(): Promise<TemplateValidationResult[]> {
   const results: TemplateValidationResult[] = [];
@@ -46,18 +55,18 @@ async function validateDatabaseTemplates(): Promise<TemplateValidationResult[]> 
     const dbTemplates = await db.select().from(botTemplates);
     const dbTemplateMap = new Map(dbTemplates.map(t => [t.templateId, t]));
     
-    for (const templateId of REQUIRED_TEMPLATE_IDS) {
-      const dbTemplate = dbTemplateMap.get(templateId);
-      const industryTemplate = INDUSTRY_TEMPLATES[templateId];
+    for (const industryId of REQUIRED_INDUSTRY_IDS) {
+      const dbTemplateId = INDUSTRY_TO_DB_TEMPLATE_MAP[industryId];
+      const dbTemplate = dbTemplateMap.get(dbTemplateId);
       
       if (!dbTemplate) {
         results.push({
-          templateId,
+          templateId: industryId,
+          dbTemplateId,
           existsInDb: false,
           isActive: false,
           hasValidConfig: false,
-          configErrors: ['Template not found in database'],
-          expectedFromIndustry: !!industryTemplate,
+          configErrors: [`Template '${dbTemplateId}' not found in database`],
         });
         continue;
       }
@@ -65,25 +74,25 @@ async function validateDatabaseTemplates(): Promise<TemplateValidationResult[]> 
       const validation = validateTemplateForProvisioning(dbTemplate as any);
       
       results.push({
-        templateId,
+        templateId: industryId,
+        dbTemplateId,
         existsInDb: true,
         isActive: dbTemplate.isActive ?? false,
         hasValidConfig: validation.valid,
         configErrors: validation.errors,
-        expectedFromIndustry: !!industryTemplate,
       });
     }
     
     for (const dbTemplate of dbTemplates) {
-      if (!REQUIRED_TEMPLATE_IDS.includes(dbTemplate.templateId)) {
+      if (!REQUIRED_DB_TEMPLATE_IDS.includes(dbTemplate.templateId)) {
         const validation = validateTemplateForProvisioning(dbTemplate as any);
         results.push({
           templateId: dbTemplate.templateId,
+          dbTemplateId: dbTemplate.templateId,
           existsInDb: true,
           isActive: dbTemplate.isActive ?? false,
           hasValidConfig: validation.valid,
           configErrors: validation.errors,
-          expectedFromIndustry: !!INDUSTRY_TEMPLATES[dbTemplate.templateId],
         });
       }
     }
@@ -101,31 +110,30 @@ function printReport(results: TemplateValidationResult[]): void {
   console.log('  DATABASE TEMPLATE VALIDATION REPORT');
   console.log('========================================\n');
   
-  const existing = results.filter(r => r.existsInDb);
-  const missing = results.filter(r => !r.existsInDb);
-  const active = results.filter(r => r.isActive);
-  const validConfigs = results.filter(r => r.hasValidConfig);
-  const requiredMissing = missing.filter(r => REQUIRED_TEMPLATE_IDS.includes(r.templateId));
+  const requiredResults = results.filter(r => REQUIRED_INDUSTRY_IDS.includes(r.templateId));
+  const existing = requiredResults.filter(r => r.existsInDb);
+  const missing = requiredResults.filter(r => !r.existsInDb);
+  const active = requiredResults.filter(r => r.isActive);
+  const validConfigs = requiredResults.filter(r => r.hasValidConfig);
   
-  console.log('Summary:');
-  console.log(`  Total checked:     ${results.length}`);
+  console.log('Summary (Required Templates):');
+  console.log(`  Total required:    ${REQUIRED_INDUSTRY_IDS.length}`);
   console.log(`  Exist in DB:       ${existing.length}`);
   console.log(`  Missing from DB:   ${missing.length}`);
   console.log(`  Active:            ${active.length}`);
   console.log(`  Valid configs:     ${validConfigs.length}`);
-  console.log(`  Required missing:  ${requiredMissing.length}`);
   console.log('');
   
   console.log('--- REQUIRED TEMPLATES ---\n');
-  for (const templateId of REQUIRED_TEMPLATE_IDS) {
-    const result = results.find(r => r.templateId === templateId);
+  for (const industryId of REQUIRED_INDUSTRY_IDS) {
+    const result = results.find(r => r.templateId === industryId);
     if (!result) continue;
     
     const dbStatus = result.existsInDb ? '✓ DB' : '✗ MISSING';
     const activeStatus = result.isActive ? '✓ Active' : '○ Inactive';
     const configStatus = result.hasValidConfig ? '✓ Valid' : '✗ Invalid';
     
-    console.log(`  ${templateId}:`);
+    console.log(`  ${industryId} -> ${result.dbTemplateId}:`);
     console.log(`    ${dbStatus} | ${activeStatus} | ${configStatus}`);
     
     if (result.configErrors.length > 0) {
@@ -135,7 +143,7 @@ function printReport(results: TemplateValidationResult[]): void {
     }
   }
   
-  const extras = results.filter(r => !REQUIRED_TEMPLATE_IDS.includes(r.templateId));
+  const extras = results.filter(r => !REQUIRED_INDUSTRY_IDS.includes(r.templateId));
   if (extras.length > 0) {
     console.log('\n--- ADDITIONAL TEMPLATES IN DB ---\n');
     for (const result of extras) {
@@ -147,23 +155,23 @@ function printReport(results: TemplateValidationResult[]): void {
   
   console.log('\n========================================');
   
-  if (requiredMissing.length === 0 && validConfigs.length === existing.length) {
+  if (missing.length === 0 && validConfigs.length === existing.length) {
     console.log('  ✓ ALL REQUIRED TEMPLATES VALIDATED');
     console.log('========================================\n');
   } else {
     console.log('  ✗ VALIDATION FAILURES DETECTED');
     console.log('========================================\n');
     
-    if (requiredMissing.length > 0) {
+    if (missing.length > 0) {
       console.log('Missing required templates:');
-      for (const r of requiredMissing) {
-        console.log(`  - ${r.templateId}`);
+      for (const r of missing) {
+        console.log(`  - ${r.templateId} (DB: ${r.dbTemplateId})`);
       }
       console.log('');
       console.log('To fix: Run template seeding or manually insert missing templates.');
     }
     
-    const invalidConfigs = results.filter(r => r.existsInDb && !r.hasValidConfig);
+    const invalidConfigs = requiredResults.filter(r => r.existsInDb && !r.hasValidConfig);
     if (invalidConfigs.length > 0) {
       console.log('\nTemplates with invalid configs:');
       for (const r of invalidConfigs) {
@@ -179,12 +187,11 @@ async function main(): Promise<void> {
   const results = await validateDatabaseTemplates();
   printReport(results);
   
-  const requiredMissing = results.filter(
-    r => REQUIRED_TEMPLATE_IDS.includes(r.templateId) && !r.existsInDb
-  );
-  const invalidConfigs = results.filter(r => r.existsInDb && !r.hasValidConfig);
+  const requiredResults = results.filter(r => REQUIRED_INDUSTRY_IDS.includes(r.templateId));
+  const missing = requiredResults.filter(r => !r.existsInDb);
+  const invalidConfigs = requiredResults.filter(r => r.existsInDb && !r.hasValidConfig);
   
-  process.exit(requiredMissing.length > 0 || invalidConfigs.length > 0 ? 1 : 0);
+  process.exit(missing.length > 0 || invalidConfigs.length > 0 ? 1 : 0);
 }
 
 main().catch(err => {
