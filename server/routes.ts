@@ -5669,123 +5669,14 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(404).json({ error: `Client not found: ${clientId}` });
       }
       
-      // Get template config - check both real templates and starter templates
+      // Get template config from real templates only
       let templateConfig = getBotConfigByBotId(templateBotId);
       
-      // If not found in database, check if it's a starter template
+      // Reject legacy starter templates - enforce INDUSTRY_TEMPLATES as the only valid source
       if (!templateConfig && templateBotId.startsWith('starter-')) {
-        // Create a default template config based on the starter template ID
-        const starterTemplates: Record<string, Partial<BotConfig>> = {
-          'starter-sober-living': {
-            businessProfile: {
-              businessName: 'Serenity House',
-              type: 'sober_living',
-              location: '',
-              phone: '',
-              email: '',
-              website: '',
-              hours: {},
-              services: ['Structured Living', 'Group Therapy', 'Job Placement', 'Alumni Support', 'Family Programs'],
-            },
-            systemPrompt: 'You are a compassionate admissions counselor for a sober living facility. Be warm, non-judgmental, and supportive.',
-            faqs: [
-              { question: 'What insurance do you accept?', answer: 'We work with most major insurance providers including PPO plans. Contact us for a free verification.' },
-              { question: 'How long is the typical stay?', answer: 'Most residents stay 90 days to 6 months, depending on individual needs and recovery goals.' },
-            ],
-          },
-          'starter-barber': {
-            businessProfile: {
-              businessName: 'The Gentleman\'s Cut',
-              type: 'barber',
-              location: '',
-              phone: '',
-              email: '',
-              website: '',
-              hours: {},
-              services: ['Classic Cuts', 'Fades', 'Beard Trims', 'Hot Towel Shave', 'Kids Cuts'],
-            },
-            systemPrompt: 'You are a friendly front-desk assistant for an upscale barber shop. Be casual but professional.',
-            faqs: [
-              { question: 'Do you take walk-ins?', answer: 'Yes! Walk-ins are welcome, but appointments guarantee your spot.' },
-              { question: 'How much is a haircut?', answer: 'Classic cuts start at $25. Fades are $35, and beard trims are $15.' },
-            ],
-          },
-          'starter-gym': {
-            businessProfile: {
-              businessName: 'Peak Performance Fitness',
-              type: 'gym',
-              location: '',
-              phone: '',
-              email: '',
-              website: '',
-              hours: {},
-              services: ['24/7 Gym Access', 'Personal Training', 'Group Classes', 'Nutrition Coaching'],
-            },
-            systemPrompt: 'You are an enthusiastic fitness consultant. Be motivating and helpful.',
-            faqs: [
-              { question: 'How much is a membership?', answer: 'Memberships start at $29/month for basic access. Premium memberships are $49/month.' },
-            ],
-          },
-          'starter-restaurant': {
-            businessProfile: {
-              businessName: 'The Local Table',
-              type: 'restaurant',
-              location: '',
-              phone: '',
-              email: '',
-              website: '',
-              hours: {},
-              services: ['Dine-In', 'Takeout', 'Private Events', 'Catering'],
-            },
-            systemPrompt: 'You are a warm, professional restaurant host. Help guests with reservations and menu questions.',
-            faqs: [
-              { question: 'Do you take reservations?', answer: 'Yes! You can book online or call us.' },
-            ],
-          },
-          'starter-auto': {
-            businessProfile: {
-              businessName: 'Precision Auto Care',
-              type: 'auto',
-              location: '',
-              phone: '',
-              email: '',
-              website: '',
-              hours: {},
-              services: ['Oil Changes', 'Brake Service', 'Engine Diagnostics', 'Tire Service'],
-            },
-            systemPrompt: 'You are a friendly, trustworthy auto service advisor. Explain repairs in simple terms.',
-            faqs: [
-              { question: 'How much is an oil change?', answer: 'Conventional oil changes start at $39.99, synthetic at $69.99.' },
-            ],
-          },
-          'starter-home': {
-            businessProfile: {
-              businessName: 'Reliable Home Pros',
-              type: 'home_services',
-              location: '',
-              phone: '',
-              email: '',
-              website: '',
-              hours: {},
-              services: ['Plumbing', 'HVAC', 'Electrical', 'Handyman'],
-            },
-            systemPrompt: 'You are a professional service coordinator. Be helpful and efficient.',
-            faqs: [
-              { question: 'Do you offer free estimates?', answer: 'Yes! We provide free estimates for most jobs.' },
-            ],
-          },
-        };
-        
-        const starterData = starterTemplates[templateBotId];
-        if (starterData) {
-          templateConfig = {
-            botId: templateBotId,
-            clientId: 'system',
-            name: name,
-            description: `AI assistant based on ${templateBotId}`,
-            ...starterData,
-          } as BotConfig;
-        }
+        return res.status(400).json({ 
+          error: "Legacy starter templates are not supported. Use a valid templateId from INDUSTRY_TEMPLATES." 
+        });
       }
       
       if (!templateConfig) {
@@ -9946,91 +9837,14 @@ These suggestions should be relevant to what was just discussed and help guide t
         acceptedAt: new Date(),
       });
 
-      // 4. Get template config based on industry
-      const templateMapping: Record<string, string> = {
-        'sober_living': 'starter-sober-living',
-        'barber': 'starter-barber',
-        'gym': 'starter-gym',
-        'restaurant': 'starter-restaurant',
-        'auto': 'starter-auto',
-        'home_services': 'starter-home',
-        'general': 'starter-general',
-      };
-      
-      const starterTemplates: Record<string, { 
-        botType: string; 
-        services: string[]; 
-        systemPrompt: string; 
-        defaultFaqs: Array<{ question: string; answer: string }>; 
-      }> = {
-        'starter-sober-living': {
-          botType: 'sober_living',
-          services: ['Structured Living', 'Group Therapy', 'Job Placement', 'Alumni Support', 'Family Programs'],
-          systemPrompt: 'You are a compassionate admissions counselor for a sober living facility. Be warm, non-judgmental, and supportive. Never be pushy. Focus on helping visitors understand the facility and feel comfortable reaching out.',
-          defaultFaqs: [
-            { question: 'What insurance do you accept?', answer: 'We work with most major insurance providers including PPO plans. Contact us for a free verification.' },
-            { question: 'How long is the typical stay?', answer: 'Most residents stay 90 days to 6 months, depending on individual needs and recovery goals.' },
-            { question: 'Do you accept couples?', answer: 'We have separate housing for men and women. Please contact us to discuss your specific situation.' },
-          ],
-        },
-        'starter-barber': {
-          botType: 'barber',
-          services: ['Classic Cuts', 'Fades', 'Beard Trims', 'Hot Towel Shave', 'Kids Cuts'],
-          systemPrompt: 'You are a friendly front-desk assistant for an upscale barber shop. Be casual but professional.',
-          defaultFaqs: [
-            { question: 'Do you take walk-ins?', answer: 'Yes! Walk-ins are welcome, but appointments guarantee your spot.' },
-            { question: 'How much is a haircut?', answer: 'Classic cuts start at $25. Fades are $35, and beard trims are $15.' },
-          ],
-        },
-        'starter-gym': {
-          botType: 'gym',
-          services: ['24/7 Gym Access', 'Personal Training', 'Group Classes', 'Nutrition Coaching'],
-          systemPrompt: 'You are an enthusiastic fitness consultant. Be motivating and helpful.',
-          defaultFaqs: [
-            { question: 'How much is a membership?', answer: 'Memberships start at $29/month for basic access. Premium memberships are $49/month.' },
-            { question: 'Do you offer personal training?', answer: 'Yes! We have certified trainers available for one-on-one sessions.' },
-          ],
-        },
-        'starter-restaurant': {
-          botType: 'restaurant',
-          services: ['Dine-In', 'Takeout', 'Private Events', 'Catering'],
-          systemPrompt: 'You are a warm, professional restaurant host. Help guests with reservations and menu questions.',
-          defaultFaqs: [
-            { question: 'Do you take reservations?', answer: 'Yes! You can book online or call us.' },
-            { question: 'Do you offer vegetarian options?', answer: 'Absolutely! We have several delicious vegetarian and vegan options.' },
-          ],
-        },
-        'starter-auto': {
-          botType: 'auto',
-          services: ['Oil Changes', 'Brake Service', 'Engine Diagnostics', 'Tire Service'],
-          systemPrompt: 'You are a friendly, trustworthy auto service advisor. Explain repairs in simple terms.',
-          defaultFaqs: [
-            { question: 'How much is an oil change?', answer: 'Conventional oil changes start at $39.99, synthetic at $69.99.' },
-            { question: 'Do you offer warranties?', answer: 'Yes, all our work comes with a 12-month/12,000-mile warranty.' },
-          ],
-        },
-        'starter-home': {
-          botType: 'home_services',
-          services: ['Plumbing', 'Electrical', 'HVAC', 'General Repairs'],
-          systemPrompt: 'You are a helpful home services coordinator. Be friendly and knowledgeable about home repairs.',
-          defaultFaqs: [
-            { question: 'Do you offer free estimates?', answer: 'Yes! We provide free estimates for most services.' },
-            { question: 'Are you licensed and insured?', answer: 'Absolutely! All our technicians are fully licensed, bonded, and insured.' },
-          ],
-        },
-        'starter-general': {
-          botType: 'general',
-          services: ['Customer Service', 'Information', 'Support'],
-          systemPrompt: 'You are a helpful customer service assistant. Be friendly, professional, and helpful.',
-          defaultFaqs: [
-            { question: 'What are your hours?', answer: 'Our business hours vary. Please contact us for specific availability.' },
-            { question: 'How can I contact you?', answer: 'You can reach us by phone, email, or through this chat!' },
-          ],
-        },
-      };
-
-      const templateId = templateMapping[industry || 'general'] || 'starter-general';
-      const template = starterTemplates[templateId] || starterTemplates['starter-general'];
+      // 4. Validate industry against INDUSTRY_TEMPLATES
+      const templateId = industry || 'restaurant'; // Default to restaurant instead of 'general'
+      const template = INDUSTRY_TEMPLATES[templateId];
+      if (!template) {
+        return res.status(400).json({ 
+          error: `Invalid industry: ${industry}. Valid options: ${Object.keys(INDUSTRY_TEMPLATES).join(', ')}` 
+        });
+      }
 
       // 5. Build persona config from wizard inputs
       const personaConfig = {
@@ -10044,7 +9858,7 @@ These suggestions should be relevant to what was just discussed and help guide t
 
       // 6. Build enhanced system prompt with persona
       const buildSystemPrompt = () => {
-        let prompt = template.systemPrompt;
+        let prompt = template.defaultConfig.systemPromptIntro;
         
         if (personaConfig.assistantName) {
           prompt = `Your name is ${personaConfig.assistantName}. ${prompt}`;
@@ -10066,7 +9880,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       };
 
       // 7. Merge template FAQs with custom FAQs
-      const mergedFaqs = faqs && faqs.length > 0 ? faqs : template.defaultFaqs;
+      const mergedFaqs = faqs && faqs.length > 0 ? faqs : template.defaultConfig.faqs;
 
       // 8. Create bot in database
       const botId = `${slug}_assistant`;
@@ -10083,7 +9897,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           email: contactEmail,
           website: websiteUrl || '',
           hours: {},
-          services: template.services,
+          services: template.defaultConfig.businessProfile.services,
           personaConfig, // Store persona config inside businessProfile
         } as any,
         systemPrompt: buildSystemPrompt(),
