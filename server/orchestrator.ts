@@ -639,9 +639,15 @@ export function extractContactAndBookingFromMessages(
   };
 }
 
-const openaiApiKey = process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+// Initialize OpenAI client - prefer Replit AI integration (with baseURL), fallback to direct API key
+const openaiApiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+const openaiBaseUrl = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+
 const openai = openaiApiKey
-  ? new OpenAI({ apiKey: openaiApiKey })
+  ? new OpenAI({ 
+      apiKey: openaiApiKey,
+      baseURL: openaiBaseUrl || undefined, // Use Replit proxy if available
+    })
   : null;
 
 export type ChatSource = 'admin_preview' | 'public_widget' | 'demo_page' | 'client_site' | 'widget' | 'api';
