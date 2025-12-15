@@ -19,7 +19,17 @@ export function getCurrentMonth(): string {
 }
 
 export async function getClientPlan(clientId: string): Promise<PlanTier> {
-  // Check clients.json for plan, default to 'starter' for real clients, 'free' for demos
+  // Demo clients get enterprise (unlimited) - detect by clientId pattern
+  // This ensures demo pages work without hitting message limits
+  const isDemoClient = clientId.includes('demo') || 
+                       clientId.startsWith('demo_') || 
+                       clientId.endsWith('_demo');
+  
+  if (isDemoClient) {
+    return 'enterprise'; // Unlimited messages for demos
+  }
+  
+  // Check clients.json for plan, default to 'starter' for real clients
   try {
     const fs = await import('fs/promises');
     const clientsData = JSON.parse(await fs.readFile('./clients/clients.json', 'utf-8'));
@@ -29,9 +39,9 @@ export async function getClientPlan(clientId: string): Promise<PlanTier> {
       return 'free';
     }
     
-    // Demo clients get starter plan (more generous for showcasing)
+    // Demo clients get enterprise plan (unlimited for showcasing)
     if (client.type === 'demo' || client.status === 'demo') {
-      return 'starter';
+      return 'enterprise';
     }
     
     // Real clients default to starter, can be overridden
