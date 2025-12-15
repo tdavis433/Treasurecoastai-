@@ -352,6 +352,9 @@ export default function ClientDashboard() {
     retry: false,
   });
 
+  // Clients (client_admin) are view-only - only super_admin can edit lead/booking statuses
+  const canEditStatus = currentUser?.role === 'super_admin';
+
   useEffect(() => {
     if (!authLoading && !currentUser) {
       setLocation("/login");
@@ -2093,29 +2096,38 @@ export default function ClientDashboard() {
                             </div>
                           </div>
                           <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
-                            <Select
-                              value={lead.status || 'new'}
-                              onValueChange={(value) => handleUpdateLeadStatus(lead.id, value)}
-                              disabled={isUpdating}
-                            >
-                              <SelectTrigger 
-                                className={`w-28 h-8 text-xs border ${statusOption?.color || 'bg-white/10 text-white/60 border-white/20'}`}
-                                data-testid={`select-lead-status-${lead.id}`}
+                            {canEditStatus ? (
+                              <Select
+                                value={lead.status || 'new'}
+                                onValueChange={(value) => handleUpdateLeadStatus(lead.id, value)}
+                                disabled={isUpdating}
                               >
-                                {isUpdating ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : (
-                                  <SelectValue />
-                                )}
-                              </SelectTrigger>
-                              <SelectContent className="bg-[#1a1d24] border-white/10">
-                                {LEAD_STATUS_OPTIONS.map(opt => (
-                                  <SelectItem key={opt.value} value={opt.value} className="text-white">
-                                    {opt.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                                <SelectTrigger 
+                                  className={`w-28 h-8 text-xs border ${statusOption?.color || 'bg-white/10 text-white/60 border-white/20'}`}
+                                  data-testid={`select-lead-status-${lead.id}`}
+                                >
+                                  {isUpdating ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <SelectValue />
+                                  )}
+                                </SelectTrigger>
+                                <SelectContent className="bg-[#1a1d24] border-white/10">
+                                  {LEAD_STATUS_OPTIONS.map(opt => (
+                                    <SelectItem key={opt.value} value={opt.value} className="text-white">
+                                      {opt.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <Badge 
+                                className={`${statusOption?.color || 'bg-white/10 text-white/60 border-white/20'} border`}
+                                data-testid={`badge-lead-status-${lead.id}`}
+                              >
+                                {statusOption?.label || lead.status || 'New'}
+                              </Badge>
+                            )}
                             <span className="text-xs text-white/40">
                               {lead.createdAt ? format(new Date(lead.createdAt), "MMM d, yyyy") : '—'}
                             </span>
@@ -2454,7 +2466,7 @@ export default function ClientDashboard() {
                         {(() => {
                           const statusOption = BOOKING_STATUS_OPTIONS.find(s => s.value === (apt.status || 'new'));
                           const isUpdating = updatingBookingId === apt.id;
-                          return (
+                          return canEditStatus ? (
                             <Select
                               value={apt.status || 'new'}
                               onValueChange={(value) => handleUpdateBookingStatus(apt.id, value)}
@@ -2483,6 +2495,13 @@ export default function ClientDashboard() {
                                 ))}
                               </SelectContent>
                             </Select>
+                          ) : (
+                            <Badge 
+                              className={`${statusOption?.color || 'bg-amber-500/20 text-amber-400 border-amber-400/40'} border`}
+                              data-testid={`badge-booking-status-${apt.id}`}
+                            >
+                              {statusOption?.label || apt.status || 'New'}
+                            </Badge>
                           );
                         })()}
                         <span className="text-xs text-white/40">
@@ -3090,39 +3109,48 @@ export default function ClientDashboard() {
             {/* Status Section */}
             <div className="bg-white/5 rounded-lg p-4 space-y-3">
               <h4 className="text-sm font-medium text-white/70 uppercase tracking-wide">Status</h4>
-              <Select
-                value={selectedLead?.status || 'new'}
-                onValueChange={(value) => {
-                  if (selectedLead?.id) {
-                    handleUpdateLeadStatus(selectedLead.id, value);
-                    setSelectedLead((prev: any) => prev ? { ...prev, status: value } : null);
-                  }
-                }}
-                disabled={updatingLeadId === selectedLead?.id}
-              >
-                <SelectTrigger 
-                  className={`w-full h-10 ${LEAD_STATUS_OPTIONS.find(s => s.value === (selectedLead?.status || 'new'))?.color || 'bg-amber-500/20 text-amber-400 border-amber-400/40'}`}
-                  data-testid="select-lead-status-popup"
+              {canEditStatus ? (
+                <Select
+                  value={selectedLead?.status || 'new'}
+                  onValueChange={(value) => {
+                    if (selectedLead?.id) {
+                      handleUpdateLeadStatus(selectedLead.id, value);
+                      setSelectedLead((prev: any) => prev ? { ...prev, status: value } : null);
+                    }
+                  }}
+                  disabled={updatingLeadId === selectedLead?.id}
                 >
-                  {updatingLeadId === selectedLead?.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <SelectValue />
-                  )}
-                </SelectTrigger>
-                <SelectContent className="bg-[#1a1d23] border-white/20 z-[60]">
-                  {LEAD_STATUS_OPTIONS.map((option) => (
-                    <SelectItem 
-                      key={option.value} 
-                      value={option.value}
-                      className="text-white hover:bg-white/10"
-                      data-testid={`option-lead-status-${option.value}`}
-                    >
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  <SelectTrigger 
+                    className={`w-full h-10 ${LEAD_STATUS_OPTIONS.find(s => s.value === (selectedLead?.status || 'new'))?.color || 'bg-amber-500/20 text-amber-400 border-amber-400/40'}`}
+                    data-testid="select-lead-status-popup"
+                  >
+                    {updatingLeadId === selectedLead?.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <SelectValue />
+                    )}
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1a1d23] border-white/20 z-[60]">
+                    {LEAD_STATUS_OPTIONS.map((option) => (
+                      <SelectItem 
+                        key={option.value} 
+                        value={option.value}
+                        className="text-white hover:bg-white/10"
+                        data-testid={`option-lead-status-${option.value}`}
+                      >
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Badge 
+                  className={`${LEAD_STATUS_OPTIONS.find(s => s.value === (selectedLead?.status || 'new'))?.color || 'bg-green-500/20 text-green-400 border-green-400/40'} border text-sm py-2 px-4`}
+                  data-testid="badge-lead-status-popup"
+                >
+                  {LEAD_STATUS_OPTIONS.find(s => s.value === (selectedLead?.status || 'new'))?.label || selectedLead?.status || 'New'}
+                </Badge>
+              )}
             </div>
 
             {/* Contact Information */}
@@ -3270,39 +3298,48 @@ export default function ClientDashboard() {
             {/* Status Section */}
             <div className="bg-white/5 rounded-lg p-4 space-y-3">
               <h4 className="text-sm font-medium text-white/70 uppercase tracking-wide">Status</h4>
-              <Select
-                value={selectedAppointment?.status || 'new'}
-                onValueChange={(value) => {
-                  if (selectedAppointment?.id) {
-                    handleUpdateBookingStatus(selectedAppointment.id, value);
-                    setSelectedAppointment((prev) => prev ? { ...prev, status: value } : null);
-                  }
-                }}
-                disabled={updatingBookingId === selectedAppointment?.id}
-              >
-                <SelectTrigger 
-                  className={`w-full h-10 ${BOOKING_STATUS_OPTIONS.find(s => s.value === (selectedAppointment?.status || 'new'))?.color || 'bg-amber-500/20 text-amber-400 border-amber-400/40'}`}
-                  data-testid="select-booking-status-popup"
+              {canEditStatus ? (
+                <Select
+                  value={selectedAppointment?.status || 'new'}
+                  onValueChange={(value) => {
+                    if (selectedAppointment?.id) {
+                      handleUpdateBookingStatus(selectedAppointment.id, value);
+                      setSelectedAppointment((prev) => prev ? { ...prev, status: value } : null);
+                    }
+                  }}
+                  disabled={updatingBookingId === selectedAppointment?.id}
                 >
-                  {updatingBookingId === selectedAppointment?.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <SelectValue />
-                  )}
-                </SelectTrigger>
-                <SelectContent className="bg-[#1a1d23] border-white/20 z-[60]">
-                  {BOOKING_STATUS_OPTIONS.map((option) => (
-                    <SelectItem 
-                      key={option.value} 
-                      value={option.value}
-                      className="text-white hover:bg-white/10"
-                      data-testid={`option-booking-status-${option.value}`}
-                    >
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  <SelectTrigger 
+                    className={`w-full h-10 ${BOOKING_STATUS_OPTIONS.find(s => s.value === (selectedAppointment?.status || 'new'))?.color || 'bg-amber-500/20 text-amber-400 border-amber-400/40'}`}
+                    data-testid="select-booking-status-popup"
+                  >
+                    {updatingBookingId === selectedAppointment?.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <SelectValue />
+                    )}
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1a1d23] border-white/20 z-[60]">
+                    {BOOKING_STATUS_OPTIONS.map((option) => (
+                      <SelectItem 
+                        key={option.value} 
+                        value={option.value}
+                        className="text-white hover:bg-white/10"
+                        data-testid={`option-booking-status-${option.value}`}
+                      >
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Badge 
+                  className={`${BOOKING_STATUS_OPTIONS.find(s => s.value === (selectedAppointment?.status || 'new'))?.color || 'bg-amber-500/20 text-amber-400 border-amber-400/40'} border text-sm py-2 px-4`}
+                  data-testid="badge-booking-status-popup"
+                >
+                  {BOOKING_STATUS_OPTIONS.find(s => s.value === (selectedAppointment?.status || 'new'))?.label || selectedAppointment?.status || 'New'}
+                </Badge>
+              )}
             </div>
 
             {/* Contact Information */}
