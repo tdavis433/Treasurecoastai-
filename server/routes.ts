@@ -11618,7 +11618,7 @@ These suggestions should be relevant to what was just discussed and help guide t
     try {
       const { clientId, botId } = req.params;
       
-      const botConfig = getBotConfig(clientId, botId);
+      const botConfig = await getBotConfigAsync(clientId, botId);
       if (!botConfig) {
         return res.status(404).json({ error: 'Bot not found' });
       }
