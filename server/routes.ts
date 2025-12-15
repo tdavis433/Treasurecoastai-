@@ -94,7 +94,7 @@ import { generatePreviewToken, verifyPreviewToken, getTokenTimeRemaining, type P
 import { validateBookingUrl } from './urlValidator';
 import { csrfProtection } from './csrfMiddleware';
 import { structuredLogger } from './structuredLogger';
-import { buildClientFromTemplate, validateTemplateForProvisioning, type TemplateOverrides } from './templates';
+import { buildClientFromTemplate, validateTemplateForProvisioning, ensureTemplatesSeeded, type TemplateOverrides } from './templates';
 
 // =============================================
 // PHASE 2.4: SIGNED WIDGET TOKENS
@@ -1521,6 +1521,7 @@ async function logNotification(params: {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   await ensureAdminUserExists();
+  await ensureTemplatesSeeded();
   
   // =============================================
   // HEALTH CHECK ENDPOINTS

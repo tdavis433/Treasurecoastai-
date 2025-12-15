@@ -75,6 +75,19 @@ npm run db:push
 **Expected:**
 - db:push completes cleanly and does not require destructive changes.
 
+**Auto-Seeding (Boot-Time):**
+
+Bot templates are automatically seeded on server startup. The server:
+1. Checks the current active template count in `bot_templates`
+2. If fewer than 15 templates exist, seeds missing templates from `INDUSTRY_TEMPLATES`
+3. Logs result: `[templates] seeded X templates` or `[templates] already seeded (count=15)`
+
+This ensures templates are always present without manual intervention. For manual seeding:
+
+```bash
+npx tsx scripts/seed-bot-templates.ts
+```
+
 **If db:push becomes interactive:**
 - STOP and inspect what it wants to change.
 - Do NOT accept destructive operations unless you confirm:
