@@ -1,0 +1,165 @@
+REPLIT AGENT MODE — OPTION A (BEST): SEED ALL INDUSTRY_TEMPLATES INTO DB (15/15) + MAKE VALIDATION TRUE + RE-RUN ALL GATES
+
+Decision: OPTION A
+We will make the system airtight by ensuring EVERY industry template defined in INDUSTRY_TEMPLATES has a corresponding DB record in bot_templates, so onboarding can never “work for 9 now and randomly fail later” when you enable more industries.
+
+Non-negotiables:
+- NO payment processing on-platform (redirect-only for external booking/payment).
+- External booking URLs must be HTTPS-only and validated server-side.
+- Multi-tenant isolation: effectiveClientId/session-based scoping only.
+- No starter-* templates in production.
+- No secrets in any template/widget responses.
+
+========================================================
+PHASE 1 — DEFINE CANONICAL TEMPLATE LIST (15/15)
+========================================================
+1) Identify the full set of industries currently defined in server/industryTemplates.ts (INDUSTRY_TEMPLATES).
+Expected (from prior list on demo page):
+- law_firm
+- dental
+- boutique_hotel OR hotel (confirm actual key)
+- pet_grooming
+- sober_living (recovery)
+- wedding
+- barber
+- auto OR auto_shop (confirm key)
+- gym OR fitness_center (confirm key)
+- home_services
+- med_spa
+- real_estate
+- restaurant
+- tattoo
+- roofing (if present)
+NOTE: Use the ACTUAL keys from INDUSTRY_TEMPLATES as the source of truth.
+
+2) Create a single mapping function in server/templates/templateIdMap.ts (or similar):
+- templateKey -> templateId (DB template_id)
+Rule:
+- templateId must be stable, deterministic, and end with _template
+Examples:
+  restaurant -> restaurant_template
+  law_firm -> law_firm_template
+  wedding -> wedding_template
+  pet_grooming -> pet_grooming_template
+  hotel/boutique_hotel -> boutique_hotel_template (pick one and stay consistent)
+
+3) Remove/avoid any “manual mapping tables” duplicated in scripts. The mapping should be importable and shared between:
+- seed script
+- validate-db-templates.ts
+- provisioning helper (if needed)
+
+========================================================
+PHASE 2 — DB SEED / UPSERT ALL TEMPLATES (15/15)
+========================================================
+Goal: Ensure bot_templates has one row per INDUSTRY_TEMPLATES key.
+
+1) Implement scripts/seed-bot-templates.ts (idempotent upsert):
+For each templateKey in Object.keys(INDUSTRY_TEMPLATES):
+- compute templateId via templateIdMap
+- build DB row:
+  - template_id = computed templateId
+  - name/description/icon/bot_type from template definition
+  - previewImage/displayOrder if applicable
+  - isActive = true (default)
+  - config fields stored consistently (default personality, faqs, booking profile, etc.)
+- UPSERT behavior:
+  - If template_id exists: update fields (name/desc/icon/config/isActive/displayOrder)
+  - If missing: insert
+This must be safe to run multiple times.
+
+2) Add a server boot safety hook:
+- On server start (or first templates request), if DB template count < keys count, log warning and run seed script automatically ONLY in development OR if env var AUTO_SEED_TEMPLATES=true.
+Production recommendation:
+- Provide manual seed command, do not auto-seed unless explicitly enabled.
+
+3) Ensure /api/templates and /api/super-admin/templates return DB templates only.
+No fallback to INDUSTRY_TEMPLATES at runtime except for seeding.
+
+========================================================
+PHASE 3 — UPDATE VALIDATION TO ENFORCE “ALL INDUSTRY_TEMPLATES IN DB”
+========================================================
+Modify scripts/validate-db-templates.ts so it truly gates:
+- REQUIRED = Object.keys(INDUSTRY_TEMPLATES)
+- For each required key:
+  - derive templateId via shared templateIdMap
+  - assert DB row exists
+  - assert isActive = true (or at least exists; choose policy and document it)
+  - validate required fields/config contract
+
+If ANY missing -> exit code 1.
+
+Also:
+- Report additional templates in DB (like generic_template) but do NOT fail unless policy requires.
+- Update wording in the report to match this reality.
+
+========================================================
+PHASE 4 — ENSURE UI ONLY SHOWS DB TEMPLATES (NO GHOST OPTIONS)
+========================================================
+1) Confirm the onboarding UI template list is pulled from:
+- /api/super-admin/templates (DB backed)
+- /api/templates (public list, metadata only)
+2) Remove any remaining usage of INDUSTRY_TEMPLATES as a UI template list source (except admin seed/preview).
+3) Confirm demo page templates list matches DB list (or demo page uses its own configs but the bots behind them must match DB templates).
+
+========================================================
+PHASE 5 — PROVISIONING + BOOKING PROFILE CONTRACT
+========================================================
+1) Ensure buildClientFromTemplate uses DB template record as canonical input.
+2) Validate bookingProfile for every template:
+- INTERNAL vs EXTERNAL default
+- CTA labels per industry
+- universal fallback: request_callback exists
+- failsafe: EXTERNAL w/ missing/invalid external URL pivots to INTERNAL
+3) Server-side external URL validation:
+- block javascript:, data:, file:, http:
+- require https:
+- normalize with URL parser
+
+========================================================
+PHASE 6 — SMOKE TEST “CREATE CLIENT FROM EVERY TEMPLATE”
+========================================================
+Create a new script scripts/provisioning-smoke-test.ts (safe, dev-only):
+For each DB template:
+- simulate provisioning (dry-run) via buildClientFromTemplate
+- ensure BotConfig compiles + required fields exist
+- ensure booking wording and CTA IDs exist
+- optionally create a temporary client/bot in DB with a random suffix, then delete at end (wrap in a transaction or cleanup pass)
+
+If you do live DB writes:
+- Prefix with "smoke_" and delete all created records automatically.
+
+========================================================
+PHASE 7 — UPDATE FINAL REPORT TO REMOVE INCONSISTENCIES
+========================================================
+Update reports/final-platform-go-no-go.md:
+- Template Validation requirement becomes TRUE:
+  “All INDUSTRY_TEMPLATES must exist in DB (15/15).”
+- Appendix must show 15/15 mapped and validated, not 9/9.
+- Move “future templates” section to zero (since they are now seeded).
+
+========================================================
+PHASE 8 — RUN ALL GATES + OUTPUT PROOF
+========================================================
+Run in order and paste outputs into the final report:
+1) bash ./scripts/guard-no-payments.sh
+2) npx tsc --noEmit
+3) npx vitest run
+4) npm run build
+5) node scripts/seed-bot-templates.ts (or tsx)
+6) node scripts/validate-db-templates.ts (or tsx)
+7) node scripts/provisioning-smoke-test.ts (or tsx)
+
+Final deliverables:
+- scripts/seed-bot-templates.ts
+- shared templateIdMap utility (reused everywhere)
+- scripts/validate-db-templates.ts updated to enforce 15/15
+- scripts/provisioning-smoke-test.ts
+- reports/final-platform-go-no-go.md updated with 15/15 proof
+
+When complete, respond with:
+A) “15/15 templates seeded and validated” proof
+B) outputs of all gates
+C) list of files changed/created
+D) any unexpected findings (should be none)
+
+START NOW.
