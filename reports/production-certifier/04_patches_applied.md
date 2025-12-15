@@ -11,6 +11,7 @@
 |-------|----------|--------|
 | 001 - NPM Audit Fix | High | APPLIED |
 | 002 - env.example Update | Low | APPLIED |
+| 003 - Onboarding Wizard clientId/clientName | High (P0) | APPLIED |
 
 ---
 
@@ -160,6 +161,52 @@ npm ci
 
 ### Patch 002 (env.example)
 No rollback needed - documentation only.
+
+---
+
+## Patch 003: Onboarding Wizard - Missing clientId/clientName
+
+**Date:** 2025-12-15  
+**Phase:** Live E2E Testing  
+**Severity:** High (P0 Blocker)  
+**Type:** Bug Fix
+
+### Problem
+The client onboarding wizard was returning a 400 error when attempting to launch a new client:
+```
+400: {"error":"clientId: Required, clientName: Required"}
+```
+
+The frontend mutation payload was missing the required `clientId` and `clientName` fields that the API expects.
+
+### Solution
+Updated `client/src/components/client-onboarding-wizard.tsx` to include the required fields in the API payload:
+
+```typescript
+// Before (missing required fields)
+const payload = {
+  businessName: data.businessName,
+  slug: data.slug,
+  // ...
+};
+
+// After (fixed)
+const payload = {
+  clientId: data.slug,
+  clientName: data.businessName,
+  businessName: data.businessName,
+  slug: data.slug,
+  // ...
+};
+```
+
+### Verification
+- Architect review confirmed fix aligns with server-side `createFromTemplateSchema`
+- `clientId` maps to `data.slug` (already validated as slug-safe)
+- `clientName` maps to `data.businessName` (already validated as non-empty)
+
+### Status
+**APPLIED** - Requires redeployment to production
 
 ---
 
