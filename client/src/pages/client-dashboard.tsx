@@ -3088,7 +3088,7 @@ export default function ClientDashboard() {
 
       {/* Lead Details Dialog */}
       <Dialog open={!!selectedLead} onOpenChange={(open) => !open && setSelectedLead(null)}>
-        <DialogContent className="bg-[#1a1f2e] border-white/10 text-white max-w-lg">
+        <DialogContent className="bg-[#1a1f2e] border-white/10 text-white max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-white">
               <div className="h-12 w-12 rounded-full bg-gradient-to-br from-green-500/30 to-emerald-500/30 flex items-center justify-center">
@@ -3274,7 +3274,7 @@ export default function ClientDashboard() {
 
       {/* Appointment Details Dialog */}
       <Dialog open={!!selectedAppointment} onOpenChange={(open) => !open && setSelectedAppointment(null)}>
-        <DialogContent className="bg-[#1a1f2e] border-white/10 text-white max-w-lg">
+        <DialogContent className="bg-[#1a1f2e] border-white/10 text-white max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-white">
               <div className="h-12 w-12 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/30 flex items-center justify-center">
