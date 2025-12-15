@@ -403,6 +403,8 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
   const createClientMutation = useMutation({
     mutationFn: async () => {
       const payload = {
+        clientId: data.slug,
+        clientName: data.businessName,
         businessName: data.businessName,
         slug: data.slug,
         industry: selectedTemplate?.botType || 'generic',
