@@ -1,0 +1,55 @@
+Executive Health Report (Brutal)
+
+What is solid
+	•	Polished dark-neon UI: The public site and dashboards follow a consistent dark luxury theme with neon accents and glassmorphism. Pages load quickly and there are no glaring layout issues or overflowing elements.  The chat widget is mobile‑friendly and fits the aesthetic.
+	•	Basic functionality present:
+	•	Chat widget can answer general and service‑specific questions; it understands context and collects visitor details when a booking intent is expressed.
+	•	The automated onboarding wizard runs end‑to‑end: new client workspaces are created with a slug, default assistant and credentials; the wizard shows embed code and login info.
+	•	Admin dashboard exposes key sections (Clients, Assistants, Templates, Knowledge, Integrations, Requests) and provides a “Needs Your Review” queue showing flagged conversations.
+	•	The client dashboard offers conversations, leads and bookings with analytics and read‑only settings..
+	•	Conversation transcripts are recorded: the admin inbox lists sessions and shows message details; the client dashboard lists conversations with visitor contact information.
+	•	No payment flows: All booking flows capture contact info and redirect externally.  There are no card fields or Stripe intents; the Square link for the demo is broken (404), but no payment information is collected.
+
+What is fragile
+	•	External booking failsafe broken: The Faith House demo uses an external booking link (square.site) which returns 404.  The platform does not fall back to an internal booking request, violating the failsafe requirement.
+	•	Client can edit lead/booking statuses: In the Faith House client dashboard, a client can open a lead and change its status via a dropdown.  The UI even records “Status changed to Contacted”.  This breaks the “client view‑only” requirement and is a P0 access control issue.
+	•	Broken booking status update: In the same dashboard, clients can attempt to change booking statuses, but the action returns a red error toast “Failed to update booking status”.  The presence of the dropdown suggests editing is allowed, but the server rejects it; this is confusing and likely indicates missing RBAC enforcement.
+	•	Mis‑mapped workspaces: Chat conversations from the Faith House demo are stored under a hidden workspace slug (faith_house_demo_main) and are not visible in the Faith House (Demo) client workspace.  This mis‑linking means admins see conversations in the inbox but clients see zero conversations/leads in their own workspace overview.
+	•	Wizard provisioning incomplete: The onboarding wizard claims to create an assistant, but the new client workspace (Test Client 1) shows 0 assistants and 0 conversations.  The assistant is missing and there is no way to access or provision it from the admin UI.
+	•	Conversation scroll bug: The admin inbox displays messages but cannot scroll to the bottom; the conversation view is frozen.
+	•	No proper logout: There is no logout link on the client dashboard; navigating to /logout returns 404.  Logging out requires manually navigating to the public login page.
+	•	Preview links missing: The wizard shows credentials and embed code but no preview link.  There is a “Preview Widget” button in client settings, but it opens the widget on the same page; there is no time‑limited preview URL as specified.
+	•	Duplicate submission behaviour unclear: When sending messages quickly, the chat widget occasionally requires the send arrow rather than Enter and sometimes resets the conversation unexpectedly.  Duplicate leads/bookings protections were not obvious.
+
+Top client‑ready risks
+	1.	Unauthorized edits from client side (P0): Clients can change lead statuses and attempt to change booking statuses.  This contradicts the view‑only mandate and opens the door to tampering.
+	2.	Broken external booking failsafe (P0): External booking links can be invalid and the system does not fallback to internal booking.  Real customers will be unable to complete bookings and leads may be lost.
+	3.	Mis‑mapped or hidden workspaces (P0): Conversations and leads generated from the demo are stored in a separate workspace slug and are invisible to the Faith House (Demo) client workspace.  This undermines multi‑tenant confidence and can cause data loss.
+	4.	Provisioning wizard incomplete (P1): New workspaces created via the wizard show no assistants.  Without an assistant, the client cannot receive any messages or leads.
+	5.	Broken admin conversation UI (P1): Inability to scroll conversation transcripts prevents admins from reviewing conversations.
+	6.	No logout/idle session management (P1): Lack of logout route or idle expiry may lead to stale sessions and potential security risks.
+
+Security posture summary (web‑observable)
+	•	HTTPS is used everywhere.
+	•	Login pages exist for admin and clients; session cookies seem secure, but there is no visible CSRF protection or session idle timeout enforcement.
+	•	Password reset flows were not tested (links not visible).
+	•	There is a warning to change default admin credentials, but the application still ships with admin/admin123 by default.
+	•	Role‑based access appears incomplete: clients can update lead statuses and attempt to update bookings; some operations error but the UI still exposes editing controls.
+
+Multi‑tenant confidence score + evidence
+
+Score: 6/10 (medium risk).
+Evidence:
+	•	Workspaces appear isolated in the UI (only demo_faith_house data shows for that client) and switching slugs via URL returns 404, suggesting proper routing.
+	•	However, conversation and lead data from the Faith House demo were saved under a hidden faith_house_demo_main workspace and not visible in the Faith House (Demo) workspace, showing mis‑configured multi‑tenant mapping.
+	•	Clients can modify lead/booking statuses; while some changes fail, the UI attempts to perform cross‑workspace updates, indicating incomplete RBAC enforcement.
+
+Go/No‑Go status
+
+NO‑GO for onboarding real clients.  The platform has attractive UI and basic flows, but critical issues (broken booking failsafe, unauthorized client edits, mis‑linked workspaces, incomplete provisioning, and missing logout) must be fixed before production use.
+
+⸻
+
+Site Map + Observed System Diagram (Web‑Observed)
+
+Major pages and routes
