@@ -72,6 +72,7 @@ import {
   Lock,
   Shield,
   KeyRound,
+  Trash2,
 } from "lucide-react";
 import {
   Select,
@@ -646,6 +647,40 @@ export default function ClientDashboard() {
       }
     } catch (error) {
       toast({ title: "Error", description: "Failed to mark as resolved.", variant: "destructive" });
+    }
+  };
+
+  // Delete conversation
+  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+  
+  const handleDeleteConversation = async (sessionId: string) => {
+    if (!confirm("Are you sure you want to delete this conversation? This action cannot be undone.")) {
+      return;
+    }
+    
+    setDeletingSessionId(sessionId);
+    try {
+      const response = await fetch(appendClientId(`/api/client/sessions/${sessionId}`), {
+        method: "DELETE",
+        credentials: "include",
+      });
+      
+      if (response.ok) {
+        // Collapse the session if it's expanded
+        if (expandedSession === sessionId) {
+          setExpandedSession(null);
+        }
+        // Invalidate sessions cache
+        queryClient.invalidateQueries({ queryKey: ["/api/client/analytics/sessions", urlClientId] });
+        queryClient.invalidateQueries({ queryKey: ["/api/client/stats", statsRange, urlClientId] });
+        toast({ title: "Deleted", description: "Conversation has been deleted." });
+      } else {
+        throw new Error("Failed to delete");
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to delete conversation.", variant: "destructive" });
+    } finally {
+      setDeletingSessionId(null);
     }
   };
 
@@ -1860,8 +1895,26 @@ export default function ClientDashboard() {
                                   ))}
                                 </div>
                                 
-                                {!isResolved && (
-                                  <div className="mt-4 pt-4 border-t border-white/10 flex justify-end">
+                                <div className="mt-4 pt-4 border-t border-white/10 flex justify-between gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteConversation(session.sessionId);
+                                    }}
+                                    disabled={deletingSessionId === session.sessionId}
+                                    className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                                    data-testid={`button-delete-conversation-${session.id}`}
+                                  >
+                                    {deletingSessionId === session.sessionId ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                    )}
+                                    Delete
+                                  </Button>
+                                  {!isResolved && (
                                     <Button
                                       size="sm"
                                       onClick={(e) => {
@@ -1874,8 +1927,8 @@ export default function ClientDashboard() {
                                       <CheckCircle2 className="h-4 w-4 mr-2" />
                                       Mark as Resolved
                                     </Button>
-                                  </div>
-                                )}
+                                  )}
+                                </div>
                               </>
                             ) : (
                               <div className="py-6 text-center text-white/40">

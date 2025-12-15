@@ -4,7 +4,7 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import { storage, db } from "./storage";
-import { insertAppointmentSchema, insertClientSettingsSchema, adminUsers, type AdminRole, bots, botSettings, leads, appointments, clientSettings, workspaces, workspaceMemberships, botRequests, insertBotRequestSchema, chatSessions, conversationMessages, chatAnalyticsEvents, dailyAnalytics, passwordResetTokens, systemLogs } from "@shared/schema";
+import { insertAppointmentSchema, insertClientSettingsSchema, adminUsers, type AdminRole, bots, botSettings, leads, appointments, clientSettings, workspaces, workspaceMemberships, botRequests, insertBotRequestSchema, chatSessions, conversationMessages, chatAnalyticsEvents, dailyAnalytics, passwordResetTokens, systemLogs, sessionStates } from "@shared/schema";
 import { emailService, getPendingResetTokens, clearPendingResetTokens } from "./emailService";
 import OpenAI from "openai";
 import bcrypt from "bcryptjs";
@@ -7882,6 +7882,58 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
       structuredLogger.error("Update session state error:", error);
       res.status(500).json({ error: "Failed to update session state" });
+    }
+  });
+
+  // Delete a conversation session (for client dashboard)
+  app.delete("/api/client/sessions/:sessionId", requireClientAuth, requireOperationalAccess, async (req, res) => {
+    try {
+      const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
+      const { sessionId } = req.params;
+      
+      // First verify the session belongs to this client and get its record
+      const sessions = await db
+        .select()
+        .from(chatSessions)
+        .where(and(
+          eq(chatSessions.sessionId, sessionId),
+          eq(chatSessions.clientId, clientId)
+        ))
+        .limit(1);
+      
+      if (sessions.length === 0) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      
+      const session = sessions[0];
+      
+      // Delete related messages first (conversationId references chatSessions.id)
+      await db.delete(conversationMessages).where(eq(conversationMessages.conversationId, session.id));
+      
+      // Delete session state if exists
+      await db.delete(sessionStates).where(eq(sessionStates.sessionId, sessionId));
+      
+      // Delete the session
+      await db.delete(chatSessions).where(eq(chatSessions.id, session.id));
+      
+      // Audit log
+      logAuditEvent({
+        userId: String(req.user?.id || 'unknown'),
+        userEmail: req.user?.username || 'unknown',
+        action: 'conversation_delete',
+        resourceType: 'chat_session',
+        resourceId: sessionId,
+        clientId,
+        details: { sessionId, chatSessionId: session.id }
+      });
+      
+      res.json({ success: true, message: "Conversation deleted" });
+    } catch (error) {
+      structuredLogger.error("Delete session error:", error);
+      res.status(500).json({ error: "Failed to delete conversation" });
     }
   });
 
