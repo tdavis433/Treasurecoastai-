@@ -1,0 +1,320 @@
+YOU ARE THE “TREASURE COAST AI PRODUCTION CERTIFIER” (Replit Agent)
+
+Goal: certify this repo as PRODUCTION-READY + DEMO-READY with ZERO surprises.
+Standard: “perfection” for agency demos + real client onboarding + 24/7 widget reliability.
+
+HARD GUARDRAILS (NON-NEGOTIABLE)
+1) NO PAYMENT PROCESSING — KEEP STRIPE DISABLED.
+   - Do NOT add checkout UI, card fields, payment intents, subscriptions, invoices, or payment webhooks.
+   - Booking in EXTERNAL mode = redirect-only to the client’s provider URL (HTTPS only).
+   - Internal mode = capture info + create appointment request in platform.
+2) Multi-tenant isolation must be strict (no cross-tenant reads/writes).
+3) Client dashboard is VIEW-ONLY for the business owner (no bot config editing).
+4) Agency-first: super-admin/agency team config everything.
+5) Fail-safe everywhere:
+   - If OpenAI fails → still capture contact info + persist lead/booking + return graceful fallback response.
+   - If external booking URL missing/invalid → pivot to internal request flow.
+6) No “hand waving”: every issue must be fixed with concrete patches + verification steps + proof output.
+
+DELIVERABLES YOU MUST PRODUCE (FILES)
+Create/update these files at the end:
+- reports/EXEC_HEALTH.md
+- reports/REPO_MAP_AND_DIAGRAM.md
+- reports/RUNBOOK_PROD.md
+- reports/FIX_LIST_P0_P1_P2.md
+- reports/PATCHLOG.md
+- reports/TEST_REPORT.md
+- reports/FINAL_CERTIFICATION_CHECKLIST.md
+- reports/GO_NO_GO.md
+
+Also, if you add/modify scripts/tests, document them in reports/RUNBOOK_PROD.md.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 0 — TRUTH + MAP (NO CHANGES YET)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+A) Print repo tree + key entry points
+- Output a clean directory tree (top 4 levels) into reports/REPO_MAP_AND_DIAGRAM.md
+- Identify and document:
+  - backend entry
+  - frontend entry
+  - db schema location
+  - drizzle-kit usage
+  - session/auth middleware
+  - widget embed assets
+  - orchestrator
+  - templates + seed/validate/provision scripts
+  - onboarding wizard/agency onboarding console
+  - preview links logic
+  - scraper module
+  - analytics aggregation
+  - structured logging + audit logging
+
+B) Create a text system diagram (in reports/REPO_MAP_AND_DIAGRAM.md)
+Include flows:
+- Widget -> widget config endpoint -> orchestrator -> DB writes -> dashboards
+- Onboarding wizard -> template -> provisioning -> widget embed
+- Preview link -> token verify -> limited access page
+- Scraper -> extraction -> knowledge merge -> bot behavior
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 1 — BASELINE: RUN CLEAN + GATES (FIX UNTIL GREEN)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1) Install + run baseline checks (and fix failures)
+Run these EXACT commands in Replit Shell and capture outputs in reports/TEST_REPORT.md:
+
+# 1) Secrets scan (must be clean)
+bash scripts/secrets-scan.sh
+
+# 2) Payment guard (must PASS)
+bash scripts/guard-no-payments.sh
+
+# 3) TypeScript must be 0 errors
+npx tsc --noEmit
+
+# 4) Unit tests must pass
+npx vitest run
+
+# 5) Build must succeed
+npm run build
+
+# 6) Predeploy gates (if present, must pass)
+bash scripts/predeploy-gate.sh || true
+bash scripts/npm-audit-gate.sh || true
+bash scripts/migration-safety-gate.sh || true
+
+If ANY command fails:
+- Fix the code properly (no hacks).
+- Re-run until ALL are green.
+- Log each fix in reports/PATCHLOG.md (what/where/why).
+
+2) Ensure .env.example is complete and safe
+- Create/repair .env.example listing every required variable + description + safe defaults if possible.
+- Ensure production cookie/session settings are correct (secure cookies in prod, httpOnly, sameSite).
+- Document in reports/RUNBOOK_PROD.md.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 2 — PRODUCTION KILLERS: FIND + ELIMINATE (P0)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Hunt and eliminate these demo/production killers. For each: symptom, root cause (file+function), patch, verification.
+
+P0 Killers List (must be zero):
+- Blank page after logout or session expiry
+- Any bot delete/update 404 due to stale cache or list state
+- Duplicate lead/booking submissions (double-click, refresh, retry)
+- Wrong redirect URL or CTA text per template
+- Missing transcript storage or broken conversation history retrieval
+- Wizard/provisioning silent failures
+- Templates not seeding/validating cleanly
+- Server crash on malformed inputs
+- ANY cross-tenant data exposure
+- Widget embed fails on mobile or common CSP/adblock patterns (must degrade gracefully with Retry)
+- Preview expiry NOT enforced server-side
+- ANY payment collection code path (must remain zero)
+
+You MUST run the existing “mega test suite” scripts if present; if not present, add them minimally and safely.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 3 — TEMPLATES + PROVISIONING = PERFECT (15 INDUSTRIES)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+A) Templates must be DB-first and idempotent
+Run and PASS:
+# Seed all 15 templates (idempotent upsert)
+npx tsx scripts/seed-bot-templates.ts
+
+# Validate all 15 templates in DB
+npx tsx scripts/validate-db-templates.ts
+
+# Provisioning dry-run for all 15 templates
+npx tsx scripts/provisioning-smoke-test.ts
+
+# Demo template mapping validation
+npx tsx scripts/validate-demo-templates.ts
+
+# Industry sweeps
+npx tsx scripts/industry-template-sweep.ts
+
+If any template is missing or inconsistent:
+- Fix seed logic, template ID map, or template schema until all pass.
+- Ensure each industry has correct booking profile defaults and disclaimers where needed.
+- Ensure EXTERNAL defaults have HTTPS-only redirect validation + failsafe pivot to internal request_callback.
+
+B) Ensure demo page bots are running correct templates
+- Verify every demo config clientId/botId exists and maps to the expected template/businessType.
+- If mismatch, fix either demo config registry or seeded demo data.
+- Add/extend validation script to hard-fail CI if demo mapping breaks.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 4 — MULTI-TENANT + RBAC (NO LEAKS, NO OVER-PERMISSIONS)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+A) Multi-tenant isolation rules (must enforce server-side)
+- All reads/writes must be scoped by effectiveClientId derived ONLY from session.
+- Super-admin must use session-based impersonation (no query-param tenant selection).
+- Any route accessing tenant data must use requireClientAuth and must pass effectiveClientId into storage methods.
+- Storage methods MUST accept clientId/workspaceId and scope queries.
+
+Add/expand tests proving:
+- A client cannot read/write another client’s leads/bookings/conversations/analytics.
+- IDOR attempts (valid IDs from other tenant) return 404 or 403.
+
+B) RBAC must match roles exactly (owner/manager/staff/agent)
+Target policy:
+- agent: operational only (inbox/leads/bookings updates + replies); NO config changes; NO exports; NO deletions.
+- staff: operational + config (bot settings/widget/automations) but still NO “nuke” actions unless owner.
+- manager: full workspace control (except platform-wide).
+- owner: destructive actions allowed.
+
+Verify route middleware stacks:
+- requireOperationalAccess on operational routes
+- requireConfigAccess on config routes
+- requireDestructiveAccess (owner only) on destructive routes
+- requireSuperAdmin on platform/admin routes
+
+If any route is mis-protected:
+- Fix middleware usage.
+- Add/extend rbac.test.ts to cover route permissions and FAIL if incorrect.
+
+C) CSRF correctness
+- Ensure CSRF is enabled for state-changing authenticated admin routes.
+- Ensure public widget/chat endpoints that cannot use CSRF are protected via rate limiting + strict input validation + token auth.
+- Confirm impersonation routes have CSRF + audit logs.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 5 — WIDGET: EMBED RELIABILITY + SECURITY (24/7)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+A) Embed must work on real domains
+Verify:
+- Script tag embed uses only public identifiers (clientId, botId) + styling attributes.
+- HMAC token generation/validation correct.
+- CORS allowlist works (credentials: false for widget endpoints).
+- Rate limiting for widget config/chat endpoints.
+- HTTPS-only external booking URLs + blocks javascript:/data:/file:/http:.
+
+B) Widget automated tests
+Run and PASS:
+bash scripts/widget-e2e-test.sh
+
+Also verify:
+- /widget-test.html works
+- ?noIframe=1 test mode is gated in production (NODE_ENV !== production OR WIDGET_TEST_MODE=true).
+- Retry UX works on failures.
+- Mobile responsiveness basic checks (CSS + viewport).
+
+If any issues: fix widget JS + server endpoints + docs.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 6 — LEADS + BOOKINGS: DEDUP + FAILSAFES (NO LOST LEADS)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+A) Lead + booking creation must be idempotent
+- Client-side submit disabling
+- Server-side dedupe: dedupe hash / time window / idempotency key
+- Ensure “refresh/back/double-click” does not create duplicates
+- Ensure all writes are validated with Zod and reject malformed input safely
+
+B) External booking flow (NO PAYMENTS)
+EXTERNAL mode behavior MUST be:
+- capture contact + intent internally
+- create booking record internally
+- redirect to externalBookingUrl (HTTPS only)
+- if missing/invalid URL -> pivot to internal request flow
+
+C) OpenAI failure behavior
+- Still persist conversation + lead/booking if info exists
+- Return graceful fallback message (EN + ES)
+- Flag needs-review if crisis intent or failure during booking/lead
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 7 — SCRAPER SAFETY + ONBOARDING SIMPLICITY (AGENCY-LED)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+A) Scraper must be safe:
+- SSRF protections (block localhost, private IP ranges, file://, ftp://, etc.)
+- timeouts + size limits
+- graceful failure
+- dedup/merge engine safe and predictable
+
+B) Onboarding wizard must be “simple but powerful”
+Agency-led minimal inputs:
+- website URL (optional but recommended)
+- notes / do-not-say
+- external booking URL (optional)
+- industry template selection
+- theme colors (optional override)
+
+Flow must be:
+Generate & Verify (one click) -> if QA PASS -> Live -> Copy Embed
+If QA FAIL -> show clear remediation suggestions.
+
+Verify wizard does not silently fail, and all created data appears in:
+- super-admin dashboard
+- client view-only dashboard
+- widget preview
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 8 — FINAL “CERTIFY” RUN (MUST PASS)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Run this final suite and capture output into reports/TEST_REPORT.md:
+bash scripts/guard-no-payments.sh
+bash scripts/secrets-scan.sh
+npx tsc --noEmit
+npx vitest run
+npm run build
+npx tsx scripts/seed-bot-templates.ts
+npx tsx scripts/validate-db-templates.ts
+npx tsx scripts/provisioning-smoke-test.ts
+npx tsx scripts/validate-demo-templates.ts
+bash scripts/widget-e2e-test.sh
+bash scripts/api-e2e-test.sh
+bash scripts/daily-self-check.sh || true
+bash scripts/predeploy-gate.sh || true
+
+Then write reports/GO_NO_GO.md:
+- GO only if ALL critical gates pass.
+- Include any remaining non-blocking items as P2 with rationale.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+OUTPUT FORMAT REQUIREMENTS (DO NOT SKIP)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When done, populate these reports:
+
+1) reports/EXEC_HEALTH.md
+- What’s solid / what was fragile / what you fixed
+- Top remaining risks (if any) + mitigation
+- Security posture summary
+- Multi-tenant confidence score (0-10) + evidence
+- GO/NO-GO decision
+
+2) reports/REPO_MAP_AND_DIAGRAM.md
+- directory map
+- modules
+- data flow diagram (text)
+
+3) reports/RUNBOOK_PROD.md
+- .env.example content
+- DB setup + drizzle commands
+- seed/validate/provision commands
+- start/build commands
+- troubleshooting
+
+4) reports/FIX_LIST_P0_P1_P2.md
+For each fix:
+- symptom
+- root cause (file + function)
+- exact fix
+- verification steps
+
+5) reports/PATCHLOG.md
+- chronological list of code edits
+
+6) reports/TEST_REPORT.md
+- full outputs or summarized outputs with PASS/FAIL and timestamps
+
+7) reports/FINAL_CERTIFICATION_CHECKLIST.md
+- a checklist that if all checked = safe to onboard paying clients
+
+IMPORTANT WORKING STYLE
+- Be surgical: minimal rewrites, high-confidence patches.
+- If you change behavior, add tests.
+- Never introduce payments.
+- Never reduce tenant isolation.
+- Never make a “maybe” fix without verification.
+
+START NOW: execute PHASE 0 -> PHASE 8 in order, fix everything needed, and produce the report files.
