@@ -7653,117 +7653,8 @@ const TEMPLATE_CATEGORIES = [
   { id: 'other', label: 'Other', icon: FileText, color: 'text-white/70' },
 ];
 
-// Built-in starter templates for when no templates exist
-const STARTER_TEMPLATES: Template[] = [
-  {
-    botId: 'starter-sober-living',
-    clientId: 'system',
-    name: 'Sober Living Home Assistant',
-    description: 'Compassionate AI assistant for sober living facilities. Handles admissions inquiries, insurance questions, facility tours, and provides 24/7 support information.',
-    metadata: { isTemplate: true, templateCategory: 'sober_living', version: '1.0' },
-    businessProfile: {
-      businessName: 'Serenity House',
-      type: 'sober_living',
-      services: ['Structured Living', 'Group Therapy', 'Job Placement', 'Alumni Support', 'Family Programs'],
-    },
-    systemPrompt: 'You are a compassionate admissions counselor for a sober living facility. Be warm, non-judgmental, and supportive. Focus on helping callers understand options and next steps.',
-    faqs: [
-      { question: 'What insurance do you accept?', answer: 'We work with most major insurance providers including PPO plans. Contact us for a free verification.' },
-      { question: 'How long is the typical stay?', answer: 'Most residents stay 90 days to 6 months, depending on individual needs and recovery goals.' },
-      { question: 'Can family visit?', answer: 'Yes! We encourage family involvement. Visiting hours are Saturday and Sunday afternoons.' },
-    ],
-  },
-  {
-    botId: 'starter-barber',
-    clientId: 'system',
-    name: 'Barber Shop Assistant',
-    description: 'Friendly assistant for barber shops and salons. Books appointments, shares service menus, answers pricing questions, and showcases work portfolios.',
-    metadata: { isTemplate: true, templateCategory: 'barber', version: '1.0' },
-    businessProfile: {
-      businessName: 'The Gentleman\'s Cut',
-      type: 'barber',
-      services: ['Classic Cuts', 'Fades', 'Beard Trims', 'Hot Towel Shave', 'Kids Cuts'],
-    },
-    systemPrompt: 'You are a friendly front-desk assistant for an upscale barber shop. Be casual but professional. Help customers book appointments and learn about services.',
-    faqs: [
-      { question: 'Do you take walk-ins?', answer: 'Yes! Walk-ins are welcome, but appointments guarantee your spot. Book online for the best experience.' },
-      { question: 'How much is a haircut?', answer: 'Classic cuts start at $25. Fades are $35, and beard trims are $15. Check our full menu online!' },
-      { question: 'What are your hours?', answer: 'We\'re open Tuesday-Saturday 9am-7pm, closed Sunday and Monday.' },
-    ],
-  },
-  {
-    botId: 'starter-gym',
-    clientId: 'system',
-    name: 'Fitness Center Assistant',
-    description: 'Energetic AI for gyms and fitness studios. Handles membership inquiries, class schedules, personal training info, and facility questions.',
-    metadata: { isTemplate: true, templateCategory: 'gym', version: '1.0' },
-    businessProfile: {
-      businessName: 'Peak Performance Fitness',
-      type: 'gym',
-      services: ['24/7 Gym Access', 'Personal Training', 'Group Classes', 'Nutrition Coaching', 'Recovery Zone'],
-    },
-    systemPrompt: 'You are an enthusiastic fitness consultant. Be motivating and helpful. Guide potential members through options and help them take the first step in their fitness journey.',
-    faqs: [
-      { question: 'How much is a membership?', answer: 'Memberships start at $29/month for basic access. Premium memberships with classes are $49/month. We have no signup fees this month!' },
-      { question: 'Do you offer personal training?', answer: 'Absolutely! We have certified trainers available. Your first session is complimentary with any membership.' },
-      { question: 'What classes do you offer?', answer: 'We offer 50+ weekly classes including yoga, HIIT, spin, boxing, and more. Check our app for the full schedule.' },
-    ],
-  },
-  {
-    botId: 'starter-restaurant',
-    clientId: 'system',
-    name: 'Restaurant Concierge',
-    description: 'Welcoming assistant for restaurants. Handles reservations, menu inquiries, dietary accommodations, catering requests, and special event bookings.',
-    metadata: { isTemplate: true, templateCategory: 'restaurant', version: '1.0' },
-    businessProfile: {
-      businessName: 'The Local Table',
-      type: 'restaurant',
-      services: ['Dine-In', 'Takeout', 'Private Events', 'Catering', 'Happy Hour'],
-    },
-    systemPrompt: 'You are a warm, professional restaurant host. Help guests with reservations, answer menu questions, and accommodate special requests with hospitality.',
-    faqs: [
-      { question: 'Do you take reservations?', answer: 'Yes! You can book online or call us. We recommend reservations for parties of 4 or more, especially on weekends.' },
-      { question: 'Do you have vegetarian options?', answer: 'Absolutely! About a third of our menu is vegetarian, and we can modify many dishes. Let your server know about any dietary needs.' },
-      { question: 'Do you have a private room?', answer: 'Yes! Our Garden Room seats up to 25 guests for private events. Contact us for custom menus and availability.' },
-    ],
-  },
-  {
-    botId: 'starter-auto',
-    clientId: 'system',
-    name: 'Auto Shop Service Advisor',
-    description: 'Knowledgeable assistant for auto repair shops. Schedules service appointments, provides estimates, explains repairs, and handles warranty questions.',
-    metadata: { isTemplate: true, templateCategory: 'auto', version: '1.0' },
-    businessProfile: {
-      businessName: 'Precision Auto Care',
-      type: 'auto',
-      services: ['Oil Changes', 'Brake Service', 'Engine Diagnostics', 'Tire Service', 'A/C Repair'],
-    },
-    systemPrompt: 'You are a friendly, trustworthy auto service advisor. Explain repairs in simple terms, be transparent about pricing, and help customers schedule service.',
-    faqs: [
-      { question: 'How much is an oil change?', answer: 'Conventional oil changes start at $39.99, synthetic at $69.99. We\'ll also do a free multi-point inspection.' },
-      { question: 'Do you offer loaner cars?', answer: 'We provide free shuttle service within 10 miles. For longer repairs, we have rental car partnerships.' },
-      { question: 'Do you work on all makes?', answer: 'Yes! We service all makes and models. Our techs are ASE certified with specialized training.' },
-    ],
-  },
-  {
-    botId: 'starter-home',
-    clientId: 'system',
-    name: 'Home Services Assistant',
-    description: 'Professional assistant for contractors and home service providers. Handles quote requests, scheduling, service areas, and emergency availability.',
-    metadata: { isTemplate: true, templateCategory: 'home_services', version: '1.0' },
-    businessProfile: {
-      businessName: 'Reliable Home Pros',
-      type: 'home_services',
-      services: ['Plumbing', 'HVAC', 'Electrical', 'Handyman', 'Appliance Repair'],
-    },
-    systemPrompt: 'You are a professional service coordinator. Be helpful and efficient. Gather job details, check service availability, and help homeowners get the help they need.',
-    faqs: [
-      { question: 'Do you offer free estimates?', answer: 'Yes! We provide free estimates for most jobs. There\'s a small diagnostic fee for complex issues, applied to your repair if you proceed.' },
-      { question: 'What areas do you serve?', answer: 'We serve a 25-mile radius from downtown. Enter your zip code and we\'ll confirm coverage.' },
-      { question: 'Do you offer emergency service?', answer: 'Yes! We have 24/7 emergency service for plumbing and HVAC. Call our emergency line for immediate dispatch.' },
-    ],
-  },
-];
+// LEGACY STARTER_TEMPLATES REMOVED - All templates must come from database
+// If no DB templates exist, show empty state with setup instructions instead of legacy fallbacks
 
 // Templates Section Panel - Template gallery with categories
 function TemplatesSectionPanel({ 
@@ -7783,8 +7674,8 @@ function TemplatesSectionPanel({
   const [selectedClientId, setSelectedClientId] = useState('');
   const { toast } = useToast();
   
-  // Combine saved templates with starter templates if none exist
-  const allTemplates = templates.length > 0 ? templates : STARTER_TEMPLATES;
+  // Use only DB templates - no legacy fallbacks
+  const allTemplates = templates;
   
   // Get unique categories from templates
   const existingCategories = new Set(allTemplates.map(t => t.metadata?.templateCategory || 'other'));
