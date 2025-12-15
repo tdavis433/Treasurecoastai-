@@ -148,9 +148,22 @@ The architect raised a concern about legacy template IDs (e.g., "general", "fina
 2. Legacy templates not in INDUSTRY_TEMPLATES won't be used for new client creation
 3. The validation script reports additional DB templates in a separate section
 
-**Recommended Follow-up:**
-- Audit legacy template usage paths
-- Either add legacy templates to INDUSTRY_TEMPLATES or deprecate the paths
+## Legacy Template Policy
+
+**Decision: Option B - Legacy templates are DISABLED**
+
+All legacy/starter template paths have been removed. The platform now enforces INDUSTRY_TEMPLATES as the only valid template source.
+
+**Changes implemented:**
+1. Removed starterTemplates fallback from `/api/super-admin/bots/from-template` endpoint
+2. Removed templateMapping and starterTemplates from agency onboarding wizard
+3. Added explicit validation that rejects invalid industry values with clear error message
+4. Default industry changed from 'general' to 'restaurant' (a valid INDUSTRY_TEMPLATE)
+
+**Enforcement:**
+- Any attempt to use a legacy template ID (e.g., "starter-general", "general") will return:
+  - `400 Bad Request: "Invalid industry: X. Valid options: sober_living, restaurant, barber, ..."`
+- Only the 15 templates in INDUSTRY_TEMPLATES are valid
 
 ---
 
