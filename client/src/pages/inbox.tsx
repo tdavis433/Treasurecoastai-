@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -60,6 +60,7 @@ export default function InboxPage() {
   const [selectedSession, setSelectedSession] = useState<ChatSession | null>(null);
   const [newNoteContent, setNewNoteContent] = useState("");
   const [activeTab, setActiveTab] = useState("messages");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const urlClientId = useMemo(() => {
     const params = new URLSearchParams(searchParams);
@@ -182,6 +183,13 @@ export default function InboxPage() {
       toast({ title: "Failed to update session", variant: "destructive" });
     },
   });
+
+  // Auto-scroll to bottom when messages load or change
+  useEffect(() => {
+    if (messagesEndRef.current && messagesData?.messages?.length) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messagesData?.messages]);
 
   const handleAddNote = () => {
     if (!newNoteContent.trim() || !selectedSession) return;
@@ -534,6 +542,7 @@ export default function InboxPage() {
                       </div>
                     </div>
                   ))}
+                  <div ref={messagesEndRef} />
                 </div>
               )}
             </ScrollArea>

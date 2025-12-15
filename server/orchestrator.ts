@@ -144,6 +144,101 @@ export function isValidExternalBookingUrl(url: string | null | undefined): boole
   }
 }
 
+/**
+ * URL REACHABILITY CACHE
+ * Caches URL validation results to avoid repeated network requests.
+ * TTL: 5 minutes for valid URLs, 1 minute for invalid (allows faster recovery)
+ */
+interface UrlCacheEntry {
+  isReachable: boolean;
+  statusCode?: number;
+  checkedAt: number;
+}
+
+const urlReachabilityCache = new Map<string, UrlCacheEntry>();
+const URL_CACHE_TTL_VALID = 5 * 60 * 1000;   // 5 minutes for valid URLs
+const URL_CACHE_TTL_INVALID = 60 * 1000;      // 1 minute for invalid (faster retry)
+
+/**
+ * Check if a URL is reachable via HEAD request
+ * Uses caching to avoid repeated network calls
+ * Returns true if URL responds with 2xx/3xx status
+ */
+export async function isUrlReachable(url: string): Promise<{ reachable: boolean; statusCode?: number; cached: boolean }> {
+  if (!isValidExternalBookingUrl(url)) {
+    return { reachable: false, cached: false };
+  }
+  
+  // Check cache first
+  const cached = urlReachabilityCache.get(url);
+  const now = Date.now();
+  if (cached) {
+    const ttl = cached.isReachable ? URL_CACHE_TTL_VALID : URL_CACHE_TTL_INVALID;
+    if (now - cached.checkedAt < ttl) {
+      return { reachable: cached.isReachable, statusCode: cached.statusCode, cached: true };
+    }
+  }
+  
+  // Perform HEAD request with short timeout
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    
+    const response = await fetch(url, {
+      method: 'HEAD',
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'TreasureCoastAI-LinkChecker/1.0',
+      },
+    });
+    
+    clearTimeout(timeoutId);
+    
+    const isReachable = response.status >= 200 && response.status < 400;
+    
+    // Cache the result
+    urlReachabilityCache.set(url, {
+      isReachable,
+      statusCode: response.status,
+      checkedAt: now,
+    });
+    
+    if (!isReachable) {
+      structuredLogger.warn('External booking URL returned error status', { 
+        url, 
+        status: response.status 
+      });
+    }
+    
+    return { reachable: isReachable, statusCode: response.status, cached: false };
+  } catch (error: any) {
+    // Network error, timeout, or other failure
+    structuredLogger.warn('External booking URL unreachable', { 
+      url, 
+      error: error?.message || 'Unknown error' 
+    });
+    
+    // Cache as unreachable
+    urlReachabilityCache.set(url, {
+      isReachable: false,
+      checkedAt: now,
+    });
+    
+    return { reachable: false, cached: false };
+  }
+}
+
+/**
+ * Clear URL reachability cache (for testing or after config changes)
+ */
+export function clearUrlReachabilityCache(url?: string): void {
+  if (url) {
+    urlReachabilityCache.delete(url);
+  } else {
+    urlReachabilityCache.clear();
+  }
+}
+
 export interface ExtractedBookingInfo {
   name?: string;
   phone?: string;
@@ -745,15 +840,31 @@ class ConversationOrchestrator {
       let bookingUrl: string | null = null;
       let failsafeActivated = false;
 
-      // 13. BOOKING FAILSAFE: Check if external URL is valid when mode is external
+      // 13. BOOKING FAILSAFE: Check if external URL is valid AND reachable when mode is external
       if (postProcessResult.showBooking && bookingMode === 'external') {
         const candidateUrl = clientSettings?.externalBookingUrl || botConfig.externalBookingUrl || null;
         
         if (isValidExternalBookingUrl(candidateUrl)) {
-          // URL is valid - use external mode
-          bookingUrl = candidateUrl;
+          // URL format is valid - now check if it's actually reachable
+          const reachabilityCheck = await isUrlReachable(candidateUrl!);
+          
+          if (reachabilityCheck.reachable) {
+            // URL is valid and reachable - use external mode
+            bookingUrl = candidateUrl;
+          } else {
+            // FAILSAFE: URL format valid but not reachable (404, timeout, etc.) - pivot to internal mode
+            structuredLogger.warn('FAILSAFE ACTIVATED: External booking URL unreachable. Pivoting to internal mode', { 
+              clientId, 
+              botId, 
+              url: candidateUrl,
+              statusCode: reachabilityCheck.statusCode,
+              cached: reachabilityCheck.cached
+            });
+            bookingMode = 'internal';
+            failsafeActivated = true;
+          }
         } else {
-          // FAILSAFE: External URL missing/invalid - pivot to internal mode
+          // FAILSAFE: External URL missing/invalid format - pivot to internal mode
           structuredLogger.warn('FAILSAFE ACTIVATED: External booking URL missing/invalid. Pivoting to internal mode', { clientId, botId });
           bookingMode = 'internal';
           failsafeActivated = true;
@@ -1103,12 +1214,28 @@ class ConversationOrchestrator {
       let bookingUrl: string | null = null;
       let failsafeActivated = false;
 
-      // BOOKING FAILSAFE: Validate external URL when mode is external
+      // BOOKING FAILSAFE: Validate external URL AND reachability when mode is external
       if (postProcessResult.showBooking && streamBookingMode === 'external') {
         const candidateUrl = clientSettings?.externalBookingUrl || botConfig.externalBookingUrl || null;
         
         if (isValidExternalBookingUrl(candidateUrl)) {
-          bookingUrl = candidateUrl;
+          // URL format is valid - now check if it's actually reachable
+          const reachabilityCheck = await isUrlReachable(candidateUrl!);
+          
+          if (reachabilityCheck.reachable) {
+            bookingUrl = candidateUrl;
+          } else {
+            // FAILSAFE: URL format valid but not reachable (404, timeout, etc.) - pivot to internal
+            structuredLogger.warn('FAILSAFE ACTIVATED (stream): External booking URL unreachable. Pivoting to internal', { 
+              clientId, 
+              botId,
+              url: candidateUrl,
+              statusCode: reachabilityCheck.statusCode,
+              cached: reachabilityCheck.cached
+            });
+            streamBookingMode = 'internal';
+            failsafeActivated = true;
+          }
         } else {
           // FAILSAFE: Pivot to internal mode
           structuredLogger.warn('FAILSAFE ACTIVATED (stream): External booking URL missing/invalid. Pivoting to internal', { clientId, botId });

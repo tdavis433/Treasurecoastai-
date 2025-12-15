@@ -925,6 +925,14 @@ async function getOrCreateDemoClientUser(slug: string): Promise<string> {
     .limit(1);
 
   if (existing) {
+    // FIX: Ensure existing demo users have correct clientId set
+    // This is critical for demo conversations to appear in client dashboard
+    if (existing.clientId !== slug) {
+      await db
+        .update(adminUsers)
+        .set({ clientId: slug })
+        .where(eq(adminUsers.id, existing.id));
+    }
     return existing.id;
   }
 
@@ -935,6 +943,7 @@ async function getOrCreateDemoClientUser(slug: string): Promise<string> {
       username: loginConfig.username,
       passwordHash: hashedPassword,
       role: "client_admin",
+      clientId: slug, // FIX: Set clientId to workspace slug for proper data isolation
       mustChangePassword: false,
     })
     .returning();

@@ -9664,68 +9664,68 @@ These suggestions should be relevant to what was just discussed and help guide t
           status: "active",
           acceptedAt: new Date(),
         });
-        
-        // Create default bot for the workspace
-        const defaultBotId = `${slug}_bot`;
-        await db.insert(bots).values({
-          botId: defaultBotId,
-          workspaceId: workspace.id,
-          name: `${name} Assistant`,
-          botType: "generic",
-          businessProfile: {
-            businessName: name,
-            type: "generic",
-            location: "",
-            phone: "",
-            email: clientEmail,
-            website: "",
-            hours: {},
-          },
-          systemPrompt: `You are a helpful AI assistant for ${name}. Be friendly, professional, and help visitors with their questions.`,
-          theme: {
-            primaryColor: "#06b6d4",
-            welcomeMessage: `Welcome to ${name}! How can I help you today?`,
-          },
-          status: "active",
-        });
-        
-        // Create default bot settings
-        await db.insert(botSettings).values({
-          botId: defaultBotId,
-          faqs: [],
-          rules: {},
-          automations: {},
-        });
-        
-        // Create client settings
-        await db.insert(clientSettings).values({
-          clientId: slug,
-          businessName: name,
-          tagline: "Welcome to our business",
-          primaryEmail: clientEmail,
-          status: "active",
-          knowledgeBase: {
-            about: `Welcome to ${name}.`,
-            requirements: "",
-            pricing: "",
-            application: "",
-          },
-          operatingHours: {
-            enabled: false,
-            timezone: "America/New_York",
-            schedule: {
-              monday: { open: "09:00", close: "17:00", enabled: true },
-              tuesday: { open: "09:00", close: "17:00", enabled: true },
-              wednesday: { open: "09:00", close: "17:00", enabled: true },
-              thursday: { open: "09:00", close: "17:00", enabled: true },
-              friday: { open: "09:00", close: "17:00", enabled: true },
-              saturday: { open: "09:00", close: "17:00", enabled: false },
-              sunday: { open: "09:00", close: "17:00", enabled: false },
-            },
-            afterHoursMessage: "We're currently closed. Please leave a message and we'll get back to you.",
-          },
-        });
       }
+      
+      // ALWAYS create a default bot for every new workspace
+      const defaultBotId = `${slug}_bot`;
+      await db.insert(bots).values({
+        botId: defaultBotId,
+        workspaceId: workspace.id,
+        name: `${name} Assistant`,
+        botType: "generic",
+        businessProfile: {
+          businessName: name,
+          type: "generic",
+          location: "",
+          phone: "",
+          email: clientEmail || "",
+          website: "",
+          hours: {},
+        },
+        systemPrompt: `You are a helpful AI assistant for ${name}. Be friendly, professional, and help visitors with their questions.`,
+        theme: {
+          primaryColor: "#06b6d4",
+          welcomeMessage: `Welcome to ${name}! How can I help you today?`,
+        },
+        status: "active",
+      });
+      
+      // Create default bot settings
+      await db.insert(botSettings).values({
+        botId: defaultBotId,
+        faqs: [],
+        rules: {},
+        automations: {},
+      });
+      
+      // Create client settings (use clientEmail if provided, otherwise leave empty)
+      await db.insert(clientSettings).values({
+        clientId: slug,
+        businessName: name,
+        tagline: "Welcome to our business",
+        primaryEmail: clientEmail || "",
+        status: "active",
+        knowledgeBase: {
+          about: `Welcome to ${name}.`,
+          requirements: "",
+          pricing: "",
+          application: "",
+        },
+        operatingHours: {
+          enabled: false,
+          timezone: "America/New_York",
+          schedule: {
+            monday: { open: "09:00", close: "17:00", enabled: true },
+            tuesday: { open: "09:00", close: "17:00", enabled: true },
+            wednesday: { open: "09:00", close: "17:00", enabled: true },
+            thursday: { open: "09:00", close: "17:00", enabled: true },
+            friday: { open: "09:00", close: "17:00", enabled: true },
+            saturday: { open: "09:00", close: "17:00", enabled: false },
+            sunday: { open: "09:00", close: "17:00", enabled: false },
+          },
+          afterHoursMessage: "We're currently closed. Please leave a message and we'll get back to you.",
+        },
+      });
       
       // Log this action
       await storage.createSystemLog({
