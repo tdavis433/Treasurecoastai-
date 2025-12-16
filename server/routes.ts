@@ -8715,6 +8715,8 @@ These suggestions should be relevant to what was just discussed and help guide t
     try {
       const { id } = req.params;
       const clientId = req.effectiveClientId;
+      structuredLogger.info("[BookingUpdate] Starting", { id, clientId, body: req.body });
+      
       if (!clientId) {
         return res.status(401).json({ error: "Client ID required" });
       }
@@ -8722,14 +8724,18 @@ These suggestions should be relevant to what was just discussed and help guide t
       // Validate body
       const bodyValidation = validateRequest(updateBookingStatusSchema, req.body);
       if (!bodyValidation.success) {
+        structuredLogger.error("[BookingUpdate] Body validation failed", { error: bodyValidation.error });
         return res.status(400).json({ error: bodyValidation.error });
       }
       
       // Get the appointment to verify ownership
       const clientAppointments = await storage.getAllAppointments(clientId);
+      structuredLogger.info("[BookingUpdate] Found appointments", { count: clientAppointments.length, clientId });
+      
       const appointment = clientAppointments.find((a: any) => a.id.toString() === id);
       
       if (!appointment) {
+        structuredLogger.error("[BookingUpdate] Booking not found", { id, clientId, appointmentIds: clientAppointments.map((a: any) => a.id) });
         return res.status(404).json({ error: "Booking not found" });
       }
       
@@ -8738,12 +8744,15 @@ These suggestions should be relevant to what was just discussed and help guide t
       if (bodyValidation.data.status) updates.status = bodyValidation.data.status;
       if (bodyValidation.data.notes !== undefined) updates.notes = bodyValidation.data.notes;
       
+      structuredLogger.info("[BookingUpdate] Applying updates", { id, updates });
+      
       // Use the appointments table for update
       const [updated] = await (db.update(appointments) as any)
         .set(updates)
         .where(eq(appointments.id, id))
         .returning();
       
+      structuredLogger.info("[BookingUpdate] Success", { id, updated });
       res.json(updated);
     } catch (error) {
       structuredLogger.error("Update booking status error:", error);
