@@ -109,16 +109,12 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
   const [showGreeting, setShowGreeting] = useState(false);
   const [greetingDismissed, setGreetingDismissed] = useState(false);
   const [inputValue, setInputValue] = useState("");
+  const [serviceSelected, setServiceSelected] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Generate welcome message with services list
-  const servicesList = config.services
-    .slice(0, 6)
-    .map(s => `• ${s.name} - ${s.price}`)
-    .join('\n');
-  
-  const initialGreeting = `Welcome to ${config.business.name}! Here are our services:\n\n${servicesList}\n\nWhich service would you like to book?`;
+  // Simple welcome message - services will be shown as buttons
+  const initialGreeting = `Welcome to ${config.business.name}! What service would you like to book today?`;
 
   const { 
     messages, 
@@ -132,6 +128,18 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
     source: "demo_page",
     initialGreeting,
   });
+
+  // Handle service button click
+  const handleServiceClick = (serviceName: string, price: string) => {
+    setServiceSelected(true);
+    sendMessage(`I'd like to book a ${serviceName} (${price})`);
+  };
+
+  // Reset service selection when chat is reset
+  const handleResetChat = () => {
+    setServiceSelected(false);
+    resetChat();
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -194,7 +202,7 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
               </div>
               <div className="flex items-center gap-2">
                 <button 
-                  onClick={resetChat}
+                  onClick={handleResetChat}
                   className="p-2 hover:bg-white/10 rounded-full transition-colors text-white/70 hover:text-white"
                   data-testid="button-reset-chat"
                   aria-label="Reset chat"
@@ -243,6 +251,33 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
                   >
                     {message.content}
                   </div>
+                  
+                  {/* Service Selection Buttons - show after first assistant message */}
+                  {message.role === "assistant" && index === 0 && !serviceSelected && !isLoading && (
+                    <div className="mt-3 w-full space-y-2" data-testid="service-buttons-container">
+                      <p className="text-xs text-white/50 mb-2">Select a service:</p>
+                      <div className="grid grid-cols-1 gap-2">
+                        {config.services.slice(0, 6).map((service, sIndex) => (
+                          <button
+                            key={service.name}
+                            onClick={() => handleServiceClick(service.name, service.price || '')}
+                            className="w-full text-left px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-cyan-500/50 transition-all group"
+                            data-testid={`button-service-${sIndex}`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-white/90 group-hover:text-white">{service.name}</span>
+                              {service.price && (
+                                <span className="text-sm font-medium text-cyan-400">{service.price}</span>
+                              )}
+                            </div>
+                            {service.duration && (
+                              <span className="text-xs text-white/40">{service.duration}</span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   
                   {/* Booking Button */}
                   {message.role === "assistant" && message.bookingUrl && (
