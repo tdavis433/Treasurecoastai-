@@ -7922,7 +7922,7 @@ These suggestions should be relevant to what was just discussed and help guide t
       // Audit log
       logAuditEvent({
         userId: String(req.user?.id || 'unknown'),
-        userEmail: req.user?.username || 'unknown',
+        username: req.user?.username || 'unknown',
         action: 'conversation_delete',
         resourceType: 'chat_session',
         resourceId: sessionId,
@@ -8041,6 +8041,219 @@ These suggestions should be relevant to what was just discussed and help guide t
     } catch (error) {
       structuredLogger.error("Change password error:", error);
       res.status(500).json({ error: "Failed to change password" });
+    }
+  });
+
+  // =============================================
+  // CLIENT TEAM MANAGEMENT ENDPOINTS
+  // =============================================
+
+  const inviteTeamMemberSchema = z.object({
+    email: z.string().email("Invalid email address"),
+    password: z.string().min(8, "Password must be at least 8 characters")
+      .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+      .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+      .regex(/[0-9]/, "Password must contain at least one number"),
+    name: z.string().optional(),
+    membershipRole: z.enum(['manager', 'staff', 'agent']).default('staff'),
+  });
+
+  // Get team members for workspace
+  app.get("/api/client/team/members", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.effectiveClientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
+      
+      // Get all client_admin users with matching clientId
+      const members = await db
+        .select({
+          id: adminUsers.id,
+          username: adminUsers.username,
+          email: adminUsers.username,
+          role: adminUsers.role,
+          createdAt: adminUsers.createdAt,
+          disabled: adminUsers.disabled,
+          lastLoginAt: adminUsers.lastLoginAt,
+        })
+        .from(adminUsers)
+        .where(and(
+          eq(adminUsers.clientId, clientId),
+          eq(adminUsers.role, "client_admin")
+        ))
+        .orderBy(desc(adminUsers.createdAt));
+      
+      // Get workspace memberships for role info
+      const [workspace] = await db
+        .select()
+        .from(workspaces)
+        .where(eq(workspaces.slug, clientId))
+        .limit(1);
+      
+      let membershipsMap: Record<string, string> = {};
+      if (workspace) {
+        const memberships = await db
+          .select()
+          .from(workspaceMemberships)
+          .where(eq(workspaceMemberships.workspaceId, workspace.id));
+        
+        for (const m of memberships) {
+          membershipsMap[m.userId] = m.role;
+        }
+      }
+      
+      // Enrich members with membership roles
+      const enrichedMembers = members.map(m => ({
+        ...m,
+        membershipRole: membershipsMap[m.id] || 'staff',
+      }));
+      
+      res.json({ members: enrichedMembers });
+    } catch (error) {
+      structuredLogger.error("Get team members error:", error);
+      res.status(500).json({ error: "Failed to fetch team members" });
+    }
+  });
+
+  // Invite a new team member (requires config access - owner/manager only)
+  app.post("/api/client/team/members", requireClientAuth, requireConfigAccess, async (req, res) => {
+    try {
+      const clientId = req.effectiveClientId;
+      const inviterId = req.session.userId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
+      
+      // Validate request body
+      const bodyValidation = validateRequest(inviteTeamMemberSchema, req.body);
+      if (!bodyValidation.success) {
+        return res.status(400).json({ error: bodyValidation.error });
+      }
+      
+      const { email, password, name, membershipRole } = bodyValidation.data;
+      
+      // Check if user with this email already exists
+      const [existingUser] = await db
+        .select()
+        .from(adminUsers)
+        .where(eq(adminUsers.username, email))
+        .limit(1);
+      
+      if (existingUser) {
+        return res.status(409).json({ error: "A user with this email already exists" });
+      }
+      
+      // Get workspace
+      const [workspace] = await db
+        .select()
+        .from(workspaces)
+        .where(eq(workspaces.slug, clientId))
+        .limit(1);
+      
+      if (!workspace) {
+        return res.status(404).json({ error: "Workspace not found" });
+      }
+      
+      // Create the user
+      const passwordHash = await bcrypt.hash(password, 10);
+      const [newUser] = await db
+        .insert(adminUsers)
+        .values({
+          username: email,
+          passwordHash,
+          role: "client_admin",
+          clientId,
+          mustChangePassword: true,
+        })
+        .returning();
+      
+      // Create workspace membership
+      await db.insert(workspaceMemberships).values({
+        workspaceId: workspace.id,
+        userId: newUser.id,
+        role: membershipRole,
+      });
+      
+      // Audit log
+      logAuditEvent({
+        userId: String(inviterId || 'unknown'),
+        username: req.user?.username || 'unknown',
+        action: 'team_member_invite',
+        resourceType: 'admin_user',
+        resourceId: newUser.id,
+        clientId,
+        details: { email, membershipRole }
+      });
+      
+      res.status(201).json({
+        success: true,
+        member: {
+          id: newUser.id,
+          email: newUser.username,
+          membershipRole,
+          disabled: false,
+          createdAt: newUser.createdAt,
+        }
+      });
+    } catch (error) {
+      structuredLogger.error("Invite team member error:", error);
+      res.status(500).json({ error: "Failed to invite team member" });
+    }
+  });
+
+  // Remove/disable a team member (requires config access - owner/manager only)
+  app.delete("/api/client/team/members/:userId", requireClientAuth, requireConfigAccess, async (req, res) => {
+    try {
+      const clientId = req.effectiveClientId;
+      const removerId = req.session.userId;
+      const { userId } = req.params;
+      
+      if (!clientId) {
+        return res.status(401).json({ error: "Client ID required" });
+      }
+      
+      // Prevent self-removal
+      if (userId === removerId) {
+        return res.status(400).json({ error: "You cannot remove yourself from the team" });
+      }
+      
+      // Verify user belongs to this workspace
+      const [user] = await db
+        .select()
+        .from(adminUsers)
+        .where(and(
+          eq(adminUsers.id, userId),
+          eq(adminUsers.clientId, clientId),
+          eq(adminUsers.role, "client_admin")
+        ))
+        .limit(1);
+      
+      if (!user) {
+        return res.status(404).json({ error: "Team member not found" });
+      }
+      
+      // Disable the user (soft delete)
+      await db
+        .update(adminUsers)
+        .set({ disabled: true })
+        .where(eq(adminUsers.id, userId));
+      
+      // Audit log
+      logAuditEvent({
+        userId: String(removerId || 'unknown'),
+        username: req.user?.username || 'unknown',
+        action: 'team_member_remove',
+        resourceType: 'admin_user',
+        resourceId: userId,
+        clientId,
+        details: { removedEmail: user.username }
+      });
+      
+      res.json({ success: true, message: "Team member has been removed" });
+    } catch (error) {
+      structuredLogger.error("Remove team member error:", error);
+      res.status(500).json({ error: "Failed to remove team member" });
     }
   });
 

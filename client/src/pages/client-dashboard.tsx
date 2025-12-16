@@ -73,6 +73,7 @@ import {
   Shield,
   KeyRound,
   Trash2,
+  UserPlus,
 } from "lucide-react";
 import {
   Select,
@@ -342,6 +343,15 @@ export default function ClientDashboard() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  
+  // Team management state
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [invitePassword, setInvitePassword] = useState('');
+  const [inviteRole, setInviteRole] = useState<'manager' | 'staff' | 'agent'>('staff');
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [invitingMember, setInvitingMember] = useState(false);
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
 
   const { data: currentUser, isLoading: authLoading } = useQuery<AuthUser>({
     queryKey: ["/api/auth/me"],
@@ -513,6 +523,116 @@ export default function ClientDashboard() {
     },
     enabled: !!currentUser,
   });
+
+  // Team members data
+  interface TeamMember {
+    id: string;
+    username: string;
+    email: string;
+    role: string;
+    membershipRole: string;
+    disabled: boolean;
+    createdAt: string;
+    lastLoginAt: string | null;
+  }
+
+  const { data: teamData, isLoading: teamLoading, refetch: refetchTeam } = useQuery<{
+    members: TeamMember[];
+  }>({
+    queryKey: ["/api/client/team/members", urlClientId],
+    queryFn: async () => {
+      const response = await fetch(appendClientId("/api/client/team/members"), { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch team members");
+      return response.json();
+    },
+    enabled: !!currentUser,
+  });
+
+  // Handle inviting a team member
+  const handleInviteMember = async () => {
+    setInviteError(null);
+    
+    if (!inviteEmail || !invitePassword) {
+      setInviteError("Email and password are required");
+      return;
+    }
+    
+    // Basic password validation
+    if (invitePassword.length < 8) {
+      setInviteError("Password must be at least 8 characters");
+      return;
+    }
+    if (!/[A-Z]/.test(invitePassword)) {
+      setInviteError("Password must contain an uppercase letter");
+      return;
+    }
+    if (!/[a-z]/.test(invitePassword)) {
+      setInviteError("Password must contain a lowercase letter");
+      return;
+    }
+    if (!/[0-9]/.test(invitePassword)) {
+      setInviteError("Password must contain a number");
+      return;
+    }
+    
+    setInvitingMember(true);
+    try {
+      const response = await fetch(appendClientId("/api/client/team/members"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          email: inviteEmail,
+          password: invitePassword,
+          membershipRole: inviteRole,
+        }),
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        setInviteError(data.error || "Failed to invite member");
+        return;
+      }
+      
+      toast({ title: "Team member invited", description: `${inviteEmail} has been added to your team.` });
+      setInviteDialogOpen(false);
+      setInviteEmail('');
+      setInvitePassword('');
+      setInviteRole('staff');
+      refetchTeam();
+    } catch (error) {
+      setInviteError("Failed to invite team member");
+    } finally {
+      setInvitingMember(false);
+    }
+  };
+
+  // Handle removing a team member
+  const handleRemoveMember = async (memberId: string, memberEmail: string) => {
+    if (!confirm(`Are you sure you want to remove ${memberEmail} from your team?`)) {
+      return;
+    }
+    
+    setRemovingMemberId(memberId);
+    try {
+      const response = await fetch(appendClientId(`/api/client/team/members/${memberId}`), {
+        method: "DELETE",
+        credentials: "include",
+      });
+      
+      if (response.ok) {
+        toast({ title: "Team member removed", description: `${memberEmail} has been removed from your team.` });
+        refetchTeam();
+      } else {
+        const data = await response.json();
+        toast({ title: "Error", description: data.error || "Failed to remove team member", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to remove team member", variant: "destructive" });
+    } finally {
+      setRemovingMemberId(null);
+    }
+  };
 
   const handleCopyWidgetCode = () => {
     const botId = profile?.botId || stats?.botId || '';
@@ -2933,6 +3053,194 @@ export default function ClientDashboard() {
               data-testid="button-submit-password"
             >
               Update Password
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Team Management Card */}
+      <GlassCard data-testid="card-team-management">
+        <GlassCardHeader>
+          <GlassCardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-blue-400" />
+            Team Members
+          </GlassCardTitle>
+          <GlassCardDescription>
+            Manage who can access your dashboard
+          </GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent className="space-y-4">
+          {/* Invite button */}
+          <div className="flex justify-end">
+            <Button
+              onClick={() => {
+                setInviteError(null);
+                setInviteEmail('');
+                setInvitePassword('');
+                setInviteRole('staff');
+                setInviteDialogOpen(true);
+              }}
+              className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-400 hover:to-cyan-400 text-white"
+              data-testid="button-invite-member"
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              Invite Team Member
+            </Button>
+          </div>
+          
+          {/* Team members list */}
+          {teamLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-white/50" />
+            </div>
+          ) : teamData?.members && teamData.members.length > 0 ? (
+            <div className="space-y-3">
+              {teamData.members.filter(m => !m.disabled).map((member) => (
+                <div
+                  key={member.id}
+                  className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10"
+                  data-testid={`team-member-${member.id}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                      <span className="text-white font-medium text-sm">
+                        {member.email?.charAt(0).toUpperCase() || 'U'}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-white font-medium">{member.email}</p>
+                      <p className="text-sm text-white/50 capitalize">
+                        {member.membershipRole}
+                        {member.lastLoginAt && (
+                          <span className="ml-2">
+                            Last active: {format(new Date(member.lastLoginAt), 'MMM d')}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className={
+                      member.membershipRole === 'owner' ? 'bg-purple-500/20 text-purple-400 border-purple-400/40' :
+                      member.membershipRole === 'manager' ? 'bg-blue-500/20 text-blue-400 border-blue-400/40' :
+                      member.membershipRole === 'staff' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-400/40' :
+                      'bg-gray-500/20 text-gray-400 border-gray-400/40'
+                    }>
+                      {member.membershipRole}
+                    </Badge>
+                    {member.id !== currentUser?.id?.toString() && member.membershipRole !== 'owner' && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleRemoveMember(member.id, member.email)}
+                        disabled={removingMemberId === member.id}
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                        data-testid={`button-remove-member-${member.id}`}
+                      >
+                        {removingMemberId === member.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-white/40">
+              <Users className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p className="text-sm">No team members yet</p>
+              <p className="text-xs mt-1">Invite someone to help manage your dashboard</p>
+            </div>
+          )}
+        </GlassCardContent>
+      </GlassCard>
+
+      {/* Invite Team Member Dialog */}
+      <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+        <DialogContent className="bg-[#0d1117] border border-white/10 text-white max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-blue-400" />
+              Invite Team Member
+            </DialogTitle>
+            <DialogDescription className="text-white/60">
+              Add a new member to access your dashboard. They'll need to change their password on first login.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {inviteError && (
+              <div className="p-3 rounded-lg bg-red-500/10 border border-red-400/30 text-red-400 text-sm">
+                {inviteError}
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <Label htmlFor="inviteEmail" className="text-white/80">Email Address</Label>
+              <Input
+                id="inviteEmail"
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="team@example.com"
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                data-testid="input-invite-email"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="invitePassword" className="text-white/80">Temporary Password</Label>
+              <Input
+                id="invitePassword"
+                type="password"
+                value={invitePassword}
+                onChange={(e) => setInvitePassword(e.target.value)}
+                placeholder="Temporary password for first login"
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                data-testid="input-invite-password"
+              />
+              <p className="text-xs text-white/40">Min 8 chars, 1 uppercase, 1 lowercase, 1 number</p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="text-white/80">Role</Label>
+              <Select value={inviteRole} onValueChange={(v: 'manager' | 'staff' | 'agent') => setInviteRole(v)}>
+                <SelectTrigger className="bg-white/5 border-white/10 text-white" data-testid="select-invite-role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1a1f2e] border-white/10">
+                  <SelectItem value="manager" className="text-white hover:bg-white/10">Manager - Full access</SelectItem>
+                  <SelectItem value="staff" className="text-white hover:bg-white/10">Staff - Can edit leads & bookings</SelectItem>
+                  <SelectItem value="agent" className="text-white hover:bg-white/10">Agent - View & update only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setInviteDialogOpen(false)}
+              className="flex-1 border-white/10 text-white hover:bg-white/10"
+              data-testid="button-cancel-invite"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleInviteMember}
+              disabled={!inviteEmail || !invitePassword || invitingMember}
+              className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-400 hover:to-cyan-400 text-white disabled:opacity-50"
+              data-testid="button-submit-invite"
+            >
+              {invitingMember ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <UserPlus className="h-4 w-4 mr-2" />
+              )}
+              Invite Member
             </Button>
           </div>
         </DialogContent>
