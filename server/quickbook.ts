@@ -308,6 +308,34 @@ export function registerQuickBookRoutes(app: Express) {
         });
       }
       
+      // For demo mode, create appointment immediately so it shows in Bookings tab
+      // (User doesn't need to click another confirm button)
+      if (demoMode && intent.contactName) {
+        try {
+          const appointment = await storage.createAppointment(clientId, {
+            sessionId: intent.sessionId || undefined,
+            name: intent.contactName || 'Quick Book Customer',
+            contact: intent.contactPhone || intent.contactEmail || '',
+            email: intent.contactEmail || undefined,
+            preferredTime: 'To be scheduled',
+            contactPreference: intent.contactPhone ? 'phone' : 'email',
+            appointmentType: intent.serviceName || 'Quick Book Service',
+            notes: `Quick Book: ${intent.serviceName || 'Service'} - ${intent.priceCents ? `$${(intent.priceCents / 100).toFixed(2)}` : 'Price TBD'}`,
+          });
+          console.log(`[QuickBook] Created appointment ${appointment.id} for demo intent ${intentId}`);
+          
+          // Also update lead to qualified since booking was clicked
+          if (intent.leadId) {
+            await storage.updateLead(clientId, intent.leadId, {
+              bookingStatus: 'demo_confirmed',
+              status: 'qualified',
+            });
+          }
+        } catch (appointmentError) {
+          console.error("[QuickBook] Error creating appointment (non-fatal):", appointmentError);
+        }
+      }
+      
       return res.json({
         ok: true,
         redirectType: demoMode ? 'demo' : 'external',
