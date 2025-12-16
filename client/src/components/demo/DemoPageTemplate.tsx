@@ -286,12 +286,9 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
       
       // Redirect to external booking or demo confirmation
       if (data.redirectType === "demo") {
-        // Open demo confirmation in new tab with query params
+        // Open demo confirmation in new tab with intentId so it fetches correct business name from API
         const params = new URLSearchParams({
-          service: quickBookData.selectedService?.name || "",
-          price: quickBookData.selectedService?.price || "",
-          name: quickBookData.contact?.name || "",
-          business: config.business.name,
+          intentId: quickBookData.intentId || "",
         });
         window.open(`/demo-booking-confirmation?${params.toString()}`, "_blank");
       } else {
