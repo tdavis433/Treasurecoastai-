@@ -23,7 +23,8 @@
     isLoading: false,
     isPaused: false,
     error: null,
-    quickActionsShown: false
+    quickActionsShown: false,
+    bookingConfirmation: null  // { label: string, bookingType: string }
   };
   
   var elements = {};
@@ -127,12 +128,48 @@
   }
   
   function renderMessages() {
+    console.log('[TCAI Widget] renderMessages called, state.bookingConfirmation:', state.bookingConfirmation);
+    
     var html = '';
     
-    state.messages.forEach(function(msg) {
+    state.messages.forEach(function(msg, idx) {
       var className = msg.role === 'user' ? 'user' : 'bot';
-      html += '<div class="tcai-message ' + className + '" data-testid="message-' + className + '" role="article" aria-label="' + (msg.role === 'user' ? 'Your message' : 'Assistant message') + '">' + formatMessage(msg.content) + '</div>';
+      html += '<div class="tcai-message ' + className + '" data-testid="widget-message-' + msg.role + '-' + idx + '" role="article" aria-label="' + (msg.role === 'user' ? 'Your message' : 'Assistant message') + '">' + formatMessage(msg.content) + '</div>';
     });
+    
+    // Render booking confirmation if present in state
+    if (state.bookingConfirmation) {
+      console.log('[TCAI Widget] Adding booking confirmation HTML for type:', state.bookingConfirmation.bookingType);
+      var typeLabel = 'Appointment';
+      if (state.bookingConfirmation.bookingType === 'tour') {
+        typeLabel = 'Tour';
+      } else if (state.bookingConfirmation.bookingType === 'call' || state.bookingConfirmation.bookingType === 'phone_call') {
+        typeLabel = 'Call';
+      }
+      
+      html += '<div class="tcai-booking-confirmation">';
+      html += '<div class="tcai-booking-success" data-testid="booking-confirmation" style="';
+      html += '  display: flex;';
+      html += '  align-items: center;';
+      html += '  gap: 10px;';
+      html += '  padding: 12px 16px;';
+      html += '  margin: 12px 16px;';
+      html += '  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.15) 100%);';
+      html += '  border: 1px solid rgba(16, 185, 129, 0.4);';
+      html += '  border-radius: 8px;';
+      html += '  color: #10b981;';
+      html += '">';
+      html += '  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">';
+      html += '    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>';
+      html += '    <polyline points="22 4 12 14.01 9 11.01"></polyline>';
+      html += '  </svg>';
+      html += '  <div style="flex: 1;">';
+      html += '    <div style="font-weight: 600; font-size: 14px;">' + escapeHtml(typeLabel) + ' Request Received</div>';
+      html += '    <div style="font-size: 12px; opacity: 0.8; margin-top: 2px;">Our team will be in touch shortly to confirm.</div>';
+      html += '  </div>';
+      html += '</div>';
+      html += '</div>';
+    }
     
     if (state.isLoading) {
       html += '<div class="tcai-typing" data-testid="typing-indicator" aria-label="Assistant is typing">';
@@ -237,56 +274,22 @@
   
   // Show booking confirmation for internal bookings (already auto-saved)
   function showBookingConfirmation(label, bookingType) {
-    // Remove any existing booking elements
-    var existingBtn = document.querySelector('.tcai-booking-btn');
-    if (existingBtn) {
-      existingBtn.remove();
-    }
-    var existingContainer = document.querySelector('.tcai-booking-container');
-    if (existingContainer) {
-      existingContainer.remove();
-    }
-    var existingConfirm = document.querySelector('.tcai-booking-confirmation');
-    if (existingConfirm) {
-      existingConfirm.remove();
-    }
+    console.log('[TCAI Widget] showBookingConfirmation called:', { label: label, bookingType: bookingType });
+    console.log('[TCAI Widget] Current state.bookingConfirmation before:', state.bookingConfirmation);
     
-    // Get booking type label
-    var typeLabel = 'Appointment';
-    if (bookingType === 'tour') {
-      typeLabel = 'Tour';
-    } else if (bookingType === 'call' || bookingType === 'phone_call') {
-      typeLabel = 'Call';
-    }
+    // Set booking confirmation in state so it persists across re-renders
+    state.bookingConfirmation = {
+      label: label,
+      bookingType: bookingType
+    };
     
-    // Create confirmation element
-    var confirmDiv = document.createElement('div');
-    confirmDiv.className = 'tcai-booking-confirmation';
-    confirmDiv.innerHTML = [
-      '<div class="tcai-booking-success" data-testid="booking-confirmation" style="',
-      '  display: flex;',
-      '  align-items: center;',
-      '  gap: 10px;',
-      '  padding: 12px 16px;',
-      '  margin: 12px 16px;',
-      '  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.15) 100%);',
-      '  border: 1px solid rgba(16, 185, 129, 0.4);',
-      '  border-radius: 8px;',
-      '  color: #10b981;',
-      '">',
-      '  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">',
-      '    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>',
-      '    <polyline points="22 4 12 14.01 9 11.01"></polyline>',
-      '  </svg>',
-      '  <div style="flex: 1;">',
-      '    <div style="font-weight: 600; font-size: 14px;">' + escapeHtml(typeLabel) + ' Request Received</div>',
-      '    <div style="font-size: 12px; opacity: 0.8; margin-top: 2px;">Our team will be in touch shortly to confirm.</div>',
-      '  </div>',
-      '</div>'
-    ].join('');
+    console.log('[TCAI Widget] Set state.bookingConfirmation to:', state.bookingConfirmation);
     
-    elements.messages.appendChild(confirmDiv);
-    elements.messages.scrollTop = elements.messages.scrollHeight;
+    // Re-render messages to include the confirmation
+    renderMessages();
+    
+    console.log('[TCAI Widget] After renderMessages, checking DOM for booking-confirmation:', 
+      document.querySelector('[data-testid="booking-confirmation"]') ? 'FOUND' : 'NOT FOUND');
   }
   
   // Fallback CTA when booking URL is invalid or missing
@@ -456,29 +459,47 @@
       state.isLoading = false;
       addMessage('assistant', data.reply);
       
+      console.log('[TCAI Widget] Response data:', JSON.stringify(data));
+      console.log('[TCAI Widget] data.meta:', data.meta);
+      console.log('[TCAI Widget] data.meta?.actions:', data.meta?.actions);
+      
       // Handle booking actions from the orchestrator
       if (data.meta) {
+        console.log('[TCAI Widget] Full meta received:', JSON.stringify(data.meta));
+        
         // Check for BOOKING_FINALIZE action in actions array
         if (data.meta.actions && Array.isArray(data.meta.actions)) {
           var bookingAction = data.meta.actions.find(function(a) { return a.type === 'BOOKING_FINALIZE'; });
+          console.log('[TCAI Widget] Booking action found:', bookingAction ? JSON.stringify(bookingAction) : 'none');
           if (bookingAction) {
             if (bookingAction.handling === 'external' && bookingAction.externalUrl) {
               // External booking - show button to redirect
+              console.log('[TCAI Widget] Showing external booking button');
               showBookingButton(bookingAction.externalUrl);
             } else if (bookingAction.handling === 'internal') {
               // Internal booking - show confirmation (booking was auto-saved)
+              console.log('[TCAI Widget] Calling showBookingConfirmation for internal booking');
               showBookingConfirmation(bookingAction.label || 'Booking Confirmed', bookingAction.bookingType);
+            } else {
+              console.log('[TCAI Widget] Unknown handling type:', bookingAction.handling);
             }
           }
+        } else {
+          console.log('[TCAI Widget] No actions array in meta');
         }
+        
         // Fallback: Show booking button if external booking URL is provided (legacy support)
-        else if (data.meta.externalBookingUrl) {
+        if (!data.meta.actions && data.meta.externalBookingUrl) {
+          console.log('[TCAI Widget] Using externalBookingUrl fallback');
           showBookingButton(data.meta.externalBookingUrl);
         }
-        // Show internal booking confirmation if booking was saved
-        else if (data.meta.bookingSaved && data.meta.bookingMode === 'internal') {
+        // Show internal booking confirmation if booking was saved (legacy fallback)
+        else if (!data.meta.actions && data.meta.bookingSaved && data.meta.bookingMode === 'internal') {
+          console.log('[TCAI Widget] Showing confirmation via bookingSaved fallback');
           showBookingConfirmation('Booking Request Received', data.meta.bookingType);
         }
+      } else {
+        console.log('[TCAI Widget] No meta in response');
       }
       
     } catch (error) {

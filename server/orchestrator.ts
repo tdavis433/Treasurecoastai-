@@ -381,9 +381,34 @@ export function extractBookingInfoFromConversation(
   // Also check AI reply for structured summaries like "Name: X, Phone: Y"
   const aiSummaryText = currentReply;
   
-  const aiConfirmsBooking = /I'?ve noted|noted your|passed along|team will (reach out|follow up|contact)|will be in touch|request:?[\s\S]*name:?/i.test(currentReply);
+  // Check if AI explicitly confirms the booking in its response
+  const aiConfirmsBooking = /I'?ve noted|noted your|passed along|team will (reach out|follow up|contact)|will be in touch|request:?[\s\S]*name:?|got your (info|details|contact)|have your (info|details|contact)|thank.* for (sharing|providing)|schedule.* tour|confirm.* (appointment|booking|tour)/i.test(currentReply);
   
-  if (!aiConfirmsBooking) {
+  // Also check if the current message contains complete contact info (name + phone OR name + email)
+  // This allows booking to be captured even if AI is still asking follow-up questions
+  // Updated patterns to handle various name formats including "John Smith is my name", "I'm John", "My name is John Smith"
+  const namePatternForCheck = /(?:my name is|i'?m|name:?|this is|call me|it'?s|i am)\s+[A-Za-z]{2,}|[A-Za-z]{2,}(?:\s+[A-Za-z]{2,})?\s+is my name/i;
+  const hasNameInCurrentMessage = namePatternForCheck.test(currentUserMessage);
+  const hasPhoneInCurrentMessage = /\b\(?\d{3}\)?[\s\-\.]?\d{3}[\s\-\.]?\d{4}\b/.test(currentUserMessage);
+  const hasEmailInCurrentMessage = /\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b/.test(currentUserMessage);
+  const hasContactInCurrentMessage = hasPhoneInCurrentMessage || hasEmailInCurrentMessage;
+  
+  // Check conversation history for prior messages with name if current message only has contact info
+  const hasNameInHistory = messages.some(m => 
+    m.role === 'user' && namePatternForCheck.test(m.content)
+  );
+  const hasContactInHistory = messages.some(m => 
+    m.role === 'user' && (/\b\(?\d{3}\)?[\s\-\.]?\d{3}[\s\-\.]?\d{4}\b/.test(m.content) || /\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b/.test(m.content))
+  );
+  
+  // We have complete info if: (name in current + contact in current) OR (name in history + contact in current) OR (name in current + contact in history)
+  const hasCompleteInfoInConversation = 
+    (hasNameInCurrentMessage && hasContactInCurrentMessage) ||
+    (hasNameInHistory && hasContactInCurrentMessage) ||
+    (hasNameInCurrentMessage && hasContactInHistory);
+  
+  // Only proceed if AI confirms OR we have complete contact info in the conversation
+  if (!aiConfirmsBooking && !hasCompleteInfoInConversation) {
     return null;
   }
 
@@ -409,10 +434,12 @@ export function extractBookingInfoFromConversation(
   // FIX: First search user messages only for contact info
   // Then fall back to AI summary if AI confirmed booking with structured format
   // Improved patterns to allow lowercase names and more flexible matching
+  // Also handles "John Smith is my name" format
   const namePatterns = [
     /(?:my name is|i'?m|name:?|this is)\s+([A-Za-z][A-Za-z]+(?:\s+[A-Za-z][A-Za-z]+)?)/i,
     /(?:call me|it'?s)\s+([A-Za-z][A-Za-z]+(?:\s+[A-Za-z][A-Za-z]+)?)/i,
-    /^(?:i am|i'm)\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)/im,
+    /(?:i am|i'm)\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)/i,
+    /([A-Za-z][A-Za-z]+(?:\s+[A-Za-z][A-Za-z]+)?)\s+is my name\b/i,
   ];
   
   // Search user messages first (primary source)
@@ -893,7 +920,23 @@ class ConversationOrchestrator {
       // 14. Create booking intent and action payload when finalization is needed
       let actions: OrchestratorAction[] = [];
       
-      if (postProcessResult.showBooking) {
+      // For internal bookings: Only emit BOOKING_FINALIZE when booking is actually saved (has complete info)
+      // For external bookings: Emit BOOKING_FINALIZE when showBooking is true (user can click to external system)
+      const shouldEmitBookingAction = bookingMode === 'external' 
+        ? postProcessResult.showBooking 
+        : postProcessResult.bookingSaved;
+      
+      structuredLogger.info('Booking action decision', {
+        clientId,
+        botId,
+        sessionId,
+        bookingMode,
+        showBooking: postProcessResult.showBooking,
+        bookingSaved: postProcessResult.bookingSaved,
+        shouldEmitBookingAction,
+      });
+      
+      if (shouldEmitBookingAction) {
         try {
           // Create a booking intent record server-side for tracking
           const bookingIntent = await storage.createBookingIntent({
@@ -962,6 +1005,20 @@ class ConversationOrchestrator {
         }
       }
       
+      const responseActions = actions.length > 0 ? actions : undefined;
+      
+      structuredLogger.info('Orchestrator response prepared', {
+        clientId,
+        botId,
+        sessionId,
+        hasActions: !!responseActions,
+        actionsCount: actions.length,
+        bookingMode,
+        bookingSaved: postProcessResult.bookingSaved,
+        showBooking: postProcessResult.showBooking,
+        actionsPreview: responseActions ? JSON.stringify(responseActions) : 'none',
+      });
+      
       return {
         success: true,
         reply,
@@ -973,6 +1030,7 @@ class ConversationOrchestrator {
           showBooking: postProcessResult.showBooking,
           bookingType: postProcessResult.bookingType,
           bookingMode,
+          bookingSaved: postProcessResult.bookingSaved,
           externalBookingUrl: bookingUrl,
           externalBookingProviderName: bookingMode === 'external' ? (clientSettings?.externalBookingProviderName || null) : null,
           externalPaymentUrl: postProcessResult.showBooking ? (clientSettings?.externalPaymentUrl || botConfig.externalPaymentUrl || null) : null,
@@ -980,7 +1038,7 @@ class ConversationOrchestrator {
           leadCaptured: postProcessResult.leadCaptured,
           contactInfo: postProcessResult.contactInfo,
           failsafeActivated,
-          actions: actions.length > 0 ? actions : undefined,
+          actions: responseActions,
         },
       };
     } catch (error: any) {
@@ -1319,7 +1377,13 @@ class ConversationOrchestrator {
       // 11. Create booking intent and action payload when finalization is needed
       let streamActions: OrchestratorAction[] = [];
       
-      if (postProcessResult.showBooking) {
+      // For internal bookings: Only emit BOOKING_FINALIZE when booking is actually saved (has complete info)
+      // For external bookings: Emit BOOKING_FINALIZE when showBooking is true (user can click to external system)
+      const shouldEmitBookingAction = streamBookingMode === 'external' 
+        ? postProcessResult.showBooking 
+        : postProcessResult.bookingSaved;
+      
+      if (shouldEmitBookingAction) {
         try {
           // Create a booking intent record server-side for tracking
           const bookingIntent = await storage.createBookingIntent({
