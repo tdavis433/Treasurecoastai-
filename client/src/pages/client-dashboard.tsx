@@ -808,21 +808,10 @@ export default function ClientDashboard() {
   const handleUpdateLeadStatus = async (leadId: string, newStatus: string) => {
     setUpdatingLeadId(leadId);
     try {
-      const response = await fetch(appendClientId(`/api/client/leads/${leadId}`), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ status: newStatus })
-      });
-      
-      if (response.ok) {
-        // Use prefix matching to invalidate all pages of leads (exact: false for partial key match)
-        queryClient.invalidateQueries({ queryKey: ["/api/client/leads"], exact: false });
-        queryClient.invalidateQueries({ queryKey: ["/api/client/stats", statsRange, urlClientId] });
-        toast({ title: "Status updated", description: `Lead status changed to ${newStatus}.` });
-      } else {
-        throw new Error("Failed to update");
-      }
+      await apiRequest("PATCH", appendClientId(`/api/client/leads/${leadId}`), { status: newStatus });
+      queryClient.invalidateQueries({ queryKey: ["/api/client/leads"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["/api/client/stats", statsRange, urlClientId] });
+      toast({ title: "Status updated", description: `Lead status changed to ${newStatus}.` });
     } catch (error) {
       toast({ title: "Error", description: "Failed to update lead status.", variant: "destructive" });
     } finally {
@@ -834,20 +823,10 @@ export default function ClientDashboard() {
   const handleUpdateBookingStatus = async (bookingId: string, newStatus: string) => {
     setUpdatingBookingId(bookingId);
     try {
-      const response = await fetch(appendClientId(`/api/client/bookings/${bookingId}`), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ status: newStatus })
-      });
-      
-      if (response.ok) {
-        queryClient.invalidateQueries({ queryKey: ["/api/client/appointments", urlClientId] });
-        queryClient.invalidateQueries({ queryKey: ["/api/client/stats", statsRange, urlClientId] });
-        toast({ title: "Status updated", description: `Booking status changed to ${newStatus}.` });
-      } else {
-        throw new Error("Failed to update");
-      }
+      await apiRequest("PATCH", appendClientId(`/api/client/bookings/${bookingId}`), { status: newStatus });
+      queryClient.invalidateQueries({ queryKey: ["/api/client/appointments", urlClientId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/client/stats", statsRange, urlClientId] });
+      toast({ title: "Status updated", description: `Booking status changed to ${newStatus}.` });
     } catch (error) {
       toast({ title: "Error", description: "Failed to update booking status.", variant: "destructive" });
     } finally {

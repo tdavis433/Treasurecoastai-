@@ -8707,7 +8707,7 @@ These suggestions should be relevant to what was just discussed and help guide t
 
   // Update booking status (PATCH)
   const updateBookingStatusSchema = z.object({
-    status: z.enum(['new', 'pending', 'confirmed', 'completed', 'cancelled', 'no_show']).optional(),
+    status: z.enum(['new', 'contacted', 'scheduled', 'confirmed', 'pending', 'completed', 'cancelled', 'no_show']).optional(),
     notes: z.string().optional(),
   });
 
