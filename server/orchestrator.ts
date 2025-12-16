@@ -1834,14 +1834,19 @@ class ConversationOrchestrator {
       m.role === 'user' && bookingKeywords.test(m.content)
     );
     
-    const aiMentionsBookingButton = /\b(book\s*appointment|book\s*a?\s*tour|schedule\s*a?\s*call|click.*button|scheduling\s*page|finalize.*booking|complete.*booking)\b/i.test(reply);
+    // AI explicitly confirms booking is ready (not just mentioning booking as an option)
+    const aiConfirmsBookingReady = /\b(finalize.*booking|complete.*booking|ready to book|booking confirmed|I.{0,20}scheduled|appointment.{0,15}(set|confirmed|booked)|click.*button.*book)\b/i.test(reply);
     
     // Extract booking info early to check if complete info has been collected
     const bookingInfo = extractBookingInfoFromConversation(messages, reply, userMessage);
     const bookingInfoComplete = bookingInfo?.isComplete || false;
     
-    // Show booking button when: user has booking intent OR AI confirmed booking with complete info
-    const showBooking = directBookingIntent || isAffirmativeToBookingPrompt || alreadyRequestedBooking || conversationHasBookingIntent || aiMentionsBookingButton || bookingInfoComplete;
+    // Show booking button based on ACTIVE user intent - not just because AI mentioned booking
+    // Direct intent: User explicitly asks to book in THIS message
+    // Affirmative: User says "yes" to an AI booking prompt
+    // Complete info: User has provided all booking details
+    // AI confirms ready: AI says booking is finalized/ready (not just offering)
+    const showBooking = directBookingIntent || isAffirmativeToBookingPrompt || bookingInfoComplete || aiConfirmsBookingReady;
 
     // Determine booking type based on user's message and conversation context
     let bookingType: 'tour' | 'call' | 'appointment' | undefined;
@@ -1858,7 +1863,8 @@ class ConversationOrchestrator {
       }
     }
 
-    if (directBookingIntent || isAffirmativeToBookingPrompt || conversationHasBookingIntent) {
+    // Track booking intent in session for lead prioritization, but not for button display
+    if (directBookingIntent || isAffirmativeToBookingPrompt) {
       sessionData.appointmentRequested = true;
     }
 
