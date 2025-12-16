@@ -9020,6 +9020,145 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // =============================================
+  // SUPER-ADMIN SERVICES CATALOG MANAGEMENT
+  // =============================================
+
+  // Get client services catalog (super-admin only)
+  app.get("/api/super-admin/clients/:clientId/services", requireSuperAdmin, async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      const settings = await storage.getSettings(clientId);
+      
+      // Return servicesCatalog or empty array
+      const services = settings?.servicesCatalog || [];
+      res.json(services);
+    } catch (error) {
+      structuredLogger.error("Get client services error:", error);
+      res.status(500).json({ error: "Failed to fetch services" });
+    }
+  });
+
+  // Add new service to catalog (super-admin only)
+  app.post("/api/super-admin/clients/:clientId/services", requireSuperAdmin, async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      const { name, description, price, duration, bookingUrl, active = true } = req.body;
+      
+      if (!name || typeof name !== 'string' || name.trim().length === 0) {
+        return res.status(400).json({ error: "Service name is required" });
+      }
+      
+      // Validate booking URL if provided
+      if (bookingUrl && typeof bookingUrl === 'string') {
+        try {
+          const parsed = new URL(bookingUrl);
+          if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+            return res.status(400).json({ error: "Booking URL must be a valid HTTP/HTTPS URL" });
+          }
+        } catch {
+          return res.status(400).json({ error: "Invalid booking URL format" });
+        }
+      }
+      
+      const settings = await storage.getSettings(clientId);
+      const currentServices = settings?.servicesCatalog || [];
+      
+      // Generate unique ID
+      const newId = `svc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      const newService = {
+        id: newId,
+        name: name.trim(),
+        description: description?.trim() || undefined,
+        price: price?.trim() || undefined,
+        duration: duration?.trim() || undefined,
+        bookingUrl: bookingUrl?.trim() || undefined,
+        active: active !== false,
+      };
+      
+      const updatedServices = [...currentServices, newService];
+      
+      await storage.updateSettings(clientId, { servicesCatalog: updatedServices });
+      
+      res.json(newService);
+    } catch (error) {
+      structuredLogger.error("Add service error:", error);
+      res.status(500).json({ error: "Failed to add service" });
+    }
+  });
+
+  // Update a service in the catalog (super-admin only)
+  app.patch("/api/super-admin/clients/:clientId/services/:serviceId", requireSuperAdmin, async (req, res) => {
+    try {
+      const { clientId, serviceId } = req.params;
+      const { name, description, price, duration, bookingUrl, active } = req.body;
+      
+      const settings = await storage.getSettings(clientId);
+      const currentServices = settings?.servicesCatalog || [];
+      
+      const serviceIndex = currentServices.findIndex((s: any) => s.id === serviceId);
+      if (serviceIndex === -1) {
+        return res.status(404).json({ error: "Service not found" });
+      }
+      
+      // Validate booking URL if provided
+      if (bookingUrl && typeof bookingUrl === 'string') {
+        try {
+          const parsed = new URL(bookingUrl);
+          if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+            return res.status(400).json({ error: "Booking URL must be a valid HTTP/HTTPS URL" });
+          }
+        } catch {
+          return res.status(400).json({ error: "Invalid booking URL format" });
+        }
+      }
+      
+      const updatedService = { ...currentServices[serviceIndex] };
+      
+      if (name !== undefined) updatedService.name = name.trim();
+      if (description !== undefined) updatedService.description = description?.trim() || undefined;
+      if (price !== undefined) updatedService.price = price?.trim() || undefined;
+      if (duration !== undefined) updatedService.duration = duration?.trim() || undefined;
+      if (bookingUrl !== undefined) updatedService.bookingUrl = bookingUrl?.trim() || undefined;
+      if (active !== undefined) updatedService.active = active;
+      
+      const updatedServices = [...currentServices];
+      updatedServices[serviceIndex] = updatedService;
+      
+      await storage.updateSettings(clientId, { servicesCatalog: updatedServices });
+      
+      res.json(updatedService);
+    } catch (error) {
+      structuredLogger.error("Update service error:", error);
+      res.status(500).json({ error: "Failed to update service" });
+    }
+  });
+
+  // Delete a service from the catalog (super-admin only)
+  app.delete("/api/super-admin/clients/:clientId/services/:serviceId", requireSuperAdmin, async (req, res) => {
+    try {
+      const { clientId, serviceId } = req.params;
+      
+      const settings = await storage.getSettings(clientId);
+      const currentServices = settings?.servicesCatalog || [];
+      
+      const serviceIndex = currentServices.findIndex((s: any) => s.id === serviceId);
+      if (serviceIndex === -1) {
+        return res.status(404).json({ error: "Service not found" });
+      }
+      
+      const updatedServices = currentServices.filter((s: any) => s.id !== serviceId);
+      
+      await storage.updateSettings(clientId, { servicesCatalog: updatedServices });
+      
+      res.json({ success: true });
+    } catch (error) {
+      structuredLogger.error("Delete service error:", error);
+      res.status(500).json({ error: "Failed to delete service" });
+    }
+  });
+
+  // =============================================
   // SUPER-ADMIN BEHAVIOR SETTINGS
   // =============================================
 

@@ -74,7 +74,7 @@ import {
   Shield, FileWarning, CheckCircle2, XCircle, Filter, Calendar, UserPlus,
   MoreVertical, MoreHorizontal, Workflow, Palette, ChevronDown, SendHorizontal, MessageCircle,
   CheckCircle, PauseCircle, LayoutGrid, List, Crown, User, HelpCircle, Flag, Database,
-  Loader2, Pencil, Info, TestTube2
+  Loader2, Pencil, Info, TestTube2, ListChecks, GripVertical, Link2
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -3242,6 +3242,7 @@ export default function SuperAdmin() {
                   <div className="flex items-center gap-1.5 flex-wrap p-1 bg-white/5 rounded-lg border border-white/10">
                     <span className="text-xs text-white/40 px-2 uppercase tracking-wider font-medium">Deploy</span>
                     {[
+                      { value: 'services', icon: ListChecks, label: 'Services' },
                       { value: 'booking', icon: Calendar, label: 'Booking & Links' },
                       { value: 'channels', icon: Palette, label: 'Channels & Widget' },
                       { value: 'test-chat', icon: Play, label: 'Test Sandbox', highlight: true },
@@ -3304,6 +3305,10 @@ export default function SuperAdmin() {
 
                   {activeTab === 'test-chat' && (
                     <TestChatPanel clientId={selectedClient?.id || selectedBot.clientId} botId={selectedBot.botId} botName={selectedBot.name} />
+                  )}
+
+                  {activeTab === 'services' && (
+                    <ServicesPanel clientId={selectedClient?.id || selectedBot.clientId} />
                   )}
 
                   {activeTab === 'booking' && (
@@ -4508,6 +4513,340 @@ function KnowledgePanel({ bot, clientType }: { bot: BotConfig; clientType?: stri
           </div>
         </GlassCardContent>
       </GlassCard>
+    </div>
+  );
+}
+
+// Service type for the services catalog
+interface ServiceItem {
+  id: string;
+  name: string;
+  description?: string;
+  price?: string;
+  duration?: string;
+  bookingUrl?: string;
+  active: boolean;
+}
+
+// Services Panel - Manage Quick Book service buttons
+function ServicesPanel({ clientId }: { clientId: string }) {
+  const { toast } = useToast();
+  const [editingService, setEditingService] = useState<ServiceItem | null>(null);
+  const [isAddingNew, setIsAddingNew] = useState(false);
+  const [formData, setFormData] = useState<Partial<ServiceItem>>({
+    name: '',
+    description: '',
+    price: '',
+    duration: '',
+    bookingUrl: '',
+    active: true,
+  });
+
+  // Fetch current services catalog
+  const { data: services = [], isLoading, refetch } = useQuery<ServiceItem[]>({
+    queryKey: ['/api/super-admin/clients', clientId, 'services'],
+  });
+
+  // Reset form when opening add/edit modal
+  const openAddModal = () => {
+    setFormData({
+      name: '',
+      description: '',
+      price: '',
+      duration: '',
+      bookingUrl: '',
+      active: true,
+    });
+    setIsAddingNew(true);
+    setEditingService(null);
+  };
+
+  const openEditModal = (service: ServiceItem) => {
+    setFormData({
+      name: service.name,
+      description: service.description || '',
+      price: service.price || '',
+      duration: service.duration || '',
+      bookingUrl: service.bookingUrl || '',
+      active: service.active,
+    });
+    setEditingService(service);
+    setIsAddingNew(false);
+  };
+
+  const closeModal = () => {
+    setEditingService(null);
+    setIsAddingNew(false);
+    setFormData({
+      name: '',
+      description: '',
+      price: '',
+      duration: '',
+      bookingUrl: '',
+      active: true,
+    });
+  };
+
+  // Save service mutation
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const endpoint = editingService 
+        ? `/api/super-admin/clients/${clientId}/services/${editingService.id}`
+        : `/api/super-admin/clients/${clientId}/services`;
+      const method = editingService ? 'PATCH' : 'POST';
+      
+      const response = await apiRequest(method, endpoint, formData);
+      return response;
+    },
+    onSuccess: () => {
+      toast({ title: 'Success', description: editingService ? 'Service updated' : 'Service added' });
+      closeModal();
+      queryClient.invalidateQueries({ queryKey: ['/api/super-admin/clients', clientId, 'services'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Delete service mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (serviceId: string) => {
+      const response = await apiRequest('DELETE', `/api/super-admin/clients/${clientId}/services/${serviceId}`, {});
+      return response;
+    },
+    onSuccess: () => {
+      toast({ title: 'Success', description: 'Service deleted' });
+      queryClient.invalidateQueries({ queryKey: ['/api/super-admin/clients', clientId, 'services'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Toggle service active status
+  const toggleActiveMutation = useMutation({
+    mutationFn: async ({ serviceId, active }: { serviceId: string; active: boolean }) => {
+      const response = await apiRequest('PATCH', `/api/super-admin/clients/${clientId}/services/${serviceId}`, { active });
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/super-admin/clients', clientId, 'services'] });
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-cyan-400" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+            <ListChecks className="h-5 w-5 text-cyan-400" />
+            Quick Book Services
+          </h3>
+          <p className="text-sm text-white/55 mt-1">
+            Manage the clickable service buttons shown in the chat widget
+          </p>
+        </div>
+        <Button 
+          onClick={openAddModal}
+          className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400"
+          data-testid="button-add-service"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Service
+        </Button>
+      </div>
+
+      {/* Services List */}
+      {services.length === 0 ? (
+        <GlassCard>
+          <GlassCardContent className="py-12 text-center">
+            <ListChecks className="h-12 w-12 text-white/20 mx-auto mb-4" />
+            <p className="text-white/55">No services configured yet</p>
+            <p className="text-sm text-white/40 mt-1">Add services to show clickable buttons in the chat widget</p>
+            <Button 
+              onClick={openAddModal}
+              variant="outline"
+              className="mt-4 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add First Service
+            </Button>
+          </GlassCardContent>
+        </GlassCard>
+      ) : (
+        <div className="space-y-3">
+          {services.map((service, index) => (
+            <GlassCard key={service.id} className={!service.active ? 'opacity-50' : ''}>
+              <GlassCardContent className="p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="flex items-center gap-2 text-white/30">
+                      <GripVertical className="h-4 w-4" />
+                      <span className="text-xs font-mono">{index + 1}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-white truncate" data-testid={`text-service-name-${service.id}`}>
+                          {service.name}
+                        </span>
+                        {!service.active && (
+                          <Badge className="bg-white/10 text-white/50 text-xs">Inactive</Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 mt-1 text-sm text-white/55">
+                        {service.price && (
+                          <span className="text-cyan-400">{service.price}</span>
+                        )}
+                        {service.duration && (
+                          <span>{service.duration}</span>
+                        )}
+                        {service.bookingUrl && (
+                          <span className="flex items-center gap-1 text-purple-400">
+                            <Link2 className="h-3 w-3" />
+                            External Link
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => toggleActiveMutation.mutate({ serviceId: service.id, active: !service.active })}
+                      className="text-white/55 hover:text-white"
+                      data-testid={`button-toggle-service-${service.id}`}
+                    >
+                      {service.active ? <Eye className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openEditModal(service)}
+                      className="text-white/55 hover:text-cyan-400"
+                      data-testid={`button-edit-service-${service.id}`}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (confirm(`Delete "${service.name}"?`)) {
+                          deleteMutation.mutate(service.id);
+                        }
+                      }}
+                      className="text-white/55 hover:text-red-400"
+                      data-testid={`button-delete-service-${service.id}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </GlassCardContent>
+            </GlassCard>
+          ))}
+        </div>
+      )}
+
+      {/* Add/Edit Service Modal */}
+      <Dialog open={isAddingNew || !!editingService} onOpenChange={(open) => !open && closeModal()}>
+        <DialogContent className="bg-[#1a1d24] border-white/10">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              {editingService ? 'Edit Service' : 'Add New Service'}
+            </DialogTitle>
+            <DialogDescription className="text-white/55">
+              Configure the service button that will appear in the chat widget
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="text-white/70">Service Name *</Label>
+              <Input
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                className="bg-white/5 border-white/10 text-white"
+                placeholder="e.g., Signature Haircut"
+                data-testid="input-service-name"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-white/70">Price</Label>
+                <Input
+                  value={formData.price}
+                  onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+                  className="bg-white/5 border-white/10 text-white"
+                  placeholder="e.g., $35"
+                  data-testid="input-service-price"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-white/70">Duration</Label>
+                <Input
+                  value={formData.duration}
+                  onChange={(e) => setFormData(prev => ({ ...prev, duration: e.target.value }))}
+                  className="bg-white/5 border-white/10 text-white"
+                  placeholder="e.g., 45 min"
+                  data-testid="input-service-duration"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-white/70">Description</Label>
+              <Textarea
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                className="bg-white/5 border-white/10 text-white min-h-[80px]"
+                placeholder="Brief description of the service..."
+                data-testid="input-service-description"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-white/70 flex items-center gap-2">
+                <Link2 className="h-4 w-4" />
+                Booking URL (optional)
+              </Label>
+              <Input
+                value={formData.bookingUrl}
+                onChange={(e) => setFormData(prev => ({ ...prev, bookingUrl: e.target.value }))}
+                className="bg-white/5 border-white/10 text-white"
+                placeholder="https://square.site/book/..."
+                data-testid="input-service-booking-url"
+              />
+              <p className="text-xs text-white/40">
+                If provided, clicking "Book Now" will redirect to this URL
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={closeModal} className="text-white/55">
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => saveMutation.mutate()}
+              disabled={!formData.name || saveMutation.isPending}
+              className="bg-cyan-500 hover:bg-cyan-400 text-white"
+              data-testid="button-save-service"
+            >
+              {saveMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              {editingService ? 'Save Changes' : 'Add Service'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
