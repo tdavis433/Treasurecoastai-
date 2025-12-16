@@ -117,6 +117,17 @@ interface QuickBookData {
   leadId: string | null;
 }
 
+// Detect booking intent from user message
+function hasBookingIntent(message: string): boolean {
+  const bookingKeywords = [
+    "book", "booking", "schedule", "appointment", "reserve", "reservation",
+    "haircut", "cut", "trim", "shave", "fade", "service", "services",
+    "grooming", "treatment", "massage", "facial", "wax", "manicure", "pedicure"
+  ];
+  const lowerMessage = message.toLowerCase();
+  return bookingKeywords.some(keyword => lowerMessage.includes(keyword));
+}
+
 // Floating Chat Widget Component
 function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -124,6 +135,7 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
   const [greetingDismissed, setGreetingDismissed] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [serviceSelected, setServiceSelected] = useState(false);
+  const [showServicesAfterMessage, setShowServicesAfterMessage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   
@@ -338,7 +350,15 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
 
   const handleSend = () => {
     if (inputValue.trim() && !isLoading) {
-      sendMessage(inputValue.trim());
+      const message = inputValue.trim();
+      
+      // Detect booking intent and show service buttons after AI responds
+      if (hasBookingIntent(message) && quickBookState !== "COLLECT_CONTACT" && quickBookState !== "READY_TO_BOOK") {
+        setShowServicesAfterMessage(true);
+        setQuickBookState("SELECT_SERVICE");
+      }
+      
+      sendMessage(message);
       setInputValue("");
       inputRef.current?.focus();
     }
@@ -398,7 +418,7 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
           </div>
 
           {/* Messages */}
-          <ScrollArea className="h-64 p-4 bg-[#0B0E13]">
+          <ScrollArea className="h-96 p-4 bg-[#0B0E13]">
             <div className="space-y-3">
               {messages.map((message, index) => (
                 <div
@@ -420,15 +440,20 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
                     {message.content}
                   </div>
                   
-                  {/* Service Selection Buttons - show after first assistant message (Quick Book SELECT_SERVICE state) */}
-                  {message.role === "assistant" && index === 0 && quickBookState === "SELECT_SERVICE" && !isLoading && !quickBookLoading && (
+                  {/* Service Selection Buttons - show after first assistant message OR last assistant message when booking intent detected */}
+                  {message.role === "assistant" && quickBookState === "SELECT_SERVICE" && !isLoading && !quickBookLoading && (
+                    // Show on first message OR on last assistant message when showServicesAfterMessage is true
+                    (index === 0 || (showServicesAfterMessage && index === messages.length - 1)) && (
                     <div className="mt-3 w-full space-y-2" data-testid="service-buttons-container">
                       <p className="text-xs text-white/50 mb-2">Select a service:</p>
                       <div className="grid grid-cols-1 gap-2">
                         {config.services.slice(0, 6).map((service, sIndex) => (
                           <button
                             key={service.name}
-                            onClick={() => handleServiceClick(service.name, service.price || '', service.duration)}
+                            onClick={() => {
+                              setShowServicesAfterMessage(false);
+                              handleServiceClick(service.name, service.price || '', service.duration);
+                            }}
                             className="w-full text-left px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-cyan-500/50 transition-all group"
                             data-testid={`button-service-${sIndex}`}
                           >
@@ -445,7 +470,7 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
                         ))}
                       </div>
                     </div>
-                  )}
+                  ))}
                   
                   {/* Booking Button */}
                   {message.role === "assistant" && message.bookingUrl && (
