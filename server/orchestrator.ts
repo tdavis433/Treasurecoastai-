@@ -249,6 +249,8 @@ export interface ExtractedBookingInfo {
   notes?: string;
   bookingType: 'tour' | 'phone_call' | 'request_callback';
   isComplete: boolean;
+  isCompleteForExternal: boolean; // Stricter check for external booking (includes service)
+  requestedService?: string; // Service type (haircut, beard trim, etc.)
 }
 
 /**
@@ -549,8 +551,39 @@ export function extractBookingInfoFromConversation(
   if (scheduledAt) {
     structuredLogger.info('Booking time parsed', { preferredTime, scheduledAt });
   }
+  
+  // Extract requested service type (for barbershops, salons, etc.)
+  let requestedService: string | undefined;
+  const servicePatterns = [
+    // Common barbershop/salon services
+    /(?:want|need|get|book|schedule)(?:\s+a)?(?:\s+an?)?\s+(haircut|hair\s*cut|trim|beard\s*trim|shave|fade|lineup|line.?up|buzz\s*cut|taper|shape.?up|braids|twist|color|dye|highlights|perm|straightening|blowout|style|styling|manicure|pedicure|facial|massage|wax|waxing)/i,
+    /(?:looking for|here for|came for|coming for)(?:\s+a)?(?:\s+an?)?\s+(haircut|hair\s*cut|trim|beard\s*trim|shave|fade|lineup|line.?up|buzz\s*cut|taper|shape.?up|braids|twist|color|dye|highlights|perm|straightening|blowout|style|styling|manicure|pedicure|facial|massage|wax|waxing)/i,
+    // Direct service mention
+    /\b(haircut|hair\s*cut|beard\s*trim|shave|fade|lineup|line.?up|buzz\s*cut|taper|shape.?up|braids|twist|colou?r|dye|highlights|perm|straightening|blowout|manicure|pedicure|facial|massage|wax(?:ing)?)\b/i,
+  ];
+  
+  // Search user messages for service
+  for (const pattern of servicePatterns) {
+    const match = userMessages.match(pattern);
+    if (match && match[1]) {
+      requestedService = match[1].trim().toLowerCase();
+      break;
+    }
+  }
+  
+  // Also check AI's structured summary for service
+  if (!requestedService) {
+    const aiServiceMatch = aiSummaryText.match(/[-–•*]?\s*(?:Service|Service\s*Requested|What|Treatment)[:\-–•]?\s*([^\n,]+)/i);
+    if (aiServiceMatch && aiServiceMatch[1] && aiServiceMatch[1].trim().length >= 3) {
+      requestedService = aiServiceMatch[1].trim().toLowerCase();
+    }
+  }
 
+  // isComplete for internal bookings: name + phone is sufficient
+  // For external bookings, we check isCompleteForExternal separately
   const isComplete = !!(name && phone);
+  // For external booking mode, require name + phone + service
+  const isCompleteForExternal = !!(name && phone && requestedService);
   
   structuredLogger.info('Booking info extraction result', {
     aiConfirmsBooking: true,
@@ -559,7 +592,10 @@ export function extractBookingInfoFromConversation(
     hasPhone: !!phone,
     hasEmail: !!email,
     hasPreferredTime: !!preferredTime,
+    hasService: !!requestedService,
+    requestedService,
     isComplete,
+    isCompleteForExternal,
     extractedName: name,
     extractedPhone: phone?.slice(0, 6) + '***', // partial for privacy
     extractedEmail: email ? email.slice(0, 3) + '***' : undefined,
@@ -573,6 +609,8 @@ export function extractBookingInfoFromConversation(
     scheduledAt,
     bookingType,
     isComplete,
+    isCompleteForExternal,
+    requestedService,
   };
 }
 
@@ -921,9 +959,10 @@ class ConversationOrchestrator {
       let actions: OrchestratorAction[] = [];
       
       // For internal bookings: Only emit BOOKING_FINALIZE when booking is actually saved (has complete info)
-      // For external bookings: Emit BOOKING_FINALIZE when showBooking is true (user can click to external system)
+      // For external bookings: Only emit BOOKING_FINALIZE when name + phone + service are collected
+      // This ensures the AI collects all customer info before showing the booking link
       const shouldEmitBookingAction = bookingMode === 'external' 
-        ? postProcessResult.showBooking 
+        ? postProcessResult.externalBookingInfoComplete 
         : postProcessResult.bookingSaved;
       
       structuredLogger.info('Booking action decision', {
@@ -932,6 +971,8 @@ class ConversationOrchestrator {
         sessionId,
         bookingMode,
         showBooking: postProcessResult.showBooking,
+        externalBookingInfoComplete: postProcessResult.externalBookingInfoComplete,
+        requestedService: postProcessResult.requestedService,
         bookingSaved: postProcessResult.bookingSaved,
         shouldEmitBookingAction,
       });
@@ -1799,10 +1840,12 @@ class ConversationOrchestrator {
     botId: string
   ): Promise<{
     showBooking: boolean;
+    externalBookingInfoComplete: boolean; // For external mode: name + phone + service collected
     bookingType?: 'tour' | 'call' | 'appointment';
     leadCaptured: boolean;
     bookingSaved?: boolean;
     contactInfo?: { name?: string; email?: string; phone?: string };
+    requestedService?: string;
   }> {
     // Topic categorization
     const topic = categorizeMessageTopic(userMessage);
@@ -2068,7 +2111,18 @@ class ConversationOrchestrator {
       }
     }
 
-    return { showBooking, bookingType, leadCaptured, bookingSaved, contactInfo: leadCaptured ? contactInfo : undefined };
+    // For external booking mode, require name + phone + service before showing button
+    const externalBookingInfoComplete = bookingInfo?.isCompleteForExternal || false;
+    
+    return { 
+      showBooking, 
+      externalBookingInfoComplete,
+      bookingType, 
+      leadCaptured, 
+      bookingSaved, 
+      contactInfo: leadCaptured ? contactInfo : undefined,
+      requestedService: bookingInfo?.requestedService,
+    };
   }
 
   /**
