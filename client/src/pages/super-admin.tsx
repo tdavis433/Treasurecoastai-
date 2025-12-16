@@ -8181,12 +8181,12 @@ function TemplatesSectionPanel({
                   <div className="flex items-center gap-3 mb-4">
                     <div className="flex items-center gap-1 text-xs text-white/50">
                       <MessageSquare className="h-3 w-3" />
-                      <span className="text-cyan-400">{template.faqs?.length || 0}</span>
+                      <span className="text-cyan-400">{(template as any).defaultConfig?.faqs?.length || template.faqs?.length || 0}</span>
                       <span>FAQs</span>
                     </div>
                     <div className="flex items-center gap-1 text-xs text-white/50">
                       <Layers className="h-3 w-3" />
-                      <span className="text-purple-400">{template.businessProfile?.services?.length || 0}</span>
+                      <span className="text-purple-400">{(template as any).defaultConfig?.servicesCatalog?.length || template.businessProfile?.services?.length || 0}</span>
                       <span>Services</span>
                     </div>
                   </div>
@@ -8286,46 +8286,62 @@ function TemplatesSectionPanel({
             </DialogDescription>
           </DialogHeader>
           
-          {previewTemplate && (
-            <div className="space-y-6 mt-4">
-              {/* Services */}
-              {previewTemplate.businessProfile?.services && previewTemplate.businessProfile.services.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium text-white mb-2">Included Services</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {previewTemplate.businessProfile.services.map((service, idx) => (
-                      <Badge key={idx} className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30">{service}</Badge>
-                    ))}
+          {previewTemplate && (() => {
+            const templateConfig = (previewTemplate as any).defaultConfig || {};
+            const servicesCatalog = templateConfig.servicesCatalog || [];
+            const faqs = templateConfig.faqs || previewTemplate.faqs || [];
+            const systemPrompt = templateConfig.systemPrompt || templateConfig.systemPromptIntro || previewTemplate.systemPrompt;
+            return (
+              <div className="space-y-6 mt-4">
+                {/* Services Catalog */}
+                {servicesCatalog.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-white mb-2">Services Catalog ({servicesCatalog.length})</h4>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {servicesCatalog.map((service: any, idx: number) => (
+                        <div key={idx} className="flex items-center justify-between bg-white/5 rounded-lg p-2 border border-white/10">
+                          <div>
+                            <span className="text-sm text-white">{service.name}</span>
+                            {service.description && (
+                              <p className="text-xs text-white/50">{service.description}</p>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            {service.price && <Badge className="bg-green-500/20 text-green-400 border-green-500/30">{service.price}</Badge>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-              
-              {/* Sample FAQs */}
-              {previewTemplate.faqs && previewTemplate.faqs.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium text-white mb-2">Sample FAQs ({previewTemplate.faqs.length})</h4>
-                  <div className="space-y-2">
-                    {previewTemplate.faqs.slice(0, 3).map((faq, idx) => (
-                      <div key={idx} className="bg-white/5 rounded-lg p-3 border border-white/10">
-                        <p className="text-sm text-white font-medium">Q: {faq.question}</p>
-                        <p className="text-sm text-white/55 mt-1">A: {faq.answer}</p>
-                      </div>
-                    ))}
+                )}
+                
+                {/* Sample FAQs */}
+                {faqs.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-white mb-2">Sample FAQs ({faqs.length})</h4>
+                    <div className="space-y-2">
+                      {faqs.slice(0, 3).map((faq: any, idx: number) => (
+                        <div key={idx} className="bg-white/5 rounded-lg p-3 border border-white/10">
+                          <p className="text-sm text-white font-medium">Q: {faq.question}</p>
+                          <p className="text-sm text-white/55 mt-1">A: {faq.answer}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-              
-              {/* System Prompt Preview */}
-              {previewTemplate.systemPrompt && (
-                <div>
-                  <h4 className="text-sm font-medium text-white mb-2">AI Personality</h4>
-                  <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                    <p className="text-sm text-white/70">{previewTemplate.systemPrompt}</p>
+                )}
+                
+                {/* System Prompt Preview */}
+                {systemPrompt && (
+                  <div>
+                    <h4 className="text-sm font-medium text-white mb-2">AI Personality</h4>
+                    <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                      <p className="text-sm text-white/70">{systemPrompt}</p>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            );
+          })()}
           
           <DialogFooter className="mt-6">
             <Button variant="ghost" onClick={() => setPreviewTemplate(null)} className="text-white/70">
