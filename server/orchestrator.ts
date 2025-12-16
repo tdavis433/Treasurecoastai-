@@ -408,15 +408,17 @@ export function extractBookingInfoFromConversation(
 
   // FIX: First search user messages only for contact info
   // Then fall back to AI summary if AI confirmed booking with structured format
+  // Improved patterns to allow lowercase names and more flexible matching
   const namePatterns = [
-    /(?:my name is|i'?m|name:?|this is)\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
-    /(?:call me|it'?s)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
+    /(?:my name is|i'?m|name:?|this is)\s+([A-Za-z][A-Za-z]+(?:\s+[A-Za-z][A-Za-z]+)?)/i,
+    /(?:call me|it'?s)\s+([A-Za-z][A-Za-z]+(?:\s+[A-Za-z][A-Za-z]+)?)/i,
+    /^(?:i am|i'm)\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)/im,
   ];
   
   // Search user messages first (primary source)
   for (const pattern of namePatterns) {
     const match = userMessages.match(pattern);
-    if (match && match[1] && match[1].length > 2 && match[1].length < 50) {
+    if (match && match[1] && match[1].length >= 2 && match[1].length < 50) {
       name = match[1].trim();
       break;
     }
@@ -424,10 +426,10 @@ export function extractBookingInfoFromConversation(
   
   // If not found in user messages, check AI's structured summary (permissive pattern)
   if (!name) {
-    // Support various label formats with flexible delimiters (colon, dash, bullet, etc.)
-    // Captures everything up to newline/comma to handle all name formats
-    const aiNameMatch = aiSummaryText.match(/(?:(?:Client|Contact|Customer|Visitor|Guest|Your)?\s*Name)[:\-–•]?\s*([^\n,]+)/i);
-    if (aiNameMatch && aiNameMatch[1] && aiNameMatch[1].trim().length > 2 && aiNameMatch[1].trim().length < 50) {
+    // Support bullet/dash prefixes like "- Name: asdf" and various label formats
+    // Captures everything up to newline to handle all name formats including lowercase
+    const aiNameMatch = aiSummaryText.match(/[-–•*]?\s*(?:(?:Client|Contact|Customer|Visitor|Guest|Your)?\s*Name)[:\-–•]?\s*([^\n,]+)/i);
+    if (aiNameMatch && aiNameMatch[1] && aiNameMatch[1].trim().length >= 2 && aiNameMatch[1].trim().length < 50) {
       name = aiNameMatch[1].trim();
     }
   }
@@ -452,8 +454,8 @@ export function extractBookingInfoFromConversation(
   
   // If not found in user messages, check AI's structured summary (permissive pattern)
   if (!phone) {
-    // Support various label formats with flexible delimiters
-    const aiPhoneMatch = aiSummaryText.match(/(?:Phone|Phone\s*Number|Contact\s*Number|Cell|Mobile|Telephone)[:\-–•]?\s*([\d\s\-\(\)\.]+)/i);
+    // Support bullet/dash prefixes like "- Phone: 555-123-4567" and various label formats
+    const aiPhoneMatch = aiSummaryText.match(/[-–•*]?\s*(?:Phone|Phone\s*Number|Contact\s*Number|Cell|Mobile|Telephone)[:\-–•]?\s*([\d\s\-\(\)\.]+)/i);
     if (aiPhoneMatch && aiPhoneMatch[1]) {
       const cleaned = aiPhoneMatch[1].replace(/\D/g, '');
       if (cleaned.length >= 10) {
@@ -478,8 +480,8 @@ export function extractBookingInfoFromConversation(
   
   // If not found in user messages, check AI's structured summary (permissive pattern)
   if (!email) {
-    // Support various label formats with flexible delimiters
-    const aiEmailMatch = aiSummaryText.match(/(?:Email|Email\s*Address|E-mail|Contact\s*Email)[:\-–•]?\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+    // Support bullet/dash prefixes like "- Email: test@example.com" and various label formats
+    const aiEmailMatch = aiSummaryText.match(/[-–•*]?\s*(?:Email|Email\s*Address|E-mail|Contact\s*Email)[:\-–•]?\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
     if (aiEmailMatch && aiEmailMatch[1]) {
       email = aiEmailMatch[1].trim();
     }
@@ -522,6 +524,19 @@ export function extractBookingInfoFromConversation(
   }
 
   const isComplete = !!(name && phone);
+  
+  structuredLogger.info('Booking info extraction result', {
+    aiConfirmsBooking: true,
+    bookingType,
+    hasName: !!name,
+    hasPhone: !!phone,
+    hasEmail: !!email,
+    hasPreferredTime: !!preferredTime,
+    isComplete,
+    extractedName: name,
+    extractedPhone: phone?.slice(0, 6) + '***', // partial for privacy
+    extractedEmail: email ? email.slice(0, 3) + '***' : undefined,
+  });
 
   return {
     name,
@@ -1797,11 +1812,28 @@ class ConversationOrchestrator {
       contactInfo.phone = contactSignals.phone;
     }
     
+    // Also merge from bookingInfo which may have extracted from AI summary
+    if (bookingInfo) {
+      if (bookingInfo.name && !contactInfo.name) contactInfo.name = bookingInfo.name;
+      if (bookingInfo.email && !contactInfo.email) contactInfo.email = bookingInfo.email;
+      if (bookingInfo.phone && !contactInfo.phone) contactInfo.phone = bookingInfo.phone;
+    }
+    
     const leadCaptured = !!(contactInfo.email || contactInfo.phone);
+    
+    structuredLogger.info('Contact info extraction result', {
+      clientId,
+      sessionId: sessionData.sessionId,
+      hasName: !!contactInfo.name,
+      hasEmail: !!contactInfo.email,
+      hasPhone: !!contactInfo.phone,
+      leadCaptured,
+      previouslyLeadCaptured: sessionData.leadCaptured,
+      bookingInfoComplete: bookingInfo?.isComplete,
+    });
 
-    if (leadCaptured && !sessionData.leadCaptured) {
-      sessionData.leadCaptured = true;
-      
+    // Always try to create/update lead if we have contact info (not just first time)
+    if (leadCaptured) {
       // Create or update lead
       try {
         const existingLead = await storage.getLeadBySessionId(sessionData.sessionId, clientId);
@@ -1819,6 +1851,11 @@ class ConversationOrchestrator {
           
           if (Object.keys(updates).length > 0) {
             await storage.updateLead(clientId, existingLead.id, updates);
+            structuredLogger.info('Lead updated with new contact info', {
+              leadId: existingLead.id,
+              clientId,
+              updates: Object.keys(updates),
+            });
           }
         } else {
           const priority = determinePriority(showBooking, contactInfo);
@@ -1837,6 +1874,15 @@ class ConversationOrchestrator {
             'createLead'
           );
           
+          structuredLogger.info('New lead created', {
+            leadId: newLead.id,
+            clientId,
+            sessionId: sessionData.sessionId,
+            name: contactInfo.name,
+            hasEmail: !!contactInfo.email,
+            hasPhone: !!contactInfo.phone,
+          });
+          
           // Trigger lead_captured automations
           triggerWorkflowByEvent(botId, 'lead_captured', {
             clientId,
@@ -1847,8 +1893,10 @@ class ConversationOrchestrator {
             phone: contactInfo.phone,
           }).catch(err => structuredLogger.error('Error triggering lead_captured automation', { error: err }));
         }
+        
+        sessionData.leadCaptured = true;
       } catch (error) {
-        structuredLogger.error('Error capturing lead', { error });
+        structuredLogger.error('Error capturing lead', { error, clientId, sessionId: sessionData.sessionId });
       }
     }
 
