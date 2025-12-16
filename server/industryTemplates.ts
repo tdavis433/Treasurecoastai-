@@ -16,6 +16,17 @@ export interface BookingProfile {
   failsafeEnabled: boolean; // If external URL missing/invalid, fallback to internal
 }
 
+export interface ServiceCatalogItem {
+  id: string;
+  name: string;
+  description?: string;
+  price?: string;
+  duration?: string;
+  category?: string;
+  bookingUrl?: string;
+  active: boolean;
+}
+
 export interface IndustryTemplate {
   id: string;
   name: string;
@@ -30,6 +41,7 @@ export interface IndustryTemplate {
     isPrimary?: boolean;
   }>;
   disclaimer: string;
+  servicesCatalog?: ServiceCatalogItem[]; // Default services for Quick Book
   defaultConfig: {
     businessProfile: {
       type: string;
@@ -150,6 +162,62 @@ export const INDUSTRY_TEMPLATES: Record<string, IndustryTemplate> = {
 - Cancellation policies apply - please review before booking
 - Prices shown are starting prices and may vary based on hair length/style
 - Please arrive on time to avoid rescheduling`,
+    servicesCatalog: [
+      { 
+        id: 'classic_fade', 
+        name: 'Classic Fade', 
+        description: 'Clean fade with precise blend', 
+        price: '$30', 
+        duration: '30 min',
+        category: 'haircuts',
+        active: true 
+      },
+      { 
+        id: 'signature_haircut', 
+        name: 'Signature Haircut', 
+        description: 'Precision cut with hot towel finish', 
+        price: '$35', 
+        duration: '45 min',
+        category: 'haircuts',
+        active: true 
+      },
+      { 
+        id: 'beard_trim', 
+        name: 'Beard Trim & Shape', 
+        description: 'Expert beard shaping and lineup', 
+        price: '$20', 
+        duration: '20 min',
+        category: 'beard',
+        active: true 
+      },
+      { 
+        id: 'hot_towel_shave', 
+        name: 'Hot Towel Shave', 
+        description: 'Traditional straight razor shave with hot towels', 
+        price: '$40', 
+        duration: '45 min',
+        category: 'shaves',
+        active: true 
+      },
+      { 
+        id: 'haircut_beard_combo', 
+        name: 'Haircut + Beard Combo', 
+        description: 'Full haircut plus beard trim - the complete package', 
+        price: '$50', 
+        duration: '1 hour',
+        category: 'combos',
+        active: true 
+      },
+      { 
+        id: 'kids_cut', 
+        name: 'Kids Cut (12 & Under)', 
+        description: 'Patient, kid-friendly haircuts', 
+        price: '$22', 
+        duration: '30 min',
+        category: 'haircuts',
+        active: true 
+      },
+    ],
     defaultConfig: {
       businessProfile: {
         type: 'Barbershop',

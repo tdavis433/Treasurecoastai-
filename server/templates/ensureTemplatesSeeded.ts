@@ -46,6 +46,7 @@ export function buildDefaultConfig(template: IndustryTemplate): Record<string, a
     bookingProfile: template.bookingProfile,
     ctaButtons: template.ctaButtons,
     disclaimer: template.disclaimer,
+    servicesCatalog: template.servicesCatalog || [],
   };
 }
 

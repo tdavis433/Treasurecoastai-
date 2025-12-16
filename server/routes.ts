@@ -6351,6 +6351,21 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(500).json({ error: clientResult.error || "Failed to register client" });
       }
       
+      // Save client settings including servicesCatalog from template
+      await storage.updateSettings(clientId, {
+        businessName: clientSettingsSeed.businessName,
+        businessType: clientSettingsSeed.businessType,
+        primaryPhone: clientSettingsSeed.primaryPhone,
+        primaryEmail: clientSettingsSeed.primaryEmail,
+        websiteUrl: clientSettingsSeed.websiteUrl,
+        timezone: clientSettingsSeed.timezone,
+        externalBookingUrl: clientSettingsSeed.externalBookingUrl,
+        behaviorPreset: clientSettingsSeed.behaviorPreset,
+        leadDetectionSensitivity: clientSettingsSeed.leadDetectionSensitivity,
+        status: clientSettingsSeed.status,
+        servicesCatalog: clientSettingsSeed.servicesCatalog || [],
+      });
+      
       res.status(201).json({ 
         success: true,
         clientId: clientId,

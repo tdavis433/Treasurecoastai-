@@ -34,6 +34,17 @@ export interface TemplateOverrides {
   timezone?: string;
 }
 
+export interface ServiceCatalogItem {
+  id: string;
+  name: string;
+  description?: string;
+  price?: string;
+  duration?: string;
+  category?: string;
+  bookingUrl?: string;
+  active: boolean;
+}
+
 export interface ClientSettingsSeed {
   clientId: string;
   businessName: string;
@@ -46,6 +57,7 @@ export interface ClientSettingsSeed {
   behaviorPreset: BehaviorPreset;
   leadDetectionSensitivity: 'low' | 'medium' | 'high';
   status: 'active' | 'pending' | 'suspended';
+  servicesCatalog?: ServiceCatalogItem[];
 }
 
 export interface WidgetSettingsSeed {
@@ -339,6 +351,7 @@ export function buildClientFromTemplate(
     behaviorPreset: behaviorPreset,
     leadDetectionSensitivity: presetDefaults.leadDetectionSensitivity,
     status: 'active',
+    servicesCatalog: templateConfig.servicesCatalog || [],
   };
   
   // Extract widget settings

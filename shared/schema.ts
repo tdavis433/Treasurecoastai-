@@ -1188,6 +1188,16 @@ export const botTemplates = pgTable("bot_templates", {
     theme: Record<string, any>;
     personality: Record<string, any>;
     bookingProfile?: BookingProfile; // Industry booking behavior contract with failsafe
+    servicesCatalog?: Array<{
+      id: string;
+      name: string;
+      description?: string;
+      price?: string;
+      duration?: string;
+      category?: string;
+      bookingUrl?: string;
+      active: boolean;
+    }>; // Quick Book service buttons for this industry
   }>().notNull(),
   
   // Template metadata
