@@ -400,6 +400,24 @@ export function registerQuickBookRoutes(app: Express) {
         });
       }
       
+      // Create appointment record so booking shows in Bookings tab
+      try {
+        const appointment = await storage.createAppointment(intent.workspaceId, {
+          sessionId: intent.sessionId || undefined,
+          name: intent.contactName || 'Quick Book Customer',
+          contact: intent.contactPhone || intent.contactEmail || '',
+          email: intent.contactEmail || undefined,
+          preferredTime: 'To be scheduled',
+          contactPreference: intent.contactPhone ? 'phone' : 'email',
+          appointmentType: intent.serviceName || 'Quick Book Service',
+          notes: `Quick Book: ${intent.serviceName || 'Service'} - ${intent.priceCents ? `$${(intent.priceCents / 100).toFixed(2)}` : 'Price TBD'}`,
+        });
+        console.log(`[QuickBook] Created appointment ${appointment.id} for intent ${intentId}`);
+      } catch (appointmentError) {
+        // Log but don't fail the confirmation if appointment creation fails
+        console.error("[QuickBook] Error creating appointment (non-fatal):", appointmentError);
+      }
+      
       return res.json({
         ok: true,
         intentId: intent.id,
