@@ -470,6 +470,19 @@ export const clientSettings = pgTable("client_settings", {
     externalUrlOverride?: string;
   }>>().default({}),
   
+  // Services catalog - for service-based businesses (barbershops, salons, spas, etc.)
+  // Each service can have its own direct booking URL for a streamlined customer experience
+  servicesCatalog: json("services_catalog").$type<Array<{
+    id: string;
+    name: string;
+    description?: string;
+    price?: string;
+    duration?: string;
+    category?: string;
+    bookingUrl?: string; // Direct booking URL for this specific service
+    active: boolean;
+  }>>().default([]),
+  
   // Failsafe toggle - auto-pivot to internal if external URL missing (default ON)
   enableBookingFailsafe: boolean("enable_booking_failsafe").notNull().default(true),
   
