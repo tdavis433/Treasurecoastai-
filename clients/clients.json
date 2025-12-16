@@ -73,6 +73,26 @@
       ],
       "status": "active",
       "createdAt": "2025-12-10"
+    },
+    {
+      "id": "testbarber_nmolcg",
+      "name": "TestBarber_NmolCg",
+      "type": "Barbershop",
+      "bots": [
+        "testbarber_nmolcg_main"
+      ],
+      "status": "active",
+      "createdAt": "2025-12-16"
+    },
+    {
+      "id": "barbertest_nh_3eg",
+      "name": "BarberTest_nH-3eg",
+      "type": "Barbershop",
+      "bots": [
+        "barbertest_nh_3eg_main"
+      ],
+      "status": "active",
+      "createdAt": "2025-12-16"
     }
   ]
 }

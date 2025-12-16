@@ -1,0 +1,66 @@
+{
+  "clientId": "testbarber_nmolcg",
+  "botId": "testbarber_nmolcg_main",
+  "name": "TestBarber_NmolCg",
+  "description": "AI assistant for TestBarber_NmolCg",
+  "businessProfile": {
+    "businessName": "TestBarber_NmolCg",
+    "location": "",
+    "phone": "",
+    "email": "",
+    "website": "",
+    "hours": {},
+    "services": [
+      "Haircuts",
+      "Fades",
+      "Beard Trims",
+      "Hot Towel Shave",
+      "Kids Cuts"
+    ]
+  },
+  "rules": {
+    "allowedTopics": [],
+    "forbiddenTopics": [],
+    "crisisHandling": {
+      "onCrisisKeywords": [],
+      "responseTemplate": "If you are in crisis, please call 911 or your local emergency number."
+    }
+  },
+  "systemPrompt": "You are a friendly AI assistant for a barbershop. You help clients book appointments and answer questions about services.",
+  "faqs": [
+    {
+      "question": "How long does a haircut take?",
+      "answer": "A standard haircut typically takes 20-30 minutes. Fades and detailed styles may take longer."
+    },
+    {
+      "question": "Do I need an appointment?",
+      "answer": "While we accept walk-ins when available, we recommend booking an appointment to ensure your preferred time slot."
+    },
+    {
+      "question": "What forms of payment do you accept?",
+      "answer": "We accept cash, credit/debit cards, and most mobile payment options."
+    }
+  ],
+  "automations": {
+    "bookingCapture": {
+      "enabled": true,
+      "mode": "internal",
+      "failsafeEnabled": true
+    }
+  },
+  "personality": {
+    "tone": "casual",
+    "formality": 20
+  },
+  "quickActions": [],
+  "botType": "barber",
+  "metadata": {
+    "isDemo": false,
+    "isTemplate": false,
+    "clonedFrom": "barber_template",
+    "createdAt": "2025-12-16",
+    "version": "2.0",
+    "industryTemplate": "barber_template",
+    "onboardingStatus": "draft"
+  }
+}

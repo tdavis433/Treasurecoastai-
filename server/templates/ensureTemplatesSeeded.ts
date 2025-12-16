@@ -152,11 +152,15 @@ export async function ensureTemplatesSeeded(): Promise<EnsureTemplatesResult> {
     
     const currentCount = Number(countResult[0]?.count ?? 0);
     
-    // If we already have all templates, skip seeding
+    // Always update templates to ensure they have latest config (including servicesCatalog)
+    // This ensures template changes are propagated to the database
     if (currentCount >= INDUSTRY_TEMPLATE_COUNT) {
-      structuredLogger.info(`[templates] already seeded (count=${currentCount})`);
+      structuredLogger.info(`[templates] updating existing templates (count=${currentCount})`);
+      const results = await seedAllTemplates(false);
+      const updatedCount = results.filter(r => r.action === 'updated').length;
+      structuredLogger.info(`[templates] updated ${updatedCount} templates with latest config`);
       return {
-        seeded: 0,
+        seeded: updatedCount,
         updated: 0,
         skipped: true,
         results: [],
