@@ -50,16 +50,30 @@ export interface BookingResolution {
   bookingIntentId?: string;
 }
 
+// Service catalog item for service-based businesses
+export interface ServiceCatalogItem {
+  id: string;
+  name: string;
+  description?: string;
+  price?: string;
+  duration?: string;
+  category?: string;
+  bookingUrl?: string; // Direct booking URL for this specific service
+  active: boolean;
+}
+
 export interface BookingPolicyContext {
   workspaceId: string;
   botId: string;
   bookingType?: string;
+  requestedService?: string; // Service requested by user (e.g., "haircut", "fade")
   clientSettings?: {
     bookingMode?: 'internal' | 'external';
     externalBookingUrl?: string | null;
     externalBookingProviderName?: string | null;
     enableBookingFailsafe?: boolean;
     appointmentTypeModes?: Record<string, { mode: 'internal' | 'external'; externalUrlOverride?: string }>;
+    servicesCatalog?: ServiceCatalogItem[]; // Available services with their booking URLs
   };
   templateBookingProfile?: {
     mode: 'internal' | 'external';
@@ -69,14 +83,52 @@ export interface BookingPolicyContext {
 }
 
 /**
+ * Find a matching service from the catalog based on user's requested service
+ * Uses fuzzy matching to handle variations like "haircut" vs "Hair Cut"
+ */
+export function findMatchingService(
+  requestedService: string | undefined,
+  servicesCatalog: ServiceCatalogItem[] | undefined
+): ServiceCatalogItem | undefined {
+  if (!requestedService || !servicesCatalog || servicesCatalog.length === 0) {
+    return undefined;
+  }
+  
+  const normalized = requestedService.toLowerCase().replace(/[\s\-_]/g, '');
+  
+  // First try exact match on id
+  const exactIdMatch = servicesCatalog.find(s => 
+    s.active && s.id.toLowerCase() === normalized
+  );
+  if (exactIdMatch) return exactIdMatch;
+  
+  // Then try exact match on name (normalized)
+  const exactNameMatch = servicesCatalog.find(s => 
+    s.active && s.name.toLowerCase().replace(/[\s\-_]/g, '') === normalized
+  );
+  if (exactNameMatch) return exactNameMatch;
+  
+  // Then try partial match on name (if service name contains the requested term)
+  const partialMatch = servicesCatalog.find(s => {
+    if (!s.active) return false;
+    const serviceName = s.name.toLowerCase().replace(/[\s\-_]/g, '');
+    return serviceName.includes(normalized) || normalized.includes(serviceName);
+  });
+  if (partialMatch) return partialMatch;
+  
+  return undefined;
+}
+
+/**
  * Resolves how a booking should be handled based on:
  * 1. Booking type (some types are always internal)
- * 2. Client/workspace settings (override defaults)
- * 3. Template defaults
- * 4. Failsafe logic (invalid external URL → pivot to internal)
+ * 2. Service-specific booking URL (for service-based businesses)
+ * 3. Client/workspace settings (override defaults)
+ * 4. Template defaults
+ * 5. Failsafe logic (invalid external URL → pivot to internal)
  */
 export function resolveBookingHandling(context: BookingPolicyContext): BookingResolution {
-  const { workspaceId, botId, bookingType, clientSettings, templateBookingProfile } = context;
+  const { workspaceId, botId, bookingType, requestedService, clientSettings, templateBookingProfile } = context;
   
   // Step 1: Check if this booking type is always internal
   const normalizedType = (bookingType || '').toLowerCase().replace(/[\s-]/g, '_');
@@ -119,13 +171,46 @@ export function resolveBookingHandling(context: BookingPolicyContext): BookingRe
   const preferredMode = clientSettings?.bookingMode || templateBookingProfile?.mode || 'internal';
   
   if (preferredMode === 'external') {
+    // Step 3a: Check for service-specific booking URL first (highest priority for external)
+    if (requestedService && clientSettings?.servicesCatalog) {
+      const matchedService = findMatchingService(requestedService, clientSettings.servicesCatalog);
+      
+      if (matchedService?.bookingUrl) {
+        const urlValidation = validateBookingUrl(matchedService.bookingUrl);
+        
+        if (urlValidation.valid) {
+          structuredLogger.debug('Booking resolved to EXTERNAL (service-specific)', { 
+            workspaceId, botId, 
+            requestedService, 
+            matchedService: matchedService.name,
+            url: matchedService.bookingUrl 
+          });
+          return {
+            handling: 'external',
+            externalUrl: matchedService.bookingUrl,
+            failsafeActivated: false,
+          };
+        } else {
+          structuredLogger.warn('Service-specific URL invalid, falling back to general URL', {
+            workspaceId, botId,
+            requestedService,
+            matchedService: matchedService.name,
+            url: matchedService.bookingUrl,
+            error: urlValidation.error
+          });
+          // Fall through to general external URL
+        }
+      }
+    }
+    
+    // Step 3b: Fall back to general external booking URL
     const candidateUrl = clientSettings?.externalBookingUrl;
     
     if (candidateUrl) {
       const urlValidation = validateBookingUrl(candidateUrl);
       
       if (urlValidation.valid) {
-        structuredLogger.debug('Booking resolved to EXTERNAL', { 
+        structuredLogger.debug('Booking resolved to EXTERNAL (general URL)', { 
           workspaceId, botId, url: candidateUrl 
         });
         return {

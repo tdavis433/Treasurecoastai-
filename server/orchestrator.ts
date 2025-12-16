@@ -942,12 +942,14 @@ class ConversationOrchestrator {
         workspaceId: clientId,
         botId,
         bookingType: postProcessResult.bookingType,
+        requestedService: postProcessResult.requestedService, // Pass detected service for service-specific URL lookup
         clientSettings: clientSettings ? {
           bookingMode: clientSettings.bookingMode as 'internal' | 'external',
           externalBookingUrl: clientSettings.externalBookingUrl,
           externalBookingProviderName: clientSettings.externalBookingProviderName,
           enableBookingFailsafe: clientSettings.enableBookingFailsafe,
           appointmentTypeModes: clientSettings.appointmentTypeModes as any,
+          servicesCatalog: clientSettings.servicesCatalog as any, // Pass services catalog for service-specific URL lookup
         } : undefined,
       });
       
@@ -1404,12 +1406,14 @@ class ConversationOrchestrator {
         workspaceId: clientId,
         botId,
         bookingType: postProcessResult.bookingType,
+        requestedService: postProcessResult.requestedService, // Pass detected service for service-specific URL lookup
         clientSettings: clientSettings ? {
           bookingMode: clientSettings.bookingMode as 'internal' | 'external',
           externalBookingUrl: clientSettings.externalBookingUrl,
           externalBookingProviderName: clientSettings.externalBookingProviderName,
           enableBookingFailsafe: clientSettings.enableBookingFailsafe,
           appointmentTypeModes: clientSettings.appointmentTypeModes as any,
+          servicesCatalog: clientSettings.servicesCatalog as any, // Pass services catalog for service-specific URL lookup
         } : undefined,
       });
       

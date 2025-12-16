@@ -44,6 +44,16 @@ interface DemoWorkspaceConfig {
     url?: string;
     providerName?: string;
   };
+  servicesCatalog?: Array<{
+    id: string;
+    name: string;
+    description?: string;
+    price?: string;
+    duration?: string;
+    category?: string;
+    bookingUrl?: string;
+    active: boolean;
+  }>;
   sampleLeads: Array<{
     name: string;
     phone: string;
@@ -459,6 +469,68 @@ const DEMO_CONFIGS: Record<string, DemoWorkspaceConfig> = {
       url: 'https://square.site/book/example-fade-factory',
       providerName: 'Square'
     },
+    servicesCatalog: [
+      { 
+        id: 'classic_fade', 
+        name: 'Classic Fade', 
+        description: 'Clean fade with precise blend', 
+        price: '$30', 
+        duration: '30 min',
+        category: 'haircuts',
+        bookingUrl: 'https://square.site/book/example-fade-factory/classic-fade',
+        active: true 
+      },
+      { 
+        id: 'signature_haircut', 
+        name: 'Signature Haircut', 
+        description: 'Precision cut with hot towel finish', 
+        price: '$35', 
+        duration: '45 min',
+        category: 'haircuts',
+        bookingUrl: 'https://square.site/book/example-fade-factory/signature-haircut',
+        active: true 
+      },
+      { 
+        id: 'beard_trim', 
+        name: 'Beard Trim & Shape', 
+        description: 'Expert beard shaping and lineup', 
+        price: '$20', 
+        duration: '20 min',
+        category: 'beard',
+        bookingUrl: 'https://square.site/book/example-fade-factory/beard-trim',
+        active: true 
+      },
+      { 
+        id: 'hot_towel_shave', 
+        name: 'Hot Towel Shave', 
+        description: 'Traditional straight razor shave with hot towels', 
+        price: '$40', 
+        duration: '45 min',
+        category: 'shaves',
+        bookingUrl: 'https://square.site/book/example-fade-factory/hot-towel-shave',
+        active: true 
+      },
+      { 
+        id: 'haircut_beard_combo', 
+        name: 'Haircut + Beard Combo', 
+        description: 'Full haircut plus beard trim - the complete package', 
+        price: '$50', 
+        duration: '1 hour',
+        category: 'combos',
+        bookingUrl: 'https://square.site/book/example-fade-factory/haircut-beard-combo',
+        active: true 
+      },
+      { 
+        id: 'kids_cut', 
+        name: 'Kids Cut (12 & Under)', 
+        description: 'Patient, kid-friendly haircuts', 
+        price: '$22', 
+        duration: '30 min',
+        category: 'haircuts',
+        bookingUrl: 'https://square.site/book/example-fade-factory/kids-cut',
+        active: true 
+      },
+    ],
     sampleLeads: [
       { name: "Jason Miller", phone: "(772) 555-7001", status: "new", daysAgo: 1 },
       { name: "Derek Williams", phone: "(772) 555-7002", email: "derek.w@email.com", status: "contacted", daysAgo: 2 },
@@ -1157,6 +1229,7 @@ export async function seedDemoWorkspace(slug: string): Promise<{
           businessType: config.businessProfile.type,
           primaryPhone: config.businessProfile.phone || null,
           primaryEmail: config.businessProfile.email || null,
+          servicesCatalog: config.servicesCatalog || [],
           updatedAt: new Date(),
         })
         .where(eq(clientSettings.clientId, config.slug));
@@ -1168,6 +1241,7 @@ export async function seedDemoWorkspace(slug: string): Promise<{
           bookingMode: config.externalBooking.mode,
           externalBookingUrl: config.externalBooking.url || null,
           externalBookingProviderName: config.externalBooking.providerName || null,
+          servicesCatalog: config.servicesCatalog || [],
           businessName: config.businessProfile.businessName,
           tagline: config.theme.welcomeMessage,
           businessType: config.businessProfile.type,
