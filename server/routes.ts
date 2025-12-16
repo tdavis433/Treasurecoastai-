@@ -83,6 +83,7 @@ import {
 
 import { scrapeWebsite, applyScrapedDataToBot, importWebsite, type WebsiteImportSuggestions } from './scraper';
 import { resetDemoWorkspace, seedAllDemoWorkspaces, getDemoSlugs, getDemoConfig } from './demoSeed';
+import { registerQuickBookRoutes } from './quickbook';
 import { getWidgetEmbedCode, getEmbedInstructions, type WidgetEmbedOptions } from './embed';
 import { extractBookingInfoFromConversation, type ExtractedBookingInfo, type ChatMessage as OrchestratorChatMessage } from './orchestrator';
 import { requireExportClientId } from './utils/tenantScope';
@@ -1522,6 +1523,9 @@ async function logNotification(params: {
 export async function registerRoutes(app: Express): Promise<Server> {
   await ensureAdminUserExists();
   await ensureTemplatesSeeded();
+  
+  // Register Quick Book v1 routes
+  registerQuickBookRoutes(app);
   
   // =============================================
   // HEALTH CHECK ENDPOINTS

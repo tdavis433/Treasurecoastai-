@@ -1,0 +1,251 @@
+YOU ARE A SENIOR FULL-STACK ENGINEER IMPLEMENTING “QUICK BOOK v1” INSIDE MY EXISTING TREASURE COAST AI CODEBASE.
+
+STACK (DO NOT CHANGE): Express.js + Drizzle ORM + Postgres (Neon) + React 18 (Vite) + Tailwind + shadcn/ui
+GOAL: Implement a simple, stable booking handoff flow in the website chat widget:
+Service buttons → capture name/phone/email → log lead + booking intent → show “Book Now” → redirect to external booking URL (Square/Calendly/etc).
+NO live slot picking. NO Square API integration. NO payment handling.
+
+ABSOLUTE RULES:
+1) DO NOT refactor unrelated code. Make minimal, additive changes only.
+2) Multi-tenant: every read/write MUST be scoped to workspaceId (or whatever tenant key exists in this repo).
+3) Keep the flow deterministic (state machine in UI). Do NOT use the LLM to decide steps.
+4) Maintain existing Leads + Bookings behavior. Partial/unfinished flows must still save to Leads.
+5) Be defensive: avoid duplicate submissions, handle refresh, handle back/cancel.
+
+────────────────────────────────────────────────────────────
+FEATURE SUMMARY (MUST MATCH)
+────────────────────────────────────────────────────────────
+In the widget:
+1) Customer opens chat and sees “Quick Book” service buttons (name + price).
+2) Customer clicks “Signature Haircut - $35”
+   → We log Booking Intent “started” with selected service.
+3) Bot asks for name + phone/email (require name + either phone OR email)
+   → Save/Upsert as Lead
+   → Lead status shows “Booking in progress”
+4) Show “Book Now” button
+   → When clicked, log “clicked_to_book” with timestamp
+   → Redirect to external booking page configured for this workspace (Square/Calendly/etc)
+5) Demo mode:
+   If workspace is set to DEMO booking URL (or none is set), open internal “Demo Booking Confirmation” page instead of redirecting externally.
+   Demo page looks professional and confirms the “demo booking” in OUR DB.
+
+Dashboards:
+- Client panel shows lead + selected service + status “Booking in progress”
+- Agency/admin can see: who clicked what service and clicked to book (timestamps).
+- If demo confirm completed, show as a Booking record (provider=demo, status=confirmed_demo).
+
+────────────────────────────────────────────────────────────
+PHASE 0 — LOCATE EXISTING SYSTEMS (REQUIRED)
+────────────────────────────────────────────────────────────
+0.1 Find how workspaceId is determined in:
+- widget requests
+- API auth middleware
+- leads/bookings routes
+0.2 Find existing:
+- Leads table/schema + create/update helpers
+- Bookings table/schema + create helpers
+- Widget chat UI message renderer + action buttons
+
+Do NOT rewrite; only integrate.
+
+────────────────────────────────────────────────────────────
+PHASE 1 — DATA MODEL (DRIZZLE) — ADD SMALL TABLE(S)
+────────────────────────────────────────────────────────────
+Add ONE new table for the funnel:
+
+1.1 Create table: booking_intents
+Fields:
+- id (uuid pk)
+- workspaceId (indexed)
+- leadId (uuid nullable)
+- status (text enum-ish):
+   "started" | "lead_captured" | "clicked_to_book" | "demo_confirmed" | "abandoned"
+- selectedServiceName (text)
+- selectedServicePriceCents (int nullable)
+- selectedServiceDurationMins (int nullable)
+- customerName (text nullable)
+- customerPhone (text nullable)
+- customerEmail (text nullable)
+- bookingUrl (text nullable)         // the URL we redirected to (or demo URL)
+- clickedToBookAt (timestamp nullable)
+- createdAt, updatedAt
+
+1.2 Migrate and ensure no existing seeds break.
+
+NOTE: Do NOT add provider connections, OAuth, availability, or any Square SDK code. This is Quick Book v1 only.
+
+────────────────────────────────────────────────────────────
+PHASE 2 — WORKSPACE BOOKING SETTINGS (MINIMUM)
+────────────────────────────────────────────────────────────
+We need a place to store:
+- externalBookingUrl (string)
+- quickBookServices (JSON array)
+
+Implement using the simplest existing pattern in repo:
+- If there is an existing workspace_settings/client_settings table, ADD fields:
+  - bookingExternalUrl TEXT NULL
+  - bookingDemoMode BOOLEAN default false (optional)
+  - quickBookServices JSONB (optional)
+OR create a small new table:
+booking_settings:
+- workspaceId pk/fk
+- bookingExternalUrl
+- demoMode boolean default false
+- quickBookServices jsonb
+
+QuickBookServices JSON format:
+[
+  { "id": "signature_haircut", "name": "Signature Haircut", "priceCents": 3500, "durationMins": 45, "enabled": true },
+  ...
+]
+
+Provide a default seed list if none is configured (barber-focused: 6–10 services).
+
+────────────────────────────────────────────────────────────
+PHASE 3 — BACKEND ROUTES (EXPRESS) — SMALL + TENANT-SAFE
+────────────────────────────────────────────────────────────
+Add these routes (names can match repo conventions, but keep them small and isolated):
+
+3.1 GET /api/quickbook/config
+Returns:
+{
+  enabled: true/false,
+  bookingExternalUrl: string|null,
+  demoMode: boolean,
+  services: [{ id, name, priceCents, durationMins }]
+}
+Must be scoped to workspaceId.
+
+3.2 POST /api/quickbook/intent/start
+Body:
+{ serviceId, serviceName, priceCents, durationMins }
+Action:
+- Create booking_intents row status="started"
+- Return { intentId }
+Prevent duplicates: if the same user triggers rapidly, allow but don’t spam leads; intent is okay.
+
+3.3 POST /api/quickbook/intent/lead
+Body:
+{ intentId, name, phone?, email? }
+Action:
+- Validate name + (phone OR email)
+- Upsert Lead for workspace:
+   - if existing lead match by phone/email, update it; else create new
+   - store status "Booking in progress" (or existing lead status field equivalent)
+   - store selected service info in lead metadata if you have a metadata field; if not, link via booking_intents.leadId
+- Update booking_intents:
+   status="lead_captured", leadId set, customer fields set
+Return: { ok: true, leadId }
+
+3.4 POST /api/quickbook/intent/click
+Body:
+{ intentId }
+Action:
+- Look up booking settings for workspace
+- Update booking_intents:
+   status="clicked_to_book", clickedToBookAt=now, bookingUrl=(external or demo)
+- Return:
+   If demoMode OR no externalBookingUrl:
+     { redirectType: "demo", demoUrl: "/demo-booking-confirmation?intentId=..." }
+   Else:
+     { redirectType: "external", externalUrl: "<bookingExternalUrl-with-optional-utms>" }
+
+3.5 POST /api/quickbook/intent/abandon
+Body: { intentId }
+Action: set status="abandoned" if not already clicked/confirmed.
+
+IMPORTANT: All endpoints must verify intentId belongs to current workspaceId (tenant isolation).
+
+────────────────────────────────────────────────────────────
+PHASE 4 — DEMO BOOKING CONFIRMATION PAGE (SIMPLE + CLEAN)
+────────────────────────────────────────────────────────────
+Create a small internal page/route in the frontend:
+Route: /demo-booking-confirmation?intentId=...
+
+UI Requirements (Square-level clean, but minimal):
+- Centered card, clean typography
+- Header: Business name/logo (use workspace brand if available)
+- Title: “Confirm your appointment”
+- Subtext: “Demo confirmation page — no payment required.”
+- Summary:
+  - Service name, price, duration
+  - Customer name/phone/email (if present)
+- Button: “Confirm Appointment (Demo)”
+- On confirm:
+   - Call POST /api/quickbook/demo/confirm with intentId
+   - Show success state: check icon + “You’re confirmed!”
+   - Provide button: “Return to chat” (just closes tab OR navigates back to site)
+
+Backend for demo confirm:
+POST /api/quickbook/demo/confirm
+- Verify workspaceId + intent ownership
+- Set booking_intents.status="demo_confirmed"
+- Create OUR Booking record (if bookings table exists) with:
+   provider="demo", status="confirmed_demo", link to leadId, store service info
+- Return { ok: true }
+
+Do NOT add payments, do NOT add external calls.
+
+────────────────────────────────────────────────────────────
+PHASE 5 — WIDGET UI STATE MACHINE (THE MAIN PART)
+────────────────────────────────────────────────────────────
+Add a “Quick Book” mode to the widget with deterministic states:
+
+States:
+- IDLE
+- SELECT_SERVICE
+- COLLECT_CONTACT
+- READY_TO_BOOK
+- DONE
+
+Flow:
+A) On widget open (or greeting), call GET /api/quickbook/config
+   - If enabled, render quick service buttons in-chat (as UI buttons/cards).
+B) SELECT_SERVICE:
+   - Clicking a service:
+     - POST /api/quickbook/intent/start → store intentId in widget state
+     - Show bot message: “Great choice. What’s your name and best phone number or email?”
+     - Move to COLLECT_CONTACT
+C) COLLECT_CONTACT:
+   - Render input form in chat (name + phone/email)
+   - On submit:
+     - POST /api/quickbook/intent/lead
+     - Show bot message: “Perfect — tap ‘Book Now’ to finish scheduling.”
+     - Move to READY_TO_BOOK
+D) READY_TO_BOOK:
+   - Render big “Book Now” button
+   - On click:
+     - POST /api/quickbook/intent/click
+     - If redirectType external: window.open(externalUrl, "_blank")
+     - If demo: open demoUrl (new tab or modal)
+   - After click, show message: “If you need anything else, I’m here.”
+E) Provide cancel/back:
+   - “Cancel booking” sets intent abandoned.
+
+Stability requirements:
+- Disable submit buttons while requests in flight
+- Handle refresh: if intentId exists in local state, resume at correct state by reading intent (optional). At minimum, don’t crash.
+- Never throw raw errors to user; show friendly fallback and still save lead.
+
+────────────────────────────────────────────────────────────
+PHASE 6 — DASHBOARD SURFACING (MINIMAL)
+────────────────────────────────────────────────────────────
+Add a small section in client panel:
+- “Booking Intents” list (latest 20)
+Columns: time, service, status, lead name/phone, clickedToBookAt
+This can be an admin-only page if faster, but client should see it.
+
+DO NOT redesign dashboards; just add a simple list/card using existing UI patterns.
+
+────────────────────────────────────────────────────────────
+DELIVERABLES
+────────────────────────────────────────────────────────────
+1) booking_intents table + migration
+2) booking settings storage (minimal)
+3) Express API routes under /api/quickbook/*
+4) Demo booking confirmation page + confirm route
+5) Widget “Quick Book” UI flow with service buttons, lead capture, book now redirect
+6) Minimal dashboard display of booking intents
+7) No Square SDK, no live slots, no OAuth, no payments
+
+IMPLEMENT NOW, WITH MINIMAL RISK AND MAX STABILITY.

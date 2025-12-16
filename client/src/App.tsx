@@ -33,6 +33,7 @@ import DemoAutoCare from "@/pages/demo-auto-care";
 import DemoBarbershop from "@/pages/demo-barbershop";
 import DemoFitness from "@/pages/demo-fitness";
 import DemoHandyman from "@/pages/demo-handyman";
+import DemoBookingConfirmation from "@/pages/demo-booking-confirmation";
 import DemoMedSpa from "@/pages/demo-med-spa";
 import DemoRealEstate from "@/pages/demo-real-estate";
 import DemoRestaurant from "@/pages/demo-restaurant";
@@ -85,6 +86,7 @@ function Router() {
       <Route path="/demo/barbershop" component={DemoBarbershop} />
       <Route path="/demo/fitness" component={DemoFitness} />
       <Route path="/demo/handyman" component={DemoHandyman} />
+      <Route path="/demo-booking-confirmation" component={DemoBookingConfirmation} />
       <Route path="/demo/med-spa" component={DemoMedSpa} />
       <Route path="/demo/real-estate" component={DemoRealEstate} />
       <Route path="/demo/restaurant" component={DemoRestaurant} />

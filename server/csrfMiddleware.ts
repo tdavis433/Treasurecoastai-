@@ -67,6 +67,7 @@ export function getSkipCsrfPaths(): string[] {
     "/api/chat",
     "/api/widget",
     "/api/health",
+    "/api/quickbook",
   ];
 }
 

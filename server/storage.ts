@@ -182,6 +182,16 @@ export interface IStorage {
   confirmBookingIntent(id: string): Promise<BookingIntent>;
   markBookingIntentRedirected(id: string): Promise<BookingIntent>;
   
+  // Quick Book v1 - Lead deduplication by phone/email
+  findLeadByContact(clientId: string, phone?: string, email?: string): Promise<Lead | undefined>;
+  upsertQuickBookLead(clientId: string, botId: string, sessionId: string, data: {
+    name: string;
+    phone?: string;
+    email?: string;
+    serviceName?: string;
+    intentId?: string;
+  }): Promise<Lead>;
+  
   // Inbox - conversation messages (overloaded - clientId optional for admin access)
   getSessionMessages(sessionId: string, clientId?: string): Promise<ChatAnalyticsEvent[]>;
   
@@ -1251,6 +1261,99 @@ export class DbStorage implements IStorage {
       .where(eq(bookingIntents.id, id))
       .returning();
     return updated;
+  }
+
+  // Quick Book v1 - Lead deduplication by phone/email (guardrail #2)
+  async findLeadByContact(clientId: string, phone?: string, email?: string): Promise<Lead | undefined> {
+    if (!phone && !email) return undefined;
+    
+    const conditions = [eq(leads.clientId, clientId)];
+    
+    // Match by phone first (preferred), then email
+    if (phone) {
+      const [lead] = await db
+        .select()
+        .from(leads)
+        .where(and(
+          eq(leads.clientId, clientId),
+          eq(leads.phone, phone)
+        ))
+        .limit(1);
+      if (lead) return lead;
+    }
+    
+    if (email) {
+      const [lead] = await db
+        .select()
+        .from(leads)
+        .where(and(
+          eq(leads.clientId, clientId),
+          eq(leads.email, email)
+        ))
+        .limit(1);
+      if (lead) return lead;
+    }
+    
+    return undefined;
+  }
+
+  // Quick Book v1 - Upsert lead with dedupe logic (guardrail #2)
+  async upsertQuickBookLead(clientId: string, botId: string, sessionId: string, data: {
+    name: string;
+    phone?: string;
+    email?: string;
+    serviceName?: string;
+    intentId?: string;
+  }): Promise<Lead> {
+    // Try to find existing lead by phone/email
+    const existingLead = await this.findLeadByContact(clientId, data.phone, data.email);
+    
+    if (existingLead) {
+      // Update existing lead with new info
+      const updates: Partial<Lead> = {
+        name: data.name,
+        status: 'booking_in_progress',
+        bookingIntent: true,
+        serviceRequested: data.serviceName,
+        metadata: {
+          ...(existingLead.metadata || {}),
+          quickBookIntentId: data.intentId,
+          lastQuickBookActivity: new Date().toISOString(),
+        }
+      };
+      
+      // Only update phone/email if provided and different
+      if (data.phone && data.phone !== existingLead.phone) updates.phone = data.phone;
+      if (data.email && data.email !== existingLead.email) updates.email = data.email;
+      
+      return this.updateLead(clientId, existingLead.id, updates);
+    }
+    
+    // Create new lead
+    const leadData: any = {
+      clientId,
+      botId,
+      sessionId,
+      name: data.name,
+      phone: data.phone || null,
+      email: data.email || null,
+      source: 'quick_book',
+      status: 'booking_in_progress',
+      bookingIntent: true,
+      serviceRequested: data.serviceName || null,
+    };
+    
+    // Only add metadata if we have intent ID
+    if (data.intentId) {
+      leadData.metadata = {
+        quickBookIntentId: data.intentId,
+        createdVia: 'quick_book_v1',
+      };
+    }
+    
+    const newLead = await this.createLead(leadData);
+    
+    return newLead;
   }
 
   async getSessionMessages(sessionId: string, clientId?: string): Promise<ChatAnalyticsEvent[]> {

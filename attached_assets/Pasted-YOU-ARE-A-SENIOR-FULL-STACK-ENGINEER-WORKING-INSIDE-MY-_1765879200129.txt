@@ -1,0 +1,312 @@
+YOU ARE A SENIOR FULL-STACK ENGINEER WORKING INSIDE MY EXISTING CODEBASE.
+
+PROJECT: Treasure Coast AI (agency-first multi-tenant platform)
+STACK (DO NOT CHANGE): Express.js backend + Drizzle ORM + Postgres (Neon) + React 18 (Vite) + Tailwind + shadcn/ui
+GOAL: Add a “Live Booking Inside Chat” system with:
+- Provider abstraction
+- DEMO provider (always works for sales demos)
+- Square provider integration (real availability + optional booking creation)
+- In-chat deterministic booking UI (state machine)
+- Booking Intent logging + Lead + Booking records
+- Demo Booking Page (Square-level clean) for DEMO mode
+
+ABSOLUTE RULES:
+1) DO NOT refactor unrelated code. Add this feature in a clean, isolated way.
+2) Multi-tenant must be enforced everywhere: ALL reads/writes must be scoped to workspaceId.
+3) No payment processing. Never collect or process card data. Booking handoff only.
+4) Deterministic booking flow: UI + state machine. AI does NOT decide steps.
+5) Must be stable: defensive coding, graceful fallbacks, minimal coupling.
+6) Keep changes minimal but production-quality. Prefer additive modules/files.
+
+THE REQUIRED USER EXPERIENCE (MUST MATCH):
+A) Widget chat booking flow:
+   - User clicks “Book Appointment” OR types “book” and bot offers “Book Appointment” button.
+   - Step 1: Choose Professional (list + Any available)
+   - Step 2: Choose Service (cards with price + duration)
+   - Step 3: Choose Date (next 14 days)
+   - Step 4: Choose Time (live time slots)
+   - Step 5: Collect contact (name + phone/email)
+   - Step 6: Log booking intent immediately when slot selected
+   - Step 7: Open embedded booking page in modal iframe (provider bookingSiteUrl)
+   - Step 8 (best effort): Confirm booking via provider API (Square) if available; else keep embed fallback.
+
+B) Platform logging:
+   - Every booking attempt creates/updates a Lead record (even partial).
+   - A successful booking creates a Booking record linked to the lead + workspace.
+   - Booking intents exist to track drop-off.
+
+────────────────────────────────────────────────────────────
+PHASE 0 — DISCOVER / MAP EXISTING CODEBASE (REQUIRED)
+────────────────────────────────────────────────────────────
+0.1 Locate:
+- Workspace/tenant identification + auth middleware (workspaceId source).
+- Existing Leads table + create/update patterns.
+- Existing Bookings table + create/update patterns.
+- Existing widget chat components + message renderer.
+- Existing admin/client dashboards and their data APIs.
+
+0.2 Create a short internal note file:
+docs/booking_in_chat_notes.md
+Include:
+- integration points
+- routes added
+- tables added
+- how to switch providers per workspace
+- how demo mode works
+
+────────────────────────────────────────────────────────────
+PHASE 1 — DATA MODEL (DRIZZLE) — ADDITIVE TABLES
+────────────────────────────────────────────────────────────
+Create NEW tables to avoid breaking existing ones.
+
+1.1 Table: booking_provider_connections
+- id (uuid pk)
+- workspaceId (indexed)
+- provider ("square")
+- environment ("sandbox"|"production")
+- status ("connected"|"disconnected"|"error")
+- squareMerchantId (nullable)
+- squareLocationId (nullable)
+- squareLocationName (nullable)
+- bookingSiteUrl (nullable)
+- accessTokenEnc (nullable)   // encrypted AES-256-GCM
+- refreshTokenEnc (nullable)
+- tokenExpiresAt (nullable)
+- scopes (jsonb nullable)
+- createdAt, updatedAt
+
+1.2 Table: booking_provider_cache
+- id (uuid pk)
+- workspaceId (indexed)
+- provider ("square"|"demo")
+- cacheType ("staff"|"services")
+- payload (jsonb)
+- version (int default 1)
+- syncedAt (timestamp)
+- createdAt, updatedAt
+
+1.3 Table: booking_intents
+- id (uuid pk)
+- workspaceId (indexed)
+- leadId (uuid nullable)
+- provider ("square"|"demo")
+- environment ("sandbox"|"production" nullable for demo)
+- status ("started"|"selected_slot"|"opened_embed"|"confirmed"|"abandoned"|"failed")
+- selectedTeamMemberId (text nullable)
+- selectedTeamMemberName (text nullable)
+- selectedServiceVariationId (text nullable)
+- selectedServiceVariationVersion (bigint/int nullable)
+- selectedServiceName (text nullable)
+- selectedPriceCents (int nullable)
+- selectedDurationMins (int nullable)
+- selectedStartAt (timestamp nullable)
+- customerName (text nullable)
+- customerPhone (text nullable)
+- customerEmail (text nullable)
+- providerBookingId (text nullable)
+- errorCode (text nullable)
+- errorDetail (text nullable)
+- metadata (jsonb nullable)
+- createdAt, updatedAt
+
+1.4 Migrations:
+- Create + apply drizzle migrations.
+- Ensure seeds still run.
+- Add demo seed option later (Phase 4).
+
+────────────────────────────────────────────────────────────
+PHASE 2 — BACKEND (EXPRESS) — PROVIDER ABSTRACTION + ROUTES
+────────────────────────────────────────────────────────────
+
+2.1 Create provider interface:
+server/booking/providers/types.ts
+
+Types:
+- StaffMember { id, displayName, avatarUrl?, isBookable? }
+- ServiceOption { serviceVariationId, serviceVariationVersion, name, durationMins, priceCents }
+- AvailabilitySlot { startAtISO, endAtISO?, teamMemberId, teamMemberName }
+- ProviderAdapter interface:
+  - getOptions(workspaceId): { staff: StaffMember[], services: ServiceOption[], bookingSiteUrl?: string }
+  - searchAvailability(workspaceId, args): AvailabilitySlot[]
+  - createBooking(workspaceId, args): { providerBookingId, manageUrl? }  // best-effort
+  - getEmbedUrl(workspaceId): string | null
+
+2.2 Token encryption:
+server/booking/crypto.ts
+- AES-256-GCM using env BOOKING_TOKEN_ENCRYPTION_KEY
+- encryptToBase64 / decryptFromBase64
+- store IV + tag + ciphertext as base64 blob
+
+2.3 Square adapter:
+server/booking/providers/squareAdapter.ts
+- Use official Square Node SDK (“square” package)
+- Support sandbox + production based on connection.environment
+- Implement:
+  A) OAuth connect routes:
+     - GET /api/booking/square/connect
+     - GET /api/booking/square/callback
+  B) Location selection:
+     - fetch locations; pick one (or prompt admin UI to choose)
+     - obtain bookingSiteUrl for iframe
+  C) Sync staff/services into booking_provider_cache
+  D) Availability via Bookings availability search
+  E) createBooking best-effort:
+     - if required scopes/subscription missing, return structured “fallback to embed” error
+
+2.4 Demo adapter:
+server/booking/providers/demoAdapter.ts
+- Provide staff/services from seed data
+- Generate availability slots dynamically
+- createBooking returns providerBookingId like “demo_XXXX”
+- embedUrl points to internal Demo Booking Page route in our app
+
+2.5 Provider selection per workspace:
+- Add or use existing workspace settings storage:
+  - bookingProvider = "demo" | "square"
+  - squareEnvironment default "sandbox" for testing
+- Build helper: getActiveBookingProvider(workspaceId)
+
+2.6 Widget-facing routes (provider-agnostic):
+- GET /api/booking/config
+- GET /api/booking/options
+- POST /api/booking/availability
+- POST /api/booking/intent/start
+- POST /api/booking/intent/select-slot
+- POST /api/booking/intent/open-embed
+- POST /api/booking/confirm
+All must validate workspaceId scoping.
+
+2.7 Admin routes:
+- GET /api/admin/booking/status
+- POST /api/admin/booking/provider (set demo/square + env)
+- POST /api/admin/booking/resync
+- POST /api/admin/booking/disconnect
+
+2.8 Logging integration:
+- On intent start or contact step: create/update Lead
+- On confirmed: create Booking (our DB) linked to lead + intent
+- Ensure partial form/unfinished attempts stay as Lead (per platform rules)
+
+────────────────────────────────────────────────────────────
+PHASE 3 — FRONTEND — ADMIN SETTINGS + WIDGET STATE MACHINE
+────────────────────────────────────────────────────────────
+
+3.1 Admin Settings UI:
+- Add “Bookings” panel:
+  - Provider selector: Demo / Square
+  - If Demo: show “Demo provider enabled”
+  - If Square:
+     - Connect button (OAuth)
+     - Environment selector (sandbox/prod)
+     - Location display
+     - Booking site URL display
+     - Resync button
+     - Disconnect button
+  - Show staff/services counts + last sync time
+Use shadcn/ui cards, badges, alerts, dialogs.
+
+3.2 Widget booking flow (deterministic):
+Implement booking mode inside widget with these states:
+- IDLE
+- SELECT_PRO
+- SELECT_SERVICE
+- SELECT_DATE
+- SELECT_TIME
+- CONTACT
+- EMBED
+- COMPLETE
+
+Rules:
+- On entering booking mode, call /api/booking/intent/start
+- Render UI elements (buttons/cards/date picker/slot chips)
+- Call /api/booking/availability to get live slots
+- On selecting a slot: /api/booking/intent/select-slot
+- On opening embed modal: /api/booking/intent/open-embed
+- Confirm button in modal calls /api/booking/confirm
+- If confirm fails: show “Continue in booking page” and keep iframe open (fallback)
+- Exit booking: mark intent abandoned (unless confirmed)
+
+3.3 UI polish for “Square-level clean”:
+- Minimal text, high whitespace, crisp cards
+- Clear step indicator
+- Summary card before embed
+- Loading states and skeletons
+- Friendly error toasts (not raw errors)
+
+────────────────────────────────────────────────────────────
+PHASE 4 — DEMO BOOKING PAGE (SQUARE-LEVEL CLEAN) — UI SPEC
+────────────────────────────────────────────────────────────
+Create an internal route/page for DEMO provider embed:
+- Route: /demo-booking/:intentId (or query ?intentId=)
+- This page MUST look like a real booking confirmation/handoff page.
+- It MUST NOT collect payment.
+- It MUST confirm the selected details and allow “Finalize demo booking”.
+
+DESIGN STYLE (SQUARE-LEVEL CLEAN):
+- White background (or your brand’s glassmorphism but very restrained)
+- Centered container max-w-lg
+- Top brand row: logo + business name
+- Big title: “Confirm your appointment”
+- Subtitle: “This is a demo confirmation page — no payment required.”
+- Appointment summary card:
+  - Professional name
+  - Service name
+  - Duration
+  - Price (display)
+  - Date + time (formatted)
+  - Location / address (demo)
+- Customer form section:
+  - Name
+  - Phone
+  - Email
+  - Notes (optional)
+- Primary CTA button: “Confirm Appointment”
+- Secondary CTA: “Back to chat”
+- Success state:
+  - Large check icon
+  - “You’re confirmed!”
+  - “A confirmation message would be sent in a real booking flow.”
+  - “Return to chat” button closes modal (postMessage) OR provides instruction
+
+TECH REQUIREMENTS:
+- Reads the booking_intent by intentId (server route)
+- If intent missing or wrong workspace, show clean error page
+- On confirm:
+  - calls /api/booking/confirm (demo adapter) OR /api/demo/confirm-intent
+  - creates OUR booking record (status confirmed) and links to lead + intent
+- Provide a postMessage to parent iframe:
+  - { type: "DEMO_BOOKING_CONFIRMED", intentId }
+So the widget can show success instantly and close the modal.
+
+ACCESSIBILITY:
+- Proper labels, focus states, keyboard navigable
+- Mobile-first spacing
+
+────────────────────────────────────────────────────────────
+PHASE 5 — STABILITY / DEFENSIVE ENGINEERING (MINIMUM REQUIRED)
+────────────────────────────────────────────────────────────
+- Rate limit availability + confirm endpoints per IP + workspace.
+- Use cache for staff/services (24h TTL); never cache availability.
+- Normalize provider errors to user-friendly fallback messaging.
+- Ensure intentId operations verify workspace ownership.
+
+────────────────────────────────────────────────────────────
+PHASE 6 — MANUAL QA (SHORT)
+────────────────────────────────────────────────────────────
+DEMO:
+- full flow works end-to-end with modal iframe confirmation
+SQUARE (sandbox):
+- connect + sync + slots display
+- confirm attempts booking or cleanly falls back to embed
+REGRESSION:
+- existing leads/bookings flows unaffected
+
+DELIVERABLES:
+- Migrations
+- Backend routes
+- Providers (demo + square)
+- Admin settings UI
+- Widget booking flow UI
+- Demo booking page
+- Docs note file
+IMPLEMENT NOW.

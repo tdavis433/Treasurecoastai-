@@ -283,6 +283,7 @@ export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;
 export type Appointment = typeof appointments.$inferSelect;
 
 // Booking intents - tracks all booking attempts (including partials) for proper handling
+// Quick Book v1: Service buttons → capture contact → log lead + booking intent → show "Book Now" → redirect
 export const bookingIntents = pgTable("booking_intents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull(),
@@ -294,12 +295,15 @@ export const bookingIntents = pgTable("booking_intents", {
   // Booking details
   bookingType: text("booking_type").notNull().default("appointment"), // tour, phone_call, consultation, service_booking, etc.
   serviceName: text("service_name"), // e.g., "Full Grooming", "Oil Change"
+  serviceId: text("service_id"), // Matches service ID from catalog
+  priceCents: integer("price_cents"), // Price in cents (e.g., 3500 = $35.00)
+  durationMins: integer("duration_mins"), // Duration in minutes
   requestedDateTime: text("requested_datetime"), // User's preferred time/date as text
   scheduledAt: timestamp("scheduled_at"), // Parsed datetime if available
   notes: text("notes"),
   
   // Handling mode
-  handling: text("handling").notNull().default("internal"), // 'internal' or 'external'
+  handling: text("handling").notNull().default("internal"), // 'internal', 'external', or 'demo'
   externalUrl: text("external_url"), // URL for external redirects
   externalProviderName: text("external_provider_name"), // e.g., "Square", "Calendly"
   
@@ -308,8 +312,21 @@ export const bookingIntents = pgTable("booking_intents", {
   contactPhone: text("contact_phone"),
   contactEmail: text("contact_email"),
   
-  // Status tracking
-  status: text("status").notNull().default("intent"), // intent, confirmed, redirected, abandoned, cancelled
+  // Status tracking - Quick Book flow states
+  // started: User clicked service button
+  // lead_captured: Contact info collected
+  // clicked_to_book: User clicked "Book Now" button
+  // demo_confirmed: Demo booking confirmed (internal demo mode)
+  // redirected: User redirected to external booking page
+  // confirmed: Booking confirmed (via webhook or manual)
+  // abandoned: User left without completing
+  // cancelled: User or admin cancelled
+  status: text("status").notNull().default("started"),
+  
+  // Timestamps for funnel analytics
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  leadCapturedAt: timestamp("lead_captured_at"),
+  clickedToBookAt: timestamp("clicked_to_book_at"),
   
   // Metadata
   metadata: json("metadata").$type<Record<string, any>>().default({}),
@@ -322,6 +339,7 @@ export const bookingIntents = pgTable("booking_intents", {
   sessionIdIdx: index("booking_intents_session_id_idx").on(table.sessionId),
   statusIdx: index("booking_intents_status_idx").on(table.status),
   createdAtIdx: index("booking_intents_created_at_idx").on(table.createdAt),
+  leadIdIdx: index("booking_intents_lead_id_idx").on(table.leadId),
 }));
 
 export const insertBookingIntentSchema = createInsertSchema(bookingIntents).omit({
@@ -330,11 +348,14 @@ export const insertBookingIntentSchema = createInsertSchema(bookingIntents).omit
   updatedAt: true,
   confirmedAt: true,
   redirectedAt: true,
+  startedAt: true,
+  leadCapturedAt: true,
+  clickedToBookAt: true,
 });
 
 export type InsertBookingIntent = z.infer<typeof insertBookingIntentSchema>;
 export type BookingIntent = typeof bookingIntents.$inferSelect;
-export type BookingIntentStatus = 'intent' | 'confirmed' | 'redirected' | 'abandoned' | 'cancelled';
+export type BookingIntentStatus = 'started' | 'lead_captured' | 'clicked_to_book' | 'demo_confirmed' | 'redirected' | 'confirmed' | 'abandoned' | 'cancelled';
 
 export const clientSettings = pgTable("client_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -462,6 +483,10 @@ export const clientSettings = pgTable("client_settings", {
   bookingMode: text("booking_mode").notNull().default("internal"), // 'internal' for in-chat confirmation, 'external' for redirect to booking URL
   externalBookingUrl: text("external_booking_url"), // Client's existing booking system (Calendly, Acuity, etc.)
   externalBookingProviderName: text("external_booking_provider_name"), // e.g., "Square", "Acuity", "Vagaro" - shown in CTA
+  
+  // Quick Book v1 settings
+  quickBookEnabled: boolean("quick_book_enabled").notNull().default(true), // Enable/disable Quick Book flow
+  quickBookDemoMode: boolean("quick_book_demo_mode").notNull().default(false), // If true, use demo confirmation page instead of external redirect
   externalPaymentUrl: text("external_payment_url"), // Client's existing payment page (Square, PayPal, etc.)
   
   // Per-appointment-type mode overrides (Phase 3 client overrides)

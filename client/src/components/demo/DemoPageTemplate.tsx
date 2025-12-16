@@ -103,6 +103,20 @@ export interface DemoPageConfig {
   botId: string;
 }
 
+// Quick Book state type
+type QuickBookWidgetState = 
+  | "SELECT_SERVICE"   // Initial: Show service buttons
+  | "COLLECT_CONTACT"  // Show contact form
+  | "READY_TO_BOOK"    // Show "Book Now" button
+  | "DONE";            // Completed
+
+interface QuickBookData {
+  intentId: string | null;
+  selectedService: { name: string; price: string; duration?: string } | null;
+  contact: { name: string; phone: string; email: string } | null;
+  leadId: string | null;
+}
+
 // Floating Chat Widget Component
 function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -112,6 +126,18 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
   const [serviceSelected, setServiceSelected] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  
+  // Quick Book v1 state
+  const [quickBookState, setQuickBookState] = useState<QuickBookWidgetState>("SELECT_SERVICE");
+  const [quickBookData, setQuickBookData] = useState<QuickBookData>({
+    intentId: null,
+    selectedService: null,
+    contact: null,
+    leadId: null,
+  });
+  const [contactForm, setContactForm] = useState({ name: "", phone: "", email: "" });
+  const [quickBookLoading, setQuickBookLoading] = useState(false);
+  const [quickBookError, setQuickBookError] = useState<string | null>(null);
 
   // Simple welcome message - services will be shown as buttons
   const initialGreeting = `Welcome to ${config.business.name}! What service would you like to book today?`;
@@ -121,7 +147,8 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
     isLoading, 
     sendMessage, 
     handleBookingClick,
-    resetChat 
+    resetChat,
+    sessionId,
   } = useChatAssistant({
     clientId: config.clientId,
     botId: config.botId,
@@ -129,15 +156,156 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
     initialGreeting,
   });
 
-  // Handle service button click
-  const handleServiceClick = (serviceName: string, price: string) => {
+  // Quick Book: Handle service button click
+  const handleServiceClick = async (serviceName: string, price: string, duration?: string) => {
     setServiceSelected(true);
-    sendMessage(`I'd like to book a ${serviceName} (${price})`);
+    setQuickBookLoading(true);
+    setQuickBookError(null);
+    
+    try {
+      // Call Quick Book API to create intent
+      const response = await fetch(`/api/quickbook/intent/start/${config.clientId}/${config.botId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          serviceName,
+          priceCents: price ? parseInt(price.replace(/[^0-9]/g, "")) * 100 : undefined,
+          sessionId,
+          botId: config.botId,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to start booking");
+      }
+      
+      const data = await response.json();
+      
+      setQuickBookData(prev => ({
+        ...prev,
+        intentId: data.intentId,
+        selectedService: { name: serviceName, price, duration },
+      }));
+      
+      setQuickBookState("COLLECT_CONTACT");
+      
+      // Note: We do NOT send a message to the AI here.
+      // Quick Book UI controls the entire flow deterministically.
+    } catch (err) {
+      console.error("[QuickBook] Error starting intent:", err);
+      setQuickBookError("Unable to start booking. Please try again.");
+      // Reset to allow retry
+      setServiceSelected(false);
+    } finally {
+      setQuickBookLoading(false);
+    }
   };
 
-  // Reset service selection when chat is reset
+  // Quick Book: Submit contact form
+  const handleContactSubmit = async () => {
+    if (!contactForm.name.trim() || (!contactForm.phone.trim() && !contactForm.email.trim())) {
+      setQuickBookError("Please provide your name and at least a phone or email.");
+      return;
+    }
+    
+    if (!quickBookData.intentId) {
+      setQuickBookError("Booking session expired. Please select a service again.");
+      return;
+    }
+    
+    setQuickBookLoading(true);
+    setQuickBookError(null);
+    
+    try {
+      const response = await fetch(`/api/quickbook/intent/lead/${config.clientId}/${config.botId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          intentId: quickBookData.intentId,
+          name: contactForm.name.trim(),
+          phone: contactForm.phone.trim() || undefined,
+          email: contactForm.email.trim() || undefined,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Failed to save contact");
+      }
+      
+      const data = await response.json();
+      
+      setQuickBookData(prev => ({
+        ...prev,
+        contact: { ...contactForm },
+        leadId: data.leadId,
+      }));
+      
+      setQuickBookState("READY_TO_BOOK");
+    } catch (err: any) {
+      console.error("[QuickBook] Error saving contact:", err);
+      setQuickBookError(err.message || "Unable to save contact. Please try again.");
+    } finally {
+      setQuickBookLoading(false);
+    }
+  };
+
+  // Quick Book: Click "Book Now" button
+  const handleQuickBookNow = async () => {
+    if (!quickBookData.intentId) return;
+    
+    setQuickBookLoading(true);
+    setQuickBookError(null);
+    
+    try {
+      const response = await fetch(`/api/quickbook/intent/click/${config.clientId}/${config.botId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intentId: quickBookData.intentId }),
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to process booking");
+      }
+      
+      const data = await response.json();
+      
+      setQuickBookState("DONE");
+      
+      // Redirect to external booking or demo confirmation
+      if (data.redirectType === "demo") {
+        // Open demo confirmation in new tab with query params
+        const params = new URLSearchParams({
+          service: quickBookData.selectedService?.name || "",
+          price: quickBookData.selectedService?.price || "",
+          name: quickBookData.contact?.name || "",
+          business: config.business.name,
+        });
+        window.open(`/demo-booking-confirmation?${params.toString()}`, "_blank");
+      } else {
+        // Open external booking URL
+        window.open(data.url, "_blank");
+      }
+    } catch (err) {
+      console.error("[QuickBook] Error processing book now:", err);
+      setQuickBookError("Unable to proceed. Please try again.");
+    } finally {
+      setQuickBookLoading(false);
+    }
+  };
+
+  // Reset service selection and Quick Book state when chat is reset
   const handleResetChat = () => {
     setServiceSelected(false);
+    setQuickBookState("SELECT_SERVICE");
+    setQuickBookData({
+      intentId: null,
+      selectedService: null,
+      contact: null,
+      leadId: null,
+    });
+    setContactForm({ name: "", phone: "", email: "" });
+    setQuickBookError(null);
     resetChat();
   };
 
@@ -252,15 +420,15 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
                     {message.content}
                   </div>
                   
-                  {/* Service Selection Buttons - show after first assistant message */}
-                  {message.role === "assistant" && index === 0 && !serviceSelected && !isLoading && (
+                  {/* Service Selection Buttons - show after first assistant message (Quick Book SELECT_SERVICE state) */}
+                  {message.role === "assistant" && index === 0 && quickBookState === "SELECT_SERVICE" && !isLoading && !quickBookLoading && (
                     <div className="mt-3 w-full space-y-2" data-testid="service-buttons-container">
                       <p className="text-xs text-white/50 mb-2">Select a service:</p>
                       <div className="grid grid-cols-1 gap-2">
                         {config.services.slice(0, 6).map((service, sIndex) => (
                           <button
                             key={service.name}
-                            onClick={() => handleServiceClick(service.name, service.price || '')}
+                            onClick={() => handleServiceClick(service.name, service.price || '', service.duration)}
                             className="w-full text-left px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-cyan-500/50 transition-all group"
                             data-testid={`button-service-${sIndex}`}
                           >
@@ -299,7 +467,7 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
                 </div>
               ))}
               
-              {isLoading && (
+              {(isLoading || quickBookLoading) && (
                 <div className="flex justify-start">
                   <div className="bg-[#1A1D24] rounded-2xl px-4 py-3 text-sm border border-white/5">
                     <span className="inline-flex gap-1 text-cyan-400">
@@ -310,6 +478,110 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
                   </div>
                 </div>
               )}
+              
+              {/* Quick Book: Contact Collection Form */}
+              {quickBookState === "COLLECT_CONTACT" && !quickBookLoading && (
+                <div className="mt-3 p-4 bg-[#1A1D24] rounded-2xl border border-white/10" data-testid="quickbook-contact-form">
+                  <div className="flex items-center gap-2 mb-3">
+                    <CheckCircle2 className="h-5 w-5 text-cyan-400" />
+                    <span className="text-sm font-medium text-white">
+                      {quickBookData.selectedService?.name}
+                      {quickBookData.selectedService?.price && (
+                        <span className="text-cyan-400 ml-2">{quickBookData.selectedService.price}</span>
+                      )}
+                    </span>
+                  </div>
+                  <p className="text-xs text-white/60 mb-3">Enter your contact details to continue:</p>
+                  <div className="space-y-2">
+                    <Input
+                      data-testid="input-quickbook-name"
+                      placeholder="Your Name *"
+                      value={contactForm.name}
+                      onChange={(e) => setContactForm(f => ({ ...f, name: e.target.value }))}
+                      className="bg-[#0B0E13] border-white/10 text-white text-sm placeholder:text-white/40"
+                    />
+                    <Input
+                      data-testid="input-quickbook-phone"
+                      type="tel"
+                      placeholder="Phone Number"
+                      value={contactForm.phone}
+                      onChange={(e) => setContactForm(f => ({ ...f, phone: e.target.value }))}
+                      className="bg-[#0B0E13] border-white/10 text-white text-sm placeholder:text-white/40"
+                    />
+                    <Input
+                      data-testid="input-quickbook-email"
+                      type="email"
+                      placeholder="Email Address"
+                      value={contactForm.email}
+                      onChange={(e) => setContactForm(f => ({ ...f, email: e.target.value }))}
+                      className="bg-[#0B0E13] border-white/10 text-white text-sm placeholder:text-white/40"
+                    />
+                  </div>
+                  {quickBookError && (
+                    <p className="text-xs text-red-400 mt-2" data-testid="quickbook-error">{quickBookError}</p>
+                  )}
+                  <Button
+                    data-testid="button-quickbook-continue"
+                    onClick={handleContactSubmit}
+                    disabled={!contactForm.name.trim() || (!contactForm.phone.trim() && !contactForm.email.trim())}
+                    className={cn(
+                      "w-full mt-3 text-white transition-all",
+                      `bg-gradient-to-r ${config.colors.primary} hover:opacity-90`
+                    )}
+                  >
+                    Continue to Book
+                  </Button>
+                </div>
+              )}
+              
+              {/* Quick Book: Ready to Book Button */}
+              {quickBookState === "READY_TO_BOOK" && !quickBookLoading && (
+                <div className="mt-3 p-4 bg-[#1A1D24] rounded-2xl border border-cyan-500/30" data-testid="quickbook-ready">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-400" />
+                    <span className="text-sm font-medium text-white">Contact saved!</span>
+                  </div>
+                  <p className="text-xs text-white/60 mb-3">
+                    You're all set, {quickBookData.contact?.name}. Click below to complete your booking.
+                  </p>
+                  {quickBookError && (
+                    <p className="text-xs text-red-400 mb-2" data-testid="quickbook-error">{quickBookError}</p>
+                  )}
+                  <Button
+                    data-testid="button-quickbook-book-now"
+                    onClick={handleQuickBookNow}
+                    className={cn(
+                      "w-full text-white transition-all",
+                      `bg-gradient-to-r ${config.colors.primary} hover:opacity-90 shadow-lg`
+                    )}
+                  >
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Book Now
+                    <ExternalLink className="h-3 w-3 ml-2" />
+                  </Button>
+                </div>
+              )}
+              
+              {/* Quick Book: Completed State */}
+              {quickBookState === "DONE" && (
+                <div className="mt-3 p-4 bg-[#1A1D24] rounded-2xl border border-green-500/30" data-testid="quickbook-done">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-400" />
+                    <span className="text-sm font-medium text-green-400">Booking in Progress!</span>
+                  </div>
+                  <p className="text-xs text-white/60">
+                    A new tab has opened for you to complete your booking. If nothing happened, 
+                    <button 
+                      onClick={handleQuickBookNow} 
+                      className="text-cyan-400 underline ml-1"
+                      data-testid="button-quickbook-retry"
+                    >
+                      click here
+                    </button>.
+                  </p>
+                </div>
+              )}
+              
               <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
