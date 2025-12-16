@@ -112,7 +112,13 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const initialGreeting = `Hi! Welcome to ${config.business.name}. I'm your AI assistant and I'm here to help answer your questions, book appointments, or provide information about our services. How can I help you today?`;
+  // Generate welcome message with services list
+  const servicesList = config.services
+    .slice(0, 6)
+    .map(s => `• ${s.name} - ${s.price}`)
+    .join('\n');
+  
+  const initialGreeting = `Welcome to ${config.business.name}! Here are our services:\n\n${servicesList}\n\nWhich service would you like to book?`;
 
   const { 
     messages, 

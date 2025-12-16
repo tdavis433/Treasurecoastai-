@@ -12056,6 +12056,33 @@ These suggestions should be relevant to what was just discussed and help guide t
       // Get widget settings from database
       const widgetConfig = await storage.getWidgetSettingsWithDefaults(botId);
       
+      // Get client settings for services catalog
+      const clientSettings = await storage.getSettings(clientId);
+      const servicesCatalog = (clientSettings?.servicesCatalog || []) as Array<{
+        id: string;
+        name: string;
+        description?: string;
+        price?: string;
+        active: boolean;
+      }>;
+      
+      // Generate dynamic welcome message with services list if available
+      const businessName = botConfig.businessProfile?.businessName || 'AI';
+      let welcomeMessage = widgetConfig.welcomeMessage;
+      
+      if (!welcomeMessage) {
+        const activeServices = servicesCatalog.filter(s => s.active !== false);
+        if (activeServices.length > 0) {
+          const servicesList = activeServices
+            .slice(0, 6) // Limit to 6 services for readability
+            .map(s => s.price ? `• ${s.name} - ${s.price}` : `• ${s.name}`)
+            .join('\n');
+          welcomeMessage = `Welcome to ${businessName}! Here are our services:\n\n${servicesList}\n\nWhich service would you like to book?`;
+        } else {
+          welcomeMessage = `Hi! I'm the ${businessName} assistant. How can I help you today?`;
+        }
+      }
+      
       // Generate signed widget token (expires in 24 hours)
       const widgetToken = generateWidgetToken(clientId, botId, 86400);
       
@@ -12080,7 +12107,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           showPoweredBy: widgetConfig.showPoweredBy,
           headerTitle: widgetConfig.headerTitle || botConfig.businessProfile?.businessName || 'Chat Assistant',
           headerSubtitle: widgetConfig.headerSubtitle,
-          welcomeMessage: widgetConfig.welcomeMessage || `Hi! I'm the ${botConfig.businessProfile?.businessName || 'AI'} assistant. How can I help you today?`,
+          welcomeMessage: welcomeMessage,
           placeholderText: widgetConfig.placeholderText,
           offlineMessage: widgetConfig.offlineMessage,
           autoOpen: widgetConfig.autoOpen,

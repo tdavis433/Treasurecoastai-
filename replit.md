@@ -22,6 +22,7 @@ The platform operates on a two-surface system:
 *   **AI Conversation Analysis:** Asynchronously analyzes conversations for summaries, user intent, sentiment, lead quality, and booking intent.
 *   **Needs Review / Flagged Conversations System:** AI automatically flags critical conversations for admin review.
 *   **Chat Widget:** Fully themeable, glassmorphism-designed, mobile-responsive widget with dynamic color theming (CSS variables), business-type-specific icons, and a visual editor. Widget colors automatically match demo page branding via `--tcai-primary`, `--tcai-primary-rgb`, and `--tcai-primary-hover` CSS variables.
+*   **Services Catalog & Dynamic Welcome Messages:** Clients can configure a services catalog with individual service details (name, price, description, booking URL). The chat widget's initial greeting dynamically displays available services with prices, making it easy for customers to choose what they need. For external booking mode, each service can have its own direct booking URL.
 *   **Client Analytics:** Provides view-only access to conversation history, lead management, and booking overviews.
 *   **Super Admin Dashboard:** Centralized hub for platform management, client/assistant management, template galleries, global knowledge, API key management, system logs, and user roles.
 *   **Assistant Editor (Bot Builder):** Tools for defining AI persona, knowledge management, automation setup, channel customization, and a testing sandbox.
