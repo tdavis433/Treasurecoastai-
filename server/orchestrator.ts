@@ -1072,8 +1072,10 @@ class ConversationOrchestrator {
           bookingType: postProcessResult.bookingType,
           bookingMode,
           bookingSaved: postProcessResult.bookingSaved,
-          externalBookingUrl: bookingUrl,
-          externalBookingProviderName: bookingMode === 'external' ? (clientSettings?.externalBookingProviderName || null) : null,
+          // Only include externalBookingUrl when we actually want to show the booking button
+          // This prevents the widget's legacy fallback from showing the button prematurely
+          externalBookingUrl: shouldEmitBookingAction ? bookingUrl : null,
+          externalBookingProviderName: shouldEmitBookingAction && bookingMode === 'external' ? (clientSettings?.externalBookingProviderName || null) : null,
           externalPaymentUrl: postProcessResult.showBooking ? (clientSettings?.externalPaymentUrl || botConfig.externalPaymentUrl || null) : null,
           suggestedReplies: [],
           leadCaptured: postProcessResult.leadCaptured,
