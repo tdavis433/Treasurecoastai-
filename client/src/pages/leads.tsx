@@ -206,12 +206,15 @@ export default function LeadsPage() {
   const rawLeads = leadsData?.leads || [];
   
   // Apply client-side filters (tag and booking status)
+  // Tag filter supports comma-separated values for OR condition
   const leads = useMemo(() => {
     let filtered = rawLeads;
     
     if (tagFilter) {
+      // Support OR condition with comma-separated tags
+      const filterTags = tagFilter.split(',').map(t => t.trim());
       filtered = filtered.filter(lead => 
-        lead.tags?.includes(tagFilter)
+        filterTags.some(ft => lead.tags?.includes(ft))
       );
     }
     
@@ -224,57 +227,66 @@ export default function LeadsPage() {
     return filtered;
   }, [rawLeads, tagFilter, bookingStatusFilter]);
   
-  // Quick filter presets for sober living operator console
-  const FILTER_PRESETS = [
-    { 
-      id: 'admissions', 
-      label: 'Tours / Callbacks', 
-      icon: Calendar,
-      apply: () => {
-        setTagFilter('intent:admissions_intake');
-        setBookingStatusFilter('');
-        setStatusFilter('');
-        setPriorityFilter('');
-        setActivePreset('admissions');
-      }
-    },
-    { 
-      id: 'handoff', 
-      label: 'Wants Human', 
-      icon: User,
-      apply: () => {
-        setTagFilter('intent:human_handoff');
-        setBookingStatusFilter('');
-        setStatusFilter('');
-        setPriorityFilter('');
-        setActivePreset('handoff');
-      }
-    },
-    { 
+  // Check if any leads have sober living tags (to conditionally show those presets)
+  const hasSoberLivingLeads = useMemo(() => {
+    return rawLeads.some(lead => 
+      lead.tags?.some(t => 
+        t.startsWith('intent:') || 
+        t === 'flag:tour_request' || 
+        t === 'flag:callback_request'
+      )
+    );
+  }, [rawLeads]);
+  
+  // Quick filter presets - generic presets for all, sober living specific shown conditionally
+  const FILTER_PRESETS = useMemo(() => {
+    const presets = [];
+    
+    // Sober living specific presets (only show if relevant leads exist)
+    if (hasSoberLivingLeads) {
+      presets.push({ 
+        id: 'tours_callbacks', 
+        label: 'Tours / Callbacks', 
+        icon: Calendar,
+        // Use comma-separated tags for OR filter
+        tagFilter: 'flag:tour_request,flag:callback_request',
+        bookingFilter: '',
+      });
+      presets.push({ 
+        id: 'handoff', 
+        label: 'Wants Human', 
+        icon: User,
+        tagFilter: 'intent:human_handoff',
+        bookingFilter: '',
+      });
+    }
+    
+    // Generic presets for all business types
+    presets.push({ 
       id: 'hot_leads', 
       label: 'Hot Leads', 
       icon: Star,
-      apply: () => {
-        setTagFilter('flag:hot_lead');
-        setBookingStatusFilter('');
-        setStatusFilter('');
-        setPriorityFilter('');
-        setActivePreset('hot_leads');
-      }
-    },
-    { 
+      tagFilter: 'flag:hot_lead',
+      bookingFilter: '',
+    });
+    presets.push({ 
       id: 'followup', 
       label: 'Needs Follow-up', 
       icon: Clock,
-      apply: () => {
-        setTagFilter('');
-        setBookingStatusFilter('pending_followup');
-        setStatusFilter('');
-        setPriorityFilter('');
-        setActivePreset('followup');
-      }
-    },
-  ];
+      tagFilter: '',
+      bookingFilter: 'pending_followup',
+    });
+    
+    return presets;
+  }, [hasSoberLivingLeads]);
+  
+  const applyPreset = (preset: typeof FILTER_PRESETS[0]) => {
+    setTagFilter(preset.tagFilter);
+    setBookingStatusFilter(preset.bookingFilter);
+    setStatusFilter('');
+    setPriorityFilter('');
+    setActivePreset(preset.id);
+  };
   
   const clearPresets = () => {
     setTagFilter('');
@@ -467,7 +479,7 @@ export default function LeadsPage() {
                   key={preset.id}
                   variant={activePreset === preset.id ? "default" : "outline"}
                   size="sm"
-                  onClick={preset.apply}
+                  onClick={() => applyPreset(preset)}
                   className={activePreset === preset.id 
                     ? "bg-cyan-500 hover:bg-cyan-600 text-white" 
                     : "bg-white/5 border-white/10 text-white/85 hover:bg-white/10"

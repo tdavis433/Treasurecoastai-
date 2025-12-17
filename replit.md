@@ -116,11 +116,17 @@ The sober living template uses a deterministic intent router (`server/recoveryRo
 - `intent:general` - Catch-all for unclassified (priority: 10)
 
 ### Dashboard Quick Filters
-The Leads page includes quick filter presets for sober living operators:
-- **Tours / Callback Requests** → `flag:tour_request` OR `flag:callback_request`
+The Leads page includes quick filter presets that are conditionally shown based on lead data:
+
+**Sober Living Specific** (only shown when leads have recovery intent tags):
+- **Tours / Callbacks** → `flag:tour_request` OR `flag:callback_request`
 - **Wants Human** → `intent:human_handoff`
+
+**Generic** (shown for all business types):
 - **Hot Leads** → `flag:hot_lead`
 - **Needs Follow-up** → `booking_status=pending_followup`
+
+The filter system supports comma-separated tags for OR conditions (e.g., `flag:tour_request,flag:callback_request`).
 
 ### Tour vs Callback Split
 The recovery router distinguishes tour requests from callback requests:
