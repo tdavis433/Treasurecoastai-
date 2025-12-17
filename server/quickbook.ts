@@ -314,11 +314,10 @@ export function registerQuickBookRoutes(app: Express) {
       // - Create appointment for staff follow-up (with dedupe check)
       // - Return confirmation message only
       if (handling === 'internal') {
-        // Update lead status to pending_followup
+        // Update lead with pending_followup status (keep status 'new' until staff confirms)
         if (intent.leadId) {
           await storage.updateLead(clientId, intent.leadId, { 
             bookingStatus: 'pending_followup',
-            status: 'qualified',
           });
         }
         
