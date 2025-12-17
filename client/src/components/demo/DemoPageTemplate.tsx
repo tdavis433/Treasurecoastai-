@@ -85,6 +85,8 @@ export interface DemoPageConfig {
     primary: string;
     accent: string;
     gradient: string;
+    particleRgb?: string;
+    secondaryRgb?: string;
   };
   features: string[];
   services: ServiceItem[];
@@ -101,6 +103,8 @@ export interface DemoPageConfig {
   ctaText: string;
   clientId: string;
   botId: string;
+  heroVariant?: "default" | "premium";
+  BackgroundFX?: React.ComponentType<{ primaryRgb?: string; secondaryRgb?: string }>;
 }
 
 // Quick Book state type
@@ -728,12 +732,220 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
   );
 }
 
+// Premium Hero Section for flagship demos
+function PremiumHero({ config }: { config: DemoPageConfig }) {
+  const primaryHex = config.colors.gradient.includes('#') ? config.colors.gradient.split(' ')[0] : '#00E5CC';
+  
+  return (
+    <section className="relative text-white pt-20 pb-16">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="text-center space-y-8">
+          <div 
+            className="relative p-8 rounded-2xl mx-auto max-w-3xl overflow-visible"
+            style={{
+              background: 'rgba(0, 0, 0, 0.25)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255, 255, 255, 0.04)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
+            }}
+          >
+            <div 
+              className="absolute inset-0 rounded-2xl pointer-events-none"
+              style={{
+                background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 50%)'
+              }}
+            />
+            
+            <div className="space-y-6 relative">
+              <Badge className="bg-cyan-500/10 text-cyan-400 border-cyan-400/25 shadow-[0_0_20px_rgba(0,229,204,0.1)]">
+                <Sparkles className="h-3 w-3 mr-1" style={{ filter: 'drop-shadow(0 0 4px rgba(0,229,204,0.5))' }} />
+                Treasure Coast AI - Live Demo
+              </Badge>
+              
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold" style={{ lineHeight: 1.2 }} data-testid="hero-title">
+                <span 
+                  className="block text-transparent bg-clip-text pb-1"
+                  style={{
+                    backgroundImage: `linear-gradient(135deg, ${primaryHex} 0%, ${primaryHex}dd 25%, ${primaryHex}88 50%, #A78BFA 75%, #C4B5FD 100%)`,
+                    filter: `drop-shadow(0 0 30px ${primaryHex}4d)`,
+                    WebkitBackgroundClip: 'text'
+                  }}
+                >
+                  {config.business.name}
+                </span>
+                <span 
+                  className="block text-transparent bg-clip-text mt-2"
+                  style={{
+                    backgroundImage: 'linear-gradient(90deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.9) 50%, rgba(255,255,255,0.6) 100%)',
+                    fontSize: '0.45em',
+                    fontWeight: 500,
+                    letterSpacing: '0.05em'
+                  }}
+                >
+                  {config.business.tagline}
+                </span>
+              </h1>
+              
+              <div 
+                className="h-[2px] w-64 mx-auto mt-4 rounded-full"
+                style={{
+                  background: `linear-gradient(90deg, transparent, ${primaryHex}, #A855F7, ${primaryHex}, transparent)`,
+                  backgroundSize: '200% 100%',
+                  animation: 'gradientSlide 20s linear infinite',
+                  opacity: 0.2
+                }}
+              />
+              
+              <p className="text-base text-white/55 leading-relaxed max-w-2xl mx-auto" style={{ letterSpacing: '0.01em' }} data-testid="hero-tagline">
+                {config.business.description}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            {[
+              { icon: CheckCircle2, color: primaryHex, text: '24/7 AI assistant' },
+              { icon: CheckCircle2, color: '#A855F7', text: config.bookingLabel },
+              { icon: CheckCircle2, color: '#22C55E', text: 'Live dashboard' }
+            ].map((item, i) => (
+              <div 
+                key={i}
+                className="flex items-center gap-3 px-4 py-2.5 rounded-full transition-all duration-300 hover:scale-[1.02]"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.06)',
+                  boxShadow: `0 0 20px ${item.color}08`
+                }}
+              >
+                <item.icon 
+                  className="h-4 w-4" 
+                  style={{ 
+                    color: item.color,
+                    filter: `drop-shadow(0 0 6px ${item.color}50)`
+                  }} 
+                />
+                <span className="text-sm text-white/65">{item.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <style>{`
+        @keyframes gradientSlide {
+          0% { background-position: 0% 50%; }
+          100% { background-position: 200% 50%; }
+        }
+      `}</style>
+    </section>
+  );
+}
+
+// Default Hero Section
+function DefaultHero({ config }: { config: DemoPageConfig }) {
+  return (
+    <section className="relative bg-gradient-to-br from-[#0A0A0F] via-[#0F1520] to-[#0A0A0F] text-white overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-500/5" />
+      <div className="absolute inset-0 cyber-grid opacity-20" />
+      
+      <div className="glow-orb glow-orb-cyan w-[400px] h-[400px] top-0 left-0" style={{ animationDelay: '0s' }} />
+      <div className="glow-orb glow-orb-purple w-[300px] h-[300px] bottom-0 right-0" style={{ animationDelay: '2s' }} />
+      
+      <div className="relative max-w-7xl mx-auto px-4 py-20 md:py-28">
+        <div className="flex flex-col lg:flex-row items-center gap-12">
+          <div className="flex-1 text-center lg:text-left">
+            <div className="inline-flex items-center gap-2 glass-card-glow rounded-full px-5 py-2.5 mb-6 border border-cyan-500/20">
+              <div className="text-cyan-400">
+                {config.icon}
+              </div>
+              <span className="text-sm font-medium capitalize text-white/90">{config.business.type.replace(/_/g, ' ')}</span>
+            </div>
+            
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4" data-testid="hero-title">
+              <span className="text-glow-gradient">{config.business.name}</span>
+            </h1>
+            
+            <p className="text-xl md:text-2xl text-white/70 mb-4" data-testid="hero-tagline">
+              {config.business.tagline}
+            </p>
+            
+            <p className="text-base text-white/50 mb-8 max-w-xl">
+              {config.business.description}
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+              <Button size="lg" className="btn-gradient-primary glow-cyan-strong font-semibold" data-testid="button-contact">
+                <Phone className="h-5 w-5 mr-2" />
+                {config.business.phone}
+              </Button>
+              <Button size="lg" variant="outline" className="border-white/20 text-white hover:bg-white/10 hover:border-cyan-500/40 transition-all" data-testid="button-book">
+                <Calendar className="h-5 w-5 mr-2" />
+                {config.bookingLabel}
+              </Button>
+            </div>
+            
+            <div className="flex flex-wrap gap-6 mt-8 justify-center lg:justify-start text-sm text-white/60">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-cyan-400" />
+                <span>{config.business.city}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-cyan-400" />
+                <span>Open Today</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Star className="h-4 w-4 text-yellow-400" />
+                <span>5.0 Rating</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex-1 hidden lg:flex justify-center">
+            <div className="relative">
+              <div className="w-72 h-72 glass-card-glow rounded-3xl flex items-center justify-center border border-cyan-500/20 breathe-glow">
+                <div className="w-36 h-36 text-cyan-400">
+                  {config.icon}
+                </div>
+              </div>
+              <div className="absolute -top-4 -right-4 bg-[#0B0E13] border border-white/10 rounded-xl p-3 shadow-xl">
+                <div className="flex items-center gap-2">
+                  <Bot className="h-4 w-4 text-cyan-400" />
+                  <span className="text-xs text-white/80">AI Powered</span>
+                </div>
+              </div>
+              <div className="absolute -bottom-4 -left-4 bg-[#0B0E13] border border-white/10 rounded-xl p-3 shadow-xl">
+                <div className="flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-purple-400" />
+                  <span className="text-xs text-white/80">24/7 Available</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // Main Demo Page Template
 export default function DemoPageTemplate({ config }: { config: DemoPageConfig }) {
+  const BackgroundFX = config.BackgroundFX;
+  const isPremium = config.heroVariant === "premium";
+  
   return (
-    <div className="min-h-screen bg-[#0A0A0F]">
+    <div className={cn("min-h-screen relative", isPremium ? "bg-[#050608]" : "bg-[#0A0A0F]")}>
+      {BackgroundFX && (
+        <BackgroundFX 
+          primaryRgb={config.colors.particleRgb} 
+          secondaryRgb={config.colors.secondaryRgb} 
+        />
+      )}
+      
       {/* Demo Banner */}
-      <div className="bg-gradient-to-r from-cyan-900/30 via-[#0A0A0F] to-purple-900/30 text-white py-3 px-4 text-center text-sm border-b border-white/5 sticky top-0 z-40 backdrop-blur-xl">
+      <nav className={cn(
+        "text-white py-3 px-4 text-center text-sm border-b border-white/5 sticky top-0 z-40 backdrop-blur-xl",
+        isPremium ? "bg-black/60 border-white/10" : "bg-gradient-to-r from-cyan-900/30 via-[#0A0A0F] to-purple-900/30"
+      )}>
         <div className="flex items-center justify-center gap-4 flex-wrap">
           <Badge className="bg-cyan-500/10 text-cyan-400 border-cyan-500/30">DEMO</Badge>
           <span className="text-white/80">Experience the AI assistant for <span className="text-cyan-400 font-medium">{config.business.name}</span></span>
@@ -744,104 +956,33 @@ export default function DemoPageTemplate({ config }: { config: DemoPageConfig })
             </Button>
           </Link>
         </div>
-      </div>
+      </nav>
 
-      {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-[#0A0A0F] via-[#0F1520] to-[#0A0A0F] text-white overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-500/5" />
-        <div className="absolute inset-0 cyber-grid opacity-20" />
-        
-        {/* Animated glow orbs */}
-        <div className="glow-orb glow-orb-cyan w-[400px] h-[400px] top-0 left-0" style={{ animationDelay: '0s' }} />
-        <div className="glow-orb glow-orb-purple w-[300px] h-[300px] bottom-0 right-0" style={{ animationDelay: '2s' }} />
-        
-        <div className="relative max-w-7xl mx-auto px-4 py-20 md:py-28">
-          <div className="flex flex-col lg:flex-row items-center gap-12">
-            <div className="flex-1 text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 glass-card-glow rounded-full px-5 py-2.5 mb-6 border border-cyan-500/20">
-                <div className="text-cyan-400">
-                  {config.icon}
-                </div>
-                <span className="text-sm font-medium capitalize text-white/90">{config.business.type.replace(/_/g, ' ')}</span>
-              </div>
-              
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4" data-testid="hero-title">
-                <span className="text-glow-gradient">{config.business.name}</span>
-              </h1>
-              
-              <p className="text-xl md:text-2xl text-white/70 mb-4" data-testid="hero-tagline">
-                {config.business.tagline}
-              </p>
-              
-              <p className="text-base text-white/50 mb-8 max-w-xl">
-                {config.business.description}
-              </p>
-              
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                <Button size="lg" className="btn-gradient-primary glow-cyan-strong font-semibold" data-testid="button-contact">
-                  <Phone className="h-5 w-5 mr-2" />
-                  {config.business.phone}
-                </Button>
-                <Button size="lg" variant="outline" className="border-white/20 text-white hover:bg-white/10 hover:border-cyan-500/40 transition-all" data-testid="button-book">
-                  <Calendar className="h-5 w-5 mr-2" />
-                  {config.bookingLabel}
-                </Button>
-              </div>
-              
-              {/* Quick Info */}
-              <div className="flex flex-wrap gap-6 mt-8 justify-center lg:justify-start text-sm text-white/60">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-cyan-400" />
-                  <span>{config.business.city}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-cyan-400" />
-                  <span>Open Today</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Star className="h-4 w-4 text-yellow-400" />
-                  <span>5.0 Rating</span>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex-1 hidden lg:flex justify-center">
-              <div className="relative">
-                <div className="w-72 h-72 glass-card-glow rounded-3xl flex items-center justify-center border border-cyan-500/20 breathe-glow">
-                  <div className="w-36 h-36 text-cyan-400">
-                    {config.icon}
-                  </div>
-                </div>
-                {/* Floating Stats */}
-                <div className="absolute -top-4 -right-4 bg-[#0B0E13] border border-white/10 rounded-xl p-3 shadow-xl">
-                  <div className="flex items-center gap-2">
-                    <Bot className="h-4 w-4 text-cyan-400" />
-                    <span className="text-xs text-white/80">AI Powered</span>
-                  </div>
-                </div>
-                <div className="absolute -bottom-4 -left-4 bg-[#0B0E13] border border-white/10 rounded-xl p-3 shadow-xl">
-                  <div className="flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-purple-400" />
-                    <span className="text-xs text-white/80">24/7 Available</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Hero Section - choose based on variant */}
+      {isPremium ? <PremiumHero config={config} /> : <DefaultHero config={config} />}
 
       {/* Niche Stats Section */}
-      <section className="py-12 bg-gradient-to-b from-[#0F1520] to-[#0A0A0F] border-y border-white/5">
+      <section className={cn(
+        "py-12 border-y border-white/5 relative z-10",
+        isPremium ? "bg-transparent" : "bg-gradient-to-b from-[#0F1520] to-[#0A0A0F]"
+      )}>
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {config.nicheStats.map((stat, index) => (
               <div 
                 key={index}
-                className="glass-card-glow rounded-xl p-6 text-center border border-white/5"
+                className={cn(
+                  "rounded-xl p-6 text-center border transition-all duration-300 hover:scale-[1.02]",
+                  isPremium 
+                    ? "bg-black/25 backdrop-blur-sm border-white/[0.06] shadow-[0_4px_24px_rgba(0,0,0,0.2)]" 
+                    : "glass-card-glow border-white/5"
+                )}
                 data-testid={`stat-${index}`}
               >
-                <p className="text-3xl md:text-4xl font-bold text-glow-gradient mb-1">{stat.value}</p>
+                <p className={cn(
+                  "text-3xl md:text-4xl font-bold mb-1",
+                  isPremium ? "text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400" : "text-glow-gradient"
+                )}>{stat.value}</p>
                 <p className="text-sm font-medium text-white/80">{stat.label}</p>
                 <p className="text-xs text-white/50 mt-1">{stat.description}</p>
               </div>
@@ -851,7 +992,10 @@ export default function DemoPageTemplate({ config }: { config: DemoPageConfig })
       </section>
 
       {/* Features Section */}
-      <section className="py-16 bg-[#0A0A0F]">
+      <section className={cn(
+        "py-16 relative z-10",
+        isPremium ? "bg-transparent" : "bg-[#0A0A0F]"
+      )}>
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-12">
             <Badge className="bg-cyan-500/10 text-cyan-400 border-cyan-500/30 mb-4">WHY CHOOSE US</Badge>
@@ -865,11 +1009,21 @@ export default function DemoPageTemplate({ config }: { config: DemoPageConfig })
             {config.features.map((feature, index) => (
               <div 
                 key={index}
-                className="glass-card-glow rounded-2xl p-6 text-center hover-elevate transition-all duration-300"
+                className={cn(
+                  "rounded-2xl p-6 text-center transition-all duration-300 hover:scale-[1.02]",
+                  isPremium 
+                    ? "bg-black/25 backdrop-blur-sm border border-white/[0.06] shadow-[0_4px_24px_rgba(0,0,0,0.2)]" 
+                    : "glass-card-glow hover-elevate"
+                )}
                 data-testid={`feature-${index}`}
               >
-                <div className="w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-xl flex items-center justify-center mx-auto mb-4 border border-cyan-500/20">
-                  <CheckCircle2 className="h-6 w-6 text-cyan-400" />
+                <div className={cn(
+                  "w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4",
+                  isPremium 
+                    ? "bg-gradient-to-br from-cyan-500/15 to-purple-500/15 border border-cyan-500/20" 
+                    : "bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/20"
+                )}>
+                  <CheckCircle2 className="h-6 w-6 text-cyan-400" style={isPremium ? { filter: 'drop-shadow(0 0 6px rgba(0,229,204,0.4))' } : undefined} />
                 </div>
                 <h3 className="font-semibold text-white">{feature}</h3>
               </div>
@@ -879,10 +1033,16 @@ export default function DemoPageTemplate({ config }: { config: DemoPageConfig })
       </section>
 
       {/* Services Section */}
-      <section className="py-16 bg-gradient-to-b from-[#0A0A0F] to-[#0F1520]">
+      <section className={cn(
+        "py-16 relative z-10",
+        isPremium ? "bg-transparent" : "bg-gradient-to-b from-[#0A0A0F] to-[#0F1520]"
+      )}>
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-12">
-            <Badge className="bg-purple-500/10 text-purple-400 border-purple-500/30 mb-4">OUR SERVICES</Badge>
+            <Badge className={cn(
+              "mb-4",
+              isPremium ? "bg-purple-500/10 text-purple-400 border-purple-400/25 shadow-[0_0_20px_rgba(168,85,247,0.1)]" : "bg-purple-500/10 text-purple-400 border-purple-500/30"
+            )}>OUR SERVICES</Badge>
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">What We Offer</h2>
             <p className="text-white/60 max-w-2xl mx-auto">
               Comprehensive services tailored to meet your needs with excellence and care.
@@ -893,17 +1053,28 @@ export default function DemoPageTemplate({ config }: { config: DemoPageConfig })
             {config.services.slice(0, 6).map((service, index) => (
               <Card 
                 key={index}
-                className="glass-card-glow p-6 hover-elevate transition-all duration-300 bg-transparent border-white/10"
+                className={cn(
+                  "p-6 transition-all duration-300 bg-transparent",
+                  isPremium 
+                    ? "bg-black/25 backdrop-blur-sm border-white/[0.06] shadow-[0_4px_24px_rgba(0,0,0,0.2)] hover:scale-[1.02] hover:-translate-y-1" 
+                    : "glass-card-glow hover-elevate border-white/10"
+                )}
                 data-testid={`service-${index}`}
               >
                 {service.popular && (
-                  <Badge className="bg-cyan-500/10 text-cyan-400 border-cyan-500/30 mb-3">POPULAR</Badge>
+                  <Badge className={cn(
+                    "mb-3",
+                    isPremium ? "bg-cyan-500/10 text-cyan-400 border-cyan-400/25 shadow-[0_0_15px_rgba(0,229,204,0.1)]" : "bg-cyan-500/10 text-cyan-400 border-cyan-500/30"
+                  )}>POPULAR</Badge>
                 )}
                 <h3 className="text-lg font-semibold text-white mb-2">{service.name}</h3>
                 <p className="text-white/60 text-sm mb-4">{service.description}</p>
                 <div className="flex items-center justify-between text-sm">
                   {service.price && (
-                    <span className="text-cyan-400 font-medium">{service.price}</span>
+                    <span className={cn(
+                      "font-medium",
+                      isPremium ? "text-cyan-400" : "text-cyan-400"
+                    )} style={isPremium ? { textShadow: '0 0 10px rgba(0,229,204,0.3)' } : undefined}>{service.price}</span>
                   )}
                   {service.duration && (
                     <span className="text-white/40">{service.duration}</span>
@@ -917,10 +1088,16 @@ export default function DemoPageTemplate({ config }: { config: DemoPageConfig })
 
       {/* Team Section */}
       {config.team.length > 0 && (
-        <section className="py-16 bg-[#0A0A0F]">
+        <section className={cn(
+          "py-16 relative z-10",
+          isPremium ? "bg-transparent" : "bg-[#0A0A0F]"
+        )}>
           <div className="max-w-7xl mx-auto px-4">
             <div className="text-center mb-12">
-              <Badge className="bg-cyan-500/10 text-cyan-400 border-cyan-500/30 mb-4">OUR TEAM</Badge>
+              <Badge className={cn(
+                "mb-4",
+                isPremium ? "bg-cyan-500/10 text-cyan-400 border-cyan-400/25 shadow-[0_0_20px_rgba(0,229,204,0.1)]" : "bg-cyan-500/10 text-cyan-400 border-cyan-500/30"
+              )}>OUR TEAM</Badge>
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Meet Our Experts</h2>
               <p className="text-white/60 max-w-2xl mx-auto">
                 Dedicated professionals committed to providing you with exceptional service.
@@ -931,14 +1108,24 @@ export default function DemoPageTemplate({ config }: { config: DemoPageConfig })
               {config.team.map((member, index) => (
                 <div 
                   key={index}
-                  className="glass-card-glow rounded-2xl p-6 text-center hover-elevate transition-all duration-300"
+                  className={cn(
+                    "rounded-2xl p-6 text-center transition-all duration-300",
+                    isPremium 
+                      ? "bg-black/25 backdrop-blur-sm border border-white/[0.06] shadow-[0_4px_24px_rgba(0,0,0,0.2)] hover:scale-[1.02] hover:-translate-y-1" 
+                      : "glass-card-glow hover-elevate"
+                  )}
                   data-testid={`team-${index}`}
                 >
-                  <div className="w-20 h-20 bg-gradient-to-br from-cyan-500/30 to-purple-500/30 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/10">
+                  <div className={cn(
+                    "w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4",
+                    isPremium 
+                      ? "bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-white/10" 
+                      : "bg-gradient-to-br from-cyan-500/30 to-purple-500/30 border border-white/10"
+                  )}>
                     <Users className="h-10 w-10 text-white/60" />
                   </div>
                   <h3 className="font-semibold text-white">{member.name}</h3>
-                  <p className="text-cyan-400 text-sm mb-2">{member.role}</p>
+                  <p className="text-cyan-400 text-sm mb-2" style={isPremium ? { textShadow: '0 0 8px rgba(0,229,204,0.2)' } : undefined}>{member.role}</p>
                   {member.specialty && (
                     <Badge variant="outline" className="text-xs border-white/10 text-white/60 mb-2">{member.specialty}</Badge>
                   )}
@@ -951,18 +1138,30 @@ export default function DemoPageTemplate({ config }: { config: DemoPageConfig })
       )}
 
       {/* AI Benefits Section - TCAI Value Prop */}
-      <section className="py-16 bg-gradient-to-b from-[#0F1520] to-[#0A0A0F] relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-500/5" />
-        <div className="glow-orb glow-orb-cyan w-[300px] h-[300px] top-0 right-0 opacity-30" />
+      <section className={cn(
+        "py-16 relative overflow-hidden z-10",
+        isPremium ? "bg-transparent" : "bg-gradient-to-b from-[#0F1520] to-[#0A0A0F]"
+      )}>
+        {!isPremium && (
+          <>
+            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-500/5" />
+            <div className="glow-orb glow-orb-cyan w-[300px] h-[300px] top-0 right-0 opacity-30" />
+          </>
+        )}
         
         <div className="relative max-w-7xl mx-auto px-4">
           <div className="text-center mb-12">
-            <Badge className="bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-white border-cyan-500/30 mb-4">
-              <Sparkles className="h-3 w-3 mr-1" />
+            <Badge className={cn(
+              "mb-4",
+              isPremium 
+                ? "bg-gradient-to-r from-cyan-500/15 to-purple-500/15 text-white border-cyan-400/25 shadow-[0_0_20px_rgba(0,229,204,0.1)]" 
+                : "bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-white border-cyan-500/30"
+            )}>
+              <Sparkles className="h-3 w-3 mr-1" style={isPremium ? { filter: 'drop-shadow(0 0 4px rgba(0,229,204,0.5))' } : undefined} />
               POWERED BY AI
             </Badge>
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              How <span className="text-glow-gradient">Treasure Coast AI</span> Helps {config.business.type.replace(/_/g, ' ')} Businesses
+              How <span className={isPremium ? "text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400" : "text-glow-gradient"}>Treasure Coast AI</span> Helps {config.business.type.replace(/_/g, ' ')} Businesses
             </h2>
             <p className="text-white/60 max-w-2xl mx-auto">
               Our AI assistant provides 24/7 customer support, captures leads, and books appointments automatically.
@@ -973,16 +1172,26 @@ export default function DemoPageTemplate({ config }: { config: DemoPageConfig })
             {config.aiBenefits.map((benefit, index) => (
               <Card 
                 key={index}
-                className="glass-card-glow p-6 hover-elevate transition-all duration-300 bg-transparent border-white/10 group"
+                className={cn(
+                  "p-6 transition-all duration-300 bg-transparent group",
+                  isPremium 
+                    ? "bg-black/25 backdrop-blur-sm border-white/[0.06] shadow-[0_4px_24px_rgba(0,0,0,0.2)] hover:scale-[1.02] hover:-translate-y-1" 
+                    : "glass-card-glow hover-elevate border-white/10"
+                )}
                 data-testid={`ai-benefit-${index}`}
               >
-                <div className="w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-xl flex items-center justify-center mb-4 border border-cyan-500/20 group-hover:border-cyan-500/40 transition-colors">
+                <div className={cn(
+                  "w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors",
+                  isPremium 
+                    ? "bg-gradient-to-br from-cyan-500/15 to-purple-500/15 border border-cyan-500/20 group-hover:border-cyan-500/40" 
+                    : "bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/20 group-hover:border-cyan-500/40"
+                )}>
                   {benefit.icon}
                 </div>
                 <h3 className="text-lg font-semibold text-white mb-2">{benefit.title}</h3>
                 <p className="text-white/60 text-sm mb-3">{benefit.description}</p>
                 {benefit.stat && (
-                  <p className="text-cyan-400 text-sm font-medium">{benefit.stat}</p>
+                  <p className="text-cyan-400 text-sm font-medium" style={isPremium ? { textShadow: '0 0 10px rgba(0,229,204,0.3)' } : undefined}>{benefit.stat}</p>
                 )}
               </Card>
             ))}
@@ -992,7 +1201,18 @@ export default function DemoPageTemplate({ config }: { config: DemoPageConfig })
           <div className="mt-12 text-center">
             <p className="text-white/60 mb-4">Want this AI assistant for your business?</p>
             <Link href="/">
-              <Button size="lg" className="btn-gradient-primary glow-cyan-strong">
+              <Button 
+                size="lg" 
+                className={cn(
+                  isPremium 
+                    ? "relative overflow-hidden text-[#0A0A0F] font-semibold shadow-[0_0_30px_rgba(0,229,204,0.35)] hover:shadow-[0_0_40px_rgba(0,229,204,0.5)] transition-all duration-300 hover:-translate-y-0.5" 
+                    : "btn-gradient-primary glow-cyan-strong"
+                )}
+                style={isPremium ? {
+                  background: 'linear-gradient(135deg, #00E5CC 0%, #00D4BD 50%, #00C2B3 100%)',
+                  border: '1px solid rgba(255,255,255,0.2)'
+                } : undefined}
+              >
                 Get Treasure Coast AI
                 <ArrowLeft className="h-4 w-4 ml-2 rotate-180" />
               </Button>
@@ -1003,10 +1223,16 @@ export default function DemoPageTemplate({ config }: { config: DemoPageConfig })
 
       {/* Testimonials Section */}
       {config.testimonials.length > 0 && (
-        <section className="py-16 bg-[#0A0A0F]">
+        <section className={cn(
+          "py-16 relative z-10",
+          isPremium ? "bg-transparent" : "bg-[#0A0A0F]"
+        )}>
           <div className="max-w-7xl mx-auto px-4">
             <div className="text-center mb-12">
-              <Badge className="bg-yellow-500/10 text-yellow-400 border-yellow-500/30 mb-4">TESTIMONIALS</Badge>
+              <Badge className={cn(
+                "mb-4",
+                isPremium ? "bg-amber-500/10 text-amber-400 border-amber-400/25 shadow-[0_0_20px_rgba(245,158,11,0.1)]" : "bg-yellow-500/10 text-yellow-400 border-yellow-500/30"
+              )}>TESTIMONIALS</Badge>
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">What Our Clients Say</h2>
             </div>
             
@@ -1014,18 +1240,26 @@ export default function DemoPageTemplate({ config }: { config: DemoPageConfig })
               {config.testimonials.map((testimonial, index) => (
                 <Card 
                   key={index}
-                  className="glass-card-glow p-6 bg-transparent border-white/10"
+                  className={cn(
+                    "p-6 bg-transparent",
+                    isPremium 
+                      ? "bg-black/25 backdrop-blur-sm border-white/[0.06] shadow-[0_4px_24px_rgba(0,0,0,0.2)]" 
+                      : "glass-card-glow border-white/10"
+                  )}
                   data-testid={`testimonial-${index}`}
                 >
                   <div className="flex gap-1 mb-4">
                     {Array.from({ length: testimonial.rating }).map((_, i) => (
-                      <Star key={i} className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                      <Star key={i} className="h-4 w-4 text-yellow-400 fill-yellow-400" style={isPremium ? { filter: 'drop-shadow(0 0 4px rgba(250,204,21,0.4))' } : undefined} />
                     ))}
                   </div>
                   <Quote className="h-8 w-8 text-white/10 mb-2" />
                   <p className="text-white/80 text-sm mb-4 italic">{testimonial.content}</p>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-cyan-500/30 to-purple-500/30 rounded-full flex items-center justify-center">
+                    <div className={cn(
+                      "w-10 h-10 rounded-full flex items-center justify-center",
+                      isPremium ? "bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-white/10" : "bg-gradient-to-br from-cyan-500/30 to-purple-500/30"
+                    )}>
                       <span className="text-white font-medium text-sm">{testimonial.name.charAt(0)}</span>
                     </div>
                     <div>
@@ -1041,11 +1275,19 @@ export default function DemoPageTemplate({ config }: { config: DemoPageConfig })
       )}
 
       {/* Contact & Hours Section */}
-      <section className="py-16 bg-gradient-to-b from-[#0A0A0F] to-[#0F1520]">
+      <section className={cn(
+        "py-16 relative z-10",
+        isPremium ? "bg-transparent" : "bg-gradient-to-b from-[#0A0A0F] to-[#0F1520]"
+      )}>
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-8">
             {/* Contact Info */}
-            <Card className="glass-card-glow p-8 bg-transparent border-white/10">
+            <Card className={cn(
+              "p-8 bg-transparent",
+              isPremium 
+                ? "bg-black/25 backdrop-blur-sm border-white/[0.06] shadow-[0_4px_24px_rgba(0,0,0,0.2)]" 
+                : "glass-card-glow border-white/10"
+            )}>
               <h3 className="text-2xl font-bold text-white mb-6">Contact Information</h3>
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
@@ -1089,7 +1331,12 @@ export default function DemoPageTemplate({ config }: { config: DemoPageConfig })
             </Card>
 
             {/* Hours */}
-            <Card className="glass-card-glow p-8 bg-transparent border-white/10">
+            <Card className={cn(
+              "p-8 bg-transparent",
+              isPremium 
+                ? "bg-black/25 backdrop-blur-sm border-white/[0.06] shadow-[0_4px_24px_rgba(0,0,0,0.2)]" 
+                : "glass-card-glow border-white/10"
+            )}>
               <h3 className="text-2xl font-bold text-white mb-6">Business Hours</h3>
               <div className="space-y-3">
                 {Object.entries(config.business.hours).map(([day, hours]) => (
@@ -1105,9 +1352,16 @@ export default function DemoPageTemplate({ config }: { config: DemoPageConfig })
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 bg-[#0A0A0F] relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-transparent to-purple-500/10" />
-        <div className="glow-orb glow-orb-purple w-[400px] h-[400px] -bottom-40 left-1/2 -translate-x-1/2 opacity-30" />
+      <section className={cn(
+        "py-16 relative overflow-hidden z-10",
+        isPremium ? "bg-transparent" : "bg-[#0A0A0F]"
+      )}>
+        {!isPremium && (
+          <>
+            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-transparent to-purple-500/10" />
+            <div className="glow-orb glow-orb-purple w-[400px] h-[400px] -bottom-40 left-1/2 -translate-x-1/2 opacity-30" />
+          </>
+        )}
         
         <div className="relative max-w-4xl mx-auto px-4 text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
@@ -1117,11 +1371,31 @@ export default function DemoPageTemplate({ config }: { config: DemoPageConfig })
             Try our AI assistant below or contact us to learn more about our services.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="btn-gradient-primary glow-cyan-strong">
+            <Button 
+              size="lg" 
+              className={cn(
+                isPremium 
+                  ? "relative overflow-hidden text-[#0A0A0F] font-semibold shadow-[0_0_30px_rgba(0,229,204,0.35)] hover:shadow-[0_0_40px_rgba(0,229,204,0.5)] transition-all duration-300 hover:-translate-y-0.5" 
+                  : "btn-gradient-primary glow-cyan-strong"
+              )}
+              style={isPremium ? {
+                background: 'linear-gradient(135deg, #00E5CC 0%, #00D4BD 50%, #00C2B3 100%)',
+                border: '1px solid rgba(255,255,255,0.2)'
+              } : undefined}
+            >
               <MessageCircle className="h-5 w-5 mr-2" />
               Chat With Us Now
             </Button>
-            <Button size="lg" variant="outline" className="border-white/20 text-white hover:bg-white/10">
+            <Button 
+              size="lg" 
+              variant="outline" 
+              className={cn(
+                "text-white",
+                isPremium 
+                  ? "border-white/15 bg-white/[0.03] backdrop-blur-sm hover:bg-white/[0.08] hover:border-white/25" 
+                  : "border-white/20 hover:bg-white/10"
+              )}
+            >
               <Phone className="h-5 w-5 mr-2" />
               Call {config.business.phone}
             </Button>

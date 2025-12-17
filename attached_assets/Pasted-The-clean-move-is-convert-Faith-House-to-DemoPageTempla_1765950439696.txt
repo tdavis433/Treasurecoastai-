@@ -1,0 +1,97 @@
+The clean move is: convert Faith House to DemoPageTemplate for section parity + consistency, and add a “Faith House variant” hook so you retain the particle/ambient hero and premium vibe.
+
+That aligns with the platform north-star: fast value, trustworthy, no broken states. 
+
+Treasure_Coast_AI_Platform_Goal…
+
+Step-by-step (high level)
+
+Inventory the config sections Faith House already has (Services, Team, Testimonials, Niche Stats, FAQ, Contact Info).
+
+Upgrade DemoPageTemplate to support overrides:
+
+heroVariant or HeroOverride
+
+optional BackgroundFX slot (particle canvas, ambient glow)
+
+keep the rest standardized (services/team/testimonials/faq/contact).
+
+Swap /demo/faith-house to use the template, passing the Faith House config + the visual overrides.
+
+Regression test the demo against your demo acceptance checklist (widget + lead capture + booking + dashboards). 
+
+Treasure_Coast_AI_Platform_Goal…
+
+Alternatives (when they make sense)
+Option A (keep custom, add missing sections)
+
+Good if you’re rushing for a single demo today, but you’ll be babysitting a bespoke page forever. It also increases the chance the demo drifts from the config again.
+
+Option C (keep as-is)
+
+Only valid if Faith House is purely a “platform feature landing page” and you don’t care if it looks like a real business site. That’s risky for trust.
+
+Practical action plan (what to tell Replit)
+
+Here’s a copy/paste Replit prompt that executes the hybrid “Option B but keep the visuals” approach:
+
+REPLIT PROMPT (PASTE THIS):
+
+You are a senior full-stack engineer working on the Treasure Coast AI demo system.
+
+Goal:
+Convert /demo/faith-house from a one-off custom page into the reusable DemoPageTemplate, while preserving the Faith House premium visual identity (particle effects / ambient background / gradient hero). Faith House must display ALL sections that exist in its config, matching the other demos.
+
+Requirements:
+
+Faith House demo must use DemoPageTemplate so it automatically renders:
+
+Services
+
+Team Members
+
+Testimonials
+
+Niche Stats
+
+FAQ
+
+Full Contact Info (phone/email/address/hours)
+
+(Plus any existing template sections already used by other demos)
+
+Preserve the Faith House custom “wow”:
+
+Add a variant or override mechanism to DemoPageTemplate:
+
+heroVariant="faith-house" OR HeroOverride component prop
+
+Optional BackgroundFX slot that can render the current particle/ambient background
+
+Faith House should look the same (or better) visually after migration.
+
+No regressions:
+
+Chat widget must still load and function on /demo/faith-house
+
+Lead capture + booking flows still work
+
+No layout overflow, no dead sections, no missing content
+
+Demo readiness checks (must pass):
+
+Faith House demo page: widget loads, answers FAQs, captures contact info, creates booking
+
+Lead shows up in BOTH admin and client dashboards with correct fields/timestamps
+
+Booking shows up with type/time in dashboards
+
+Rate-limit/errors show as friendly in-chat messages (never scary red toasts)
+
+Deliverables:
+
+PR-quality refactor with clean props and minimal duplication
+
+Faith House config is the single source of truth for its content sections
+
+Quick manual test notes: what you tested and where
