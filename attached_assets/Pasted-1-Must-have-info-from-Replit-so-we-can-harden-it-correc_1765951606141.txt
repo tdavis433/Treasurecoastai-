@@ -1,0 +1,209 @@
+1) Must-have info from Replit (so we can harden it correctly)
+A) Where the Recovery House template lives
+
+File path(s) for the Recovery House template config (example: industryTemplates/recoveryHouse.ts or similar)
+
+File path for the Faith House demo config (the object that defines services/FAQs/contact info/etc.)
+
+File path for the bot persona / system prompt used by Recovery House
+
+File path for the Demo page that loads Faith House + the widget
+
+What I need you to paste: the full config object (or at least the keys + sections list) and the bot prompt.
+
+B) Booking + lead logging pipeline (this is the “works perfectly” core)
+
+What are the DB tables involved for:
+
+leads
+
+bookings
+
+booking handoffs (external)
+
+conversations/messages (if stored)
+
+Paste the schema fields (or Drizzle model definitions) for:
+
+leads (fields + required/optional)
+
+bookings
+
+booking_handoffs / handoff table
+
+Paste the API routes that create:
+
+a lead
+
+an internal booking
+
+an external booking handoff / “clicked to book” event
+
+List the status values currently used (exact strings), especially:
+
+internal booking statuses (ex: pending_followup)
+
+external analytics event (ex: clicked_to_book)
+
+any “confirmed” statuses (we must avoid false confirmed)
+
+Show me the current “trust line” copy when external handoff happens:
+
+“You’ll finish on {Provider}…”
+
+Where is that string defined?
+
+C) The routing logic (how the bot decides what to do)
+
+Where is the “intent routing” logic for the Recovery bot?
+
+Is it pure prompt-based, or is there code classification?
+
+Paste the code that decides between:
+
+Answer FAQ vs ask follow-up
+
+Lead capture step
+
+Internal booking request
+
+External handoff redirect
+
+What are the exact triggers for “booking intent” right now?
+
+keywords?
+
+service selection UI?
+
+model tool/function call?
+
+D) The widget flow (front-end)
+
+What component renders the widget for Faith House (file path)?
+
+Does the widget have a multi-step form? If yes, what fields and in what order?
+
+Where is “partial lead save” implemented (if it exists)?
+
+on blur?
+
+on step change?
+
+only on submit?
+
+Is the submit button disabled during request (to prevent duplicates)?
+
+E) Crisis + safety handling (critical for recovery)
+
+Is there any dedicated crisis handler today? If yes, where?
+
+If someone says self-harm/overdose, what happens right now (exactly)?
+
+Does it escalate?
+
+Does it show a disclaimer?
+
+Does it still ask for phone/email?
+
+Do you log a “crisis_flag” event? If yes, where and what data is stored?
+
+2) Nice-to-have info (this is the “make it perfect” layer)
+F) The Recovery template content realism
+
+Paste the Recovery House template’s default:
+
+Services/programs list structure
+
+FAQs structure
+
+Contact info structure (phone/email/address/hours)
+
+Any disclaimers block
+
+Are you currently showing:
+
+Insurance accepted list?
+
+Payment/pricing ranges?
+
+Admissions hours vs general hours?
+
+If not, we’ll add “don’t guess” logic + staff follow-up capture.
+
+G) Real demo expectations for Faith House
+
+What is the primary CTA you want for Faith House?
+
+“Request a call”
+
+“Schedule a tour”
+
+“Start intake”
+
+(My recommendation: Request a confidential call)
+
+Do you want the bot to collect:
+
+first name only? (recommended)
+
+full name?
+
+phone mandatory?
+
+email optional?
+
+After-hours behavior:
+
+If it’s 2am, should it say “we’ll call you in the morning” + capture best time?
+
+H) Observability (so you can trust demo results)
+
+Where do leads/bookings appear in:
+
+super-admin dashboard
+
+client dashboard
+
+Paste 1 real example record output (JSON) for:
+
+a saved lead
+
+an internal booking request
+
+an external handoff (if used)
+
+The fastest way to pull this from Replit (do this in 10 minutes)
+
+If you don’t want to hunt manually, run this approach:
+
+In Replit file search, search these keywords and paste the top matches:
+
+recovery
+
+faith
+
+handoff
+
+clicked_to_book
+
+pending_followup
+
+providerName
+
+lead
+
+booking
+
+988
+
+crisis
+
+Paste:
+
+the Recovery template config
+
+the Faith House config
+
+the booking/lead route handlers
+
+the widget component that submits leads/bookings
