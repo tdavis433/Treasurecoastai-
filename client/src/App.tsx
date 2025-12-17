@@ -31,6 +31,8 @@ import DemoFaithHouse from "@/pages/demo-faith-house";
 import DemoPawsSuds from "@/pages/demo-paws-suds";
 import DemoAutoCare from "@/pages/demo-auto-care";
 import DemoBarbershop from "@/pages/demo-barbershop";
+import DemoSalon from "@/pages/demo-salon";
+import DemoNails from "@/pages/demo-nails";
 import DemoFitness from "@/pages/demo-fitness";
 import DemoHandyman from "@/pages/demo-handyman";
 import DemoBookingConfirmation from "@/pages/demo-booking-confirmation";
@@ -84,6 +86,8 @@ function Router() {
       <Route path="/demo/paws-suds" component={DemoPawsSuds} />
       <Route path="/demo/auto-care" component={DemoAutoCare} />
       <Route path="/demo/barbershop" component={DemoBarbershop} />
+      <Route path="/demo/salon" component={DemoSalon} />
+      <Route path="/demo/nails" component={DemoNails} />
       <Route path="/demo/fitness" component={DemoFitness} />
       <Route path="/demo/handyman" component={DemoHandyman} />
       <Route path="/demo-booking-confirmation" component={DemoBookingConfirmation} />

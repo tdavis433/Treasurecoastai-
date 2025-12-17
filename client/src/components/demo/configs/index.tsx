@@ -7,6 +7,8 @@ import { roofingCompanyConfig } from "./roofing-company";
 import { weddingVenueConfig } from "./wedding-venue";
 import { autoShopConfig } from "./auto-shop";
 import { barberConfig } from "./barber";
+import { salonConfig } from "./salon";
+import { nailsConfig } from "./nails";
 import { fitnessConfig } from "./fitness";
 import { medSpaConfig } from "./med-spa";
 import { realEstateConfig } from "./real-estate";
@@ -29,6 +31,8 @@ export const demoConfigs: Record<string, DemoPageConfig> = {
   // Existing businesses
   "sunrise-auto": autoShopConfig,
   "classic-cuts": barberConfig,
+  "glamour-studio": salonConfig,
+  "polished-nails": nailsConfig,
   "neon-harbor-fitness": fitnessConfig,
   "blue-harbor-medspa": medSpaConfig,
   "coastal-realty": realEstateConfig,
@@ -55,7 +59,7 @@ export function getDemosByCategory(): Record<string, { slug: string; config: Dem
     "Professional Services": ["harper-law", "coastal-realty"],
     "Home Services": ["tc-roofing", "handy-helpers", "sunrise-auto"],
     "Hospitality & Events": ["palm-resort", "oceanview-gardens", "sunset-bistro"],
-    "Personal Care": ["paws-suds", "classic-cuts", "inkwell-tattoo"],
+    "Personal Care": ["paws-suds", "classic-cuts", "glamour-studio", "polished-nails", "inkwell-tattoo"],
   };
 
   const result: Record<string, { slug: string; config: DemoPageConfig }[]> = {};
@@ -79,6 +83,8 @@ export {
   weddingVenueConfig,
   autoShopConfig,
   barberConfig,
+  salonConfig,
+  nailsConfig,
   fitnessConfig,
   medSpaConfig,
   realEstateConfig,

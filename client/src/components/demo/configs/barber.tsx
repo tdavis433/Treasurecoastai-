@@ -2,7 +2,7 @@ import { Scissors, Star, Clock, Calendar, TrendingUp, MessageCircle, User, Award
 import { DemoPageConfig } from "../DemoPageTemplate";
 
 export const barberConfig: DemoPageConfig = {
-  clientId: "demo_fade_factory",
+  clientId: "ws_demo_barbershop",
   botId: "bot_demo_barbershop",
   
   business: {
