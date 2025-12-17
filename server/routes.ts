@@ -2902,6 +2902,54 @@ These suggestions should be relevant to what was just discussed and help guide t
     return intentTag ? intentTag.replace('intent:', '') : null;
   }
 
+  // Tag lint guard: Enforces tag naming conventions
+  // - Max 1 intent:* tag (keeps highest priority if multiple)
+  // - Non-intent tags must have namespace prefix (flag:, meta:)
+  // - Auto-corrects bare tags by adding flag: prefix
+  function lintTags(tags: string[], context?: string): string[] {
+    if (!tags || tags.length === 0) return [];
+    
+    const validPrefixes = ['intent:', 'flag:', 'meta:'];
+    const linted: string[] = [];
+    const intentTags: string[] = [];
+    
+    for (const tag of tags) {
+      // Check if tag has a valid prefix
+      const hasValidPrefix = validPrefixes.some(p => tag.startsWith(p));
+      
+      if (tag.startsWith('intent:')) {
+        intentTags.push(tag);
+      } else if (hasValidPrefix) {
+        linted.push(tag);
+      } else {
+        // Bare tag without namespace - auto-correct with flag: prefix
+        const corrected = `flag:${tag}`;
+        structuredLogger.warn(`[Tag Lint] Auto-corrected bare tag "${tag}" → "${corrected}"${context ? ` (${context})` : ''}`);
+        linted.push(corrected);
+      }
+    }
+    
+    // Enforce max 1 intent tag - keep highest priority
+    if (intentTags.length > 1) {
+      structuredLogger.warn(`[Tag Lint] Multiple intent tags found: ${intentTags.join(', ')} - keeping highest priority${context ? ` (${context})` : ''}`);
+      const INTENT_PRIORITY: Record<string, number> = {
+        'crisis': 100, 'admissions_intake': 90, 'availability': 80,
+        'insurance_payment': 70, 'services_pricing': 60, 'rules_eligibility': 50,
+        'contact_hours_location': 40, 'human_handoff': 35, 'faq_or_info': 30, 'general': 10,
+      };
+      intentTags.sort((a, b) => {
+        const aIntent = a.replace('intent:', '');
+        const bIntent = b.replace('intent:', '');
+        return (INTENT_PRIORITY[bIntent] ?? 0) - (INTENT_PRIORITY[aIntent] ?? 0);
+      });
+      linted.push(intentTags[0]); // Keep only highest priority
+    } else if (intentTags.length === 1) {
+      linted.push(intentTags[0]);
+    }
+    
+    return linted;
+  }
+
   // Auto-create or update lead from chat session with optional AI analysis
   async function autoCaptureLead(
     clientId: string,
@@ -3021,7 +3069,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           // Only upgrade when strictly higher priority (never add multiple intents)
           if (!existingPrimaryIntent || newPriorityLevel > existingPriorityLevel) {
             const baseTags = stripIntentTags(existingTags);
-            updates.tags = [...baseTags, newIntentTag];
+            updates.tags = lintTags([...baseTags, newIntentTag], `lead:${existingLead.id}`);
             
             // Keep intent history for debugging/analytics
             const prevHistory = ((existingLead.metadata as any)?.intentHistory as any[]) || [];
@@ -3113,7 +3161,7 @@ These suggestions should be relevant to what was just discussed and help guide t
           status: 'new',
           priority: determinePriority(),
           notes: null,
-          tags,
+          tags: lintTags(tags, `new-lead:${sessionId}`),
           metadata: initialMetadata,
           conversationPreview: aiAnalysis?.summary || conversationPreview,
           messageCount: null,
@@ -8089,7 +8137,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         updates.assignedToUserId = assignedToUserId;
         updates.assignedAt = new Date();
       }
-      if (tags !== undefined) updates.tags = tags;
+      if (tags !== undefined) updates.tags = lintTags(tags, `session:${sessionId}`);
       
       // Pass clientId for tenant verification
       const state = await storage.updateSessionState(sessionId, clientId, updates);
@@ -8684,6 +8732,10 @@ These suggestions should be relevant to what was just discussed and help guide t
         botId,
         source: bodyValidation.data.source || 'manual',
       };
+      // Apply tag lint guard if tags are provided
+      if (leadData.tags) {
+        leadData.tags = lintTags(leadData.tags, 'create-lead-api');
+      }
       
       const lead = await storage.createLead(leadData as any);
       
@@ -8744,7 +8796,12 @@ These suggestions should be relevant to what was just discussed and help guide t
       }
       
       const previousStatus = lead.status;
-      const updated = await storage.updateLead(clientId, paramsValidation.data.id, bodyValidation.data as any);
+      // Apply tag lint guard if tags are being updated
+      const updateData = { ...bodyValidation.data };
+      if (updateData.tags) {
+        updateData.tags = lintTags(updateData.tags, `lead-api:${paramsValidation.data.id}`);
+      }
+      const updated = await storage.updateLead(clientId, paramsValidation.data.id, updateData as any);
       
       // Fire webhook if status changed (async, non-blocking)
       if (updated && bodyValidation.data.status && bodyValidation.data.status !== previousStatus) {

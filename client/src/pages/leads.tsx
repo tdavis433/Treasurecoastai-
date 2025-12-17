@@ -85,6 +85,9 @@ export default function LeadsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [priorityFilter, setPriorityFilter] = useState<string>("");
+  const [tagFilter, setTagFilter] = useState<string>("");
+  const [bookingStatusFilter, setBookingStatusFilter] = useState<string>("");
+  const [activePreset, setActivePreset] = useState<string>("");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
@@ -200,7 +203,72 @@ export default function LeadsPage() {
     },
   });
 
-  const leads = leadsData?.leads || [];
+  const rawLeads = leadsData?.leads || [];
+  
+  // Apply client-side filters (tag and booking status)
+  const leads = useMemo(() => {
+    let filtered = rawLeads;
+    
+    if (tagFilter) {
+      filtered = filtered.filter(lead => 
+        lead.tags?.includes(tagFilter)
+      );
+    }
+    
+    if (bookingStatusFilter) {
+      filtered = filtered.filter(lead => 
+        lead.bookingStatus === bookingStatusFilter
+      );
+    }
+    
+    return filtered;
+  }, [rawLeads, tagFilter, bookingStatusFilter]);
+  
+  // Quick filter presets for sober living
+  const FILTER_PRESETS = [
+    { 
+      id: 'admissions', 
+      label: 'Admissions / Tours', 
+      icon: Calendar,
+      apply: () => {
+        setTagFilter('intent:admissions_intake');
+        setBookingStatusFilter('');
+        setStatusFilter('');
+        setPriorityFilter('');
+        setActivePreset('admissions');
+      }
+    },
+    { 
+      id: 'hot_leads', 
+      label: 'Hot Leads', 
+      icon: Star,
+      apply: () => {
+        setTagFilter('flag:hot_lead');
+        setBookingStatusFilter('');
+        setStatusFilter('');
+        setPriorityFilter('');
+        setActivePreset('hot_leads');
+      }
+    },
+    { 
+      id: 'followup', 
+      label: 'Needs Follow-up', 
+      icon: Clock,
+      apply: () => {
+        setTagFilter('');
+        setBookingStatusFilter('pending_followup');
+        setStatusFilter('');
+        setPriorityFilter('');
+        setActivePreset('followup');
+      }
+    },
+  ];
+  
+  const clearPresets = () => {
+    setTagFilter('');
+    setBookingStatusFilter('');
+    setActivePreset('');
+  };
 
   const toggleLeadSelection = useCallback((leadId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -378,6 +446,40 @@ export default function LeadsPage() {
                 data-testid="input-search-leads"
               />
             </div>
+            
+            {/* Quick Filter Presets */}
+            <div className="flex flex-wrap gap-2 items-center">
+              <span className="text-white/55 text-sm mr-1">Quick:</span>
+              {FILTER_PRESETS.map(preset => (
+                <Button
+                  key={preset.id}
+                  variant={activePreset === preset.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={preset.apply}
+                  className={activePreset === preset.id 
+                    ? "bg-cyan-500 hover:bg-cyan-600 text-white" 
+                    : "bg-white/5 border-white/10 text-white/85 hover:bg-white/10"
+                  }
+                  data-testid={`button-preset-${preset.id}`}
+                >
+                  <preset.icon className="h-3 w-3 mr-1" />
+                  {preset.label}
+                </Button>
+              ))}
+              {activePreset && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearPresets}
+                  className="text-white/55 hover:text-white/85 hover:bg-white/10"
+                  data-testid="button-clear-presets"
+                >
+                  <X className="h-3 w-3 mr-1" />
+                  Clear
+                </Button>
+              )}
+            </div>
+            
             <div className="flex flex-wrap gap-2 items-center overflow-x-auto">
               <Select value={statusFilter || "all"} onValueChange={(v) => setStatusFilter(v === "all" ? "" : v)}>
                 <SelectTrigger className="w-[130px] sm:w-[160px] bg-white/5 border-white/10 text-white flex-shrink-0" data-testid="select-status-filter">

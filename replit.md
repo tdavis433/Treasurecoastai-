@@ -97,10 +97,29 @@ The sober living template uses a deterministic intent router (`server/recoveryRo
 - **Intent Tagging:** Leads tagged with single primary intent (`intent:admissions_intake`, etc.) for analytics
 - **Single Primary Intent:** Each lead has exactly ONE `intent:*` tag. The `stripIntentTags()` and `getPrimaryIntentFromTags()` helpers in routes.ts ensure old intent tags are replaced (not accumulated) when upgrading.
 - **Standardized Tag Naming:** Non-intent tags use `flag:` prefix (`flag:hot_lead`, `flag:appointment_request`) for consistent filtering.
+- **Tag Lint Guard:** All tag writes pass through `lintTags()` which enforces max 1 intent:*, auto-prefixes bare tags with `flag:`, and logs warnings for auto-corrections.
 - **AutoCaptureLead Integration:** The `autoCaptureLead` function in routes.ts uses recovery router to classify intent for sober living businesses at lead creation time, ensuring proper intent tags are applied from the start
 - **Intent Precedence:** Intent tags only upgrade (never downgrade) - crisis (100) > admissions_intake (90) > availability (80) > insurance_payment (70) > services_pricing (60) > rules_eligibility (50) > contact_hours_location (40) > general (10)
 - **Intent History:** Metadata includes `intentHistory` array tracking intent upgrades for debugging/analytics
 - **Booking Status Normalization:** For tour/admissions intents, `bookingStatus` is set to `pending_followup`, `bookingIntent=true`, and `serviceRequested='Tour Request'`. Status `requested` is normalized to `pending_followup`.
+
+### Intent Naming Conventions (Stable Across Templates)
+- `intent:crisis` - Suicide, overdose, emergency situations (priority: 100)
+- `intent:admissions_intake` - Tour requests, admissions inquiries, move-in questions (priority: 90)
+- `intent:availability` - Bed availability, vacancy questions (priority: 80)
+- `intent:insurance_payment` - Insurance, payment, cost questions (priority: 70)
+- `intent:services_pricing` - Services offered, pricing details (priority: 60)
+- `intent:rules_eligibility` - House rules, eligibility requirements (priority: 50)
+- `intent:contact_hours_location` - Contact info, hours, directions (priority: 40)
+- `intent:human_handoff` - Explicit request for staff/human (priority: 35)
+- `intent:faq_or_info` - General FAQ, informational (priority: 30)
+- `intent:general` - Catch-all for unclassified (priority: 10)
+
+### Dashboard Quick Filters
+The Leads page includes quick filter presets for sober living operators:
+- **Admissions / Tours** → `intent:admissions_intake`
+- **Hot Leads** → `flag:hot_lead`
+- **Needs Follow-up** → `booking_status=pending_followup`
 
 ### Widget UX for Sober Living
 - **No Quick Book UI:** Service selection buttons and Quick Book flow are hidden for sober living businesses
