@@ -122,6 +122,24 @@ The Leads page includes quick filter presets for sober living operators:
 - **Hot Leads** → `flag:hot_lead`
 - **Needs Follow-up** → `booking_status=pending_followup`
 
+### Sober Living Assistant Behavior
+The sober living assistant does NOT perform admissions intake via chat. It only:
+- **Answers questions** about the facility, program, house rules, and amenities
+- **Facilitates tour/callback requests** by collecting minimal contact info
+
+**Data Collection (Minimal):**
+Only these three fields are collected for tour/callback requests:
+1. Name
+2. Phone OR email (whichever the visitor prefers)
+3. Preferred time window (morning / afternoon / evening)
+
+**NOT Collected:**
+- Sobriety status, support system, timeline, legal issues, medications, or other personal details
+- Staff handles all intake and eligibility assessments during the actual tour/call
+
+**Confirmation Message:**
+"Thanks [Name]! Staff will reach out to schedule your tour/callback. If urgent, call {phone}."
+
 ### Widget UX for Sober Living
 - **No Quick Book UI:** Service selection buttons and Quick Book flow are hidden for sober living businesses
 - **Text-based conversation:** Users trigger tour/admissions requests naturally through chat, not button clicks
