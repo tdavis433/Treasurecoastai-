@@ -1,0 +1,173 @@
+YOU ARE A SENIOR FULL-STACK ENGINEER WORKING INSIDE MY EXISTING TREASURE COAST AI CODEBASE.
+
+GOAL:
+1) Finalize a production-ready Barber template and add TWO new industry templates: Salon + Nails.
+2) Ensure QuickBook + Booking Funnel analytics are stable and honest across:
+   - handoff (external booking)
+   - internal (lead capture + follow-up)
+   - confirmable (demo-only confirmation)
+
+NON-NEGOTIABLES:
+- NO Square API / live slots.
+- NO payment processing.
+- Minimal changes; avoid touching unrelated systems.
+- Never display the word “demo” in client dashboard funnel labels.
+- “Confirmed” must only appear when funnelMode === 'confirmable'.
+
+FILES YOU’LL TOUCH (ONLY IF NEEDED):
+- server/industryTemplates.ts
+- server/quickbook.ts
+- server/storage.ts
+- server/routes.ts
+- client/src/pages/client-dashboard.tsx
+- (ONLY if needed for internal-mode UX in widget): the chat widget UI component that shows “Book Now”
+
+────────────────────────────────────────────────────────
+PART 1 — QUICKBOOK HANDLING (NO DEMO LEAKAGE)
+────────────────────────────────────────────────────────
+Confirm / enforce this behavior in server/quickbook.ts:
+
+Intent start route (/api/quickbook/intent/start/:clientId/:botId):
+- Determine bookingUrl from:
+  1) service.bookingUrl (if present)
+  2) settings.externalBookingUrl
+- handling must be:
+  - 'demo' ONLY when settings.quickBookDemoMode === true
+  - 'external' ONLY when settings.bookingMode === 'external' AND bookingUrl exists
+  - else 'internal'
+- When handling === 'internal':
+  - externalUrl MUST be null
+  - externalProviderName MUST be null
+
+Demo confirm route (/api/quickbook/demo/confirm):
+- Must 403 unless intent.handling === 'demo'
+- Keep idempotent behavior if already confirmed.
+
+────────────────────────────────────────────────────────
+PART 2 — BOOKING ANALYTICS (TRUTHFUL + RANGE SUPPORT)
+────────────────────────────────────────────────────────
+In server/routes.ts:
+- GET /api/client/bookings/analytics must accept optional startDate/endDate query params and pass Date objects to storage.getBookingAnalytics.
+
+In server/storage.ts getBookingAnalytics:
+- Support the passed date range (default to last 30 days).
+- Determine externalConfigured as:
+  settings.bookingMode === 'external' AND (
+    settings.externalBookingUrl exists OR
+    settings.servicesCatalog has any ACTIVE service with bookingUrl
+  )
+
+- funnelMode must be 3 values:
+  'confirmable' if quickBookDemoMode === true
+  else 'handoff' if externalConfigured
+  else 'internal'
+
+Return payload must include:
+- totalBookingIntents (filter by bookingIntents.createdAt within range)
+- totalLeadCaptured (COHORT aligned: createdAt within range AND leadCapturedAt IS NOT NULL)
+- totalLinkClicks (chatAnalyticsEvents createdAt within range AND eventType='booking_link_click')
+- pendingBookings (status IN ('started','lead_captured') ONLY; remove 'intent' unless you truly have legacy rows)
+- completedBookings:
+   - ONLY when funnelMode === 'confirmable': count status IN ('demo_confirmed','confirmed')
+   - else 0
+- dailyTrends should use gte(startOfDay) AND lt(nextDay) boundaries to avoid double counting.
+
+────────────────────────────────────────────────────────
+PART 3 — CLIENT DASHBOARD FUNNEL UI (NO “DEMO” WORDING)
+────────────────────────────────────────────────────────
+In client/src/pages/client-dashboard.tsx:
+
+Update BookingAnalytics interface:
+- funnelMode: 'handoff' | 'confirmable' | 'internal'
+- totalLeadCaptured: number
+
+Update funnel card:
+- Always show 3 steps:
+  1) Intent Detection (totalBookingIntents)
+  2) Lead Captured (totalLeadCaptured)
+  3) Clicked to Book (totalLinkClicks)
+
+- ONLY show 4th step when funnelMode === 'confirmable':
+  4) Confirmed (completedBookings)
+  Label must be exactly “Confirmed” (never “Demo Confirmed”).
+
+- Description line:
+  - handoff: “Visitors are redirected to your external booking system”
+  - internal: “We capture leads and follow up to confirm bookings”
+  - confirmable: “How visitors progress through the booking flow”
+
+Progress bars:
+- Always cap at 100 with Math.min(100, ...)
+
+────────────────────────────────────────────────────────
+PART 4 — INTERNAL MODE UX (NO BROKEN REDIRECTS)
+────────────────────────────────────────────────────────
+If the widget currently shows “Book Now” regardless of handling:
+- Update the widget UI logic so:
+  - handling === 'external' => show Book Now redirect
+  - handling === 'demo' => show Demo Confirm flow
+  - handling === 'internal' => DO NOT show Book Now redirect; instead show a simple message like:
+    “Got it — our team will reach out to confirm a time.”
+
+Do NOT overbuild. No new pages. Just prevent broken redirects and keep the lead logged.
+
+────────────────────────────────────────────────────────
+PART 5 — ADD 2 NEW INDUSTRY TEMPLATES (SALON + NAILS)
+────────────────────────────────────────────────────────
+In server/industryTemplates.ts:
+- Keep the existing 'barber' template as-is (minor wording polish allowed).
+- Create two new templates by cloning barber structure:
+
+Template: salon
+- id: 'salon'
+- name: 'Hair Salon'
+- botType: 'salon'
+- icon: something appropriate (ex: 'Sparkles' or 'Scissors')
+- tone: casual-friendly (formality 25–35)
+- theme color: pick a clean premium color (ex: #EC4899 or #A855F7)
+- servicesCatalog (6 items, include price strings + optional priceCents/durationMins):
+  1) Women’s Haircut — “Precision cut + style” — $55 — 60 min
+  2) Men’s Haircut — “Classic cut + style” — $35 — 45 min
+  3) Blowout — “Wash + blowout styling” — $45 — 45 min
+  4) Root Retouch — “Single-process root color” — From $75 — 90 min
+  5) Full Highlights — “Foil highlights” — From $140 — 150 min
+  6) Deep Conditioning Treatment — “Repair + hydration” — $25 — 20 min
+- FAQs (5–6):
+  - appointment vs walk-in, how long services take, cancellation/no-show, lateness, color price varies, request stylist/Any available
+- bookingProfile: external by default, failsafe enabled.
+
+Template: nails
+- id: 'nails'
+- name: 'Nail Salon'
+- botType: 'nails'
+- icon: appropriate (ex: 'Hand' if available, otherwise 'Sparkles')
+- tone: friendly (formality 25–35)
+- theme color: premium neutral or pink (ex: #F472B6 or #14B8A6)
+- servicesCatalog (6 items):
+  1) Classic Manicure — $25 — 30 min
+  2) Gel Manicure — $45 — 45 min
+  3) Classic Pedicure — $40 — 45 min
+  4) Gel Pedicure — $60 — 60 min
+  5) Acrylic Full Set — From $70 — 90 min
+  6) Nail Art Add-On — From $10 — 15 min
+- FAQs:
+  - gel vs acrylic, how long it lasts, removal policy, sanitization, cancellation/no-show, walk-ins
+- bookingProfile: external by default, failsafe enabled.
+
+CTAs:
+- Keep consistent across barber/salon/nails:
+  Book Appointment (primary), Services & Prices, Walk-Ins?, Hours, Add-ons, Talk to a Human
+
+Disclaimers:
+- Barber: keep current
+- Salon: add color pricing variability
+- Nails: add length/design variability
+
+IMPORTANT:
+Do NOT introduce a “service pack selector UI” yet. Just add 2 new templates as separate entries.
+
+MANUAL QA:
+- External configured (global url or service url) => funnelMode=handoff, completedBookings=0, 3-step funnel
+- Internal (no external config) => funnelMode=internal, 3-step funnel, no Confirmed step
+- Demo (quickBookDemoMode=true) => funnelMode=confirmable, 4-step funnel with Confirmed
+- Demo confirm endpoint must 403 for non-demo intents.

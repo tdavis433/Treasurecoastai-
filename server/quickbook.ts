@@ -253,7 +253,10 @@ export function registerQuickBookRoutes(app: Express) {
 
   /**
    * POST /api/quickbook/intent/click
-   * User clicked "Book Now" - determine redirect URL
+   * User clicked "Book Now" - determine response based on handling mode
+   * - external: redirect to external URL
+   * - demo: redirect to demo confirmation page
+   * - internal: no redirect, show "we'll reach out" message
    */
   app.post("/api/quickbook/intent/click/:clientId/:botId", widgetCors, async (req: Request, res: Response) => {
     try {
@@ -272,38 +275,36 @@ export function registerQuickBookRoutes(app: Express) {
         return res.status(404).json({ error: "Booking intent not found" });
       }
       
-      // Check if this is a demo page (clientId starts with "demo_" or "demo-")
-      const isDemoPage = clientId.startsWith('demo_') || clientId.startsWith('demo-');
+      // Use the stored handling mode from intent (set during intent/start)
+      // This ensures consistent behavior and prevents mode confusion
+      const handling = intent.handling || 'internal';
       
       // Guardrail #3: Idempotent - if already clicked, return existing data
       if (['clicked_to_book', 'demo_confirmed', 'confirmed', 'redirected'].includes(intent.status)) {
-        const settings = await storage.getSettings(clientId);
-        const demoMode = isDemoPage || settings?.quickBookDemoMode || !intent.externalUrl;
-        
         return res.json({
           ok: true,
-          redirectType: demoMode ? 'demo' : 'external',
-          url: demoMode 
-            ? `/demo-booking-confirmation?intentId=${intentId}`
-            : intent.externalUrl,
+          redirectType: handling,
+          url: handling === 'external' ? intent.externalUrl : 
+               handling === 'demo' ? `/demo-booking-confirmation?intentId=${intentId}` : 
+               null,
+          message: handling === 'internal' ? 'Our team will reach out to confirm your booking.' : undefined,
           alreadyClicked: true,
         });
       }
       
-      // Get settings to determine mode
-      const settings = await storage.getSettings(clientId);
-      const demoMode = isDemoPage || settings?.quickBookDemoMode || !intent.externalUrl;
-      
-      // Update intent - Guardrail #5: timestamp
-      // Note: externalUrl is already set during intent/start, we just update status
-      const finalUrl = demoMode 
-        ? `/demo-booking-confirmation?intentId=${intentId}`
-        : intent.externalUrl;
+      // Determine the final URL based on handling mode
+      let finalUrl: string | null = null;
+      if (handling === 'external') {
+        finalUrl = intent.externalUrl;
+      } else if (handling === 'demo') {
+        finalUrl = `/demo-booking-confirmation?intentId=${intentId}`;
+      }
+      // internal mode: no URL, just confirmation message
         
       await storage.updateBookingIntent(intentId, {
         status: 'clicked_to_book',
         clickedToBookAt: new Date(),
-        externalUrl: finalUrl,
+        externalUrl: finalUrl || undefined,
       });
       
       // Track the link click in analytics for booking funnel metrics
@@ -312,19 +313,19 @@ export function registerQuickBookRoutes(app: Express) {
         botId,
         sessionId: intent.sessionId,
         leadId: intent.leadId || undefined,
-        bookingUrl: finalUrl || '',
+        bookingUrl: finalUrl || 'internal_followup',
       });
       
-      // Also update lead status if linked
+      // Update lead status based on handling mode
       if (intent.leadId) {
-        await storage.updateLead(clientId, intent.leadId, {
-          bookingStatus: demoMode ? 'pending_demo' : 'pending_redirect',
-        });
+        const bookingStatus = handling === 'demo' ? 'pending_demo' : 
+                              handling === 'external' ? 'pending_redirect' :
+                              'pending_followup';
+        await storage.updateLead(clientId, intent.leadId, { bookingStatus });
       }
       
-      // For demo mode, create appointment immediately so it shows in Bookings tab
-      // (User doesn't need to click another confirm button)
-      if (demoMode && intent.contactName) {
+      // For internal/demo mode, create appointment immediately so it shows in Bookings tab
+      if ((handling === 'demo' || handling === 'internal') && intent.contactName) {
         try {
           const appointment = await storage.createAppointment(clientId, {
             sessionId: intent.sessionId || undefined,
@@ -336,12 +337,12 @@ export function registerQuickBookRoutes(app: Express) {
             appointmentType: intent.serviceName || 'Quick Book Service',
             notes: `Quick Book: ${intent.serviceName || 'Service'} - ${intent.priceCents ? `$${(intent.priceCents / 100).toFixed(2)}` : 'Price TBD'}`,
           });
-          console.log(`[QuickBook] Created appointment ${appointment.id} for demo intent ${intentId}`);
+          console.log(`[QuickBook] Created appointment ${appointment.id} for ${handling} intent ${intentId}`);
           
-          // Also update lead to qualified since booking was clicked
+          // Update lead to qualified since booking action completed
           if (intent.leadId) {
             await storage.updateLead(clientId, intent.leadId, {
-              bookingStatus: 'demo_confirmed',
+              bookingStatus: handling === 'demo' ? 'demo_confirmed' : 'awaiting_followup',
               status: 'qualified',
             });
           }
@@ -352,10 +353,9 @@ export function registerQuickBookRoutes(app: Express) {
       
       return res.json({
         ok: true,
-        redirectType: demoMode ? 'demo' : 'external',
-        url: demoMode 
-          ? `/demo-booking-confirmation?intentId=${intentId}`
-          : intent.externalUrl,
+        redirectType: handling,
+        url: finalUrl,
+        message: handling === 'internal' ? 'Our team will reach out to confirm your booking.' : undefined,
       });
     } catch (error) {
       console.error("[QuickBook] Error processing click:", error);

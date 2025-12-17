@@ -707,6 +707,206 @@ export const INDUSTRY_TEMPLATES: Record<string, IndustryTemplate> = {
       theme: { primaryColor: '#06B6D4', welcomeMessage: 'Woof! Ready to pamper your furry friend? Let\'s book an appointment!' },
     },
   },
+
+  salon: {
+    id: 'salon',
+    name: 'Hair Salon',
+    botType: 'salon',
+    icon: 'Sparkles',
+    description: 'AI assistant for hair salons and beauty services',
+    bookingProfile: {
+      mode: 'external',
+      primaryCTA: 'book',
+      externalProviders: ['Square Appointments', 'Vagaro', 'StyleSeat', 'Fresha', 'Boulevard'],
+      failsafeEnabled: true,
+    },
+    ctaButtons: [
+      { id: 'book', label: 'Book Appointment', prompt: 'I\'d like to book an appointment.', isPrimary: true },
+      { id: 'services', label: 'Services & Prices', prompt: 'What services do you offer and what are your prices?' },
+      { id: 'walkins', label: 'Walk-Ins?', prompt: 'Do you accept walk-ins?' },
+      { id: 'hours', label: 'Hours', prompt: 'What are your hours?' },
+      { id: 'addons', label: 'Add-ons', prompt: 'Do you offer add-on treatments like deep conditioning or scalp treatments?' },
+      { id: 'human', label: 'Talk to a Human', prompt: 'Can someone from the salon contact me directly?' },
+    ],
+    disclaimer: `SALON SERVICES DISCLAIMER:
+- Appointment times are estimates and may vary based on hair length and condition
+- Color services are quoted based on consultation; final price may vary
+- Cancellation policies apply - please review before booking
+- Please arrive on time to avoid rescheduling`,
+    servicesCatalog: [
+      { 
+        id: 'womens_haircut', 
+        name: 'Women\'s Haircut', 
+        description: 'Precision cut + style', 
+        price: '$55', 
+        duration: '60 min',
+        category: 'haircuts',
+        active: true 
+      },
+      { 
+        id: 'mens_haircut', 
+        name: 'Men\'s Haircut', 
+        description: 'Classic cut + style', 
+        price: '$35', 
+        duration: '45 min',
+        category: 'haircuts',
+        active: true 
+      },
+      { 
+        id: 'blowout', 
+        name: 'Blowout', 
+        description: 'Wash + blowout styling', 
+        price: '$45', 
+        duration: '45 min',
+        category: 'styling',
+        active: true 
+      },
+      { 
+        id: 'root_retouch', 
+        name: 'Root Retouch', 
+        description: 'Single-process root color', 
+        price: 'From $75', 
+        duration: '90 min',
+        category: 'color',
+        active: true 
+      },
+      { 
+        id: 'full_highlights', 
+        name: 'Full Highlights', 
+        description: 'Foil highlights', 
+        price: 'From $140', 
+        duration: '150 min',
+        category: 'color',
+        active: true 
+      },
+      { 
+        id: 'deep_conditioning', 
+        name: 'Deep Conditioning Treatment', 
+        description: 'Repair + hydration', 
+        price: '$25', 
+        duration: '20 min',
+        category: 'treatments',
+        active: true 
+      },
+    ],
+    defaultConfig: {
+      businessProfile: {
+        type: 'Hair Salon',
+        services: ['Haircuts', 'Color', 'Highlights', 'Blowouts', 'Treatments', 'Styling'],
+      },
+      systemPromptIntro: 'You are a friendly AI assistant for a hair salon. You help clients book appointments and answer questions about services and styling.',
+      faqs: [
+        { question: 'Do I need an appointment or can I walk in?', answer: 'We recommend booking an appointment to guarantee your spot, especially for color services. Walk-ins are welcome when availability allows.' },
+        { question: 'How long do salon services take?', answer: 'Haircuts typically take 45-60 minutes. Color services range from 90 minutes (root touch-up) to 3+ hours (full highlights or balayage).' },
+        { question: 'What is your cancellation / no-show policy?', answer: 'We ask for at least 24 hours notice to cancel or reschedule. Late cancellations or no-shows may be subject to a fee.' },
+        { question: 'What if I am running late?', answer: 'Please let us know as soon as possible. We\'ll do our best to accommodate you, but we may need to modify your service or reschedule.' },
+        { question: 'Why does color pricing vary?', answer: 'Color pricing depends on hair length, thickness, current color, and desired result. We provide exact quotes during consultation.' },
+        { question: 'Can I request a specific stylist?', answer: 'Absolutely! You can request your favorite stylist or choose Any Available for the soonest opening.' },
+      ],
+      personality: { tone: 'friendly', formality: 30 },
+      theme: { primaryColor: '#EC4899', welcomeMessage: 'Welcome! Ready for a fresh new look? Let me help you book your appointment.' },
+    },
+  },
+
+  nails: {
+    id: 'nails',
+    name: 'Nail Salon',
+    botType: 'nails',
+    icon: 'Sparkles',
+    description: 'AI assistant for nail salons and nail art services',
+    bookingProfile: {
+      mode: 'external',
+      primaryCTA: 'book',
+      externalProviders: ['Square Appointments', 'Vagaro', 'Fresha', 'Schedulicity', 'Booksy'],
+      failsafeEnabled: true,
+    },
+    ctaButtons: [
+      { id: 'book', label: 'Book Appointment', prompt: 'I\'d like to book an appointment.', isPrimary: true },
+      { id: 'services', label: 'Services & Prices', prompt: 'What services do you offer and what are your prices?' },
+      { id: 'walkins', label: 'Walk-Ins?', prompt: 'Do you accept walk-ins?' },
+      { id: 'hours', label: 'Hours', prompt: 'What are your hours?' },
+      { id: 'addons', label: 'Add-ons', prompt: 'Do you offer add-ons like nail art, French tips, or gem designs?' },
+      { id: 'human', label: 'Talk to a Human', prompt: 'Can someone from the salon contact me directly?' },
+    ],
+    disclaimer: `NAIL SERVICES DISCLAIMER:
+- Service times are estimates and may vary based on design complexity
+- Prices for acrylics and nail art depend on length and design; quoted at appointment
+- Cancellation policies apply - please review before booking
+- We follow strict sanitization protocols for your safety`,
+    servicesCatalog: [
+      { 
+        id: 'classic_manicure', 
+        name: 'Classic Manicure', 
+        description: 'Nail shaping, cuticle care, polish', 
+        price: '$25', 
+        duration: '30 min',
+        category: 'manicures',
+        active: true 
+      },
+      { 
+        id: 'gel_manicure', 
+        name: 'Gel Manicure', 
+        description: 'Long-lasting gel polish finish', 
+        price: '$45', 
+        duration: '45 min',
+        category: 'manicures',
+        active: true 
+      },
+      { 
+        id: 'classic_pedicure', 
+        name: 'Classic Pedicure', 
+        description: 'Foot soak, exfoliation, polish', 
+        price: '$40', 
+        duration: '45 min',
+        category: 'pedicures',
+        active: true 
+      },
+      { 
+        id: 'gel_pedicure', 
+        name: 'Gel Pedicure', 
+        description: 'Full pedicure with gel polish', 
+        price: '$60', 
+        duration: '60 min',
+        category: 'pedicures',
+        active: true 
+      },
+      { 
+        id: 'acrylic_full_set', 
+        name: 'Acrylic Full Set', 
+        description: 'Full acrylic nail extensions', 
+        price: 'From $70', 
+        duration: '90 min',
+        category: 'acrylics',
+        active: true 
+      },
+      { 
+        id: 'nail_art_addon', 
+        name: 'Nail Art Add-On', 
+        description: 'Custom designs, gems, French tips', 
+        price: 'From $10', 
+        duration: '15 min',
+        category: 'addons',
+        active: true 
+      },
+    ],
+    defaultConfig: {
+      businessProfile: {
+        type: 'Nail Salon',
+        services: ['Manicures', 'Pedicures', 'Gel Nails', 'Acrylic Nails', 'Nail Art', 'Dip Powder'],
+      },
+      systemPromptIntro: 'You are a friendly AI assistant for a nail salon. You help clients book appointments and answer questions about nail services and designs.',
+      faqs: [
+        { question: 'What is the difference between gel and acrylic?', answer: 'Gel nails are cured under UV light and give a natural, glossy finish. Acrylics are sculpted extensions that are stronger and better for length. Both last 2-3 weeks.' },
+        { question: 'How long do gel nails last?', answer: 'Gel manicures typically last 2-3 weeks without chipping. We recommend getting fills or removal to maintain nail health.' },
+        { question: 'Can I remove gel or acrylics at home?', answer: 'We recommend professional removal to avoid nail damage. We offer removal services or can remove and reapply in one appointment.' },
+        { question: 'How do you sanitize your tools?', answer: 'We follow strict sanitization protocols. All metal tools are sterilized between clients, and we use disposable files and buffers.' },
+        { question: 'What is your cancellation / no-show policy?', answer: 'Please give us at least 24 hours notice to cancel or reschedule. Late cancellations or no-shows may incur a fee.' },
+        { question: 'Do you accept walk-ins?', answer: 'Yes! Walk-ins are welcome based on availability. For guaranteed appointment times, we recommend booking in advance.' },
+      ],
+      personality: { tone: 'friendly', formality: 25 },
+      theme: { primaryColor: '#F472B6', welcomeMessage: 'Hey! Ready for beautiful nails? Let me help you book your appointment.' },
+    },
+  },
 };
 
 /**
@@ -733,7 +933,9 @@ export function suggestIndustry(businessName: string, description?: string): str
   const keywords: Record<string, string[]> = {
     sober_living: ['sober', 'recovery', 'rehab', 'addiction', 'treatment', 'halfway'],
     restaurant: ['restaurant', 'cafe', 'diner', 'bistro', 'eatery', 'grill', 'kitchen', 'food'],
-    barber: ['barber', 'salon', 'hair', 'beauty', 'cuts', 'fade', 'stylist'],
+    barber: ['barber', 'barbershop', 'fade', 'lineup', 'beard trim'],
+    salon: ['salon', 'hair salon', 'stylist', 'colorist', 'highlights', 'blowout', 'beauty salon'],
+    nails: ['nail', 'nails', 'manicure', 'pedicure', 'acrylic', 'gel nails', 'nail art'],
     auto: ['auto', 'car', 'mechanic', 'repair', 'garage', 'tire', 'brake', 'oil change'],
     home_services: ['handyman', 'plumber', 'plumbing', 'electric', 'hvac', 'repair', 'contractor', 'home'],
     gym: ['gym', 'fitness', 'workout', 'training', 'crossfit', 'yoga', 'pilates', 'athletic'],
