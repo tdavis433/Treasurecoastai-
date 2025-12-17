@@ -6384,6 +6384,66 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
+  // Super admin: Get sessions list for a client (without impersonation)
+  app.get("/api/super-admin/clients/:clientId/sessions", requireSuperAdmin, async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      const { limit = "100", botId } = req.query;
+      
+      const sessions = await storage.getClientRecentSessions(clientId, botId as string | undefined, parseInt(limit as string));
+      res.json({
+        clientId,
+        botId: botId || 'all',
+        sessions,
+        total: sessions.length,
+      });
+    } catch (error) {
+      structuredLogger.error("Super admin get sessions error:", error);
+      res.status(500).json({ error: "Failed to fetch sessions" });
+    }
+  });
+
+  // Super admin: Get session messages for a client (without impersonation)
+  app.get("/api/super-admin/clients/:clientId/sessions/:sessionId/messages", requireSuperAdmin, async (req, res) => {
+    try {
+      const { clientId, sessionId } = req.params;
+      
+      const rawMessages = await storage.getSessionMessages(sessionId, clientId);
+      
+      const messages = rawMessages.map((msg) => ({
+        id: msg.id,
+        sessionId: msg.sessionId,
+        botId: msg.botId,
+        actor: msg.actor,
+        messageContent: msg.messageContent || '',
+        createdAt: msg.createdAt,
+      }));
+      
+      res.json({
+        clientId,
+        sessionId,
+        messages,
+        total: messages.length,
+      });
+    } catch (error) {
+      structuredLogger.error("Super admin get session messages error:", error);
+      res.status(500).json({ error: "Failed to fetch session messages" });
+    }
+  });
+
+  // Super admin: Get session state for a client (without impersonation)
+  app.get("/api/super-admin/clients/:clientId/sessions/:sessionId/state", requireSuperAdmin, async (req, res) => {
+    try {
+      const { clientId, sessionId } = req.params;
+      
+      const state = await storage.getOrCreateSessionState(sessionId, clientId, 'unknown');
+      res.json(state);
+    } catch (error) {
+      structuredLogger.error("Super admin get session state error:", error);
+      res.status(500).json({ error: "Failed to fetch session state" });
+    }
+  });
+
   // Get client general settings
   app.get("/api/super-admin/clients/:clientId/general", requireSuperAdmin, async (req, res) => {
     try {

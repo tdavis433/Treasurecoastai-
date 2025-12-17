@@ -77,13 +77,20 @@ export default function InboxPage() {
     return params.get('botId');
   }, [searchParams]);
 
+  // Always fetch auth/me to determine user role (needed for super admin endpoint selection)
+  const { data: authData, isLoading: authLoading } = useQuery<{ id: number; username: string; role: string }>({
+    queryKey: ["/api/auth/me"],
+  });
+
   const { data: profile } = useQuery<UserProfile>({
     queryKey: ["/api/client/me"],
     enabled: !urlClientId,
   });
 
+  const isSuperAdmin = authData?.role === 'super_admin';
   const effectiveClientId = urlClientId || profile?.clientId || 'faith_house';
-  const isSuperAdmin = profile?.user?.role === 'super_admin';
+  const useSuperAdminEndpoints = isSuperAdmin && !!urlClientId;
+  const authReady = !authLoading && !!authData;
 
   const buildQueryUrl = (base: string, params?: Record<string, string | undefined>) => {
     const queryParams: string[] = [];
@@ -98,12 +105,34 @@ export default function InboxPage() {
     return queryParams.length > 0 ? `${base}?${queryParams.join('&')}` : base;
   };
 
+  const buildSessionMessagesUrl = (sessionId: string) => {
+    if (useSuperAdminEndpoints) {
+      return `/api/super-admin/clients/${effectiveClientId}/sessions/${sessionId}/messages`;
+    }
+    return buildQueryUrl(`/api/client/inbox/sessions/${sessionId}`);
+  };
+
+  const buildSessionStateUrl = (sessionId: string) => {
+    if (useSuperAdminEndpoints) {
+      return `/api/super-admin/clients/${effectiveClientId}/sessions/${sessionId}/state`;
+    }
+    return buildQueryUrl(`/api/client/inbox/sessions/${sessionId}/state`);
+  };
+
+  const buildSessionsListUrl = () => {
+    if (useSuperAdminEndpoints) {
+      return `/api/super-admin/clients/${effectiveClientId}/sessions?limit=100`;
+    }
+    return buildQueryUrl("/api/client/analytics/sessions", { limit: "100" });
+  };
+
   const { data: sessionsData, isLoading: sessionsLoading } = useQuery<{
     clientId: string;
     sessions: ChatSession[];
     total: number;
   }>({
-    queryKey: [buildQueryUrl("/api/client/analytics/sessions", { limit: "100" })],
+    queryKey: [buildSessionsListUrl()],
+    enabled: authReady,
   });
 
   // Auto-select session from URL parameter
@@ -122,19 +151,19 @@ export default function InboxPage() {
     messages: ChatAnalyticsEvent[];
     total: number;
   }>({
-    queryKey: [buildQueryUrl(`/api/client/inbox/sessions/${selectedSession?.sessionId}`)],
+    queryKey: [selectedSession ? buildSessionMessagesUrl(selectedSession.sessionId) : null],
     enabled: !!selectedSession,
   });
 
-  // Fetch notes for the selected session
+  // Fetch notes for the selected session (only for client endpoints - super admin has read-only view)
   const { data: notesData } = useQuery<{ notes: ConversationNote[] }>({
     queryKey: [buildQueryUrl(`/api/client/inbox/sessions/${selectedSession?.sessionId}/notes`)],
-    enabled: !!selectedSession,
+    enabled: !!selectedSession && !useSuperAdminEndpoints,
   });
 
   // Fetch session state
   const { data: sessionStateData, refetch: refetchSessionState } = useQuery<SessionState>({
-    queryKey: [buildQueryUrl(`/api/client/inbox/sessions/${selectedSession?.sessionId}/state`, { botId: selectedSession?.botId })],
+    queryKey: [selectedSession ? buildSessionStateUrl(selectedSession.sessionId) : null],
     enabled: !!selectedSession,
   });
 
@@ -411,65 +440,72 @@ export default function InboxPage() {
             </div>
           </div>
           
-          {/* Session State Controls */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleToggleRead}
-              disabled={updateSessionStateMutation.isPending}
-              className="border-white/20 text-white/85 hover:bg-white/10"
-              data-testid="button-toggle-read"
-            >
-              {sessionState?.isRead ? (
-                <>
-                  <EyeOff className="h-3.5 w-3.5 mr-1.5" />
-                  Mark Unread
-                </>
-              ) : (
-                <>
-                  <Eye className="h-3.5 w-3.5 mr-1.5" />
-                  Mark Read
-                </>
-              )}
-            </Button>
-            
-            <Select 
-              value={sessionState?.status || "open"} 
-              onValueChange={handleStatusChange}
-            >
-              <SelectTrigger 
-                className="w-[140px] bg-white/5 border-white/20 text-white/85"
-                data-testid="select-session-status"
+          {/* Session State Controls - hidden for super admin read-only view */}
+          {!useSuperAdminEndpoints && (
+            <div className="flex items-center gap-3 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleToggleRead}
+                disabled={updateSessionStateMutation.isPending}
+                className="border-white/20 text-white/85 hover:bg-white/10"
+                data-testid="button-toggle-read"
               >
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent className="bg-[#1a1f2e] border-white/10">
-                <SelectItem value="open" className="text-white/85">Open</SelectItem>
-                <SelectItem value="closed" className="text-white/85">Closed</SelectItem>
-                <SelectItem value="pending" className="text-white/85">Pending</SelectItem>
-                <SelectItem value="archived" className="text-white/85">Archived</SelectItem>
-              </SelectContent>
-            </Select>
+                {sessionState?.isRead ? (
+                  <>
+                    <EyeOff className="h-3.5 w-3.5 mr-1.5" />
+                    Mark Unread
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-3.5 w-3.5 mr-1.5" />
+                    Mark Read
+                  </>
+                )}
+              </Button>
+              
+              <Select 
+                value={sessionState?.status || "open"} 
+                onValueChange={handleStatusChange}
+              >
+                <SelectTrigger 
+                  className="w-[140px] bg-white/5 border-white/20 text-white/85"
+                  data-testid="select-session-status"
+                >
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1a1f2e] border-white/10">
+                  <SelectItem value="open" className="text-white/85">Open</SelectItem>
+                  <SelectItem value="closed" className="text-white/85">Closed</SelectItem>
+                  <SelectItem value="pending" className="text-white/85">Pending</SelectItem>
+                  <SelectItem value="archived" className="text-white/85">Archived</SelectItem>
+                </SelectContent>
+              </Select>
 
-            <Select 
-              value={sessionState?.priority || "normal"} 
-              onValueChange={(priority) => updateSessionStateMutation.mutate({ priority })}
-            >
-              <SelectTrigger 
-                className="w-[120px] bg-white/5 border-white/20 text-white/85"
-                data-testid="select-session-priority"
+              <Select 
+                value={sessionState?.priority || "normal"} 
+                onValueChange={(priority) => updateSessionStateMutation.mutate({ priority })}
               >
-                <SelectValue placeholder="Priority" />
-              </SelectTrigger>
-              <SelectContent className="bg-[#1a1f2e] border-white/10">
-                <SelectItem value="low" className="text-white/85">Low</SelectItem>
-                <SelectItem value="normal" className="text-white/85">Normal</SelectItem>
-                <SelectItem value="high" className="text-white/85">High</SelectItem>
-                <SelectItem value="urgent" className="text-white/85">Urgent</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+                <SelectTrigger 
+                  className="w-[120px] bg-white/5 border-white/20 text-white/85"
+                  data-testid="select-session-priority"
+                >
+                  <SelectValue placeholder="Priority" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1a1f2e] border-white/10">
+                  <SelectItem value="low" className="text-white/85">Low</SelectItem>
+                  <SelectItem value="normal" className="text-white/85">Normal</SelectItem>
+                  <SelectItem value="high" className="text-white/85">High</SelectItem>
+                  <SelectItem value="urgent" className="text-white/85">Urgent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {useSuperAdminEndpoints && (
+            <div className="flex items-center gap-2 text-white/55 text-sm">
+              <Badge variant="outline" className="border-white/20">Read-Only View</Badge>
+            </div>
+          )}
         </div>
 
         {/* Tabs for Messages and Notes */}
@@ -483,14 +519,16 @@ export default function InboxPage() {
               <MessageSquare className="h-4 w-4 mr-2" />
               Messages ({messages.length})
             </TabsTrigger>
-            <TabsTrigger 
-              value="notes" 
-              className="data-[state=active]:bg-white/10 data-[state=active]:text-white"
-              data-testid="tab-notes"
-            >
-              <StickyNote className="h-4 w-4 mr-2" />
-              Notes ({notes.length})
-            </TabsTrigger>
+            {!useSuperAdminEndpoints && (
+              <TabsTrigger 
+                value="notes" 
+                className="data-[state=active]:bg-white/10 data-[state=active]:text-white"
+                data-testid="tab-notes"
+              >
+                <StickyNote className="h-4 w-4 mr-2" />
+                Notes ({notes.length})
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="messages" className="flex-1 m-0 flex flex-col">
@@ -548,70 +586,72 @@ export default function InboxPage() {
             </ScrollArea>
           </TabsContent>
 
-          <TabsContent value="notes" className="flex-1 m-0 flex flex-col">
-            <ScrollArea className="flex-1 p-6">
-              {notes.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-white/55">
-                  <StickyNote className="h-12 w-12 mb-4 opacity-50" />
-                  <p>No notes yet</p>
-                  <p className="text-sm">Add notes to track important details</p>
-                </div>
-              ) : (
-                <div className="space-y-3" data-testid="notes-list">
-                  {notes.map((note) => (
-                    <div
-                      key={note.id}
-                      className="bg-white/5 border border-white/10 rounded-lg p-4"
-                      data-testid={`note-${note.id}`}
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2 text-white/55 text-xs">
-                          <User className="h-3.5 w-3.5" />
-                          <span>{note.authorName}</span>
-                          <span>|</span>
-                          <span>{note.createdAt ? format(new Date(note.createdAt), "MMM d, h:mm a") : ""}</span>
-                          {note.isPinned && (
-                            <Pin className="h-3.5 w-3.5 text-yellow-400" />
-                          )}
+          {!useSuperAdminEndpoints && (
+            <TabsContent value="notes" className="flex-1 m-0 flex flex-col">
+              <ScrollArea className="flex-1 p-6">
+                {notes.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-white/55">
+                    <StickyNote className="h-12 w-12 mb-4 opacity-50" />
+                    <p>No notes yet</p>
+                    <p className="text-sm">Add notes to track important details</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3" data-testid="notes-list">
+                    {notes.map((note) => (
+                      <div
+                        key={note.id}
+                        className="bg-white/5 border border-white/10 rounded-lg p-4"
+                        data-testid={`note-${note.id}`}
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center gap-2 text-white/55 text-xs">
+                            <User className="h-3.5 w-3.5" />
+                            <span>{note.authorName}</span>
+                            <span>|</span>
+                            <span>{note.createdAt ? format(new Date(note.createdAt), "MMM d, h:mm a") : ""}</span>
+                            {note.isPinned && (
+                              <Pin className="h-3.5 w-3.5 text-yellow-400" />
+                            )}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-white/40 hover:text-red-400 hover:bg-red-500/10"
+                            onClick={() => deleteNoteMutation.mutate(note.id)}
+                            data-testid={`button-delete-note-${note.id}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-white/40 hover:text-red-400 hover:bg-red-500/10"
-                          onClick={() => deleteNoteMutation.mutate(note.id)}
-                          data-testid={`button-delete-note-${note.id}`}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        <p className="text-white/85 text-sm whitespace-pre-wrap">{note.content}</p>
                       </div>
-                      <p className="text-white/85 text-sm whitespace-pre-wrap">{note.content}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
 
-            {/* Add Note Input */}
-            <div className="p-4 border-t border-white/10 bg-white/5">
-              <div className="flex gap-2">
-                <Textarea
-                  placeholder="Add a note..."
-                  value={newNoteContent}
-                  onChange={(e) => setNewNoteContent(e.target.value)}
-                  className="flex-1 min-h-[60px] bg-white/5 border-white/10 text-white placeholder:text-white/40 resize-none"
-                  data-testid="input-new-note"
-                />
-                <Button
-                  onClick={handleAddNote}
-                  disabled={!newNoteContent.trim() || createNoteMutation.isPending}
-                  className="bg-cyan-500 hover:bg-cyan-600 text-white"
-                  data-testid="button-add-note"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
+              {/* Add Note Input */}
+              <div className="p-4 border-t border-white/10 bg-white/5">
+                <div className="flex gap-2">
+                  <Textarea
+                    placeholder="Add a note..."
+                    value={newNoteContent}
+                    onChange={(e) => setNewNoteContent(e.target.value)}
+                    className="flex-1 min-h-[60px] bg-white/5 border-white/10 text-white placeholder:text-white/40 resize-none"
+                    data-testid="input-new-note"
+                  />
+                  <Button
+                    onClick={handleAddNote}
+                    disabled={!newNoteContent.trim() || createNoteMutation.isPending}
+                    className="bg-cyan-500 hover:bg-cyan-600 text-white"
+                    data-testid="button-add-note"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-            </div>
-          </TabsContent>
+            </TabsContent>
+          )}
         </Tabs>
 
         <div className="px-6 py-4 border-t border-white/10 bg-white/5">
