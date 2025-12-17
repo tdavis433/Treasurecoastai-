@@ -77,6 +77,28 @@ The platform supports three booking modes with honest analytics that never overc
 - `funnelMode` in API response: `internal`, `handoff`, or `confirmable`
 - Only `confirmable` mode shows non-zero `completedBookings`
 
+## Recovery/Sober Living Template (Production-Ready)
+
+### Deterministic Recovery Router
+The sober living template uses a deterministic intent router (`server/recoveryRouter.ts`) instead of AI-driven classification for safety and compliance:
+- **Intent Classification:** admissions_intake, availability, tour_request, insurance_payment, crisis, faq, general
+- **Crisis Detection:** Keyword-based detection (suicide, overdose, emergency) triggers immediate 988/911/SAMHSA resources
+- **Session Persistence:** Intent and contact capture state stored in session for consistent multi-turn behavior
+
+### Safety Guardrails
+- **No Medical Advice:** AI never provides treatment recommendations or clinical guidance
+- **Staff Referral:** Clinical questions always defer to admissions staff
+- **Crisis Protocol:** Immediate resource provision + gentle handoff to professionals
+- **Disclaimers:** Insurance/payment discussions include "consult admissions for details"
+
+### Progressive Lead Enrichment
+- **Session-Based Upsert:** `storage.upsertLeadBySession()` enables progressive enrichment
+- **Conservative Merge:** Fields only update if not already set, priority only elevates (never downgrades), tags union, metadata shallow-merges
+- **Intent Tagging:** Leads tagged with `intent:tour_request`, `intent:admissions_intake`, etc. for analytics
+
+### Demo Pages
+- `/demo/faith-house` - Faith House Sober Living template
+
 ## External Dependencies
 *   **OpenAI GPT-4:** Used for the core AI engine and conversational analysis.
 *   **Neon (PostgreSQL):** Provides managed PostgreSQL database hosting.
