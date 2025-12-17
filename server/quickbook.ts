@@ -262,9 +262,9 @@ export function registerQuickBookRoutes(app: Express) {
   /**
    * POST /api/quickbook/intent/click
    * User clicked "Book Now" - determine response based on handling mode
-   * - external: redirect to external URL
-   * - demo: redirect to demo confirmation page
-   * - internal: no redirect, show "we'll reach out" message
+   * - external: redirect to external URL, log click, set clicked_to_book
+   * - demo: redirect to demo confirmation page, log click, set clicked_to_book
+   * - internal: no redirect, no click logged, no status change, show message
    */
   app.post("/api/quickbook/intent/click/:clientId/:botId", widgetCors, async (req: Request, res: Response) => {
     try {
@@ -283,31 +283,20 @@ export function registerQuickBookRoutes(app: Express) {
         return res.status(404).json({ error: "Booking intent not found" });
       }
       
-      // Get current settings and workspace to check if demo mode is NOW enabled
-      // This allows demo mode toggle to take effect immediately for pending intents
-      const settings = await storage.getSettings(clientId);
-      const workspace = await storage.getWorkspaceByClientId(clientId);
+      // Use the stored handling mode from intent creation - no runtime overrides
+      const handling = (intent.handling as 'internal' | 'external' | 'demo') || 'internal';
       
-      // Determine effective handling mode:
-      // - If demo mode is NOW enabled (via quickBookDemoMode OR workspace status), override to 'demo'
-      // - Otherwise use the stored handling from intent creation
-      const isDemoMode = settings?.quickBookDemoMode === true || workspace?.status === 'demo';
-      const handling = isDemoMode 
-        ? 'demo' 
-        : (intent.handling || 'internal');
-      
-      // If handling was overridden to demo, persist this change so demo/confirm accepts it
-      if (handling === 'demo' && intent.handling !== 'demo') {
-        await storage.updateBookingIntent(intentId, { handling: 'demo' });
-      }
+      // Prepare URLs based on handling mode
+      const externalUrl = intent.externalUrl || null;
+      const demoUrl = `/demo-booking-confirmation?intentId=${intentId}`;
       
       // Guardrail #3: Idempotent - if already clicked, return existing data
       if (['clicked_to_book', 'demo_confirmed', 'confirmed', 'redirected'].includes(intent.status)) {
         return res.json({
           ok: true,
           redirectType: handling,
-          url: handling === 'external' ? intent.externalUrl : 
-               handling === 'demo' ? `/demo-booking-confirmation?intentId=${intentId}` : 
+          url: handling === 'external' ? externalUrl : 
+               handling === 'demo' ? demoUrl : 
                null,
           message: handling === 'internal' ? 'Our team will reach out to confirm your booking.' : undefined,
           alreadyClicked: true,
@@ -360,8 +349,6 @@ export function registerQuickBookRoutes(app: Express) {
       // - Log booking_link_click with external URL
       // - Do NOT create appointment (external system handles it)
       if (handling === 'external') {
-        const externalUrl = intent.externalUrl;
-        
         await storage.updateBookingIntent(intentId, {
           status: 'clicked_to_book',
           clickedToBookAt: new Date(),
@@ -391,16 +378,12 @@ export function registerQuickBookRoutes(app: Express) {
       }
       
       // ========== HANDLING MODE: DEMO ==========
-      // - Redirect to demo confirmation page
+      // - Set status='clicked_to_book', clickedToBookAt
       // - Log booking_link_click (a link IS clicked)
       // - Do NOT create appointment (demo confirm endpoint creates it)
-      // - Do NOT overwrite intent.externalUrl
-      const demoUrl = `/demo-booking-confirmation?intentId=${intentId}`;
-      
       await storage.updateBookingIntent(intentId, {
         status: 'clicked_to_book',
         clickedToBookAt: new Date(),
-        // Do NOT set externalUrl - keep original for reference
       });
       
       // Log link click for demo redirects
