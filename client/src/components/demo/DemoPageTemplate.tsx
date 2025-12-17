@@ -162,6 +162,29 @@ function hasBookingIntent(message: string): boolean {
   return bookingKeywords.some(keyword => lowerMessage.includes(keyword));
 }
 
+// Detect when AI confirms a tour/call has been scheduled (for sober living)
+function hasTourConfirmation(message: string): boolean {
+  const lowerMessage = message.toLowerCase();
+  const confirmationPhrases = [
+    "i've noted your request",
+    "noted your request",
+    "will reach out",
+    "will call you",
+    "will contact you",
+    "admissions coordinator will",
+    "admissions team will",
+    "someone will be in touch",
+    "we'll follow up",
+    "team will reach out",
+    "get back to you",
+    "your tour request",
+    "tour has been",
+    "noted your preferences",
+    "noted your information",
+  ];
+  return confirmationPhrases.some(phrase => lowerMessage.includes(phrase));
+}
+
 // Floating Chat Widget Component
 function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -189,6 +212,9 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
   const [contactForm, setContactForm] = useState({ name: "", phone: "", email: "" });
   const [quickBookLoading, setQuickBookLoading] = useState(false);
   const [quickBookError, setQuickBookError] = useState<string | null>(null);
+  
+  // Sober living: Track when tour/call has been confirmed via conversation
+  const [tourConfirmed, setTourConfirmed] = useState(false);
 
   // Different greeting for sober living (simple chat) vs booking-oriented businesses
   const initialGreeting = isSoberLiving
@@ -363,6 +389,7 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
     });
     setContactForm({ name: "", phone: "", email: "" });
     setQuickBookError(null);
+    setTourConfirmed(false);
     resetChat();
   };
 
@@ -392,6 +419,16 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
       inputRef.current?.focus();
     }
   }, [messages, isOpen]);
+  
+  // Sober living: Detect when AI confirms tour/call has been scheduled
+  useEffect(() => {
+    if (isSoberLiving && !tourConfirmed && messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.role === "assistant" && hasTourConfirmation(lastMessage.content)) {
+        setTourConfirmed(true);
+      }
+    }
+  }, [messages, isSoberLiving, tourConfirmed]);
 
   const handleSend = () => {
     if (inputValue.trim() && !isLoading) {
@@ -656,6 +693,19 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
                     >
                       click here
                     </button>.
+                  </p>
+                </div>
+              )}
+              
+              {/* Sober Living: Tour/Call Confirmed Banner */}
+              {isSoberLiving && tourConfirmed && (
+                <div className="mt-3 p-4 bg-[#1A1D24] rounded-2xl border border-green-500/30" data-testid="tour-confirmed-banner">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-400" />
+                    <span className="text-sm font-medium text-green-400">Request Received!</span>
+                  </div>
+                  <p className="text-xs text-white/60">
+                    Your information has been recorded. Our admissions team will reach out shortly to confirm your tour or call.
                   </p>
                 </div>
               )}
