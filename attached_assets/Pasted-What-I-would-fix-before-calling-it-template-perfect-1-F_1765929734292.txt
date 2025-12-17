@@ -1,0 +1,125 @@
+What I would fix before calling it “template-perfect”
+1) Fix the timing inconsistency
+
+Your FAQ says “20–30 minutes,” but your services include 45 min and 1 hour options. That’s a credibility hit.
+
+Better FAQ answer:
+
+“Most cuts are 30–45 minutes. Fades and combo services usually run 45–60 minutes depending on the style.”
+
+2) Add the 3 FAQs that stop 80% of back-and-forth
+
+Right now you’re missing the heavy hitters:
+
+Cancellation / no-show policy
+
+Late policy
+
+Can I pick a barber / request a specific stylist?
+
+These reduce friction AND make you look professional.
+
+3) Add “Pick a barber” as an optional step (even if you’re redirecting)
+
+Even if you’re not doing live slots in-chat, the flow should ask:
+
+“Any barber is fine, or do you want someone specific?”
+
+That improves conversions for repeat customers.
+
+4) Add one “upsell add-on” CTA (prints money)
+
+A single button like:
+
+Add-ons → “Do you offer enhancements like hot towel, eyebrow, designs?”
+
+Then the bot can recommend add-ons before the booking handoff.
+
+5) Make “prices are starting prices” match your service list
+
+You say “starting prices,” but you list exact prices. That’s fine — just clarify:
+
+“Prices shown are typical for most clients. Specialty styles, extra length, or design work may vary.”
+
+6) Add “Talk to a human” and “Call now”
+
+You need a safety valve for edge cases:
+
+Call the shop
+
+Text us
+
+Speak to staff
+
+This saves bookings when someone’s being difficult or the booking link is acting up.
+
+Alternative approaches
+Option A (best v1 stability)
+
+Your current setup + Quick Book + redirect + demo confirmation.
+This scales to tons of clients without breaking.
+
+Option B (premium later)
+
+Add “Live slots in chat” for Square users as an upgrade.
+Don’t mix it into the base template yet.
+
+Practical action plan to finish the template
+
+Update the 1 FAQ timing answer (consistency).
+
+Add 3 FAQs: cancellation/no-show, late policy, request barber/stylist.
+
+Add 2 CTAs: Add-ons + Talk to a human.
+
+Make Quick Book ask one extra question optionally: Any barber or someone specific? (store it on the intent/lead).
+
+Turn this into a seed JSON so every new barber/salon workspace loads identically.
+
+Seed JSON (copy/paste structure)
+
+Use this as the canonical template payload (adjust keys to your system):
+
+{
+  "templateName": "Barber / Salon",
+  "industry": "barber_salon",
+  "tone": { "style": "casual_friendly", "formality": 20 },
+  "branding": { "primaryColor": "#8B5CF6" },
+  "welcomeMessage": "Hey! Ready for a fresh cut? Let me help you out.",
+  "services": [
+    { "id": "classic_fade", "name": "Classic Fade", "description": "Clean fade with precise blend", "priceCents": 3000, "durationMins": 30, "enabled": true },
+    { "id": "signature_haircut", "name": "Signature Haircut", "description": "Precision cut with hot towel finish", "priceCents": 3500, "durationMins": 45, "enabled": true },
+    { "id": "beard_trim", "name": "Beard Trim & Shape", "description": "Expert beard shaping and lineup", "priceCents": 2000, "durationMins": 20, "enabled": true },
+    { "id": "hot_towel_shave", "name": "Hot Towel Shave", "description": "Traditional straight razor shave with hot towels", "priceCents": 4000, "durationMins": 45, "enabled": true },
+    { "id": "combo", "name": "Haircut + Beard Combo", "description": "Full haircut plus beard trim - the complete package", "priceCents": 5000, "durationMins": 60, "enabled": true },
+    { "id": "kids_cut", "name": "Kids Cut (12 & Under)", "description": "Patient, kid-friendly haircuts", "priceCents": 2200, "durationMins": 30, "enabled": true }
+  ],
+  "faqs": [
+    { "q": "How long does a haircut take?", "a": "Most cuts run 30–45 minutes. Fades and combo services usually take 45–60 minutes depending on the style." },
+    { "q": "Do I need an appointment?", "a": "Walk-ins are welcome when available, but booking an appointment is the best way to lock your preferred time." },
+    { "q": "What forms of payment do you accept?", "a": "We accept cash, credit/debit cards, and most mobile payment options." },
+    { "q": "What’s your cancellation / no-show policy?", "a": "We ask for notice if you need to cancel or reschedule. No-shows may be subject to a fee depending on the service." },
+    { "q": "What if I’m running late?", "a": "If you’re running late, message us ASAP. We’ll do our best to fit you in, but we may need to adjust the service or reschedule." },
+    { "q": "Can I request a specific barber/stylist?", "a": "Yes — you can request a specific barber/stylist, or choose ‘Any available’ to get the soonest opening." }
+  ],
+  "booking": {
+    "mode": "external_redirect",
+    "supportedProviders": ["Square", "Booksy", "Vagaro", "StyleSeat", "Schedulicity"],
+    "failsafeEnabled": true,
+    "quickBookEnabled": true
+  },
+  "ctaButtons": [
+    { "label": "Book Appointment", "prompt": "I'd like to book an appointment." },
+    { "label": "Services & Prices", "prompt": "What services do you offer and what are your prices?" },
+    { "label": "Walk-Ins?", "prompt": "Do you accept walk-ins?" },
+    { "label": "Hours", "prompt": "What are your hours?" },
+    { "label": "Add-ons", "prompt": "Do you offer add-ons like hot towel, eyebrow, or designs?" },
+    { "label": "Talk to a human", "prompt": "Can someone from the shop contact me?" }
+  ],
+  "disclaimer": [
+    "Appointment times are estimates and may vary.",
+    "Cancellation policies apply — please review before booking.",
+    "Prices shown are typical and may vary for specialty styles or add-ons.",
+    "Please arrive on time to avoid rescheduling."
+  ]
+}

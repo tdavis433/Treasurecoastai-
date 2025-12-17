@@ -156,11 +156,13 @@ export const INDUSTRY_TEMPLATES: Record<string, IndustryTemplate> = {
       { id: 'services', label: 'Services & Prices', prompt: 'What services do you offer and what are your prices?' },
       { id: 'walkins', label: 'Walk-Ins?', prompt: 'Do you accept walk-ins?' },
       { id: 'hours', label: 'Hours', prompt: 'What are your hours?' },
+      { id: 'addons', label: 'Add-ons', prompt: 'Do you offer add-ons like hot towel, eyebrow trim, or designs?' },
+      { id: 'human', label: 'Talk to a Human', prompt: 'Can someone from the shop contact me directly?' },
     ],
     disclaimer: `PERSONAL SERVICES DISCLAIMER:
 - Appointment times are estimates and may vary
 - Cancellation policies apply - please review before booking
-- Prices shown are starting prices and may vary based on hair length/style
+- Prices shown are typical and may vary for specialty styles or add-ons
 - Please arrive on time to avoid rescheduling`,
     servicesCatalog: [
       { 
@@ -225,9 +227,12 @@ export const INDUSTRY_TEMPLATES: Record<string, IndustryTemplate> = {
       },
       systemPromptIntro: 'You are a friendly AI assistant for a barbershop. You help clients book appointments and answer questions about services.',
       faqs: [
-        { question: 'How long does a haircut take?', answer: 'A standard haircut typically takes 20-30 minutes. Fades and detailed styles may take longer.' },
-        { question: 'Do I need an appointment?', answer: 'While we accept walk-ins when available, we recommend booking an appointment to ensure your preferred time slot.' },
+        { question: 'How long does a haircut take?', answer: 'Most cuts run 30-45 minutes. Fades and combo services usually take 45-60 minutes depending on the style.' },
+        { question: 'Do I need an appointment?', answer: 'Walk-ins are welcome when available, but booking an appointment is the best way to lock in your preferred time.' },
         { question: 'What forms of payment do you accept?', answer: 'We accept cash, credit/debit cards, and most mobile payment options.' },
+        { question: 'What is your cancellation / no-show policy?', answer: 'We ask for notice if you need to cancel or reschedule. No-shows may be subject to a fee depending on the service.' },
+        { question: 'What if I am running late?', answer: 'If you are running late, message us ASAP. We will do our best to fit you in, but we may need to adjust the service or reschedule.' },
+        { question: 'Can I request a specific barber or stylist?', answer: 'Yes — you can request a specific barber/stylist, or choose Any available to get the soonest opening.' },
       ],
       personality: { tone: 'casual', formality: 20 },
       theme: { primaryColor: '#8B5CF6', welcomeMessage: 'Hey! Ready for a fresh cut? Let me help you out.' },
