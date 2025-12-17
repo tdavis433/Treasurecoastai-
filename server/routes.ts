@@ -6920,24 +6920,32 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
-  // Get notification settings
+  // Get notification settings (simple + detailed)
   app.get("/api/super-admin/clients/:clientId/notifications", requireSuperAdmin, async (req, res) => {
     try {
       const { clientId } = req.params;
       const settings = await storage.getSettings(clientId);
-      res.json(settings?.notificationSettings || {
-        staffEmails: [],
-        staffPhones: [],
-        staffChannelPreference: 'email_only',
-        eventToggles: {
-          newAppointmentEmail: true,
-          newAppointmentSms: false,
-          newPreIntakeEmail: false,
-          sameDayReminder: false,
-        },
-        templates: {
-          staffEmailSubject: 'New Appointment Request from {{leadName}}',
-          staffEmailBody: 'A new {{appointmentType}} appointment has been requested by {{leadName}} for {{preferredTime}}.',
+      res.json({
+        // Simple toggles and recipients
+        enableEmailNotifications: settings?.enableEmailNotifications ?? false,
+        enableSmsNotifications: settings?.enableSmsNotifications ?? false,
+        notificationEmail: settings?.notificationEmail || '',
+        notificationPhone: settings?.notificationPhone || '',
+        // Detailed settings (legacy)
+        notificationSettings: settings?.notificationSettings || {
+          staffEmails: [],
+          staffPhones: [],
+          staffChannelPreference: 'email_only',
+          eventToggles: {
+            newAppointmentEmail: true,
+            newAppointmentSms: false,
+            newPreIntakeEmail: false,
+            sameDayReminder: false,
+          },
+          templates: {
+            staffEmailSubject: 'New Appointment Request from {{leadName}}',
+            staffEmailBody: 'A new {{appointmentType}} appointment has been requested by {{leadName}} for {{preferredTime}}.',
+          },
         },
       });
     } catch (error) {
@@ -6946,13 +6954,29 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
-  // Update notification settings
+  // Update notification settings (supports simple toggles)
   app.put("/api/super-admin/clients/:clientId/notifications", requireSuperAdmin, async (req, res) => {
     try {
       const { clientId } = req.params;
-      const notificationSettings = req.body;
-      await storage.updateSettings(clientId, { notificationSettings });
-      res.json(notificationSettings);
+      const { enableEmailNotifications, enableSmsNotifications, notificationEmail, notificationPhone, notificationSettings } = req.body;
+      
+      const updates: Record<string, any> = {};
+      if (enableEmailNotifications !== undefined) updates.enableEmailNotifications = enableEmailNotifications;
+      if (enableSmsNotifications !== undefined) updates.enableSmsNotifications = enableSmsNotifications;
+      if (notificationEmail !== undefined) updates.notificationEmail = notificationEmail;
+      if (notificationPhone !== undefined) updates.notificationPhone = notificationPhone;
+      if (notificationSettings !== undefined) updates.notificationSettings = notificationSettings;
+      
+      await storage.updateSettings(clientId, updates);
+      
+      // Return updated settings
+      const updatedSettings = await storage.getSettings(clientId);
+      res.json({
+        enableEmailNotifications: updatedSettings?.enableEmailNotifications ?? false,
+        enableSmsNotifications: updatedSettings?.enableSmsNotifications ?? false,
+        notificationEmail: updatedSettings?.notificationEmail || '',
+        notificationPhone: updatedSettings?.notificationPhone || '',
+      });
     } catch (error) {
       structuredLogger.error("Update notification settings error:", error);
       res.status(400).json({ error: "Failed to update notification settings" });

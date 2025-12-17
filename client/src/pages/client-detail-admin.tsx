@@ -370,6 +370,47 @@ export default function ClientDetailAdmin() {
     },
   });
 
+  // Notification settings query and mutation
+  const { data: notificationSettings, isLoading: notificationsLoading, isError: notificationsError } = useQuery<{
+    enableEmailNotifications: boolean;
+    enableSmsNotifications: boolean;
+    notificationEmail: string;
+    notificationPhone: string;
+  }>({
+    queryKey: ["/api/super-admin/clients", slug, "notifications"],
+    queryFn: async () => {
+      const response = await fetch(`/api/super-admin/clients/${slug}/notifications`, { credentials: "include" });
+      if (!response.ok) {
+        throw new Error("Failed to fetch notification settings");
+      }
+      return response.json();
+    },
+    enabled: !!slug && activeTab === 'settings',
+  });
+
+  const updateNotificationsMutation = useMutation({
+    mutationFn: async (data: { 
+      enableEmailNotifications?: boolean; 
+      enableSmsNotifications?: boolean; 
+      notificationEmail?: string;
+      notificationPhone?: string;
+    }) => {
+      const response = await apiRequest("PUT", `/api/super-admin/clients/${slug}/notifications`, data);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update notification settings");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/clients", slug, "notifications"] });
+      toast({ title: "Saved", description: "Notification settings updated." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message || "Failed to update notification settings.", variant: "destructive" });
+    },
+  });
+
   const updateWorkspaceMutation = useMutation({
     mutationFn: async (data: { plan?: string; status?: string; name?: string }) => {
       const response = await apiRequest("PATCH", `/api/super-admin/workspaces/${slug}`, data);
@@ -1135,6 +1176,120 @@ export default function ClientDetailAdmin() {
                       </div>
 
                       {updateBehaviorMutation.isPending && (
+                        <div className="flex items-center gap-2 text-cyan-400 text-sm">
+                          <RefreshCw className="h-3 w-3 animate-spin" />
+                          Saving...
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </GlassCardContent>
+              </GlassCard>
+
+              {/* Notification Settings */}
+              <GlassCard>
+                <GlassCardHeader>
+                  <GlassCardTitle className="text-sm flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-cyan-400" />
+                    Notification Settings
+                  </GlassCardTitle>
+                  <GlassCardDescription>
+                    Configure email and SMS notifications for new leads, bookings, and important events
+                  </GlassCardDescription>
+                </GlassCardHeader>
+                <GlassCardContent>
+                  {notificationsLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="h-6 w-6 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
+                    </div>
+                  ) : notificationsError ? (
+                    <div className="text-center py-8">
+                      <Mail className="h-8 w-8 text-red-400/50 mx-auto mb-2" />
+                      <p className="text-red-400 text-sm">Failed to load notification settings</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {/* Email Notifications */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label className="text-white/70 flex items-center gap-2">
+                              <Mail className="h-4 w-4" />
+                              Email Notifications
+                            </Label>
+                            <p className="text-xs text-white/40">Receive alerts via email</p>
+                          </div>
+                          <Switch
+                            checked={notificationSettings?.enableEmailNotifications ?? false}
+                            onCheckedChange={(checked) => updateNotificationsMutation.mutate({ enableEmailNotifications: checked })}
+                            disabled={updateNotificationsMutation.isPending}
+                            data-testid="switch-email-notifications"
+                          />
+                        </div>
+                        
+                        {notificationSettings?.enableEmailNotifications && (
+                          <div className="space-y-2">
+                            <Label className="text-white/70">Notification Email</Label>
+                            <Input
+                              type="email"
+                              key={`email-${notificationSettings?.notificationEmail}`}
+                              defaultValue={notificationSettings?.notificationEmail || ''}
+                              onBlur={(e) => {
+                                if (e.target.value !== notificationSettings?.notificationEmail) {
+                                  updateNotificationsMutation.mutate({ notificationEmail: e.target.value });
+                                }
+                              }}
+                              placeholder="alerts@business.com"
+                              className="bg-white/5 border-white/10 text-white"
+                              disabled={updateNotificationsMutation.isPending}
+                              data-testid="input-notification-email"
+                            />
+                            <p className="text-xs text-white/40">Email address to receive notifications</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* SMS Notifications */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label className="text-white/70 flex items-center gap-2">
+                              <Phone className="h-4 w-4" />
+                              SMS Notifications
+                            </Label>
+                            <p className="text-xs text-white/40">Receive alerts via text message</p>
+                          </div>
+                          <Switch
+                            checked={notificationSettings?.enableSmsNotifications ?? false}
+                            onCheckedChange={(checked) => updateNotificationsMutation.mutate({ enableSmsNotifications: checked })}
+                            disabled={updateNotificationsMutation.isPending}
+                            data-testid="switch-sms-notifications"
+                          />
+                        </div>
+                        
+                        {notificationSettings?.enableSmsNotifications && (
+                          <div className="space-y-2">
+                            <Label className="text-white/70">Notification Phone</Label>
+                            <Input
+                              type="tel"
+                              key={`phone-${notificationSettings?.notificationPhone}`}
+                              defaultValue={notificationSettings?.notificationPhone || ''}
+                              onBlur={(e) => {
+                                if (e.target.value !== notificationSettings?.notificationPhone) {
+                                  updateNotificationsMutation.mutate({ notificationPhone: e.target.value });
+                                }
+                              }}
+                              placeholder="+1 (555) 123-4567"
+                              className="bg-white/5 border-white/10 text-white"
+                              disabled={updateNotificationsMutation.isPending}
+                              data-testid="input-notification-phone"
+                            />
+                            <p className="text-xs text-white/40">Phone number to receive SMS notifications (requires Twilio setup)</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {updateNotificationsMutation.isPending && (
                         <div className="flex items-center gap-2 text-cyan-400 text-sm">
                           <RefreshCw className="h-3 w-3 animate-spin" />
                           Saving...

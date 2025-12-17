@@ -8,7 +8,7 @@
     "type": "sober_living",
     "location": "Port St. Lucie, Florida",
     "phone": "(772) 722-0008",
-    "email": "thefaithhouse.info@gmail.com",
+    "email": "mlgrushskill@gmail.com",
     "website": "https://www.thefaithhouse.net",
     "hours": {
       "officehours": "Mon-Fri 9am-5pm",
@@ -32,7 +32,8 @@
       "Common areas",
       "Kitchen access",
       "Supportive community environment"
-    ]
+    ],
+    "booking": {}
   },
   "rules": {
     "allowedTopics": [
