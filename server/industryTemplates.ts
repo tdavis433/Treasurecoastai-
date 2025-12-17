@@ -13,6 +13,7 @@ export interface BookingProfile {
   primaryCTA: 'tour' | 'consult' | 'book' | 'reserve' | 'estimate' | 'call';
   secondaryCTA?: string;
   externalProviders?: string[]; // Common booking providers for this industry
+  defaultExternalProviderName?: string; // Default provider name for display (e.g., "Square", "Booksy")
   failsafeEnabled: boolean; // If external URL missing/invalid, fallback to internal
 }
 
@@ -149,6 +150,7 @@ export const INDUSTRY_TEMPLATES: Record<string, IndustryTemplate> = {
       mode: 'external',
       primaryCTA: 'book',
       externalProviders: ['Square Appointments', 'Booksy', 'Vagaro', 'StyleSeat', 'Schedulicity'],
+      defaultExternalProviderName: 'Square',
       failsafeEnabled: true,
     },
     ctaButtons: [
@@ -172,6 +174,7 @@ export const INDUSTRY_TEMPLATES: Record<string, IndustryTemplate> = {
         price: '$30', 
         duration: '30 min',
         category: 'haircuts',
+        bookingUrl: 'https://squareup.com/appointments/book/YOUR_BUSINESS_ID/classic-fade',
         active: true 
       },
       { 
@@ -181,6 +184,7 @@ export const INDUSTRY_TEMPLATES: Record<string, IndustryTemplate> = {
         price: '$35', 
         duration: '45 min',
         category: 'haircuts',
+        bookingUrl: 'https://squareup.com/appointments/book/YOUR_BUSINESS_ID/signature-haircut',
         active: true 
       },
       { 
@@ -190,6 +194,7 @@ export const INDUSTRY_TEMPLATES: Record<string, IndustryTemplate> = {
         price: '$20', 
         duration: '20 min',
         category: 'beard',
+        bookingUrl: 'https://squareup.com/appointments/book/YOUR_BUSINESS_ID/beard-trim',
         active: true 
       },
       { 
@@ -718,6 +723,7 @@ export const INDUSTRY_TEMPLATES: Record<string, IndustryTemplate> = {
       mode: 'external',
       primaryCTA: 'book',
       externalProviders: ['Square Appointments', 'Vagaro', 'StyleSeat', 'Fresha', 'Boulevard'],
+      defaultExternalProviderName: 'Vagaro',
       failsafeEnabled: true,
     },
     ctaButtons: [
@@ -741,6 +747,7 @@ export const INDUSTRY_TEMPLATES: Record<string, IndustryTemplate> = {
         price: '$55', 
         duration: '60 min',
         category: 'haircuts',
+        bookingUrl: 'https://www.vagaro.com/YOUR_BUSINESS/book-now/womens-haircut',
         active: true 
       },
       { 
@@ -750,6 +757,7 @@ export const INDUSTRY_TEMPLATES: Record<string, IndustryTemplate> = {
         price: '$35', 
         duration: '45 min',
         category: 'haircuts',
+        bookingUrl: 'https://www.vagaro.com/YOUR_BUSINESS/book-now/mens-haircut',
         active: true 
       },
       { 
@@ -759,6 +767,7 @@ export const INDUSTRY_TEMPLATES: Record<string, IndustryTemplate> = {
         price: '$45', 
         duration: '45 min',
         category: 'styling',
+        bookingUrl: 'https://www.vagaro.com/YOUR_BUSINESS/book-now/blowout',
         active: true 
       },
       { 
@@ -818,6 +827,7 @@ export const INDUSTRY_TEMPLATES: Record<string, IndustryTemplate> = {
       mode: 'external',
       primaryCTA: 'book',
       externalProviders: ['Square Appointments', 'Vagaro', 'Fresha', 'Schedulicity', 'Booksy'],
+      defaultExternalProviderName: 'Booksy',
       failsafeEnabled: true,
     },
     ctaButtons: [
@@ -841,6 +851,7 @@ export const INDUSTRY_TEMPLATES: Record<string, IndustryTemplate> = {
         price: '$25', 
         duration: '30 min',
         category: 'manicures',
+        bookingUrl: 'https://booksy.com/en-us/YOUR_BUSINESS#book/classic-manicure',
         active: true 
       },
       { 
@@ -850,6 +861,7 @@ export const INDUSTRY_TEMPLATES: Record<string, IndustryTemplate> = {
         price: '$45', 
         duration: '45 min',
         category: 'manicures',
+        bookingUrl: 'https://booksy.com/en-us/YOUR_BUSINESS#book/gel-manicure',
         active: true 
       },
       { 
@@ -859,6 +871,7 @@ export const INDUSTRY_TEMPLATES: Record<string, IndustryTemplate> = {
         price: '$40', 
         duration: '45 min',
         category: 'pedicures',
+        bookingUrl: 'https://booksy.com/en-us/YOUR_BUSINESS#book/classic-pedicure',
         active: true 
       },
       { 
