@@ -169,7 +169,7 @@ export interface IStorage {
     totalLinkClicks: number;
     pendingBookings: number;
     completedBookings: number;
-    funnelMode: 'handoff' | 'confirmable';
+    funnelMode: 'handoff' | 'confirmable' | 'internal';
     dailyTrends: { date: string; intents: number; clicks: number }[];
   }>;
   logBookingIntentEvent(data: { clientId: string; botId: string; sessionId: string; leadId?: string }): Promise<void>;
@@ -1047,7 +1047,7 @@ export class DbStorage implements IStorage {
     totalLinkClicks: number;
     pendingBookings: number;
     completedBookings: number;
-    funnelMode: 'handoff' | 'confirmable';
+    funnelMode: 'handoff' | 'confirmable' | 'internal';
     dailyTrends: { date: string; intents: number; clicks: number }[];
   }> {
     const now = new Date();
@@ -1070,11 +1070,14 @@ export class DbStorage implements IStorage {
     const externalConfigured = settings?.bookingMode === 'external' && 
       (hasGlobalExternalUrl || hasServiceSpecificUrls);
     
-    // funnelMode = 'confirmable' ONLY when demo mode is enabled
-    // Internal mode has no staff confirmation UI yet, so show 3-step funnel
-    // External mode hands off to third-party, so also 3-step funnel
-    const funnelMode: 'handoff' | 'confirmable' = 
-      settings?.quickBookDemoMode === true ? 'confirmable' : 'handoff';
+    // funnelMode determines which funnel UI to show:
+    // - 'confirmable': demo mode only (4 steps with Confirmed)
+    // - 'handoff': external booking configured (3 steps, "redirected to external")
+    // - 'internal': no external config (3 steps, "we'll follow up to confirm")
+    const funnelMode: 'handoff' | 'confirmable' | 'internal' = 
+      settings?.quickBookDemoMode === true
+        ? 'confirmable'
+        : (externalConfigured ? 'handoff' : 'internal');
     
     // Count booking intents from the booking_intents table (source of truth)
     const intentCountResult = await db

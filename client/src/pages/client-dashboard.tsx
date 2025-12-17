@@ -282,7 +282,7 @@ interface BookingAnalytics {
   totalLinkClicks: number;
   pendingBookings: number;
   completedBookings: number;
-  funnelMode: 'handoff' | 'confirmable';
+  funnelMode: 'handoff' | 'confirmable' | 'internal';
   dailyTrends: { date: string; intents: number; clicks: number }[];
 }
 
@@ -2458,7 +2458,9 @@ export default function ClientDashboard() {
             <GlassCardDescription>
               {bookingAnalytics.funnelMode === 'handoff' 
                 ? 'Visitors are redirected to your external booking system'
-                : 'How visitors progress through the booking flow'}
+                : bookingAnalytics.funnelMode === 'internal'
+                  ? 'We capture leads and follow up to confirm bookings'
+                  : 'How visitors progress through the booking flow'}
             </GlassCardDescription>
           </GlassCardHeader>
           <GlassCardContent>
