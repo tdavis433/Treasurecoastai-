@@ -96,6 +96,7 @@ The sober living template uses a deterministic intent router (`server/recoveryRo
 - **Conservative Merge:** Fields only update if not already set, priority only elevates (never downgrades), tags union, metadata shallow-merges
 - **Intent Tagging:** Leads tagged with single primary intent (`intent:admissions_intake`, etc.) for analytics
 - **Single Primary Intent:** Each lead has exactly ONE `intent:*` tag. The `stripIntentTags()` and `getPrimaryIntentFromTags()` helpers in routes.ts ensure old intent tags are replaced (not accumulated) when upgrading.
+- **Standardized Tag Naming:** Non-intent tags use `flag:` prefix (`flag:hot_lead`, `flag:appointment_request`) for consistent filtering.
 - **AutoCaptureLead Integration:** The `autoCaptureLead` function in routes.ts uses recovery router to classify intent for sober living businesses at lead creation time, ensuring proper intent tags are applied from the start
 - **Intent Precedence:** Intent tags only upgrade (never downgrade) - crisis (100) > admissions_intake (90) > availability (80) > insurance_payment (70) > services_pricing (60) > rules_eligibility (50) > contact_hours_location (40) > general (10)
 - **Intent History:** Metadata includes `intentHistory` array tracking intent upgrades for debugging/analytics

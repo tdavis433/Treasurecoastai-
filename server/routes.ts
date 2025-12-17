@@ -3067,9 +3067,10 @@ These suggestions should be relevant to what was just discussed and help guide t
         structuredLogger.info(`[Auto-Lead] Updated existing lead ${existingLead.id} for session ${sessionId}`);
       } else {
         // Build tags array - ensure single primary intent
+        // Use flag: prefix for non-intent tags for consistent filtering
         const tags: string[] = [];
-        if (hasBookingIntent) tags.push('appointment_request');
-        if (aiAnalysis?.leadQuality === 'hot') tags.push('hot_lead');
+        if (hasBookingIntent) tags.push('flag:appointment_request');
+        if (aiAnalysis?.leadQuality === 'hot') tags.push('flag:hot_lead');
         
         // Add single recovery-specific intent tag for sober living businesses
         if (recoveryIntent && recoveryIntent !== 'general') {
