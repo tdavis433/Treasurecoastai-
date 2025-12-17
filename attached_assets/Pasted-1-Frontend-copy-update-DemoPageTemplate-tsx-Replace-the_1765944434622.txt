@@ -1,0 +1,92 @@
+1) Frontend copy update (DemoPageTemplate.tsx)
+
+Replace the paragraph in READY_TO_BOOK with:
+
+Bot copy:
+
+“Perfect — you’re all set. Tap Book Now to finish on our secure scheduling page.”
+
+Trust line (new, under the button):
+
+“You’ll finish on {ProviderName}. If you get interrupted, we’ll still have your request.”
+
+ProviderName source (priority):
+
+quickBookData?.providerName
+
+fallback: config?.bookingProfile?.externalProviders?.[0] if you have it
+
+fallback: "our booking provider"
+
+Drop-in code snippet
+const providerName =
+  (quickBookData as any)?.providerName ||
+  (config as any)?.bookingProfile?.externalProviderName ||
+  (config as any)?.bookingProfile?.externalProviders?.[0] ||
+  "our booking provider";
+
+
+Then update the block:
+
+<p className="text-xs text-white/60 mb-3">
+  Perfect — you’re all set. Tap <span className="font-semibold text-white">Book Now</span> to finish on our secure scheduling page.
+</p>
+
+<Button ...>...</Button>
+
+<p className="mt-3 text-[11px] leading-snug text-white/50">
+  You’ll finish on <span className="text-white/70 font-medium">{providerName}</span>. If you get interrupted, we’ll still have your request.
+</p>
+
+
+(Keep “Talk to a Human” wherever it already is—don’t add SMS.)
+
+2) Backend: metadata merge + providerName in response (server/quickbook.ts)
+External branch + Demo branch only
+
+After you compute the URL and before returning JSON:
+
+Merge into metadata (never overwrite):
+
+handoffClickedAt
+
+provider
+
+handoffUrl
+
+Return providerName in the JSON response:
+
+providerName: intent.externalProviderName || settings.externalBookingProviderName || null
+
+Important: internal mode must NOT write these metadata fields.
+
+Example patch (pattern)
+const providerName = intent.externalProviderName || settings?.externalBookingProviderName || null;
+
+await storage.updateBookingIntent(intentId, {
+  metadata: {
+    ...(intent.metadata || {}),
+    handoffClickedAt: new Date().toISOString(),
+    provider: providerName,
+    handoffUrl: url,
+  },
+});
+
+
+And return:
+
+return res.json({ ok: true, redirectType: 'external', url, providerName });
+
+
+Same for demo branch using demoUrl.
+
+3) Hook: useQuickBook.ts (only if needed)
+
+Right now clickBookNow ignores extra fields. That’s fine if DemoPageTemplate reads providerName from somewhere else.
+
+If DemoPageTemplate needs it from click response, then in clickBookNow return:
+
+return { url, isDemoMode, providerName: data.providerName ?? null };
+
+
+And make sure quickBookData gets that field (depends how you store it).

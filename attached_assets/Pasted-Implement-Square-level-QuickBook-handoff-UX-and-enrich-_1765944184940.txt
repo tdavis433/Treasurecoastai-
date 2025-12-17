@@ -1,0 +1,85 @@
+Implement “Square-level” QuickBook handoff UX and enrich booking_intents.metadata on Book Now click.
+
+GOAL
+After lead capture, the widget shows:
+- Bot: “Perfect — you’re all set. Tap Book Now to finish on our secure scheduling page.”
+- Primary button: Book Now
+- Secondary button: Talk to a Human (existing)
+- Trust line: “You’ll finish on {ProviderName}. If you get interrupted, we’ll still have your request.”
+
+On Book Now click, backend stores (merge into existing metadata):
+- metadata.handoffClickedAt = new Date().toISOString()
+- metadata.provider = intent.externalProviderName OR settings.externalBookingProviderName OR null
+- metadata.handoffUrl = the url returned (external or demo)
+
+NO SMS. NO new DB fields. NO new tables.
+
+────────────────────────────────────────────
+PART A — FRONTEND WIDGET COPY (MINIMAL)
+────────────────────────────────────────────
+Find the widget UI that renders the post-lead-capture “Book Now” step (likely in the chat widget flow component that uses client/src/hooks/useQuickBook.ts).
+Update ONLY the displayed copy to match:
+
+Bot message:
+“Perfect — you’re all set. Tap Book Now to finish on our secure scheduling page.”
+
+Trust line:
+“You’ll finish on {ProviderName}. If you get interrupted, we’ll still have your request.”
+
+If ProviderName is missing, fallback to “our booking provider”.
+
+Keep:
+- Primary “Book Now”
+- Secondary “Talk to a Human” (no changes to behavior)
+
+Do not change flow logic, only text and ProviderName interpolation.
+
+────────────────────────────────────────────
+PART B — BACKEND METADATA ENRICHMENT ON CLICK
+────────────────────────────────────────────
+File: server/quickbook.ts
+Route: POST /api/quickbook/intent/click/:clientId/:botId
+
+In the EXTERNAL branch and DEMO branch (only where a real url exists):
+1) After computing the url (externalUrl or demoUrl) and before returning JSON,
+   update booking intent metadata by MERGING (do not overwrite other metadata):
+
+- Read existing intent.metadata (ensure it’s an object)
+- Set:
+  handoffClickedAt: new Date().toISOString()
+  provider: intent.externalProviderName ?? null
+  handoffUrl: url
+
+2) Ensure internal mode does NOT write these handoff metadata fields (internal has no handoff URL).
+
+3) Use updateBookingIntent with metadata merge (example):
+await storage.updateBookingIntent(intentId, {
+  metadata: {
+    ...(intent.metadata || {}),
+    handoffClickedAt: new Date().toISOString(),
+    provider: intent.externalProviderName || null,
+    handoffUrl: url,
+  },
+});
+
+NOTE:
+- Do not change intent.handling.
+- Do not log booking_link_click for internal.
+- Keep existing external/demo click logging as-is.
+
+────────────────────────────────────────────
+PART C — OPTIONAL: RETURN providerName FOR UI
+────────────────────────────────────────────
+To make the trust line perfect without extra queries, include providerName in the click response JSON for external/demo:
+return { ok:true, redirectType, url, providerName: intent.externalProviderName || null }
+
+Then in useQuickBook.ts clickBookNow, pass providerName through onBookNowClick or store it for rendering the trust line.
+If you don’t want to touch the hook, the widget can already display ProviderName from settings (if available). Use whichever is already accessible in the widget.
+
+────────────────────────────────────────────
+DONE CRITERIA
+────────────────────────────────────────────
+- Copy updated exactly as specified
+- For external/demo clicks: intent.metadata contains handoffClickedAt/provider/handoffUrl (merged, not overwritten)
+- For internal clicks: no handoff metadata written
+- No unrelated files changed, no schema changes

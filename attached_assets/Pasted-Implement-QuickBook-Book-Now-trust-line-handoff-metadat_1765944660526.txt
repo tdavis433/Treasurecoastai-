@@ -1,0 +1,71 @@
+Implement QuickBook “Book Now” trust line + handoff metadata enrichment.
+DO NOT touch unrelated flows. Keep changes scoped.
+
+FILES TO EDIT
+1) server/quickbook.ts
+2) client/src/components/demo/DemoPageTemplate.tsx
+(Only touch client/src/hooks/useQuickBook.ts if needed to store providerName in quickBookData.)
+
+────────────────────────────────────────
+A) BACKEND — server/quickbook.ts
+────────────────────────────────────────
+Route: POST /api/quickbook/intent/click/:clientId/:botId
+
+1) External branch:
+- Compute providerName:
+  const providerName = intent.externalProviderName || settings?.externalBookingProviderName || null;
+- Compute url (externalUrl)
+- Merge into booking_intents.metadata (MUST merge, never overwrite):
+  handoffClickedAt: new Date().toISOString()
+  provider: providerName
+  handoffUrl: url
+- Return JSON:
+  { ok:true, redirectType:'external', url, providerName }
+
+2) Demo branch:
+- providerName same logic
+- url = `/demo-booking-confirmation?intentId=${intentId}`
+- Merge same metadata fields (handoffClickedAt/provider/handoffUrl)
+- Return JSON:
+  { ok:true, redirectType:'demo', url, providerName }
+
+3) Internal branch:
+- NO handoff metadata writes (no url)
+- Return providerName: null (or if you have it, safe to return but no metadata write)
+
+GUARDRAIL:
+- metadata write must be:
+  metadata: { ...(intent.metadata || {}), handoffClickedAt, provider, handoffUrl }
+- Do not overwrite existing metadata keys other than these 3.
+
+────────────────────────────────────────
+B) FRONTEND — DemoPageTemplate.tsx
+────────────────────────────────────────
+Location: client/src/components/demo/DemoPageTemplate.tsx
+READY_TO_BOOK state (lines ~560-585)
+
+Replace the paragraph copy with:
+
+Bot line:
+“Perfect — you’re all set. Tap Book Now to finish on our secure scheduling page.”
+
+Add trust line UNDER the Book Now button:
+
+“You’ll finish on {providerName}. If you get interrupted, we’ll still have your request.”
+
+ProviderName rules:
+- Prefer providerName stored in quickBookData (from click response)
+- Fallback: “our booking provider”
+
+Keep existing Book Now button and Talk to a Human button (no SMS).
+
+────────────────────────────────────────
+C) Store providerName from click response
+────────────────────────────────────────
+When clickBookNow returns data, persist providerName in the state object that DemoPageTemplate reads (quickBookData).
+Only implement the minimal state update required for providerName display. Do not refactor the flow.
+
+DONE CHECK
+- External/Demo click updates booking_intents.metadata with 3 merged fields
+- Internal click does NOT write these metadata fields
+- UI shows trust line with providerName (or fallback)
