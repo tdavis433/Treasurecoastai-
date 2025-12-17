@@ -1,0 +1,234 @@
+YOU ARE A SENIOR FULL-STACK ENGINEER WORKING INSIDE MY EXISTING TREASURE COAST AI CODEBASE.
+
+MISSION:
+Finish + harden the Barber/Salon/Nails template and the QuickBook v1 booking funnel so it is:
+- Honest (no fake “confirmed” for external providers)
+- Stable (no demo behavior leaking into real clients)
+- Repeatable (barber/salon/nails packs that can be reused for many clients)
+- Minimal-risk (additive changes only, do not break other 16+ templates)
+
+STACK (DO NOT CHANGE): Express + Drizzle + Postgres (Neon) + React/Vite + Tailwind + shadcn/ui
+NO PAYMENT PROCESSING. External providers handle booking/payment.
+
+DO NOT:
+- Add Square APIs / live time slots
+- Refactor unrelated code
+- Rename tables/columns
+- Change multi-tenant auth patterns
+- Show the word “demo” anywhere in client dashboard UI labels
+
+FILES YOU WILL TOUCH (ONLY THESE, unless required by compilation):
+- server/industryTemplates.ts
+- server/quickbook.ts
+- server/routes.ts
+- server/storage.ts
+- client/src/pages/client-dashboard.tsx
+- shared/schema.ts (types only if needed; do NOT migrate unless required)
+
+────────────────────────────────────────────────────────────
+PART A — TEMPLATE FINISHING (Barber / Salon / Nails Packs)
+────────────────────────────────────────────────────────────
+
+A1) Add “Service Pack” support to the Barber template (barber / salon / nails)
+Goal: One template entry that can deploy as Barber OR Salon OR Nails without the wrong services showing.
+
+Implementation:
+- In server/industryTemplates.ts, extend the existing barber template config to include “servicePacks”.
+- Keep current barber services as the default pack (“barber”).
+- Add two additional packs (“salon”, “nails”) with their own servicesCatalog + recommended quickbook service IDs + slight FAQ tweaks.
+- Do NOT change any existing template keys used by the platform. Add new keys only.
+
+Example structure (additive):
+barber: {
+  ...
+  servicePacks: {
+    barber: { label, servicesCatalog, quickBookServiceIds, businessTypeOverride?, faqOverrides? },
+    salon:  { ... },
+    nails:  { ... }
+  },
+  defaultServicePack: "barber"
+}
+
+A2) Services data improvements (non-breaking)
+Current servicesCatalog stores price/duration as strings. In shared/schema.ts servicesCatalog type currently supports price?: string and duration?: string.
+
+Add OPTIONAL numeric fields in the template objects (no DB change required yet):
+- priceCents (number)
+- durationMins (number)
+
+Keep existing price/duration strings for display to avoid breaking UI.
+
+A3) Ensure the FAQs + wording are consistent and premium
+- Ensure haircut duration FAQ matches service durations (already updated: 30–45 mins; combos 45–60).
+- Ensure “Can I request a specific barber/stylist?” includes “Any available”.
+- Keep disclaimer as-is, but make sure it does not contradict exact prices:
+  “Prices shown are typical and may vary for specialty styles or add-ons.”
+
+A4) Add/confirm CTAs in the template
+Ensure the following CTAs exist (you already have most):
+- Book Appointment (primary)
+- Services & Prices
+- Walk-Ins?
+- Hours
+- Add-ons
+- Talk to a Human
+Optionally add:
+- Call Now (only if business phone exists in settings; otherwise omit)
+
+────────────────────────────────────────────────────────────
+PART B — QUICKBOOK v1: NO DEMO LEAKAGE + TRUTHFUL FUNNEL
+────────────────────────────────────────────────────────────
+
+B1) Fix handling logic in server/quickbook.ts (intent start)
+Problem:
+In /api/quickbook/intent/start/:clientId/:botId, handling defaults to ‘demo’. If externalBookingUrl is missing, it incorrectly falls into demo behavior. Internal is never set.
+
+Required behavior:
+- Demo mode should ONLY happen when client settings explicitly enable it (quickBookDemoMode=true).
+- External booking should happen ONLY when bookingMode='external' AND a bookingUrl exists.
+- Otherwise fallback MUST be internal (lead capture + staff follow-up), not demo.
+
+Implementation in server/quickbook.ts (inside intent/start):
+1) Keep service-specific bookingUrl override logic.
+2) Replace handling logic with:
+   const settings = await storage.getSettings(clientId);
+   const bookingUrl = service.bookingUrl ?? settings.externalBookingUrl ?? null;
+
+   let handling: 'internal' | 'external' | 'demo' = 'internal';
+   if (settings?.quickBookDemoMode === true) handling = 'demo';
+   else if (settings?.bookingMode === 'external' && bookingUrl) handling = 'external';
+   else handling = 'internal';
+
+3) IMPORTANT:
+- Remove “default handling demo”.
+- Remove clientId demo prefix auto-detection OR do not allow it to affect real clients.
+  Source of truth should be settings.quickBookDemoMode.
+- When handling === 'internal', set externalUrl = null (do not store bookingUrl in intent externalUrl for internal).
+
+Create booking intent with:
+- handling set correctly
+- externalUrl only for external (or demo page URL for demo flow if your frontend uses it)
+
+B2) Guard the demo confirm endpoint (server/quickbook.ts)
+Problem:
+POST /api/quickbook/demo/confirm can confirm any intentId and pollute real client data.
+
+Fix:
+After loading intent:
+- if (intent.handling !== 'demo') return 403 (“Demo confirmation not enabled for this booking.”)
+
+Keep idempotent return for already confirmed.
+
+B3) Ensure clicked_to_book stays the external “success” metric
+For external providers, we can only track through clicking the booking link.
+Do NOT claim confirmed unless internal/demo/webhook verified.
+
+B4) Optional but recommended:
+When external Book Now is clicked, you may set redirectedAt = now and/or status='redirected'.
+If you do, you MUST keep “Clicked to Book” as the primary metric and not treat redirected as confirmed.
+(If you want minimal changes, skip redirected entirely and keep clicked_to_book as terminal state.)
+
+────────────────────────────────────────────────────────────
+PART C — BOOKING ANALYTICS: FIX DATE RANGE + ADD LEAD CAPTURE STEP
+────────────────────────────────────────────────────────────
+
+C1) Fix date range bug (server/routes.ts + server/storage.ts)
+Frontend calls:
+- /api/client/bookings/analytics?startDate=...&endDate=...
+But backend ignores it and always uses last 30 days.
+
+Implement:
+- In server/routes.ts, parse startDate/endDate (optional) and pass into storage.getBookingAnalytics(clientId, {startDate, endDate})
+- Update getBookingAnalytics signature to accept range.
+- Default range to last 30 days when missing.
+
+C2) Add new analytics fields (server/storage.ts)
+Return payload must add:
+- totalLeadCaptured: number
+- funnelMode: 'handoff' | 'confirmable'
+
+Determine funnelMode from client settings (config-driven):
+- const settings = await this.getSettings(clientId)
+- funnelMode = (settings?.quickBookDemoMode === true || settings?.bookingMode === 'internal') ? 'confirmable' : 'handoff'
+
+Counts within the requested date range:
+- totalBookingIntents: count(booking_intents)
+- totalLeadCaptured: count where leadCapturedAt IS NOT NULL
+- totalLinkClicks: count chat_analytics_events where eventType='booking_link_click'
+- pendingBookings: ONLY status IN ('started','lead_captured')  (do NOT include clicked_to_book)
+- completedBookings:
+   - if funnelMode='confirmable': count status IN ('demo_confirmed','confirmed')
+   - else funnelMode='handoff': completedBookings MUST be 0
+
+Keep dailyTrends but ensure it uses the same range and does not break.
+
+────────────────────────────────────────────────────────────
+PART D — CLIENT DASHBOARD FUNNEL CARD (NO “DEMO” WORDING)
+────────────────────────────────────────────────────────────
+
+D1) Update BookingAnalytics interface in client-dashboard.tsx
+Add:
+- totalLeadCaptured: number
+- funnelMode: 'handoff' | 'confirmable'
+
+D2) Replace hardcoded 3-step UI with dynamic steps
+Render steps based on funnelMode:
+
+If funnelMode === 'handoff' (real external clients):
+- Intent Detection (totalBookingIntents) [100% bar]
+- Lead Captured (totalLeadCaptured)
+- Clicked to Book (totalLinkClicks)
+DO NOT show Confirmed at all.
+
+If funnelMode === 'confirmable' (demo/internal/verified):
+Add 4th step:
+- Confirmed (completedBookings)
+Label must be exactly “Confirmed” (never “Demo Confirmed”)
+
+Progress bars:
+- percent = Math.min(100, (value / totalBookingIntents) * 100)
+- Avoid NaN when totalBookingIntents=0
+Keep existing gating: show funnel card only when totalBookingIntents > 0.
+
+────────────────────────────────────────────────────────────
+PART E — QUICKBOOK FAILSAFE UX (INTERNAL MODE)
+────────────────────────────────────────────────────────────
+When handling === 'internal':
+- Do NOT show a redirect “Book Now” button.
+- After contact capture, show a message like:
+  “Got it — our team will reach out to confirm a time. What’s the best number/email?”
+- Ensure lead + booking intent are still saved:
+  status should be lead_captured and leadCapturedAt set.
+This allows a real client to use QuickBook even if they haven’t pasted a booking URL yet.
+
+────────────────────────────────────────────────────────────
+MANUAL QA (REQUIRED BEFORE MARKING DONE)
+────────────────────────────────────────────────────────────
+1) External workspace: bookingMode=external, quickBookDemoMode=false, externalBookingUrl set
+- Intent: started -> lead_captured -> clicked_to_book
+- Demo confirm endpoint returns 403 for this intent
+- Analytics: funnelMode='handoff'
+- Funnel UI shows 3 steps, no Confirmed step
+
+2) External workspace with missing externalBookingUrl
+- handling becomes internal
+- lead capture still works
+- no redirect button shown
+- analytics still works; funnel shows Lead Captured but Clicked to Book stays lower
+
+3) Demo workspace: quickBookDemoMode=true
+- handling=demo
+- demo confirm works -> status demo_confirmed
+- analytics: funnelMode='confirmable'
+- funnel UI shows Confirmed (no “demo” word)
+
+4) Date range filter (7/30/all) changes values (backend uses query params)
+
+DELIVERABLES:
+- Updated Barber template with service packs (barber/salon/nails)
+- QuickBook handling logic fixed (no demo leakage)
+- Demo confirm endpoint guarded
+- Booking analytics supports date range + lead captured + funnelMode
+- Client dashboard funnel reflects funnelMode and uses Lead Captured step
+
+IMPLEMENT ALL OF THIS NOW WITH MINIMAL RISK.

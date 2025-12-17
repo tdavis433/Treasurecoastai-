@@ -278,9 +278,11 @@ interface TopQuestion {
 
 interface BookingAnalytics {
   totalBookingIntents: number;
+  totalLeadCaptured: number;
   totalLinkClicks: number;
   pendingBookings: number;
   completedBookings: number;
+  funnelMode: 'handoff' | 'confirmable';
   dailyTrends: { date: string; intents: number; clicks: number }[];
 }
 
@@ -2445,7 +2447,7 @@ export default function ClientDashboard() {
         </GlassCard>
       </div>
 
-      {/* Conversion funnel info */}
+      {/* Conversion funnel info - dynamic based on funnelMode */}
       {bookingAnalytics && bookingAnalytics.totalBookingIntents > 0 && (
         <GlassCard data-testid="card-booking-funnel">
           <GlassCardHeader>
@@ -2454,11 +2456,14 @@ export default function ClientDashboard() {
               Booking Funnel
             </GlassCardTitle>
             <GlassCardDescription>
-              How visitors progress through the booking flow
+              {bookingAnalytics.funnelMode === 'handoff' 
+                ? 'Visitors are redirected to your external booking system'
+                : 'How visitors progress through the booking flow'}
             </GlassCardDescription>
           </GlassCardHeader>
           <GlassCardContent>
             <div className="flex items-center justify-between gap-4 text-sm">
+              {/* Step 1: Intent Detection (always shown) */}
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-white/70">Intent Detection</span>
@@ -2467,31 +2472,54 @@ export default function ClientDashboard() {
                 <Progress value={100} className="h-2 bg-white/10" />
               </div>
               <ChevronRight className="h-4 w-4 text-white/30" />
+              
+              {/* Step 2: Lead Captured (always shown) */}
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-white/70">Link Clicks</span>
-                  <span className="text-purple-400 font-medium">{bookingAnalytics.totalLinkClicks}</span>
+                  <span className="text-white/70">Lead Captured</span>
+                  <span className="text-amber-400 font-medium">{bookingAnalytics.totalLeadCaptured}</span>
                 </div>
                 <Progress 
                   value={bookingAnalytics.totalBookingIntents > 0 
-                    ? (bookingAnalytics.totalLinkClicks / bookingAnalytics.totalBookingIntents) * 100 
+                    ? Math.min(100, (bookingAnalytics.totalLeadCaptured / bookingAnalytics.totalBookingIntents) * 100)
                     : 0} 
                   className="h-2 bg-white/10" 
                 />
               </div>
               <ChevronRight className="h-4 w-4 text-white/30" />
+              
+              {/* Step 3: Clicked to Book (always shown) */}
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-white/70">Confirmed</span>
-                  <span className="text-green-400 font-medium">{bookingAnalytics.completedBookings}</span>
+                  <span className="text-white/70">Clicked to Book</span>
+                  <span className="text-purple-400 font-medium">{bookingAnalytics.totalLinkClicks}</span>
                 </div>
                 <Progress 
                   value={bookingAnalytics.totalBookingIntents > 0 
-                    ? (bookingAnalytics.completedBookings / bookingAnalytics.totalBookingIntents) * 100 
+                    ? Math.min(100, (bookingAnalytics.totalLinkClicks / bookingAnalytics.totalBookingIntents) * 100)
                     : 0} 
                   className="h-2 bg-white/10" 
                 />
               </div>
+              
+              {/* Step 4: Confirmed (ONLY shown for confirmable mode) */}
+              {bookingAnalytics.funnelMode === 'confirmable' && (
+                <>
+                  <ChevronRight className="h-4 w-4 text-white/30" />
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-white/70">Confirmed</span>
+                      <span className="text-green-400 font-medium">{bookingAnalytics.completedBookings}</span>
+                    </div>
+                    <Progress 
+                      value={bookingAnalytics.totalBookingIntents > 0 
+                        ? Math.min(100, (bookingAnalytics.completedBookings / bookingAnalytics.totalBookingIntents) * 100)
+                        : 0} 
+                      className="h-2 bg-white/10" 
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </GlassCardContent>
         </GlassCard>

@@ -165,9 +165,11 @@ export interface IStorage {
   }): Promise<{ leads: Lead[]; total: number }>;
   getBookingAnalytics(clientId: string, startDate?: Date, endDate?: Date): Promise<{
     totalBookingIntents: number;
+    totalLeadCaptured: number;
     totalLinkClicks: number;
     pendingBookings: number;
     completedBookings: number;
+    funnelMode: 'handoff' | 'confirmable';
     dailyTrends: { date: string; intents: number; clicks: number }[];
   }>;
   logBookingIntentEvent(data: { clientId: string; botId: string; sessionId: string; leadId?: string }): Promise<void>;
@@ -1041,14 +1043,28 @@ export class DbStorage implements IStorage {
 
   async getBookingAnalytics(clientId: string, startDate?: Date, endDate?: Date): Promise<{
     totalBookingIntents: number;
+    totalLeadCaptured: number;
     totalLinkClicks: number;
     pendingBookings: number;
     completedBookings: number;
+    funnelMode: 'handoff' | 'confirmable';
     dailyTrends: { date: string; intents: number; clicks: number }[];
   }> {
     const now = new Date();
     const defaultStartDate = startDate || new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const defaultEndDate = endDate || now;
+    
+    // Determine funnelMode from client settings (config-driven)
+    // Must align with handling logic in quickbook.ts:
+    // - 'demo' when quickBookDemoMode === true -> confirmable
+    // - 'external' when bookingMode === 'external' AND externalBookingUrl exists -> handoff
+    // - 'internal' otherwise (default) -> confirmable (staff can confirm)
+    const settings = await this.getSettings(clientId);
+    
+    // funnelMode = 'handoff' ONLY when external booking is properly configured
+    // Otherwise default to 'confirmable' (demo or internal mode)
+    const isExternalMode = settings?.bookingMode === 'external' && !!settings?.externalBookingUrl;
+    const funnelMode: 'handoff' | 'confirmable' = isExternalMode ? 'handoff' : 'confirmable';
     
     // Count booking intents from the booking_intents table (source of truth)
     const intentCountResult = await db
@@ -1061,6 +1077,20 @@ export class DbStorage implements IStorage {
       ));
     
     const totalBookingIntents = Number(intentCountResult[0]?.count || 0);
+    
+    // Count leads captured (where leadCapturedAt is within the date range)
+    // Use leadCapturedAt for filtering, not createdAt, to accurately reflect when leads were captured
+    const leadCapturedResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(bookingIntents)
+      .where(and(
+        eq(bookingIntents.workspaceId, clientId),
+        sql`${bookingIntents.leadCapturedAt} IS NOT NULL`,
+        sql`${bookingIntents.leadCapturedAt} >= ${defaultStartDate}`,
+        sql`${bookingIntents.leadCapturedAt} <= ${defaultEndDate}`
+      ));
+    
+    const totalLeadCaptured = Number(leadCapturedResult[0]?.count || 0);
     
     // Count booking link clicks from analytics events
     const clickConditions = [
@@ -1077,34 +1107,38 @@ export class DbStorage implements IStorage {
     
     const totalLinkClicks = Number(clickCountResult[0]?.count || 0);
     
-    // Count pending and completed bookings from booking_intents table
-    // Pending: intent, started, lead_captured, clicked_to_book
+    // Pending bookings: started, lead_captured (NOT clicked_to_book - that's terminal for handoff)
     const pendingCountResult = await db
       .select({ count: sql<number>`count(*)` })
       .from(bookingIntents)
       .where(and(
         eq(bookingIntents.workspaceId, clientId),
-        sql`${bookingIntents.status} IN ('intent', 'started', 'lead_captured', 'clicked_to_book')`,
+        sql`${bookingIntents.status} IN ('intent', 'started', 'lead_captured')`,
         gte(bookingIntents.createdAt, defaultStartDate),
         lte(bookingIntents.createdAt, defaultEndDate)
       ));
     
     const pendingBookings = Number(pendingCountResult[0]?.count || 0);
     
-    // Completed: demo_confirmed, confirmed, redirected (user was sent to external booking)
-    const completedCountResult = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(bookingIntents)
-      .where(and(
-        eq(bookingIntents.workspaceId, clientId),
-        sql`${bookingIntents.status} IN ('demo_confirmed', 'confirmed', 'redirected')`,
-        gte(bookingIntents.createdAt, defaultStartDate),
-        lte(bookingIntents.createdAt, defaultEndDate)
-      ));
+    // Completed bookings: ONLY when funnelMode='confirmable', else always 0
+    // For handoff mode, we CANNOT claim confirmed - external provider handles that
+    let completedBookings = 0;
+    if (funnelMode === 'confirmable') {
+      const completedCountResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(bookingIntents)
+        .where(and(
+          eq(bookingIntents.workspaceId, clientId),
+          sql`${bookingIntents.status} IN ('demo_confirmed', 'confirmed')`,
+          gte(bookingIntents.createdAt, defaultStartDate),
+          lte(bookingIntents.createdAt, defaultEndDate)
+        ));
+      
+      completedBookings = Number(completedCountResult[0]?.count || 0);
+    }
+    // For handoff mode, completedBookings stays 0 (honest about what we don't know)
     
-    const completedBookings = Number(completedCountResult[0]?.count || 0);
-    
-    // Get daily trends for the last 30 days
+    // Get daily trends for the date range
     const dailyTrends: { date: string; intents: number; clicks: number }[] = [];
     
     // Generate dates for the range
@@ -1145,9 +1179,11 @@ export class DbStorage implements IStorage {
     
     return {
       totalBookingIntents,
+      totalLeadCaptured,
       totalLinkClicks,
       pendingBookings,
       completedBookings,
+      funnelMode,
       dailyTrends
     };
   }

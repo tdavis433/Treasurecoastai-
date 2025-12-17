@@ -1,0 +1,59 @@
+Skip the task list — implement as one cohesive patch.
+
+Priority order:
+1) B1 Handling Logic Fix (no demo leakage) — REQUIRED
+2) B2 Guard Demo Confirm — REQUIRED
+3) C1 Date Range bug — REQUIRED
+4) C2 + funnelMode + Lead Captured metric — REQUIRED
+5) D Funnel UI dynamic steps — REQUIRED
+6) Orchestrator alignment — REQUIRED for consistency (minimal touch)
+
+Clarifications / decisions:
+
+A) Service packs (barber/salon/nails):
+- Agreed this can be Phase 2. Not required for this patch. Keep template as-is for now unless it’s trivial.
+
+B) pendingBookings definition:
+- For EXTERNAL HANDOFF mode, “clicked_to_book” is NOT pending — it’s the terminal measurable state.
+- pendingBookings must mean “started/lead_captured but not clicked yet”.
+- We will surface “Clicked to Book” as its own metric in the funnel.
+- Confirmed is only shown when confirmable mode exists (demo/internal now, webhooks later).
+
+C) Internal mode UX:
+- Keep it minimal: if handling === 'internal', do not render a redirect Book Now. Just collect lead and message “We’ll reach out to confirm.”
+- Do not overbuild. Just avoid broken redirects and avoid demo confirmation.
+
+D) Orchestrator gap:
+- Any non-QuickBook booking paths that write booking intents / booking statuses must use the same handling selection rules:
+  - demo only when settings.quickBookDemoMode === true
+  - external only when bookingMode==='external' and bookingUrl exists
+  - else internal
+- If orchestrator currently emits “confirmed” for external without webhook, stop doing that. External end state is clicked_to_book (handoff).
+
+Implementation requirements (exact):
+- server/quickbook.ts:
+  * intent/start: default handling='internal' (not demo), demo only via settings.quickBookDemoMode
+  * demo/confirm: block unless intent.handling === 'demo' (403)
+- server/routes.ts + server/storage.ts:
+  * analytics route parses startDate/endDate and passes to storage
+  * getBookingAnalytics accepts range, returns new fields:
+    - totalLeadCaptured
+    - funnelMode: 'handoff' | 'confirmable' (derived from settings, config-driven)
+  * pendingBookings = status IN ('started','lead_captured')
+  * completedBookings ONLY when funnelMode='confirmable': status IN ('demo_confirmed','confirmed'); else 0
+- client-dashboard.tsx:
+  * update BookingAnalytics type to include totalLeadCaptured + funnelMode
+  * funnel card:
+    - handoff: Intent → Lead Captured → Clicked to Book (no Confirmed step)
+    - confirmable: + Confirmed (label exactly “Confirmed”, never “demo”)
+    - cap progress bars at 100
+
+After you implement, paste back:
+1) quickbook.ts: updated handling logic block + demo confirm guard
+2) storage.ts: updated getBookingAnalytics (full) including range + funnelMode + totalLeadCaptured
+3) routes.ts: updated /api/client/bookings/analytics route
+4) client-dashboard.tsx: updated BookingAnalytics interface + funnel card code
+5) One sample JSON response from /api/client/bookings/analytics?startDate=...&endDate=... for:
+   - a normal external workspace (funnelMode='handoff', completedBookings=0)
+   - a demo workspace (funnelMode='confirmable', completedBookings>0 after confirming)
+Proceed now.

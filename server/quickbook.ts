@@ -139,7 +139,6 @@ export function registerQuickBookRoutes(app: Express) {
       // Get booking URL for this service
       const settings = await storage.getSettings(clientId);
       let bookingUrl = settings?.externalBookingUrl || null;
-      let handling: 'internal' | 'external' | 'demo' = 'demo';
       
       // Check for service-specific booking URL
       if (settings?.servicesCatalog) {
@@ -151,17 +150,21 @@ export function registerQuickBookRoutes(app: Express) {
         }
       }
       
-      // Determine handling mode
-      // For demo pages (clientId starts with "demo_" or "demo-"), always use demo mode
-      const isDemoPage = clientId.startsWith('demo_') || clientId.startsWith('demo-');
+      // Determine handling mode - NO DEMO LEAKAGE
+      // Default is 'internal' (lead capture + staff follow-up)
+      // Demo ONLY when explicitly enabled via settings.quickBookDemoMode
+      // External ONLY when bookingMode='external' AND bookingUrl exists
+      let handling: 'internal' | 'external' | 'demo' = 'internal';
       
-      if (isDemoPage || settings?.quickBookDemoMode) {
+      if (settings?.quickBookDemoMode === true) {
         handling = 'demo';
-      } else if (bookingUrl) {
+      } else if (settings?.bookingMode === 'external' && bookingUrl) {
         handling = 'external';
       }
+      // else handling stays 'internal' (default - no demo leakage)
       
       // Create booking intent - Guardrail #5: timestamp recorded via startedAt default
+      // Only store externalUrl for external/demo handling; internal = null
       const intent = await storage.createBookingIntent({
         workspaceId: clientId,
         clientId,
@@ -172,8 +175,8 @@ export function registerQuickBookRoutes(app: Express) {
         priceCents: priceCents || null,
         durationMins: durationMins || null,
         handling,
-        externalUrl: bookingUrl,
-        externalProviderName: settings?.externalBookingProviderName || null,
+        externalUrl: handling === 'internal' ? null : bookingUrl,
+        externalProviderName: handling === 'internal' ? null : (settings?.externalBookingProviderName || null),
         status: 'started',
       });
       
@@ -414,6 +417,15 @@ export function registerQuickBookRoutes(app: Express) {
       const intent = await storage.getBookingIntentById(intentId);
       if (!intent) {
         return res.status(404).json({ error: "Booking intent not found" });
+      }
+      
+      // GUARD: Only allow demo confirmation for intents with handling='demo'
+      // This prevents demo confirmation from polluting real client data
+      if (intent.handling !== 'demo') {
+        return res.status(403).json({ 
+          error: "Demo confirmation not enabled for this booking",
+          handling: intent.handling 
+        });
       }
       
       // Guardrail #3: Idempotent - if already confirmed, return success
