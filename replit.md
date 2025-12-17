@@ -49,6 +49,34 @@ The platform operates on a two-surface system:
 *   **Form Validation:** Inline validation for critical forms.
 *   **Mobile Responsiveness:** Enhanced for mobile viewports across landing pages and dashboards.
 
+## Quick Book Analytics & Sales Wording
+
+### Three Booking Modes
+The platform supports three booking modes with honest analytics that never overclaim:
+
+1. **Handoff Mode (External Booking)**
+   - Funnel: Intent → Lead Captured → Clicked to Book
+   - Analytics: Tracks clicks to external booking system (Calendly, Square, etc.)
+   - Sales pitch: "We track intent → captured contact → clicked to book." (NOT "confirmed")
+   - `completedBookings` stays 0 (we can't verify external confirmations)
+
+2. **Internal Mode (Staff Follow-up)**
+   - Funnel: Intent → Lead Captured → Booking Request Created
+   - Analytics: No link clicks logged (no external redirect)
+   - Sales pitch: "We capture the customer + service and create a follow-up booking request."
+   - `completedBookings` stays 0 (staff confirms manually)
+
+3. **Demo Mode (Confirmable)**
+   - Funnel: Intent → Lead Captured → Clicked to Book → Confirmed
+   - Analytics: Full funnel tracking with simulated confirmation
+   - Sales pitch: "'Confirmed' is simulated for demo only."
+   - `completedBookings` increments on demo confirmation
+
+### Analytics Honesty Principle
+- Never claim "confirmed" for external bookings we can't verify
+- `funnelMode` in API response: `internal`, `handoff`, or `confirmable`
+- Only `confirmable` mode shows non-zero `completedBookings`
+
 ## External Dependencies
 *   **OpenAI GPT-4:** Used for the core AI engine and conversational analysis.
 *   **Neon (PostgreSQL):** Provides managed PostgreSQL database hosting.
