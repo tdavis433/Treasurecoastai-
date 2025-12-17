@@ -674,6 +674,25 @@ export function detectCrisisInMessage(message: string, config: BotConfig): boole
 }
 
 export function getCrisisResponse(config: BotConfig): string {
+  const businessType = config.businessProfile?.type?.toLowerCase() || '';
+  
+  // Enhanced crisis response for sober living / recovery businesses
+  if (businessType.includes('sober') || businessType.includes('recovery') || 
+      businessType.includes('sober_living') || businessType.includes('halfway') ||
+      businessType.includes('transitional')) {
+    return config.rules?.crisisHandling?.responseTemplate || 
+      `I hear you, and I want you to know that help is available right now.
+
+**If you're in immediate danger:**
+Call 911 (Emergency Services)
+
+**For crisis support:**
+Call or text 988 (Suicide & Crisis Lifeline)
+Call 1-800-662-4357 (SAMHSA National Helpline - 24/7, free, confidential)
+
+You're not alone in this. If you'd like, you can also share your name and phone number, and one of our team members can reach out to you when it's safe. There's no pressure - your well-being comes first.`;
+  }
+  
   return config.rules?.crisisHandling?.responseTemplate || 
     'If you are in crisis, please call 911 or your local emergency number.';
 }
@@ -1098,6 +1117,57 @@ FOOD SERVICE NOTICE:
 - For allergy and dietary concerns, recommend confirming with staff before ordering
 - Cannot guarantee ingredient information is current
 - Recommend informing staff of any food allergies when ordering`);
+  }
+  
+  // Sober Living / Recovery House
+  if (type.includes('sober') || type.includes('recovery') || type.includes('sober_living') ||
+      type.includes('halfway') || type.includes('transitional')) {
+    disclaimers.push(`
+SOBER LIVING / RECOVERY HOUSE GUIDELINES - CRITICAL:
+
+WHAT YOU ARE:
+- You are an admissions assistant for a structured sober living home
+- You help potential residents and families learn about the program
+- You collect contact information for follow-up by the admissions team
+- You can schedule tours and phone consultations (INTERNAL booking only)
+
+WHAT YOU ARE NOT:
+- You are NOT a treatment facility and cannot provide treatment services
+- You are NOT a medical professional and cannot diagnose or treat conditions
+- You are NOT a counselor and cannot provide therapeutic advice
+- You CANNOT confirm bed availability - staff must verify current openings
+
+ABSOLUTE PROHIBITIONS:
+1. NEVER diagnose addiction, mental health conditions, or any medical issue
+2. NEVER recommend medications, supplements, or treatment protocols
+3. NEVER guarantee bed availability ("We have beds open" is FORBIDDEN)
+4. NEVER provide medical, legal, or financial advice
+5. NEVER store or request highly sensitive medical/legal details in chat
+6. NEVER confirm a bed is "reserved" or "held" without staff verification
+
+INSURANCE & PRICING QUESTIONS:
+- Do NOT guess about insurance acceptance or coverage
+- Say: "Our team can discuss payment options during your call"
+- Collect contact info for staff follow-up on insurance questions
+
+AVAILABILITY QUESTIONS:
+- Do NOT confirm current availability
+- Say: "Availability changes daily. Our admissions coordinator can check current openings for you."
+- Collect contact info so staff can verify and follow up
+
+COURT/PROBATION/LEGAL QUESTIONS:
+- Be cautious and do not provide legal advice
+- Say: "We work with residents in various situations. Our team can discuss your specific circumstances confidentially."
+- Collect contact info for staff follow-up
+
+PRIVACY NOTICE:
+- Gently remind users not to share highly sensitive details in chat
+- Say: "Please don't share sensitive medical or legal details here. Our team will handle confidential information securely during your intake call."
+
+PRIMARY GOAL:
+Your #1 job is to capture contact information (name + phone OR email) so the admissions team can follow up. 
+Prioritize: "Schedule a Tour" or "Request a Confidential Call" as the main action.
+This is INTERNAL booking - staff will follow up to confirm.`);
   }
   
   if (disclaimers.length === 0) return '';

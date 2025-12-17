@@ -194,6 +194,22 @@ export interface IStorage {
     intentId?: string;
   }): Promise<Lead>;
   
+  // Session-based lead upsert for partial saves (prevents abandoned leads from being lost)
+  upsertLeadBySession(clientId: string, botId: string, sessionId: string, patch: {
+    name?: string;
+    phone?: string;
+    email?: string;
+    bookingIntent?: boolean;
+    bookingStatus?: string;
+    serviceRequested?: string;
+    tags?: string[];
+    metadata?: Record<string, unknown>;
+    conversationPreview?: string;
+    messageCount?: number;
+    priority?: string;
+    source?: string;
+  }): Promise<Lead>;
+  
   // Inbox - conversation messages (overloaded - clientId optional for admin access)
   getSessionMessages(sessionId: string, clientId?: string): Promise<ChatAnalyticsEvent[]>;
   
@@ -1404,6 +1420,99 @@ export class DbStorage implements IStorage {
     const newLead = await this.createLead(leadData);
     
     return newLead;
+  }
+
+  /**
+   * Session-based lead upsert for partial saves.
+   * Unique key: (clientId, botId, sessionId)
+   * If exists: merge patch fields into existing lead
+   * This ensures abandoned flows become visible leads.
+   */
+  async upsertLeadBySession(clientId: string, botId: string, sessionId: string, patch: {
+    name?: string;
+    phone?: string;
+    email?: string;
+    bookingIntent?: boolean;
+    bookingStatus?: string;
+    serviceRequested?: string;
+    tags?: string[];
+    metadata?: Record<string, unknown>;
+    conversationPreview?: string;
+    messageCount?: number;
+    priority?: string;
+    source?: string;
+  }): Promise<Lead> {
+    // Check if lead already exists for this session
+    const existingLead = await this.getLeadBySessionId(sessionId, clientId);
+    
+    if (existingLead) {
+      // Merge updates - don't overwrite existing data with nulls
+      const updates: Partial<Lead> = {
+        updatedAt: new Date(),
+      };
+      
+      // Only update fields if provided in patch AND not already set
+      if (patch.name && patch.name.trim() && !existingLead.name) updates.name = patch.name.trim();
+      if (patch.phone && patch.phone.trim() && !existingLead.phone) updates.phone = patch.phone.trim();
+      if (patch.email && patch.email.trim() && !existingLead.email) updates.email = patch.email.trim();
+      if (patch.bookingIntent !== undefined && patch.bookingIntent && !existingLead.bookingIntent) {
+        updates.bookingIntent = patch.bookingIntent;
+      }
+      if (patch.bookingStatus && !existingLead.bookingStatus) updates.bookingStatus = patch.bookingStatus;
+      if (patch.serviceRequested && !existingLead.serviceRequested) updates.serviceRequested = patch.serviceRequested;
+      
+      // Priority: Only elevate priority, never downgrade
+      if (patch.priority) {
+        const priorityOrder: Record<string, number> = { 'low': 1, 'medium': 2, 'high': 3 };
+        const currentPriority = priorityOrder[existingLead.priority || 'medium'] || 2;
+        const newPriority = priorityOrder[patch.priority] || 2;
+        if (newPriority > currentPriority) {
+          updates.priority = patch.priority;
+        }
+      }
+      if (patch.conversationPreview) {
+        // Truncate to prevent bloat (max 500 chars)
+        updates.conversationPreview = patch.conversationPreview.slice(0, 500);
+      }
+      if (typeof patch.messageCount === 'number') updates.messageCount = patch.messageCount;
+      
+      // Merge tags (union, no duplicates)
+      if (patch.tags && patch.tags.length > 0) {
+        const existingTags = (existingLead.tags as string[]) || [];
+        const mergedTags = [...new Set([...existingTags, ...patch.tags])];
+        updates.tags = mergedTags;
+      }
+      
+      // Merge metadata (shallow merge)
+      if (patch.metadata && Object.keys(patch.metadata).length > 0) {
+        const existingMetadata = (existingLead.metadata as Record<string, unknown>) || {};
+        updates.metadata = { ...existingMetadata, ...patch.metadata };
+      }
+      
+      return this.updateLead(clientId, existingLead.id, updates);
+    }
+    
+    // Create new lead with patch data
+    const newLeadData: any = {
+      clientId,
+      botId,
+      sessionId,
+      name: patch.name?.trim() || null,
+      phone: patch.phone?.trim() || null,
+      email: patch.email?.trim() || null,
+      source: patch.source || 'chat',
+      status: 'new',
+      priority: patch.priority || 'medium',
+      bookingIntent: patch.bookingIntent || false,
+      bookingStatus: patch.bookingStatus || null,
+      serviceRequested: patch.serviceRequested || null,
+      conversationPreview: patch.conversationPreview?.slice(0, 500) || null,
+      messageCount: patch.messageCount || 1,
+      tags: patch.tags || [],
+      metadata: patch.metadata || {},
+    };
+    
+    return this.createLead(newLeadData);
   }
 
   async getSessionMessages(sessionId: string, clientId?: string): Promise<ChatAnalyticsEvent[]> {

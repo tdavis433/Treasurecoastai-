@@ -77,6 +77,27 @@ export interface AIBenefit {
   stat?: string;
 }
 
+export interface CrisisNumber {
+  label: string;
+  value: string;
+}
+
+export interface SafetyConfig {
+  privacyNote?: string;
+  crisisNumbers?: CrisisNumber[];
+}
+
+export interface DisclaimerItem {
+  title: string;
+  body: string;
+}
+
+export interface AdmissionsConfig {
+  requiredContact?: 'phone_or_email' | 'phone' | 'email';
+  afterHoursMode?: 'capture_and_morning_followup' | 'always_live';
+  intakeFields?: string[];
+}
+
 export interface DemoPageConfig {
   business: BusinessInfo;
   heroImage?: string;
@@ -105,6 +126,9 @@ export interface DemoPageConfig {
   botId: string;
   heroVariant?: "default" | "premium";
   BackgroundFX?: React.ComponentType<{ primaryRgb?: string; secondaryRgb?: string }>;
+  disclaimers?: DisclaimerItem[];
+  safety?: SafetyConfig;
+  admissions?: AdmissionsConfig;
 }
 
 // Quick Book state type

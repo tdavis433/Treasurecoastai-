@@ -1,0 +1,332 @@
+You are a senior full-stack engineer hardening the Recovery House / Sober Living AI Assistant template used by the Faith House demo in the Treasure Coast AI platform.
+
+CONTEXT (existing system – do NOT break)
+
+Recovery template config: client/src/components/demo/configs/recovery-house.tsx (recoveryHouseConfig)
+
+Faith House demo page: client/src/pages/demo-faith-house.tsx uses <DemoPageTemplate config={faithHouseConfig} />
+
+Bot seed prompt exists in server/demoSeed.ts but the real prompt is dynamically built in server/botConfig.ts via buildSystemPromptFromConfig()
+
+DB schema:
+
+Leads: shared/schema.ts (lines ~803–854) leads table includes bookingIntent, bookingStatus, serviceRequested, metadata, etc.
+
+Internal bookings: shared/schema.ts (lines ~247–283) appointments
+
+Funnel + external handoffs: shared/schema.ts (lines ~287–358) bookingIntents
+
+Booking/quickbook endpoints: server/quickbook.ts
+
+POST /api/quickbook/intent/start/:clientId/:botId
+
+POST /api/quickbook/intent/lead/:clientId/:botId
+
+POST /api/quickbook/intent/click/:clientId/:botId
+
+External response returns { redirectType:'external', url, providerName }
+
+Widget:
+
+client/src/components/ChatWidget.tsx
+
+client/src/hooks/useChatAssistant.ts
+
+Demo wrapper: client/src/components/demo/DemoPageTemplate.tsx
+
+Crisis detection already exists:
+
+server/routes.ts detectCrisisKeywords() + getCrisisResponse()
+
+Logs conversation category "crisis_redirect" and returns crisis reply immediately (currently hard-stops)
+
+GOAL
+
+Make the Recovery House / Faith House AI Assistant “perfect” for demos + production:
+
+Deterministic routing (code decides intent; AI only writes tone)
+
+Internal-first admissions/tour flow (appointments) with honest analytics
+
+True partial lead saving (session-based upsert) so abandons aren’t lost
+
+Crisis handling stays safe but is not a dead end (optional callback path)
+
+No regressions to barber/salon/nails quickbook flows or widget behavior
+
+NON-NEGOTIABLE RULES
+
+No payment processing and no fake checkout. External is a redirect only.
+
+Never mark external as “confirmed” unless handling="demo" and status="demo_confirmed" (or a real provider webhook exists in the future).
+
+Recovery/Sober Living defaults to internal admissions follow-up, not external booking.
+
+Privacy: Do not request/store highly sensitive details. Encourage minimal info.
+
+Crisis content: log a flag only; do not store sensitive user text in metadata.
+
+REQUIRED IMPLEMENTATION WORK (DO IN THIS ORDER)
+1) Add Recovery/Sober Living “Template Mode” configuration (config-driven behavior)
+
+Extend DemoPageConfig to support sober living needs (minimal additions; keep backwards compatibility):
+
+disclaimers?: { title: string; body: string }[]
+
+safety?: { privacyNote?: string; crisisNumbers?: { label: string; value: string }[] }
+
+admissions?: { requiredContact?: 'phone_or_email' | 'phone' | 'email'; afterHoursMode?: 'capture_and_morning_followup' | 'always_live'; intakeFields?: string[] }
+
+Populate these in:
+
+client/src/components/demo/configs/recovery-house.tsx (New Horizons)
+
+client/src/pages/demo-faith-house.tsx (Faith House config object)
+
+Minimum defaults for sober living:
+
+requiredContact = phone_or_email
+
+privacyNote = “Please don’t share highly sensitive personal details in chat…”
+
+crisisNumbers includes 988 and 911 (US)
+
+2) System prompt upgrade (Recovery-safe + admissions-focused)
+
+In server/botConfig.ts inside buildSystemPromptFromConfig():
+
+If business.type === 'sober_living':
+
+Add explicit guardrails: no diagnosis, no guarantees on bed availability, no medical/legal advice
+
+Add privacy note from config
+
+Add admissions flow instruction: prioritize “Request a confidential call / Schedule a tour” as INTERNAL
+
+Add “don’t guess” instruction for insurance/pricing specifics: capture contact + staff follow-up
+
+Inject:
+
+services list (names + prices)
+
+hours + location + contact
+
+FAQs
+
+disclaimers + safety info
+Keep prompt concise but strict; avoid vague “be helpful” only.
+
+3) Implement deterministic Recovery Router (code decides, model writes)
+
+Create a small router module (new file is fine) used by chat processing:
+Routes required:
+
+crisis
+
+admissions_intake (tour / intake call / “can someone call me”)
+
+faq_or_info (general questions)
+
+services_pricing
+
+insurance_payment (no guessing; callback capture)
+
+availability (no guarantees; callback capture)
+
+rules_eligibility (probation/court/etc.; cautious + callback option)
+
+contact_hours_location
+
+human_handoff
+
+Routing must be code-driven using lightweight heuristics (keywords + config presence) and/or a small structured classification step, but the final decision must NOT rely on freeform model output.
+
+4) True partial lead saving (SESSION-BASED UPSERT) — this is mandatory
+
+Right now leads are auto-captured only when contact info is detected or submitted. Add a real upsert:
+
+Storage layer
+
+Add storage.upsertLeadBySession(clientId, botId, sessionId, patch):
+
+Unique key: (clientId, botId, sessionId)
+
+If exists: update updatedAt + merge patch fields
+
+Patch may include: name, phone/email (if found), bookingIntent, bookingStatus, serviceRequested, tags, metadata, conversationPreview, messageCount
+
+Ensure tags/metadata merge instead of overwrite
+
+When to call upsert
+
+Call it in these situations:
+
+On every user message: update messageCount and conversationPreview (truncate safely)
+
+When user expresses admissions intent (“tour”, “intake”, “call me”, “admissions”): set bookingIntent=true, bookingStatus="pending_followup", serviceRequested="Admissions/Tour"
+
+When a name is detected (even without contact): save name
+
+When phone/email detected: save contact
+
+When the user clicks the CTA/button for “Schedule a Tour”: immediately create/update lead even before form submit
+
+This guarantees abandoned flows become visible leads.
+
+5) Sober living internal-first admissions flow (Appointments)
+
+For business.type === 'sober_living':
+
+The primary CTA (“Schedule a Tour” / “Book a Tour”) must create an INTERNAL appointment request unless a service is explicitly marked bookable with a real URL + provider.
+
+Use existing endpoint POST /api/appointment (or storage.createAppointment) to create appointments record:
+
+appointmentType="tour" (default ok)
+
+preferredTime required (provide simple options if user doesn’t specify)
+
+lookingFor, timeline, notes optional
+
+Update lead:
+
+bookingIntent=true
+
+bookingStatus="pending_followup"
+
+serviceRequested="Tour" (or Admissions)
+
+Add tags like ["admissions"]
+
+Important: do NOT require phone only. Allow phone OR email.
+
+6) BookingIntent / funnel consistency (avoid lying analytics)
+
+We currently have:
+
+leads.bookingStatus values include: pending_redirect, redirected, completed, no_url, pending_followup
+
+bookingIntents.status includes: started, lead_captured, clicked_to_book, demo_confirmed, redirected, confirmed, ...
+
+Rules:
+
+For internal sober living admissions:
+
+Do NOT set bookingIntents.status="confirmed"
+
+Option A (preferred): do NOT create a bookingIntents record at all for internal admissions
+
+Option B: create bookingIntents with handling="internal" and status="lead_captured" only (never beyond)
+Pick ONE approach and apply consistently across the template.
+
+For external handoff (non-sober living or explicitly bookable service):
+
+Keep existing quickbook flow:
+
+started -> lead_captured -> clicked_to_book -> redirected
+
+Ensure providerName always exists when redirectType external
+
+Widget trust line must remain: “You’ll finish booking on {providerName}…”
+
+7) Crisis handling upgrade (safe + optional callback path)
+
+Keep existing detectCrisisKeywords() and getCrisisResponse(), but change behavior:
+
+Return the crisis response (988/911) as the first part (existing)
+
+Add one safe optional line (same message ok):
+
+“If you’re not in immediate danger and would like our admissions team to reach out, you can share a phone number or email.”
+
+Do NOT continue normal sales flow automatically.
+
+Log:
+
+conversation category remains "crisis_redirect"
+
+upsert lead metadata: metadata.crisisFlag=true and/or add tag ["crisis_flag"]
+
+Do NOT store the user’s crisis text in metadata/tags
+
+8) After-hours behavior (config-driven)
+
+Implement optional logic:
+
+If admissions.afterHoursMode === 'capture_and_morning_followup' and local time is late-night:
+
+Bot should say it will arrange a call in the morning and ask preferred time
+If not configured, behave normally.
+
+9) UI/Widget improvements (must prevent duplicates + ensure capture)
+
+In client/src/components/ChatWidget.tsx and/or useChatAssistant.ts:
+
+Add submit button locking to prevent double submit.
+
+Ensure sessionId is stable and passed to all lead/appointment/quickbook calls.
+
+When CTA clicked, trigger lead upsert immediately (even if they abandon the form).
+
+Keep existing quickbook dedupe logic in server/quickbook.ts intact.
+
+TESTING REQUIREMENTS (MUST PASS BEFORE MERGE)
+
+Create a “Golden Path” test checklist and run it manually on Faith House demo:
+
+Admissions intent:
+
+“My brother needs help, what do we do?” -> lead upsert created even before contact
+
+Bot offers confidential callback, collects phone OR email
+
+Appointment created with status new
+
+Lead bookingStatus = pending_followup
+
+Tour request:
+
+“Can I schedule a tour?” -> internal appointment created, lead updated
+
+Insurance/payment question:
+
+Bot does NOT guess, asks for contact to verify, creates/updates lead
+
+Bed availability:
+
+No guarantees; capture lead for follow-up
+
+Probation/court eligibility:
+
+Cautious response; offers staff follow-up; lead saved
+
+Crisis:
+
+“I want to hurt myself” -> crisis response with 988/911 + optional callback line
+
+crisis flag logged without storing sensitive message text
+
+Conversation log category = crisis_redirect
+
+Abandonment:
+
+Click CTA then close widget -> lead exists due to upsert
+
+Dedupe:
+
+Rapid double submit -> only one appointment/lead update
+
+No regressions:
+
+Barber/salon/nails demo external handoff still works; providerName still displayed; statuses unchanged
+
+DELIVERABLES
+
+PR-quality code changes with minimal duplication and config-driven behavior.
+
+A short “What I changed” summary.
+
+The Golden Path checklist with pass/fail results.
+
+List any remaining risks (missing config data, unclear status usage, etc.)
+
+END.

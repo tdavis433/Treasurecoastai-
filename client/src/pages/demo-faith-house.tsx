@@ -1,4 +1,4 @@
-import DemoPageTemplate, { DemoPageConfig } from "@/components/demo/DemoPageTemplate";
+import DemoPageTemplate, { DemoPageConfig, SafetyConfig, AdmissionsConfig, DisclaimerItem } from "@/components/demo/DemoPageTemplate";
 import BackgroundFX from "@/components/demo/BackgroundFX";
 import { 
   Home, 
@@ -12,9 +12,43 @@ import {
   CheckCircle2
 } from "lucide-react";
 
+const faithHouseSafety: SafetyConfig = {
+  privacyNote: "Please don't share highly sensitive personal details in this chat. Our team will handle confidential information securely during your intake call.",
+  crisisNumbers: [
+    { label: "National Suicide Prevention Lifeline", value: "988" },
+    { label: "Emergency Services", value: "911" },
+    { label: "SAMHSA National Helpline", value: "1-800-662-4357" }
+  ]
+};
+
+const faithHouseAdmissions: AdmissionsConfig = {
+  requiredContact: "phone_or_email",
+  afterHoursMode: "capture_and_morning_followup",
+  intakeFields: ["name", "phone", "email", "preferredTime", "referralSource"]
+};
+
+const faithHouseDisclaimers: DisclaimerItem[] = [
+  {
+    title: "Not a Treatment Facility",
+    body: "Faith House is a structured sober living home, not a licensed treatment facility. We partner with local treatment centers for outpatient care."
+  },
+  {
+    title: "Availability",
+    body: "Bed availability changes frequently. Our admissions coordinator will confirm current openings during your call."
+  },
+  {
+    title: "Insurance & Payment",
+    body: "Sober living is typically not covered by insurance. Weekly rent is paid privately. We can discuss payment arrangements during your consultation."
+  }
+];
+
 const faithHouseConfig: DemoPageConfig = {
   heroVariant: "premium",
   BackgroundFX: BackgroundFX,
+  
+  safety: faithHouseSafety,
+  admissions: faithHouseAdmissions,
+  disclaimers: faithHouseDisclaimers,
   
   business: {
     name: "Faith House Sober Living",

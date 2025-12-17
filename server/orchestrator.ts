@@ -28,6 +28,12 @@ import {
   getCrisisResponse 
 } from './botConfig';
 import { 
+  routeRecoveryMessage, 
+  isSoberLivingBusiness, 
+  getIntentGuidance,
+  RecoveryRouteResult 
+} from './recoveryRouter';
+import { 
   processAutomations, 
   triggerWorkflowByEvent,
   extractContactInfo,
@@ -814,6 +820,9 @@ interface SessionData {
   leadCaptured?: boolean;
   topics?: string[];
   language?: string;
+  // Recovery router tracking for sober living businesses
+  recoveryIntent?: string;
+  recoveryContactRequested?: boolean;
 }
 
 function logConversationToFile(data: {
@@ -1356,7 +1365,23 @@ class ConversationOrchestrator {
         externalPaymentUrl: clientSettings?.externalPaymentUrl || botConfig.externalPaymentUrl,
       };
 
-      const systemPrompt = buildSystemPromptFromConfig(botConfigWithUrls, clientSettings?.behaviorPreset as any);
+      let systemPrompt = buildSystemPromptFromConfig(botConfigWithUrls, clientSettings?.behaviorPreset as any);
+      
+      // Add recovery router guidance for sober living businesses
+      const businessType = botConfig.businessProfile?.type;
+      if (isSoberLivingBusiness(businessType) && lastUserMessage?.role === 'user') {
+        const routeResult = routeRecoveryMessage(lastUserMessage.content);
+        const intentGuidance = getIntentGuidance(routeResult);
+        systemPrompt += `\n\n[CURRENT MESSAGE ROUTING]:\n${intentGuidance}\nDetected intent: ${routeResult.intent} (${routeResult.confidence} confidence)`;
+        
+        // Log routing for debugging
+        structuredLogger.debug('[RecoveryRouter] Intent classification', {
+          sessionId: request.sessionId,
+          intent: routeResult.intent,
+          confidence: routeResult.confidence,
+          shouldCaptureContact: routeResult.shouldCaptureContact
+        });
+      }
 
       const stream = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
@@ -1783,7 +1808,16 @@ class ConversationOrchestrator {
       externalPaymentUrl: clientSettings?.externalPaymentUrl || botConfig.externalPaymentUrl,
     };
 
-    const systemPrompt = buildSystemPromptFromConfig(botConfigWithUrls, clientSettings?.behaviorPreset as any);
+    let systemPrompt = buildSystemPromptFromConfig(botConfigWithUrls, clientSettings?.behaviorPreset as any);
+    
+    // Add recovery router guidance for sober living businesses
+    const businessType = botConfig.businessProfile?.type;
+    const lastUserMessage = messages.filter(m => m.role === 'user').pop();
+    if (isSoberLivingBusiness(businessType) && lastUserMessage) {
+      const routeResult = routeRecoveryMessage(lastUserMessage.content);
+      const intentGuidance = getIntentGuidance(routeResult);
+      systemPrompt += `\n\n[CURRENT MESSAGE ROUTING]:\n${intentGuidance}\nDetected intent: ${routeResult.intent} (${routeResult.confidence} confidence)`;
+    }
 
     // Build graceful fallback message with business contact info
     const businessPhone = clientSettings?.primaryPhone || botConfig.businessProfile?.phone;
@@ -1951,9 +1985,95 @@ class ConversationOrchestrator {
       bookingInfoComplete: bookingInfo?.isComplete,
     });
 
-    // Always try to create/update lead if we have contact info (not just first time)
-    if (leadCaptured) {
-      // Create or update lead
+    // Recovery Router-driven lead capture for sober living businesses
+    const businessTypeForCapture = botConfig.businessProfile?.type;
+    const isSoberLiving = isSoberLivingBusiness(businessTypeForCapture);
+    let recoveryRouteResult: RecoveryRouteResult | undefined;
+    
+    if (isSoberLiving) {
+      recoveryRouteResult = routeRecoveryMessage(userMessage);
+      
+      // Persist recovery router decisions to session for consistent behavior
+      sessionData.recoveryIntent = recoveryRouteResult.intent;
+      sessionData.recoveryContactRequested = recoveryRouteResult.shouldCaptureContact;
+      
+      structuredLogger.info('[RecoveryRouter] Session intent persisted', {
+        sessionId: sessionData.sessionId,
+        intent: recoveryRouteResult.intent,
+        shouldCaptureContact: recoveryRouteResult.shouldCaptureContact,
+        suggestedAction: recoveryRouteResult.suggestedAction
+      });
+    }
+    
+    // For sober living: Use session-based upsert for progressive lead enrichment
+    // Key behavior:
+    // - Only create/update lead when we have ACTUAL contact info (phone/email)
+    // - shouldCaptureContact informs AI behavior (push for contact), not lead creation
+    // - This prevents creating empty placeholder leads
+    if (isSoberLiving && leadCaptured) {
+      try {
+        const priority = determinePriority(showBooking, contactInfo);
+        const tags: string[] = [];
+        
+        // Add recovery-specific tags based on intent
+        if (recoveryRouteResult) {
+          tags.push(`intent:${recoveryRouteResult.intent}`);
+          if (recoveryRouteResult.intent === 'admissions_intake') tags.push('admissions');
+          if (recoveryRouteResult.intent === 'crisis') tags.push('crisis_redirect');
+          if (recoveryRouteResult.intent === 'insurance_payment') tags.push('insurance_inquiry');
+          if (recoveryRouteResult.intent === 'availability') tags.push('availability_inquiry');
+        }
+        
+        // Progressive session-based lead upsert
+        const upsertedLead = await storage.upsertLeadBySession(clientId, botId, sessionData.sessionId, {
+          name: contactInfo.name,
+          phone: contactInfo.phone,
+          email: contactInfo.email,
+          priority,
+          bookingIntent: showBooking,
+          bookingStatus: showBooking ? 'requested' : undefined,
+          serviceRequested: bookingType === 'tour' ? 'Tour Request' : 
+                           bookingType === 'call' ? 'Phone Consultation' : 
+                           bookingInfo?.requestedService || undefined,
+          tags,
+          conversationPreview: userMessage,
+          messageCount: sessionData.messageCount,
+          source: 'chat',
+          metadata: {
+            recoveryIntent: recoveryRouteResult?.intent,
+            recoveryConfidence: recoveryRouteResult?.confidence,
+            lastActivity: new Date().toISOString()
+          }
+        });
+        
+        structuredLogger.info('[RecoveryRouter] Lead upserted via session', {
+          leadId: upsertedLead.id,
+          clientId,
+          sessionId: sessionData.sessionId,
+          intent: recoveryRouteResult?.intent,
+          hasPhone: !!contactInfo.phone,
+          hasEmail: !!contactInfo.email,
+        });
+        
+        // Trigger lead_captured if this is first time we have contact info
+        if (leadCaptured && !sessionData.leadCaptured) {
+          triggerWorkflowByEvent(botId, 'lead_captured', {
+            clientId,
+            sessionId: sessionData.sessionId,
+            leadId: upsertedLead.id,
+            name: contactInfo.name,
+            email: contactInfo.email,
+            phone: contactInfo.phone,
+          }).catch(err => structuredLogger.error('Error triggering lead_captured automation', { error: err }));
+        }
+        
+        sessionData.leadCaptured = sessionData.leadCaptured || leadCaptured;
+      } catch (error) {
+        structuredLogger.error('Error in session-based lead upsert', { error, clientId, sessionId: sessionData.sessionId });
+      }
+    } 
+    // Non-sober-living: use original lead capture logic
+    else if (leadCaptured) {
       try {
         const existingLead = await storage.getLeadBySessionId(sessionData.sessionId, clientId);
         

@@ -1,9 +1,43 @@
 import { Heart, Users, Shield, Clock, Phone, Calendar, TrendingUp, MessageCircle, Home, Star } from "lucide-react";
-import { DemoPageConfig } from "../DemoPageTemplate";
+import { DemoPageConfig, SafetyConfig, AdmissionsConfig, DisclaimerItem } from "../DemoPageTemplate";
+
+const soberLivingSafety: SafetyConfig = {
+  privacyNote: "Please don't share highly sensitive personal details in this chat. Our team will handle confidential information securely during your intake call.",
+  crisisNumbers: [
+    { label: "National Suicide Prevention Lifeline", value: "988" },
+    { label: "Emergency Services", value: "911" },
+    { label: "SAMHSA National Helpline", value: "1-800-662-4357" }
+  ]
+};
+
+const soberLivingAdmissions: AdmissionsConfig = {
+  requiredContact: "phone_or_email",
+  afterHoursMode: "capture_and_morning_followup",
+  intakeFields: ["name", "phone", "email", "preferredTime", "referralSource"]
+};
+
+const soberLivingDisclaimers: DisclaimerItem[] = [
+  {
+    title: "Not a Treatment Facility",
+    body: "We are a structured sober living home, not a licensed treatment facility. Residents are encouraged to attend outpatient treatment or recovery programs."
+  },
+  {
+    title: "No Guarantees",
+    body: "Bed availability changes daily. Our admissions team will confirm current openings during your consultation."
+  },
+  {
+    title: "Insurance",
+    body: "Sober living is typically not covered by insurance. Weekly rates are paid privately. We can discuss payment options during your call."
+  }
+];
 
 export const recoveryHouseConfig: DemoPageConfig = {
   clientId: "demo_new_horizons",
   botId: "bot_demo_recovery",
+  
+  safety: soberLivingSafety,
+  admissions: soberLivingAdmissions,
+  disclaimers: soberLivingDisclaimers,
   
   business: {
     name: "New Horizons Recovery House",
