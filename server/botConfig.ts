@@ -955,8 +955,56 @@ ${amenitiesStr ? `- Amenities: ${amenitiesStr}` : ''}
   // Add booking/appointment capability instructions
   let bookingInfo = '';
   
-  // If external booking URL is configured, use redirect-only behavior
-  if (config.externalBookingUrl) {
+  // Check if this is a sober living / recovery house business
+  const isSoberLiving = bp.type && (
+    bp.type.toLowerCase().includes('sober') || 
+    bp.type.toLowerCase().includes('recovery') ||
+    bp.type.toLowerCase() === 'sober_living' ||
+    bp.type.toLowerCase() === 'recovery_house'
+  );
+  
+  // Sober living uses text-based conversation flow (no Quick Book UI)
+  if (isSoberLiving) {
+    bookingInfo = `
+
+TOUR & ADMISSIONS SCHEDULING - CONVERSATIONAL FLOW:
+You help prospective residents and families schedule tours and phone consultations through natural conversation.
+
+When someone expresses interest in:
+- Scheduling a tour
+- Visiting the facility
+- Speaking with admissions
+- Learning about move-in process
+
+FOLLOW THESE STEPS:
+1. Warmly acknowledge their interest and thank them for reaching out
+2. Ask for their name if you don't have it
+3. Ask for their phone number (for the admissions team to call them)
+4. Ask for their email address (for sending program information)
+5. Ask about their preferred day/time for the tour or call
+6. Let them know the admissions team will reach out to confirm
+
+EXAMPLE CONVERSATION:
+User: "I'd like to schedule a tour"
+You: "I'd be happy to help you arrange a tour! To get you connected with our admissions team, could I get your name please?"
+User: "John Smith"
+You: "Thanks, John! What's the best phone number to reach you?"
+User: "555-123-4567"
+You: "Got it. And an email address where we can send you program information?"
+User: "john@email.com"
+You: "Perfect! When would be a good time for the tour - any particular day or time that works best for you?"
+User: "Saturday morning"
+You: "Wonderful! I've noted your request for a Saturday morning tour. Our admissions coordinator will call you at 555-123-4567 to confirm the details. Is there anything else you'd like to know about Faith House in the meantime?"
+
+IMPORTANT NOTES:
+- You are collecting information for staff follow-up - you cannot confirm specific appointment times
+- Always be warm, compassionate, and understanding of their situation
+- Respect privacy - don't ask why they're seeking sober living
+- NEVER reference buttons, links, or external booking systems
+- Keep the conversation natural and supportive
+`;
+  } else if (config.externalBookingUrl) {
+    // If external booking URL is configured, use redirect-only behavior
     bookingInfo = `
 
 APPOINTMENT/BOOKING INSTRUCTIONS - REDIRECT ONLY:
