@@ -98,6 +98,10 @@ export interface AdmissionsConfig {
   intakeFields?: string[];
 }
 
+export interface WidgetConfig {
+  showServiceOptions?: boolean;  // Default true; set false to hide Quick Book service buttons
+}
+
 export interface DemoPageConfig {
   business: BusinessInfo;
   heroImage?: string;
@@ -129,6 +133,7 @@ export interface DemoPageConfig {
   disclaimers?: DisclaimerItem[];
   safety?: SafetyConfig;
   admissions?: AdmissionsConfig;
+  widget?: WidgetConfig;
 }
 
 // Quick Book state type
@@ -168,6 +173,10 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   
+  // Sober Living: Hide Quick Book UI, let users trigger naturally via text
+  const isSoberLiving = config.business.type === "sober_living" || config.business.type === "recovery_house";
+  const showServiceOptions = config.widget?.showServiceOptions !== false && !isSoberLiving;
+  
   // Quick Book v1 state
   const [quickBookState, setQuickBookState] = useState<QuickBookWidgetState>("SELECT_SERVICE");
   const [quickBookData, setQuickBookData] = useState<QuickBookData>({
@@ -181,8 +190,10 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
   const [quickBookLoading, setQuickBookLoading] = useState(false);
   const [quickBookError, setQuickBookError] = useState<string | null>(null);
 
-  // Simple welcome message - services will be shown as buttons
-  const initialGreeting = `Welcome to ${config.business.name}! What service would you like to book today?`;
+  // Different greeting for sober living (simple chat) vs booking-oriented businesses
+  const initialGreeting = isSoberLiving
+    ? `Welcome to ${config.business.name}. How can I help you today?`
+    : `Welcome to ${config.business.name}! What service would you like to book today?`;
 
   const { 
     messages, 
@@ -387,7 +398,8 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
       const message = inputValue.trim();
       
       // Detect booking intent and show service buttons after AI responds
-      if (hasBookingIntent(message) && quickBookState !== "COLLECT_CONTACT" && quickBookState !== "READY_TO_BOOK") {
+      // Skip for sober living - let AI handle bookings naturally via text conversation
+      if (showServiceOptions && hasBookingIntent(message) && quickBookState !== "COLLECT_CONTACT" && quickBookState !== "READY_TO_BOOK") {
         setShowServicesAfterMessage(true);
         setQuickBookState("SELECT_SERVICE");
       }
@@ -475,7 +487,8 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
                   </div>
                   
                   {/* Service Selection Buttons - show after first assistant message OR last assistant message when booking intent detected */}
-                  {message.role === "assistant" && quickBookState === "SELECT_SERVICE" && !isLoading && !quickBookLoading && (
+                  {/* Hidden for sober living: users trigger bookings naturally via text conversation */}
+                  {showServiceOptions && message.role === "assistant" && quickBookState === "SELECT_SERVICE" && !isLoading && !quickBookLoading && (
                     // Show on first message OR on last assistant message when showServicesAfterMessage is true
                     (index === 0 || (showServicesAfterMessage && index === messages.length - 1)) && (
                     <div className="mt-3 w-full space-y-2" data-testid="service-buttons-container">
@@ -538,8 +551,8 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
                 </div>
               )}
               
-              {/* Quick Book: Contact Collection Form */}
-              {quickBookState === "COLLECT_CONTACT" && !quickBookLoading && (
+              {/* Quick Book: Contact Collection Form - hidden for sober living */}
+              {showServiceOptions && quickBookState === "COLLECT_CONTACT" && !quickBookLoading && (
                 <div className="mt-3 p-4 bg-[#1A1D24] rounded-2xl border border-white/10" data-testid="quickbook-contact-form">
                   <div className="flex items-center gap-2 mb-3">
                     <CheckCircle2 className="h-5 w-5 text-cyan-400" />
@@ -593,8 +606,8 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
                 </div>
               )}
               
-              {/* Quick Book: Ready to Book Button */}
-              {quickBookState === "READY_TO_BOOK" && !quickBookLoading && (() => {
+              {/* Quick Book: Ready to Book Button - hidden for sober living */}
+              {showServiceOptions && quickBookState === "READY_TO_BOOK" && !quickBookLoading && (() => {
                 const displayProviderName = quickBookData.providerName || "our booking provider";
                 return (
                   <div className="mt-3 p-4 bg-[#1A1D24] rounded-2xl border border-cyan-500/30" data-testid="quickbook-ready">
@@ -627,8 +640,8 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
                 );
               })()}
               
-              {/* Quick Book: Completed State */}
-              {quickBookState === "DONE" && (
+              {/* Quick Book: Completed State - hidden for sober living */}
+              {showServiceOptions && quickBookState === "DONE" && (
                 <div className="mt-3 p-4 bg-[#1A1D24] rounded-2xl border border-green-500/30" data-testid="quickbook-done">
                   <div className="flex items-center gap-2 mb-2">
                     <CheckCircle2 className="h-5 w-5 text-green-400" />

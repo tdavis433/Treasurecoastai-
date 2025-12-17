@@ -1,0 +1,74 @@
+Final GO/NO-GO gates (must pass every time)
+Data truth gates
+
+Sober living flows never set bookingIntents.status="confirmed" unless you truly have confirmation (or explicitly handling="demo" + demo_confirmed).
+
+Internal admissions/tour always creates:
+
+an appointments row (status new)
+
+a leads row (or upsert) with bookingIntent=true and bookingStatus="pending_followup"
+
+Session upsert never creates multiple leads for the same (clientId, botId, sessionId).
+
+Safety gates
+
+Crisis keywords → response includes 988 + 911 and your SAMHSA line, logs crisis_redirect, and sets metadata.crisisFlag=true (or equivalent) without storing the user’s raw crisis text.
+
+Medical/clinical questions → bot refuses to give treatment guidance and routes to admissions.
+
+UX gates
+
+“Schedule a Tour” path works with phone OR email.
+
+Double-click / double-submit does not create duplicates.
+
+If any required admissions config is missing, bot falls back to contact capture + follow-up (not broken UI).
+
+What I’d tighten next (to make it bulletproof)
+
+Crisis detection coverage: keywords are solid, but add a small second-pass for phrasing that isn’t explicit (e.g., “I can’t do this anymore”). Keep it conservative to avoid false alarms.
+
+After-hours behavior: even with “24/7 support” listed, you still want a configurable “we’ll call you in the morning” mode for realism.
+
+Analytics sanity: add one dashboard view that shows the sober-living funnel clearly:
+
+intent_detected → lead_upserted → appointment_created → staff_contacted (later)
+
+Alternative approaches (only if you want to go further)
+
+More robust classifier: lightweight structured classification (still code-decided) to reduce keyword misses.
+
+Automated regression suite: Playwright tests for Faith House + one non-recovery demo so template changes can’t break other industries.
+
+Practical action plan (what you do right now)
+
+Run a 10-minute smoke test on /demo/faith-house:
+
+Tour request
+
+Insurance question
+
+Bed availability question
+
+Probation eligibility question
+
+Crisis phrase test
+
+Abandonment test (click CTA then close)
+
+In DB / dashboards verify:
+
+one lead per session (upsert)
+
+appointment created for admissions flows
+
+correct statuses (pending_followup, new)
+
+crisis flag set without sensitive text stored
+
+Add a tiny “production guard”:
+
+if business.type === 'sober_living', hard-block any path that would mark confirmed.
+
+If you want, paste your Golden Path checklist output (pass/fail + any oddities), and I’ll call out any hidden demo-risk immediately.

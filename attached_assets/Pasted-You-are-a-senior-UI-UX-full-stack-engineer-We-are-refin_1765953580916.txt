@@ -1,0 +1,109 @@
+You are a senior UI/UX + full-stack engineer. We are refining the Faith House / Sober Living chat widget experience.
+
+GOAL
+
+For business.type === "sober_living" (Recovery / Faith House demos), remove all unnecessary on-widget “options” UI (the selectable program/service cards like “Outpatient Coordination / Employment Support / Alumni Program”). We want a simple chat: user types questions, AI answers. The services/programs must remain in config for AI context but should NOT be presented as clickable options.
+
+CURRENT ISSUE (WHAT TO REMOVE)
+
+In the Faith House widget, above the message input, there are stacked selectable cards/options listing programs/services (see screenshot). We do NOT want these displayed for sober living.
+
+REQUIRED BEHAVIOR
+
+For business.type === "sober_living":
+
+Do NOT render any “service options”, “program cards”, “quick replies”, “suggested services”, or “select a service” UI blocks in the widget.
+
+The message input should be the primary interaction.
+
+Keep “Talk to a person” (human handoff) available.
+
+Do NOT delete services/programs from the config object. AI still needs them to answer questions accurately.
+
+Do NOT break:
+
+deterministic Recovery Router
+
+internal admissions flow (appointments)
+
+session-based lead upsert
+
+crisis handling
+
+No empty space:
+
+After removing the options block, tighten spacing so the chat input sits naturally under the last assistant message.
+
+IMPLEMENTATION INSTRUCTIONS
+
+A) Identify where the widget renders the program/service option cards.
+
+Likely files:
+
+client/src/components/ChatWidget.tsx
+
+client/src/hooks/useChatAssistant.ts
+
+client/src/components/demo/DemoPageTemplate.tsx
+Search for render blocks tied to:
+
+config.services
+
+“suggested”
+
+“quick replies”
+
+“options”
+
+“service cards”
+
+“Select a service”
+
+mapping over services to render UI cards
+
+B) Add a sober living guard (simple + robust):
+
+Determine isSoberLiving = config?.business?.type === "sober_living"
+
+Wrap the entire options/cards UI block with:
+
+if (!isSoberLiving) { render options }
+
+Ensure all downstream code that expects a selected service is null-safe (no crashes).
+
+C) Optional but recommended (for future control):
+
+Add a config flag with a safe default:
+
+widget?: { showServiceOptions?: boolean }
+
+Default: true (to avoid changing barber/salon/nails)
+
+For Faith House config: set showServiceOptions: false
+
+Then use:
+
+const showOptions = config?.widget?.showServiceOptions !== false && !isSoberLiving;
+(If you do this, still keep the automatic sober living disable.)
+
+D) Verify no regressions:
+
+Faith House /demo/faith-house: options/cards are gone, chat input works, bot answers program questions, admissions flow still triggers by text (“schedule a tour”), and leads/appointments log correctly.
+
+Barber/Salon/Nails demos: their booking/service selection UI remains unchanged.
+
+DELIVERABLES
+
+Code changes removing the widget option cards for sober living
+
+Quick manual test notes:
+
+Faith House: asked about programs -> AI answers
+
+“schedule a tour” typed -> internal admissions flow still works
+
+crisis phrase -> crisis response still works
+
+barber demo -> service/booking UI unchanged
+
+END.

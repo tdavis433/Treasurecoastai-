@@ -96,6 +96,12 @@ The sober living template uses a deterministic intent router (`server/recoveryRo
 - **Conservative Merge:** Fields only update if not already set, priority only elevates (never downgrades), tags union, metadata shallow-merges
 - **Intent Tagging:** Leads tagged with `intent:tour_request`, `intent:admissions_intake`, etc. for analytics
 
+### Widget UX for Sober Living
+- **No Quick Book UI:** Service selection buttons and Quick Book flow are hidden for sober living businesses
+- **Text-based conversation:** Users trigger tour/admissions requests naturally through chat, not button clicks
+- **Simple greeting:** "How can I help you today?" instead of "What service would you like to book?"
+- **Config flag:** `widget.showServiceOptions = false` is auto-applied for `business.type === "sober_living" || "recovery_house"`
+
 ### Demo Pages
 - `/demo/faith-house` - Faith House Sober Living template
 
