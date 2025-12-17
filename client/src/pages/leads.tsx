@@ -228,7 +228,7 @@ export default function LeadsPage() {
   const FILTER_PRESETS = [
     { 
       id: 'admissions', 
-      label: 'Admissions / Tours', 
+      label: 'Tours / Callbacks', 
       icon: Calendar,
       apply: () => {
         setTagFilter('intent:admissions_intake');

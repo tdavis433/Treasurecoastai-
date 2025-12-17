@@ -246,16 +246,16 @@ export function getIntentGuidance(result: RecoveryRouteResult): string {
       return 'CRISIS DETECTED: Provide 988/911 resources FIRST. Offer optional callback ONLY if not in immediate danger.';
     
     case 'admissions_intake':
-      return 'ADMISSIONS INTENT: Offer to schedule a tour or callback. Collect name + phone OR email. This is INTERNAL booking.';
+      return 'TOUR/CALLBACK REQUEST: Collect ONLY name + phone OR email + preferred time (morning/afternoon/evening). NO intake questions. Confirm: "Staff will reach out. If urgent, call {phone}."';
     
     case 'insurance_payment':
-      return 'INSURANCE QUESTION: Do NOT guess. Say "Our team can discuss payment options during your call." Collect contact for follow-up.';
+      return 'INSURANCE QUESTION: Do NOT guess. Say "Our team can discuss payment options during your call." Offer to arrange staff callback.';
     
     case 'availability':
-      return 'AVAILABILITY QUESTION: Do NOT confirm beds. Say "Availability changes daily." Collect contact for staff verification.';
+      return 'AVAILABILITY QUESTION: Do NOT confirm beds. Say "Availability changes daily." Offer to arrange staff callback.';
     
     case 'rules_eligibility':
-      return 'ELIGIBILITY QUESTION: Be cautious. Say "We work with various situations." Collect contact for confidential staff discussion.';
+      return 'ELIGIBILITY QUESTION: Be cautious. Say "We work with various situations." Offer to arrange staff callback.';
     
     case 'services_pricing':
       return 'PRICING QUESTION: Share FAQ info if available, then offer staff follow-up for detailed questions.';
@@ -264,7 +264,7 @@ export function getIntentGuidance(result: RecoveryRouteResult): string {
       return 'CONTACT INFO: Provide location, phone, hours from business profile.';
     
     case 'human_handoff':
-      return 'HUMAN HANDOFF: Collect contact info (name + phone OR email) and confirm staff will reach out.';
+      return 'HUMAN HANDOFF: Collect name + phone OR email + preferred time. Confirm: "Staff will reach out. If urgent, call {phone}."';
     
     case 'faq_or_info':
       return 'FAQ/INFO: Answer from knowledge base. If uncertain, offer staff follow-up.';

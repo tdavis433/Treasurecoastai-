@@ -3092,14 +3092,14 @@ These suggestions should be relevant to what was just discussed and help guide t
           // If same or lower priority, keep existing primary intent stable
         }
         
-        // Set booking fields for tour/admissions intents
-        if (recoveryIntent === 'admissions_intake') {
+        // Set booking fields for tour/callback intents (admissions_intake or human_handoff)
+        if (recoveryIntent === 'admissions_intake' || recoveryIntent === 'human_handoff') {
           updates.bookingIntent = true;
           if (!existingLead.bookingStatus || existingLead.bookingStatus === 'requested') {
             updates.bookingStatus = 'pending_followup';
           }
           if (!existingLead.serviceRequested) {
-            updates.serviceRequested = 'Tour Request';
+            updates.serviceRequested = recoveryIntent === 'admissions_intake' ? 'Tour Request' : 'Callback Request';
           }
         }
         
@@ -3139,14 +3139,14 @@ These suggestions should be relevant to what was just discussed and help guide t
           }];
         }
         
-        // Set booking fields for tour/admissions intents
+        // Set booking fields for tour/callback intents (admissions_intake or human_handoff)
         let bookingStatus: string | null = null;
         let bookingIntent = false;
         let serviceRequested: string | null = null;
-        if (recoveryIntent === 'admissions_intake') {
+        if (recoveryIntent === 'admissions_intake' || recoveryIntent === 'human_handoff') {
           bookingIntent = true;
           bookingStatus = 'pending_followup';
-          serviceRequested = 'Tour Request';
+          serviceRequested = recoveryIntent === 'admissions_intake' ? 'Tour Request' : 'Callback Request';
         }
         
         // Create new lead - always use the provided clientId/botId

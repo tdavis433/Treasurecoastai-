@@ -117,7 +117,7 @@ The sober living template uses a deterministic intent router (`server/recoveryRo
 
 ### Dashboard Quick Filters
 The Leads page includes quick filter presets for sober living operators:
-- **Admissions / Tours** → `intent:admissions_intake`
+- **Tours / Callbacks** → `intent:admissions_intake`
 - **Wants Human** → `intent:human_handoff`
 - **Hot Leads** → `flag:hot_lead`
 - **Needs Follow-up** → `booking_status=pending_followup`
