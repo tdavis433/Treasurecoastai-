@@ -296,14 +296,18 @@ export function registerQuickBookRoutes(app: Express) {
       
       // Guardrail #3: Idempotent - if already clicked, return existing data
       if (['clicked_to_book', 'demo_confirmed', 'confirmed', 'redirected'].includes(intent.status)) {
+        // Safety: if external but URL is missing, fall back to internal-style response
+        const effectiveHandling = (handling === 'external' && !externalUrl) ? 'internal' : handling;
+        const effectiveUrl = effectiveHandling === 'external' ? externalUrl : 
+                             effectiveHandling === 'demo' ? demoUrl : 
+                             null;
+        
         return res.json({
           ok: true,
-          redirectType: handling,
-          url: handling === 'external' ? externalUrl : 
-               handling === 'demo' ? demoUrl : 
-               null,
-          providerName: handling !== 'internal' ? providerName : null,
-          message: handling === 'internal' ? 'Our team will reach out to confirm your booking.' : undefined,
+          redirectType: effectiveHandling,
+          url: effectiveUrl,
+          providerName,
+          message: effectiveHandling === 'internal' ? 'Our team will reach out to confirm your booking.' : undefined,
           alreadyClicked: true,
         });
       }
@@ -350,6 +354,7 @@ export function registerQuickBookRoutes(app: Express) {
           ok: true,
           redirectType: 'internal',
           url: null,
+          providerName,
           message: 'Our team will reach out to confirm your booking.',
         });
       }
@@ -364,11 +369,10 @@ export function registerQuickBookRoutes(app: Express) {
         if (!externalUrl) {
           console.warn(`[QuickBook] External handling but no URL for intent ${intentId}, falling back to internal`);
           
-          // Update lead status to pending_followup
+          // Update lead with pending_followup status (keep status as-is until staff confirms)
           if (intent.leadId) {
             await storage.updateLead(clientId, intent.leadId, { 
               bookingStatus: 'pending_followup',
-              status: 'qualified',
             });
           }
           
@@ -376,7 +380,7 @@ export function registerQuickBookRoutes(app: Express) {
             ok: true,
             redirectType: 'internal',
             url: null,
-            providerName: null,
+            providerName,
             message: 'Our team will reach out to confirm your booking.',
           });
         }
