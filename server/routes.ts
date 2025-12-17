@@ -2933,9 +2933,9 @@ These suggestions should be relevant to what was just discussed and help guide t
     if (intentTags.length > 1) {
       structuredLogger.warn(`[Tag Lint] Multiple intent tags found: ${intentTags.join(', ')} - keeping highest priority${context ? ` (${context})` : ''}`);
       const INTENT_PRIORITY: Record<string, number> = {
-        'crisis': 100, 'admissions_intake': 90, 'availability': 80,
+        'crisis': 100, 'human_handoff': 95, 'admissions_intake': 90, 'availability': 80,
         'insurance_payment': 70, 'services_pricing': 60, 'rules_eligibility': 50,
-        'contact_hours_location': 40, 'human_handoff': 35, 'faq_or_info': 30, 'general': 10,
+        'contact_hours_location': 40, 'faq_or_info': 30, 'general': 10,
       };
       intentTags.sort((a, b) => {
         const aIntent = a.replace('intent:', '');
@@ -2975,13 +2975,13 @@ These suggestions should be relevant to what was just discussed and help guide t
       // Intent priority for recovery intents (higher = more important, never downgrade)
       const INTENT_PRIORITY: Record<RecoveryIntent, number> = {
         'crisis': 100,
+        'human_handoff': 95,
         'admissions_intake': 90,
         'availability': 80,
         'insurance_payment': 70,
         'services_pricing': 60,
         'rules_eligibility': 50,
         'contact_hours_location': 40,
-        'human_handoff': 35,
         'faq_or_info': 30,
         'general': 10,
       };
