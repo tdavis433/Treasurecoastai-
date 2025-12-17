@@ -1,0 +1,107 @@
+Update server/routes.ts in autoCaptureLead (around the intent tag merge block ~2998-3025) to enforce a single primary intent tag.
+
+Replace the current intent-tag block with this approach:
+
+Add helpers (near the function or top-level utilities):
+
+function stripIntentTags(tags: string[]) {
+  return (tags || []).filter(t => !t.startsWith("intent:"));
+}
+
+function getPrimaryIntentFromTags(tags: string[]) {
+  const intentTag = (tags || []).find(t => t.startsWith("intent:"));
+  return intentTag ? intentTag.replace("intent:", "") : null;
+}
+
+
+In autoCaptureLead, replace the existing “upgrade intent tag” logic with:
+
+if (recoveryIntent && recoveryIntent !== "general") {
+  const existingTags = existingLead.tags || [];
+  const newIntentTag = `intent:${recoveryIntent}`;
+
+  const newPriorityLevel = INTENT_PRIORITY[recoveryIntent] ?? 0;
+
+  const existingPrimaryIntent = getPrimaryIntentFromTags(existingTags) as RecoveryIntent | null;
+  const existingPriorityLevel = existingPrimaryIntent
+    ? (INTENT_PRIORITY[existingPrimaryIntent] ?? 0)
+    : 0;
+
+  // Only upgrade when strictly higher priority
+  if (!existingPrimaryIntent || newPriorityLevel > existingPriorityLevel) {
+    const baseTags = stripIntentTags(existingTags);
+
+    updates.tags = [...baseTags, newIntentTag];
+
+    // Optional: keep intent history for debugging/analytics
+    const prevHistory = (existingLead.metadata?.intentHistory as any[]) || [];
+    updates.metadata = {
+      ...(existingLead.metadata || {}),
+      intentHistory: [
+        ...prevHistory,
+        {
+          intent: recoveryIntent,
+          at: new Date().toISOString(),
+          source: "autoCaptureLead",
+          replaced: existingPrimaryIntent || null,
+        },
+      ].slice(-25),
+    };
+
+    structuredLogger.info(
+      `[Auto-Lead] Upgraded primary intent tag: ${newIntentTag} (priority ${newPriorityLevel} > ${existingPriorityLevel})`
+    );
+  } else {
+    // Do NOT add additional intent tags on ties or lower priority.
+    // Keep existing primary intent stable.
+  }
+}
+
+
+Remove the old “same priority add both” behavior entirely. We NEVER want multiple primary intents in tags.
+
+BookingStatus normalization (fix your “requested” drift)
+
+Wherever updates.bookingStatus is being set for sober living tour/admissions leads, normalize to canonical internal status:
+
+Replace "requested" with "pending_followup"
+
+Add this safety normalization inside autoCaptureLead before saving:
+
+if (updates.bookingStatus === "requested") {
+  updates.bookingStatus = "pending_followup";
+}
+if (existingLead.bookingStatus === "requested" && !updates.bookingStatus) {
+  updates.bookingStatus = "pending_followup";
+}
+
+
+Also ensure that for tour/admissions intent routes you set:
+
+updates.bookingIntent = true
+
+updates.bookingStatus = "pending_followup"
+
+updates.serviceRequested = "Tour Request" (if not already set)
+
+One-time data fix (existing records)
+
+Run a one-time DB update so older leads don’t stay inconsistent:
+
+UPDATE leads
+SET booking_status = 'pending_followup'
+WHERE booking_status = 'requested';
+
+Acceptance test
+
+Create 3 new tour requests on /demo/faith-house and confirm:
+
+tags contain EXACTLY ONE intent:* tag (e.g., intent:tour_request)
+
+bookingStatus is pending_followup (not requested)
+
+no leftover intent:general on tour leads
+
+other demo industries unchanged
+
+END.

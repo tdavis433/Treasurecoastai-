@@ -2891,6 +2891,17 @@ These suggestions should be relevant to what was just discussed and help guide t
     return result;
   }
 
+  // Helper: Strip all intent tags from a tags array
+  function stripIntentTags(tags: string[]): string[] {
+    return (tags || []).filter(t => !t.startsWith('intent:'));
+  }
+
+  // Helper: Get the primary intent from tags (first intent:* tag found)
+  function getPrimaryIntentFromTags(tags: string[]): string | null {
+    const intentTag = (tags || []).find(t => t.startsWith('intent:'));
+    return intentTag ? intentTag.replace('intent:', '') : null;
+  }
+
   // Auto-create or update lead from chat session with optional AI analysis
   async function autoCaptureLead(
     clientId: string,
@@ -2996,43 +3007,97 @@ These suggestions should be relevant to what was just discussed and help guide t
           updates.metadata = { ...(existingLead.metadata || {}), ...leadMetadata };
         }
         
-        // Add recovery intent tag only if it's higher priority than existing intent
+        // Single primary intent tag: Only upgrade when strictly higher priority
         if (recoveryIntent && recoveryIntent !== 'general') {
           const existingTags = existingLead.tags || [];
           const newIntentTag = `intent:${recoveryIntent}`;
-          const newPriorityLevel = INTENT_PRIORITY[recoveryIntent] || 0;
+          const newPriorityLevel = INTENT_PRIORITY[recoveryIntent] ?? 0;
           
-          // Find existing intent tags and their priority
-          const existingIntentTags = existingTags.filter(t => t.startsWith('intent:'));
-          const existingMaxPriority = existingIntentTags.reduce((max, tag) => {
-            const intent = tag.replace('intent:', '') as RecoveryIntent;
-            return Math.max(max, INTENT_PRIORITY[intent] || 0);
-          }, 0);
+          const existingPrimaryIntent = getPrimaryIntentFromTags(existingTags) as RecoveryIntent | null;
+          const existingPriorityLevel = existingPrimaryIntent
+            ? (INTENT_PRIORITY[existingPrimaryIntent] ?? 0)
+            : 0;
           
-          // Only add new intent if it's higher priority (never downgrade)
-          if (newPriorityLevel > existingMaxPriority) {
-            updates.tags = [...existingTags, newIntentTag];
-            structuredLogger.info(`[Auto-Lead] Upgraded recovery intent tag: ${newIntentTag} (priority ${newPriorityLevel} > ${existingMaxPriority})`);
-          } else if (!existingIntentTags.includes(newIntentTag) && newPriorityLevel === existingMaxPriority) {
-            // Same priority, different intent - add both (rare case)
-            updates.tags = [...existingTags, newIntentTag];
-            structuredLogger.info(`[Auto-Lead] Added additional recovery intent tag: ${newIntentTag}`);
+          // Only upgrade when strictly higher priority (never add multiple intents)
+          if (!existingPrimaryIntent || newPriorityLevel > existingPriorityLevel) {
+            const baseTags = stripIntentTags(existingTags);
+            updates.tags = [...baseTags, newIntentTag];
+            
+            // Keep intent history for debugging/analytics
+            const prevHistory = ((existingLead.metadata as any)?.intentHistory as any[]) || [];
+            updates.metadata = {
+              ...(existingLead.metadata || {}),
+              ...leadMetadata,
+              intentHistory: [
+                ...prevHistory,
+                {
+                  intent: recoveryIntent,
+                  at: new Date().toISOString(),
+                  source: 'autoCaptureLead',
+                  replaced: existingPrimaryIntent || null,
+                },
+              ].slice(-25),
+            };
+            
+            structuredLogger.info(`[Auto-Lead] Upgraded primary intent tag: ${newIntentTag} (priority ${newPriorityLevel} > ${existingPriorityLevel})`);
           }
-          // If new priority is lower, skip adding the tag entirely
+          // If same or lower priority, keep existing primary intent stable
+        }
+        
+        // Set booking fields for tour/admissions intents
+        if (recoveryIntent === 'admissions_intake') {
+          updates.bookingIntent = true;
+          if (!existingLead.bookingStatus || existingLead.bookingStatus === 'requested') {
+            updates.bookingStatus = 'pending_followup';
+          }
+          if (!existingLead.serviceRequested) {
+            updates.serviceRequested = 'Tour Request';
+          }
+        }
+        
+        // Normalize booking status: replace "requested" with "pending_followup"
+        if ((updates as any).bookingStatus === 'requested') {
+          (updates as any).bookingStatus = 'pending_followup';
+        }
+        if (existingLead.bookingStatus === 'requested' && !(updates as any).bookingStatus) {
+          (updates as any).bookingStatus = 'pending_followup';
         }
         
         await storage.updateLead(clientId, existingLead.id, updates);
         structuredLogger.info(`[Auto-Lead] Updated existing lead ${existingLead.id} for session ${sessionId}`);
       } else {
-        // Build tags array
+        // Build tags array - ensure single primary intent
         const tags: string[] = [];
         if (hasBookingIntent) tags.push('appointment_request');
         if (aiAnalysis?.leadQuality === 'hot') tags.push('hot_lead');
         
-        // Add recovery-specific intent tags for sober living businesses
+        // Add single recovery-specific intent tag for sober living businesses
         if (recoveryIntent && recoveryIntent !== 'general') {
           tags.push(`intent:${recoveryIntent}`);
-          structuredLogger.info(`[Auto-Lead] Added recovery intent tag: intent:${recoveryIntent}`);
+          structuredLogger.info(`[Auto-Lead] Added primary intent tag: intent:${recoveryIntent}`);
+        }
+        
+        // Build initial metadata with intent history
+        const initialMetadata: Record<string, any> = {
+          ...(Object.keys(leadMetadata).length > 0 ? leadMetadata : {}),
+        };
+        if (recoveryIntent && recoveryIntent !== 'general') {
+          initialMetadata.intentHistory = [{
+            intent: recoveryIntent,
+            at: new Date().toISOString(),
+            source: 'autoCaptureLead',
+            replaced: null,
+          }];
+        }
+        
+        // Set booking fields for tour/admissions intents
+        let bookingStatus: string | null = null;
+        let bookingIntent = false;
+        let serviceRequested: string | null = null;
+        if (recoveryIntent === 'admissions_intake') {
+          bookingIntent = true;
+          bookingStatus = 'pending_followup';
+          serviceRequested = 'Tour Request';
         }
         
         // Create new lead - always use the provided clientId/botId
@@ -3048,10 +3113,13 @@ These suggestions should be relevant to what was just discussed and help guide t
           priority: determinePriority(),
           notes: null,
           tags,
-          metadata: Object.keys(leadMetadata).length > 0 ? leadMetadata : {},
+          metadata: initialMetadata,
           conversationPreview: aiAnalysis?.summary || conversationPreview,
           messageCount: null,
           lastContactedAt: null,
+          bookingIntent,
+          bookingStatus,
+          serviceRequested,
         });
         
         structuredLogger.info(`[Auto-Lead] Created new lead ${newLead.id} for session ${sessionId} (quality: ${aiAnalysis?.leadQuality || 'unknown'})`);

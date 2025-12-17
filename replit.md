@@ -94,9 +94,12 @@ The sober living template uses a deterministic intent router (`server/recoveryRo
 ### Progressive Lead Enrichment
 - **Session-Based Upsert:** `storage.upsertLeadBySession()` enables progressive enrichment
 - **Conservative Merge:** Fields only update if not already set, priority only elevates (never downgrades), tags union, metadata shallow-merges
-- **Intent Tagging:** Leads tagged with `intent:tour_request`, `intent:admissions_intake`, etc. for analytics
+- **Intent Tagging:** Leads tagged with single primary intent (`intent:admissions_intake`, etc.) for analytics
+- **Single Primary Intent:** Each lead has exactly ONE `intent:*` tag. The `stripIntentTags()` and `getPrimaryIntentFromTags()` helpers in routes.ts ensure old intent tags are replaced (not accumulated) when upgrading.
 - **AutoCaptureLead Integration:** The `autoCaptureLead` function in routes.ts uses recovery router to classify intent for sober living businesses at lead creation time, ensuring proper intent tags are applied from the start
 - **Intent Precedence:** Intent tags only upgrade (never downgrade) - crisis (100) > admissions_intake (90) > availability (80) > insurance_payment (70) > services_pricing (60) > rules_eligibility (50) > contact_hours_location (40) > general (10)
+- **Intent History:** Metadata includes `intentHistory` array tracking intent upgrades for debugging/analytics
+- **Booking Status Normalization:** For tour/admissions intents, `bookingStatus` is set to `pending_followup`, `bookingIntent=true`, and `serviceRequested='Tour Request'`. Status `requested` is normalized to `pending_followup`.
 
 ### Widget UX for Sober Living
 - **No Quick Book UI:** Service selection buttons and Quick Book flow are hidden for sober living businesses
