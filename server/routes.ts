@@ -2988,12 +2988,14 @@ These suggestions should be relevant to what was just discussed and help guide t
       
       // For sober living businesses, use recovery router for intent classification
       let recoveryIntent: RecoveryIntent | null = null;
+      let callPreference: 'tour' | 'callback' | null = null;
       if (isSoberLivingBusiness(businessType) && userMessages && userMessages.length > 0) {
         // Classify intent from all user messages to get strongest signal
         const combinedMessages = userMessages.join(' ');
         const routeResult = routeRecoveryMessage(combinedMessages);
         recoveryIntent = routeResult.intent;
-        structuredLogger.info(`[Auto-Lead] Recovery intent classified: ${recoveryIntent} for session ${sessionId}`);
+        callPreference = routeResult.callPreference || null;
+        structuredLogger.info(`[Auto-Lead] Recovery intent classified: ${recoveryIntent}, callPreference: ${callPreference} for session ${sessionId}`);
       }
       
       // Check if lead already exists for this session or email/phone
@@ -3098,9 +3100,20 @@ These suggestions should be relevant to what was just discussed and help guide t
           if (!existingLead.bookingStatus || existingLead.bookingStatus === 'requested') {
             updates.bookingStatus = 'pending_followup';
           }
-          if (!existingLead.serviceRequested) {
-            updates.serviceRequested = recoveryIntent === 'admissions_intake' ? 'Tour Request' : 'Callback Request';
-          }
+          
+          // Update serviceRequested based on callPreference (callback takes precedence)
+          const newServiceRequested = callPreference === 'callback' ? 'Callback Request' : 
+                                       callPreference === 'tour' ? 'Tour Request' :
+                                       recoveryIntent === 'human_handoff' ? 'Callback Request' : 'Tour Request';
+          updates.serviceRequested = newServiceRequested;
+          
+          // Add tour/callback flag (mutually exclusive - callback replaces tour)
+          const currentTags = (updates.tags as string[] || existingLead.tags || []);
+          const strippedTags = currentTags.filter(t => t !== 'flag:tour_request' && t !== 'flag:callback_request');
+          const newFlag = (callPreference === 'callback' || recoveryIntent === 'human_handoff') ? 'flag:callback_request' : 'flag:tour_request';
+          updates.tags = lintTags([...strippedTags, newFlag], `lead:${existingLead.id}`);
+          
+          structuredLogger.info(`[Auto-Lead] Set ${newFlag} for lead ${existingLead.id}`);
         }
         
         // Normalize booking status: replace "requested" with "pending_followup"
@@ -3146,7 +3159,16 @@ These suggestions should be relevant to what was just discussed and help guide t
         if (recoveryIntent === 'admissions_intake' || recoveryIntent === 'human_handoff') {
           bookingIntent = true;
           bookingStatus = 'pending_followup';
-          serviceRequested = recoveryIntent === 'admissions_intake' ? 'Tour Request' : 'Callback Request';
+          
+          // Set serviceRequested based on callPreference (callback takes precedence)
+          serviceRequested = callPreference === 'callback' ? 'Callback Request' : 
+                             callPreference === 'tour' ? 'Tour Request' :
+                             recoveryIntent === 'human_handoff' ? 'Callback Request' : 'Tour Request';
+          
+          // Add tour/callback flag (mutually exclusive)
+          const newFlag = (callPreference === 'callback' || recoveryIntent === 'human_handoff') ? 'flag:callback_request' : 'flag:tour_request';
+          tags.push(newFlag);
+          structuredLogger.info(`[Auto-Lead] Adding ${newFlag} for new lead`);
         }
         
         // Create new lead - always use the provided clientId/botId

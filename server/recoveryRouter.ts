@@ -24,6 +24,7 @@ export interface RecoveryRouteResult {
   confidence: 'high' | 'medium' | 'low';
   shouldCaptureContact: boolean;
   suggestedAction?: 'schedule_tour' | 'request_callback' | 'provide_crisis_resources' | 'defer_to_staff';
+  callPreference?: 'tour' | 'callback' | null;
   reason: string;
 }
 
@@ -91,6 +92,20 @@ const HANDOFF_PATTERNS = [
   /\b(manager|supervisor|owner)\b/i,
 ];
 
+// Callback-specific patterns (subset of admissions - for callPreference detection)
+const CALLBACK_PATTERNS = [
+  /\b(call\s*me|call\s*back|have\s*someone\s*call|someone\s*to\s*call|phone\s*call)\b/i,
+  /\b(reach\s*out|contact\s*me|get\s*back\s*to\s*me)\b/i,
+  /\b(callback|call[\s-]?back)\b/i,
+];
+
+// Tour-specific patterns (for callPreference detection)
+const TOUR_PATTERNS = [
+  /\b(tour|visit|see\s*the\s*(place|facility|house)|come\s*(by|in|visit))\b/i,
+  /\b(schedule|book|set\s*up)\s*(a\s*)?(tour|visit)\b/i,
+  /\b(look\s*around|check\s*out\s*the\s*(place|facility|house))\b/i,
+];
+
 // FAQ/Info patterns (general questions)
 const FAQ_PATTERNS = [
   /\b(what\s*(is|are|do)|how\s*(does|do)|tell\s*me\s*about|explain)\b/i,
@@ -129,25 +144,31 @@ export function routeRecoveryMessage(message: string): RecoveryRouteResult {
     };
   }
   
-  // 2. HUMAN HANDOFF
+  // 2. HUMAN HANDOFF (always callback preference)
   if (matchesAny(normalizedMessage, HANDOFF_PATTERNS)) {
     return {
       intent: 'human_handoff',
       confidence: 'high',
       shouldCaptureContact: true,
       suggestedAction: 'request_callback',
+      callPreference: 'callback',
       reason: 'User explicitly requested human contact'
     };
   }
   
-  // 3. ADMISSIONS/TOUR (primary CTA)
+  // 3. ADMISSIONS/TOUR (primary CTA) - detect tour vs callback preference
   if (matchesAny(normalizedMessage, ADMISSIONS_PATTERNS)) {
+    // Check if it's specifically a callback request vs tour
+    const isCallback = matchesAny(normalizedMessage, CALLBACK_PATTERNS);
+    const isTour = matchesAny(normalizedMessage, TOUR_PATTERNS);
+    
     return {
       intent: 'admissions_intake',
       confidence: 'high',
       shouldCaptureContact: true,
-      suggestedAction: 'schedule_tour',
-      reason: 'Admissions or tour intent detected'
+      suggestedAction: isCallback ? 'request_callback' : 'schedule_tour',
+      callPreference: isCallback ? 'callback' : (isTour ? 'tour' : null),
+      reason: isCallback ? 'Callback request detected' : 'Tour or admissions intent detected'
     };
   }
   

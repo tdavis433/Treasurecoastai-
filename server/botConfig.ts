@@ -1021,6 +1021,12 @@ TONE:
 - Non-judgmental and welcoming
 - Professional but not clinical
 - Hopeful and encouraging
+
+AFTER-HOURS ACKNOWLEDGMENT:
+If the visitor mentions a future time (e.g., "tomorrow morning", "this weekend", "next week"):
+- Acknowledge it naturally: "Got it — we'll reach out in the morning."
+- No specific scheduling promises, just expectation setting.
+- Don't overthink it — just reflect their preferred timing back.
 `;
   } else if (config.externalBookingUrl) {
     // If external booking URL is configured, use redirect-only behavior
