@@ -95,6 +95,8 @@ The sober living template uses a deterministic intent router (`server/recoveryRo
 - **Session-Based Upsert:** `storage.upsertLeadBySession()` enables progressive enrichment
 - **Conservative Merge:** Fields only update if not already set, priority only elevates (never downgrades), tags union, metadata shallow-merges
 - **Intent Tagging:** Leads tagged with `intent:tour_request`, `intent:admissions_intake`, etc. for analytics
+- **AutoCaptureLead Integration:** The `autoCaptureLead` function in routes.ts uses recovery router to classify intent for sober living businesses at lead creation time, ensuring proper intent tags are applied from the start
+- **Intent Precedence:** Intent tags only upgrade (never downgrade) - crisis (100) > admissions_intake (90) > availability (80) > insurance_payment (70) > services_pricing (60) > rules_eligibility (50) > contact_hours_location (40) > general (10)
 
 ### Widget UX for Sober Living
 - **No Quick Book UI:** Service selection buttons and Quick Book flow are hidden for sober living businesses

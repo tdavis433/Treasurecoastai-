@@ -1,0 +1,115 @@
+You are a senior engineer. Fix the Recovery/Sober Living lead records so tour/admissions requests are logged consistently and analytics-safe.
+
+Problem
+
+Current Faith House tour leads are being saved with:
+
+leads.bookingStatus = "requested" (non-canonical)
+
+intent tags not upgrading (e.g., intent:general, intent:contact_hours_location on a tour request)
+
+This will break filtering and makes the router appear unreliable.
+
+Goals
+
+Normalize bookingStatus for sober living admissions/tour flows:
+
+Use canonical internal status: pending_followup
+
+Never write ad-hoc strings like "requested"
+
+Make intent tagging upgradeable:
+
+When a stronger intent is detected (tour/admissions), it must replace weaker intent tags like intent:general
+
+Keep intent history optionally in metadata, but the primary intent tag must be correct
+
+Populate leads.preferredDateTime when the user specifies a time (“Wednesday afternoon”, “Sunday morning”, etc.) using simple parsing. If parsing fails, leave null.
+
+(Optional but recommended) Create an internal appointment record for confirmed tour requests:
+
+appointmentType="tour"
+
+status="new"
+
+preferredTime derived from user text or a default prompt
+Only do this once (dedupe per session).
+
+Implementation details
+
+A) Booking status normalization
+
+Find the code path(s) where sober living tour/admissions intent sets lead fields (likely in the Recovery Router handler and/or lead upsert).
+
+Replace any use of "requested" with "pending_followup".
+
+Ensure leads.bookingStatus values stay within: pending_redirect, redirected, completed, no_url, pending_followup.
+
+B) Intent tag upgrade (critical)
+
+Current system merges tags with union and “only updates fields not captured”.
+
+Intent cannot follow that rule. Intent MUST be allowed to upgrade.
+Implement this rule:
+
+Maintain exactly one “primary intent” tag that starts with intent:
+
+When setting a new primary intent:
+
+Remove any existing tags starting with intent:
+
+Add the new one (e.g., intent:tour_request)
+
+Optionally store metadata.intentHistory as an array to retain earlier intents.
+
+C) Tour/admissions intent correctness
+
+Ensure any message that includes tour/admissions scheduling phrases triggers the admissions/tour intent:
+
+“schedule a tour”, “book a tour”, “tour”, “visit”, “admissions”, “intake”, “can someone call me”
+
+When this route triggers:
+
+bookingIntent = true
+
+bookingStatus = "pending_followup"
+
+serviceRequested = "Tour Request" (or "Admissions Call" depending on phrasing)
+
+tags include intent:tour_request (or intent:admissions)
+
+D) PreferredDateTime extraction
+
+Implement a lightweight extractor for day + time-of-day:
+
+weekdays + “morning/afternoon/evening/tonight/tomorrow”
+
+Store the best-effort result in leads.preferredDateTime
+
+Also keep the conversationPreview summary.
+
+E) Optional appointment creation (only if enabled)
+
+If you create appointments for tour requests:
+
+Create only once per session (dedupe)
+
+Use contact fields from lead
+
+preferredTime required (use extracted time or ask a follow-up in chat)
+
+Deliverables
+
+Code changes
+
+Verify by re-running 3 tour requests and confirm DB records show:
+
+bookingStatus = pending_followup
+
+tags include intent:tour_request (no intent:general left behind)
+
+preferredDateTime populated when a time is given
+
+(if enabled) appointment created exactly once per session
+
+END.

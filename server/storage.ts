@@ -1435,6 +1435,7 @@ export class DbStorage implements IStorage {
     bookingIntent?: boolean;
     bookingStatus?: string;
     serviceRequested?: string;
+    preferredDateTime?: string;
     tags?: string[];
     metadata?: Record<string, unknown>;
     conversationPreview?: string;
@@ -1460,6 +1461,7 @@ export class DbStorage implements IStorage {
       }
       if (patch.bookingStatus && !existingLead.bookingStatus) updates.bookingStatus = patch.bookingStatus;
       if (patch.serviceRequested && !existingLead.serviceRequested) updates.serviceRequested = patch.serviceRequested;
+      if (patch.preferredDateTime && !existingLead.preferredDateTime) updates.preferredDateTime = patch.preferredDateTime;
       
       // Priority: Only elevate priority, never downgrade
       if (patch.priority) {
@@ -1476,11 +1478,57 @@ export class DbStorage implements IStorage {
       }
       if (typeof patch.messageCount === 'number') updates.messageCount = patch.messageCount;
       
-      // Merge tags (union, no duplicates)
+      // Smart tag merging: intent tags REPLACE (upgrade), other tags UNION
       if (patch.tags && patch.tags.length > 0) {
         const existingTags = (existingLead.tags as string[]) || [];
-        const mergedTags = [...new Set([...existingTags, ...patch.tags])];
-        updates.tags = mergedTags;
+        
+        // Separate intent tags from other tags
+        const newIntentTags = patch.tags.filter(t => t.startsWith('intent:'));
+        const newOtherTags = patch.tags.filter(t => !t.startsWith('intent:'));
+        const existingOtherTags = existingTags.filter(t => !t.startsWith('intent:'));
+        
+        // Intent tag precedence: stronger intents replace weaker ones
+        const intentPrecedence: Record<string, number> = {
+          'intent:crisis': 100,
+          'intent:admissions_intake': 90,
+          'intent:human_handoff': 85,
+          'intent:insurance_payment': 70,
+          'intent:availability': 65,
+          'intent:rules_eligibility': 60,
+          'intent:services_pricing': 55,
+          'intent:contact_hours_location': 50,
+          'intent:faq_or_info': 40,
+          'intent:general': 10,
+        };
+        
+        // Find the strongest intent from new tags
+        let strongestIntent: string | null = null;
+        let strongestPrecedence = 0;
+        for (const tag of newIntentTags) {
+          const precedence = intentPrecedence[tag] || 0;
+          if (precedence > strongestPrecedence) {
+            strongestPrecedence = precedence;
+            strongestIntent = tag;
+          }
+        }
+        
+        // Check if existing intent is stronger
+        const existingIntentTags = existingTags.filter(t => t.startsWith('intent:'));
+        for (const tag of existingIntentTags) {
+          const precedence = intentPrecedence[tag] || 0;
+          if (precedence > strongestPrecedence) {
+            strongestPrecedence = precedence;
+            strongestIntent = tag;
+          }
+        }
+        
+        // Build final tags: strongest intent + union of other tags
+        const finalTags = [...new Set([...existingOtherTags, ...newOtherTags])];
+        if (strongestIntent) {
+          finalTags.unshift(strongestIntent); // Put intent tag first
+        }
+        
+        updates.tags = finalTags;
       }
       
       // Merge metadata (shallow merge)
@@ -1506,6 +1554,7 @@ export class DbStorage implements IStorage {
       bookingIntent: patch.bookingIntent || false,
       bookingStatus: patch.bookingStatus || null,
       serviceRequested: patch.serviceRequested || null,
+      preferredDateTime: patch.preferredDateTime || null,
       conversationPreview: patch.conversationPreview?.slice(0, 500) || null,
       messageCount: patch.messageCount || 1,
       tags: patch.tags || [],

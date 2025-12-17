@@ -260,6 +260,46 @@ export interface ExtractedBookingInfo {
 }
 
 /**
+ * Extract preferred date/time phrases from user message for sober living tour requests
+ * Returns the raw phrase if found, null otherwise
+ */
+function extractPreferredDateTime(message: string): string | null {
+  const lower = message.toLowerCase();
+  
+  // Day + time-of-day patterns
+  const patterns = [
+    // "Monday morning", "tuesday afternoon", etc.
+    /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s+(morning|afternoon|evening|night)\b/i,
+    // "tomorrow morning", "tomorrow afternoon"
+    /\b(tomorrow|today)\s+(morning|afternoon|evening|night)\b/i,
+    // "next Monday", "next week"
+    /\bnext\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday|week)\b/i,
+    // "this weekend", "this Saturday"
+    /\bthis\s+(weekend|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i,
+    // Standalone day names with context
+    /\b(on\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i,
+    // "tomorrow", "today" standalone
+    /\b(tomorrow|today)\b/i,
+    // Time mentions like "in the morning", "in the afternoon"
+    /\bin\s+the\s+(morning|afternoon|evening)\b/i,
+    // "around 10", "at 2pm", etc.
+    /\b(around|at|about)\s+(\d{1,2})\s*(am|pm|a\.m\.|p\.m\.)?/i,
+    // "weekend" standalone
+    /\b(this\s+)?weekend\b/i,
+  ];
+  
+  for (const pattern of patterns) {
+    const match = lower.match(pattern);
+    if (match) {
+      // Return the matched phrase, capitalized nicely
+      return match[0].charAt(0).toUpperCase() + match[0].slice(1);
+    }
+  }
+  
+  return null;
+}
+
+/**
  * Parse a vague time phrase like "tomorrow afternoon" into an ISO datetime string
  * Returns null if parsing fails, so we can fall back to the original phrase
  */
@@ -1990,17 +2030,49 @@ class ConversationOrchestrator {
     const isSoberLiving = isSoberLivingBusiness(businessTypeForCapture);
     let recoveryRouteResult: RecoveryRouteResult | undefined;
     
+    structuredLogger.info('[RecoveryRouter] Business type check', {
+      sessionId: sessionData.sessionId,
+      businessType: businessTypeForCapture,
+      isSoberLiving,
+      leadCaptured,
+      hasBusinessProfile: !!botConfig.businessProfile,
+    });
+    
     if (isSoberLiving) {
       recoveryRouteResult = routeRecoveryMessage(userMessage);
       
-      // Persist recovery router decisions to session for consistent behavior
-      sessionData.recoveryIntent = recoveryRouteResult.intent;
-      sessionData.recoveryContactRequested = recoveryRouteResult.shouldCaptureContact;
+      // Intent precedence: Only upgrade intent, never downgrade (session sticky)
+      // This ensures tour requests aren't overwritten by follow-up "general" messages
+      const intentPrecedence: Record<string, number> = {
+        'crisis': 100,
+        'admissions_intake': 90,
+        'human_handoff': 85,
+        'insurance_payment': 70,
+        'availability': 65,
+        'rules_eligibility': 60,
+        'services_pricing': 55,
+        'contact_hours_location': 50,
+        'faq_or_info': 40,
+        'general': 10,
+      };
       
-      structuredLogger.info('[RecoveryRouter] Session intent persisted', {
+      const currentPrecedence = intentPrecedence[recoveryRouteResult.intent] || 0;
+      const existingPrecedence = intentPrecedence[sessionData.recoveryIntent || 'general'] || 0;
+      
+      // Only upgrade intent if new intent is stronger
+      if (currentPrecedence > existingPrecedence) {
+        sessionData.recoveryIntent = recoveryRouteResult.intent;
+      }
+      
+      // Contact requested is sticky - once set, stays set
+      sessionData.recoveryContactRequested = sessionData.recoveryContactRequested || recoveryRouteResult.shouldCaptureContact;
+      
+      structuredLogger.info('[RecoveryRouter] Session intent check', {
         sessionId: sessionData.sessionId,
-        intent: recoveryRouteResult.intent,
-        shouldCaptureContact: recoveryRouteResult.shouldCaptureContact,
+        currentMessageIntent: recoveryRouteResult.intent,
+        sessionIntent: sessionData.recoveryIntent,
+        upgraded: currentPrecedence > existingPrecedence,
+        shouldCaptureContact: sessionData.recoveryContactRequested,
         suggestedAction: recoveryRouteResult.suggestedAction
       });
     }
@@ -2015,14 +2087,32 @@ class ConversationOrchestrator {
         const priority = determinePriority(showBooking, contactInfo);
         const tags: string[] = [];
         
-        // Add recovery-specific tags based on intent
-        if (recoveryRouteResult) {
-          tags.push(`intent:${recoveryRouteResult.intent}`);
-          if (recoveryRouteResult.intent === 'admissions_intake') tags.push('admissions');
-          if (recoveryRouteResult.intent === 'crisis') tags.push('crisis_redirect');
-          if (recoveryRouteResult.intent === 'insurance_payment') tags.push('insurance_inquiry');
-          if (recoveryRouteResult.intent === 'availability') tags.push('availability_inquiry');
+        // Add recovery-specific tags based on SESSION intent (strongest seen so far)
+        // This ensures tour requests aren't lost when user follows up with name/phone/email
+        const sessionIntent = sessionData.recoveryIntent || recoveryRouteResult?.intent || 'general';
+        tags.push(`intent:${sessionIntent}`);
+        
+        // Add category tags based on session intent
+        if (sessionIntent === 'admissions_intake') tags.push('admissions');
+        if (sessionIntent === 'crisis') tags.push('crisis_redirect');
+        if (sessionIntent === 'insurance_payment') tags.push('insurance_inquiry');
+        if (sessionIntent === 'availability') tags.push('availability_inquiry');
+        
+        // Extract preferred date/time for sober living tour requests
+        // Persist to session so it's not lost when user provides contact info in later messages
+        const preferredDateTimeRaw = extractPreferredDateTime(userMessage);
+        if (preferredDateTimeRaw && !sessionData.preferredDateTime) {
+          sessionData.preferredDateTime = preferredDateTimeRaw;
         }
+        
+        // Use session's preferredDateTime (first extracted value is authoritative)
+        const effectivePreferredDateTime = sessionData.preferredDateTime || preferredDateTimeRaw;
+        const preferredScheduledAt = effectivePreferredDateTime ? parseVagueTimeToDatetime(effectivePreferredDateTime) : null;
+        
+        // Determine booking intent from session context
+        // If user asked for tour/intake earlier, that intent should persist
+        const effectiveShowBooking = showBooking || sessionData.appointmentRequested || 
+          (sessionIntent === 'admissions_intake');
         
         // Progressive session-based lead upsert
         const upsertedLead = await storage.upsertLeadBySession(clientId, botId, sessionData.sessionId, {
@@ -2030,11 +2120,14 @@ class ConversationOrchestrator {
           phone: contactInfo.phone,
           email: contactInfo.email,
           priority,
-          bookingIntent: showBooking,
-          bookingStatus: showBooking ? 'requested' : undefined,
-          serviceRequested: bookingType === 'tour' ? 'Tour Request' : 
+          bookingIntent: effectiveShowBooking,
+          // Use 'pending_followup' for sober living (canonical status for internal booking)
+          bookingStatus: effectiveShowBooking ? 'pending_followup' : undefined,
+          serviceRequested: sessionIntent === 'admissions_intake' ? 'Tour Request' :
+                           bookingType === 'tour' ? 'Tour Request' : 
                            bookingType === 'call' ? 'Phone Consultation' : 
                            bookingInfo?.requestedService || undefined,
+          preferredDateTime: effectivePreferredDateTime || undefined,
           tags,
           conversationPreview: userMessage,
           messageCount: sessionData.messageCount,
@@ -2042,6 +2135,7 @@ class ConversationOrchestrator {
           metadata: {
             recoveryIntent: recoveryRouteResult?.intent,
             recoveryConfidence: recoveryRouteResult?.confidence,
+            preferredScheduledAt: preferredScheduledAt || null,
             lastActivity: new Date().toISOString()
           }
         });

@@ -96,6 +96,7 @@ import { validateBookingUrl } from './urlValidator';
 import { csrfProtection } from './csrfMiddleware';
 import { structuredLogger } from './structuredLogger';
 import { buildClientFromTemplate, validateTemplateForProvisioning, ensureTemplatesSeeded, type TemplateOverrides } from './templates';
+import { routeRecoveryMessage, isSoberLivingBusiness, type RecoveryIntent } from './recoveryRouter';
 
 // =============================================
 // PHASE 2.4: SIGNED WIDGET TOKENS
@@ -2354,7 +2355,9 @@ Always be positive and solution-oriented. If someone wants to get started, direc
             contactInfo,
             conversationPreview,
             result.meta.showBooking,
-            analysis
+            analysis,
+            botConfig.businessProfile?.type,
+            userMessageTexts
           );
         } catch (err) {
           structuredLogger.error('[AI Analysis] Background processing failed:', err);
@@ -2651,7 +2654,9 @@ These suggestions should be relevant to what was just discussed and help guide t
             contactInfo,
             conversationPreview,
             analysis?.bookingIntent || sessionData.appointmentRequested || false,
-            analysis
+            analysis,
+            botConfig.businessProfile?.type,
+            userMessageTexts
           );
           
           // AI-driven appointment creation: When AI confirms booking with complete info
@@ -2894,7 +2899,9 @@ These suggestions should be relevant to what was just discussed and help guide t
     contactInfo: ExtractedContactInfo,
     conversationPreview: string,
     appointmentRequested: boolean,
-    aiAnalysis?: ConversationAnalysis | null
+    aiAnalysis?: ConversationAnalysis | null,
+    businessType?: string,
+    userMessages?: string[]
   ): Promise<void> {
     try {
       // Use AI-derived booking intent if available, fallback to regex detection
@@ -2904,6 +2911,30 @@ These suggestions should be relevant to what was just discussed and help guide t
       // Booking intent alone is not sufficient - we need a way to contact the lead
       if (!contactInfo.email && !contactInfo.phone) {
         return; // No contact info to create lead - booking intent tracked in session
+      }
+      
+      // Intent priority for recovery intents (higher = more important, never downgrade)
+      const INTENT_PRIORITY: Record<RecoveryIntent, number> = {
+        'crisis': 100,
+        'admissions_intake': 90,
+        'availability': 80,
+        'insurance_payment': 70,
+        'services_pricing': 60,
+        'rules_eligibility': 50,
+        'contact_hours_location': 40,
+        'human_handoff': 35,
+        'faq_or_info': 30,
+        'general': 10,
+      };
+      
+      // For sober living businesses, use recovery router for intent classification
+      let recoveryIntent: RecoveryIntent | null = null;
+      if (isSoberLivingBusiness(businessType) && userMessages && userMessages.length > 0) {
+        // Classify intent from all user messages to get strongest signal
+        const combinedMessages = userMessages.join(' ');
+        const routeResult = routeRecoveryMessage(combinedMessages);
+        recoveryIntent = routeResult.intent;
+        structuredLogger.info(`[Auto-Lead] Recovery intent classified: ${recoveryIntent} for session ${sessionId}`);
       }
       
       // Check if lead already exists for this session or email/phone
@@ -2965,6 +2996,31 @@ These suggestions should be relevant to what was just discussed and help guide t
           updates.metadata = { ...(existingLead.metadata || {}), ...leadMetadata };
         }
         
+        // Add recovery intent tag only if it's higher priority than existing intent
+        if (recoveryIntent && recoveryIntent !== 'general') {
+          const existingTags = existingLead.tags || [];
+          const newIntentTag = `intent:${recoveryIntent}`;
+          const newPriorityLevel = INTENT_PRIORITY[recoveryIntent] || 0;
+          
+          // Find existing intent tags and their priority
+          const existingIntentTags = existingTags.filter(t => t.startsWith('intent:'));
+          const existingMaxPriority = existingIntentTags.reduce((max, tag) => {
+            const intent = tag.replace('intent:', '') as RecoveryIntent;
+            return Math.max(max, INTENT_PRIORITY[intent] || 0);
+          }, 0);
+          
+          // Only add new intent if it's higher priority (never downgrade)
+          if (newPriorityLevel > existingMaxPriority) {
+            updates.tags = [...existingTags, newIntentTag];
+            structuredLogger.info(`[Auto-Lead] Upgraded recovery intent tag: ${newIntentTag} (priority ${newPriorityLevel} > ${existingMaxPriority})`);
+          } else if (!existingIntentTags.includes(newIntentTag) && newPriorityLevel === existingMaxPriority) {
+            // Same priority, different intent - add both (rare case)
+            updates.tags = [...existingTags, newIntentTag];
+            structuredLogger.info(`[Auto-Lead] Added additional recovery intent tag: ${newIntentTag}`);
+          }
+          // If new priority is lower, skip adding the tag entirely
+        }
+        
         await storage.updateLead(clientId, existingLead.id, updates);
         structuredLogger.info(`[Auto-Lead] Updated existing lead ${existingLead.id} for session ${sessionId}`);
       } else {
@@ -2972,6 +3028,12 @@ These suggestions should be relevant to what was just discussed and help guide t
         const tags: string[] = [];
         if (hasBookingIntent) tags.push('appointment_request');
         if (aiAnalysis?.leadQuality === 'hot') tags.push('hot_lead');
+        
+        // Add recovery-specific intent tags for sober living businesses
+        if (recoveryIntent && recoveryIntent !== 'general') {
+          tags.push(`intent:${recoveryIntent}`);
+          structuredLogger.info(`[Auto-Lead] Added recovery intent tag: intent:${recoveryIntent}`);
+        }
         
         // Create new lead - always use the provided clientId/botId
         const newLead = await storage.createLead({
