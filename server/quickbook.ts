@@ -275,9 +275,21 @@ export function registerQuickBookRoutes(app: Express) {
         return res.status(404).json({ error: "Booking intent not found" });
       }
       
-      // Use the stored handling mode from intent (set during intent/start)
-      // This ensures consistent behavior and prevents mode confusion
-      const handling = intent.handling || 'internal';
+      // Get current settings to check if demo mode is NOW enabled
+      // This allows demo mode toggle to take effect immediately for pending intents
+      const settings = await storage.getSettings(clientId);
+      
+      // Determine effective handling mode:
+      // - If demo mode is NOW enabled, override to 'demo' (takes precedence)
+      // - Otherwise use the stored handling from intent creation
+      const handling = settings?.quickBookDemoMode === true 
+        ? 'demo' 
+        : (intent.handling || 'internal');
+      
+      // If handling was overridden to demo, persist this change so demo/confirm accepts it
+      if (handling === 'demo' && intent.handling !== 'demo') {
+        await storage.updateBookingIntent(intentId, { handling: 'demo' });
+      }
       
       // Guardrail #3: Idempotent - if already clicked, return existing data
       if (['clicked_to_book', 'demo_confirmed', 'confirmed', 'redirected'].includes(intent.status)) {
