@@ -1070,12 +1070,11 @@ export class DbStorage implements IStorage {
     const externalConfigured = settings?.bookingMode === 'external' && 
       (hasGlobalExternalUrl || hasServiceSpecificUrls);
     
-    // Demo mode ALWAYS overrides to 'confirmable' regardless of external config
-    // Otherwise, handoff only when external is properly configured
+    // funnelMode = 'confirmable' ONLY when demo mode is enabled
+    // Internal mode has no staff confirmation UI yet, so show 3-step funnel
+    // External mode hands off to third-party, so also 3-step funnel
     const funnelMode: 'handoff' | 'confirmable' = 
-      settings?.quickBookDemoMode === true 
-        ? 'confirmable' 
-        : (externalConfigured ? 'handoff' : 'confirmable');
+      settings?.quickBookDemoMode === true ? 'confirmable' : 'handoff';
     
     // Count booking intents from the booking_intents table (source of truth)
     const intentCountResult = await db
