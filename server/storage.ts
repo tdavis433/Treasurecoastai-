@@ -1050,18 +1050,15 @@ export class DbStorage implements IStorage {
     const defaultStartDate = startDate || new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const defaultEndDate = endDate || now;
     
-    // Count booking intents from analytics events
-    const intentConditions = [
-      eq(chatAnalyticsEvents.clientId, clientId),
-      eq(chatAnalyticsEvents.eventType, 'booking_intent'),
-      gte(chatAnalyticsEvents.createdAt, defaultStartDate),
-      lte(chatAnalyticsEvents.createdAt, defaultEndDate)
-    ];
-    
+    // Count booking intents from the booking_intents table (source of truth)
     const intentCountResult = await db
       .select({ count: sql<number>`count(*)` })
-      .from(chatAnalyticsEvents)
-      .where(and(...intentConditions));
+      .from(bookingIntents)
+      .where(and(
+        eq(bookingIntents.workspaceId, clientId),
+        gte(bookingIntents.createdAt, defaultStartDate),
+        lte(bookingIntents.createdAt, defaultEndDate)
+      ));
     
     const totalBookingIntents = Number(intentCountResult[0]?.count || 0);
     
@@ -1080,30 +1077,30 @@ export class DbStorage implements IStorage {
     
     const totalLinkClicks = Number(clickCountResult[0]?.count || 0);
     
-    // Count pending and completed bookings from leads
-    const pendingConditions = [
-      eq(leads.clientId, clientId),
-      eq(leads.bookingIntent, true),
-      eq(leads.bookingStatus, 'pending_external_booking')
-    ];
-    
+    // Count pending and completed bookings from booking_intents table
+    // Pending: started, lead_captured, clicked_to_book
     const pendingCountResult = await db
       .select({ count: sql<number>`count(*)` })
-      .from(leads)
-      .where(and(...pendingConditions));
+      .from(bookingIntents)
+      .where(and(
+        eq(bookingIntents.workspaceId, clientId),
+        sql`${bookingIntents.status} IN ('started', 'lead_captured', 'clicked_to_book')`,
+        gte(bookingIntents.createdAt, defaultStartDate),
+        lte(bookingIntents.createdAt, defaultEndDate)
+      ));
     
     const pendingBookings = Number(pendingCountResult[0]?.count || 0);
     
-    const completedConditions = [
-      eq(leads.clientId, clientId),
-      eq(leads.bookingIntent, true),
-      eq(leads.bookingStatus, 'redirected')
-    ];
-    
+    // Completed: demo_confirmed, confirmed, redirected (user was sent to external booking)
     const completedCountResult = await db
       .select({ count: sql<number>`count(*)` })
-      .from(leads)
-      .where(and(...completedConditions));
+      .from(bookingIntents)
+      .where(and(
+        eq(bookingIntents.workspaceId, clientId),
+        sql`${bookingIntents.status} IN ('demo_confirmed', 'confirmed', 'redirected')`,
+        gte(bookingIntents.createdAt, defaultStartDate),
+        lte(bookingIntents.createdAt, defaultEndDate)
+      ));
     
     const completedBookings = Number(completedCountResult[0]?.count || 0);
     
@@ -1117,15 +1114,14 @@ export class DbStorage implements IStorage {
       const nextDate = new Date(currentDate);
       nextDate.setDate(nextDate.getDate() + 1);
       
-      // Count intents for this day
+      // Count intents for this day from booking_intents table
       const dayIntentResult = await db
         .select({ count: sql<number>`count(*)` })
-        .from(chatAnalyticsEvents)
+        .from(bookingIntents)
         .where(and(
-          eq(chatAnalyticsEvents.clientId, clientId),
-          eq(chatAnalyticsEvents.eventType, 'booking_intent'),
-          gte(chatAnalyticsEvents.createdAt, currentDate),
-          lte(chatAnalyticsEvents.createdAt, nextDate)
+          eq(bookingIntents.workspaceId, clientId),
+          gte(bookingIntents.createdAt, currentDate),
+          lte(bookingIntents.createdAt, nextDate)
         ));
       
       const dayClickResult = await db

@@ -293,12 +293,23 @@ export function registerQuickBookRoutes(app: Express) {
       
       // Update intent - Guardrail #5: timestamp
       // Note: externalUrl is already set during intent/start, we just update status
+      const finalUrl = demoMode 
+        ? `/demo-booking-confirmation?intentId=${intentId}`
+        : intent.externalUrl;
+        
       await storage.updateBookingIntent(intentId, {
         status: 'clicked_to_book',
         clickedToBookAt: new Date(),
-        externalUrl: demoMode 
-          ? `/demo-booking-confirmation?intentId=${intentId}`
-          : intent.externalUrl,
+        externalUrl: finalUrl,
+      });
+      
+      // Track the link click in analytics for booking funnel metrics
+      await storage.logBookingLinkClickEvent({
+        clientId,
+        botId,
+        sessionId: intent.sessionId,
+        leadId: intent.leadId || undefined,
+        bookingUrl: finalUrl || '',
       });
       
       // Also update lead status if linked
