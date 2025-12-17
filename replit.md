@@ -117,10 +117,19 @@ The sober living template uses a deterministic intent router (`server/recoveryRo
 
 ### Dashboard Quick Filters
 The Leads page includes quick filter presets for sober living operators:
-- **Tours / Callbacks** → `intent:admissions_intake`
+- **Tours / Callback Requests** → `flag:tour_request` OR `flag:callback_request`
 - **Wants Human** → `intent:human_handoff`
 - **Hot Leads** → `flag:hot_lead`
 - **Needs Follow-up** → `booking_status=pending_followup`
+
+### Tour vs Callback Split
+The recovery router distinguishes tour requests from callback requests:
+- `callPreference: 'tour' | 'callback' | null` is set based on message patterns
+- Tour patterns: "schedule a tour", "visit", "come by", "see the house"
+- Callback patterns: "call me", "give me a call", "phone call", "reach out by phone"
+- Flags are mutually exclusive: `flag:tour_request` or `flag:callback_request`
+- If user changes preference (e.g., tour → callback), the new flag replaces the old one
+- `human_handoff` intent defaults to `callback` preference
 
 ### Sober Living Assistant Behavior
 The sober living assistant does NOT perform admissions intake via chat. It only:
