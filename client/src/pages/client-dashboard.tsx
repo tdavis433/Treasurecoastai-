@@ -579,22 +579,11 @@ export default function ClientDashboard() {
     
     setInvitingMember(true);
     try {
-      const response = await fetch(appendClientId("/api/client/team/members"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          email: inviteEmail,
-          password: invitePassword,
-          membershipRole: inviteRole,
-        }),
+      await apiRequest("POST", appendClientId("/api/client/team/members"), {
+        email: inviteEmail,
+        password: invitePassword,
+        membershipRole: inviteRole,
       });
-      
-      if (!response.ok) {
-        const data = await response.json();
-        setInviteError(data.error || "Failed to invite member");
-        return;
-      }
       
       toast({ title: "Team member invited", description: `${inviteEmail} has been added to your team.` });
       setInviteDialogOpen(false);
@@ -602,8 +591,8 @@ export default function ClientDashboard() {
       setInvitePassword('');
       setInviteRole('staff');
       refetchTeam();
-    } catch (error) {
-      setInviteError("Failed to invite team member");
+    } catch (error: any) {
+      setInviteError(error?.message || "Failed to invite team member");
     } finally {
       setInvitingMember(false);
     }
@@ -617,20 +606,12 @@ export default function ClientDashboard() {
     
     setRemovingMemberId(memberId);
     try {
-      const response = await fetch(appendClientId(`/api/client/team/members/${memberId}`), {
-        method: "DELETE",
-        credentials: "include",
-      });
-      
-      if (response.ok) {
-        toast({ title: "Team member removed", description: `${memberEmail} has been removed from your team.` });
-        refetchTeam();
-      } else {
-        const data = await response.json();
-        toast({ title: "Error", description: data.error || "Failed to remove team member", variant: "destructive" });
-      }
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to remove team member", variant: "destructive" });
+      await apiRequest("DELETE", appendClientId(`/api/client/team/members/${memberId}`));
+      toast({ title: "Team member removed", description: `${memberEmail} has been removed from your team.` });
+      refetchTeam();
+    } catch (error: any) {
+      const message = error?.message || "Failed to remove team member";
+      toast({ title: "Error", description: message, variant: "destructive" });
     } finally {
       setRemovingMemberId(null);
     }
