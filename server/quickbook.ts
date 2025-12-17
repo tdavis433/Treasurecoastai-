@@ -306,7 +306,7 @@ export function registerQuickBookRoutes(app: Express) {
       // ========== HANDLING MODE: INTERNAL ==========
       // - NO status change (keep at lead_captured)
       // - NO booking_link_click event (no link was clicked)
-      // - Create appointment for staff follow-up
+      // - Create appointment for staff follow-up (with dedupe check)
       // - Return confirmation message only
       if (handling === 'internal') {
         // Update lead status to pending_followup
@@ -317,8 +317,9 @@ export function registerQuickBookRoutes(app: Express) {
           });
         }
         
-        // Create appointment for staff to follow up (but don't change intent status)
-        if (intent.contactName) {
+        // Create appointment for staff to follow up (with dedupe via metadata)
+        const intentMetadata = (intent.metadata as Record<string, unknown>) || {};
+        if (intent.contactName && !intentMetadata.appointmentCreatedAt) {
           try {
             const appointment = await storage.createAppointment(clientId, {
               sessionId: intent.sessionId || undefined,
@@ -331,6 +332,11 @@ export function registerQuickBookRoutes(app: Express) {
               notes: `Quick Book: ${intent.serviceName || 'Service'} - ${intent.priceCents ? `$${(intent.priceCents / 100).toFixed(2)}` : 'Price TBD'} - Staff follow-up required`,
             });
             console.log(`[QuickBook] Created appointment ${appointment.id} for internal follow-up, intent ${intentId}`);
+            
+            // Mark appointment as created to prevent duplicates
+            await storage.updateBookingIntent(intentId, {
+              metadata: { ...intentMetadata, appointmentCreatedAt: new Date().toISOString() },
+            });
           } catch (appointmentError) {
             console.error("[QuickBook] Error creating appointment (non-fatal):", appointmentError);
           }
@@ -348,7 +354,28 @@ export function registerQuickBookRoutes(app: Express) {
       // - Set status='clicked_to_book', clickedToBookAt
       // - Log booking_link_click with external URL
       // - Do NOT create appointment (external system handles it)
+      // - FAILSAFE: If no externalUrl, fall back to internal behavior
       if (handling === 'external') {
+        // Failsafe: If external URL is missing, fall back to internal behavior
+        if (!externalUrl) {
+          console.warn(`[QuickBook] External handling but no URL for intent ${intentId}, falling back to internal`);
+          
+          // Update lead status to pending_followup
+          if (intent.leadId) {
+            await storage.updateLead(clientId, intent.leadId, { 
+              bookingStatus: 'pending_followup',
+              status: 'qualified',
+            });
+          }
+          
+          return res.json({
+            ok: true,
+            redirectType: 'internal',
+            url: null,
+            message: 'Our team will reach out to confirm your booking.',
+          });
+        }
+        
         await storage.updateBookingIntent(intentId, {
           status: 'clicked_to_book',
           clickedToBookAt: new Date(),
@@ -360,7 +387,7 @@ export function registerQuickBookRoutes(app: Express) {
           botId,
           sessionId: intent.sessionId,
           leadId: intent.leadId || undefined,
-          bookingUrl: externalUrl || 'external_booking',
+          bookingUrl: externalUrl,
         });
         
         // Update lead status
