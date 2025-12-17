@@ -77,7 +77,7 @@ import {
 import * as schema from "@shared/schema";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { neonConfig, Pool } from "@neondatabase/serverless";
-import { eq, and, gte, lte, or, like, sql, desc } from "drizzle-orm";
+import { eq, and, gte, lte, lt, or, like, sql, desc } from "drizzle-orm";
 import ws from "ws";
 
 neonConfig.webSocketConstructor = ws;
@@ -1056,15 +1056,26 @@ export class DbStorage implements IStorage {
     
     // Determine funnelMode from client settings (config-driven)
     // Must align with handling logic in quickbook.ts:
-    // - 'demo' when quickBookDemoMode === true -> confirmable
-    // - 'external' when bookingMode === 'external' AND externalBookingUrl exists -> handoff
+    // - 'demo' when quickBookDemoMode === true -> ALWAYS confirmable (override)
+    // - 'external' when bookingMode === 'external' AND (externalBookingUrl OR service-specific URLs) -> handoff
     // - 'internal' otherwise (default) -> confirmable (staff can confirm)
     const settings = await this.getSettings(clientId);
     
-    // funnelMode = 'handoff' ONLY when external booking is properly configured
-    // Otherwise default to 'confirmable' (demo or internal mode)
-    const isExternalMode = settings?.bookingMode === 'external' && !!settings?.externalBookingUrl;
-    const funnelMode: 'handoff' | 'confirmable' = isExternalMode ? 'handoff' : 'confirmable';
+    // Check if external booking is configured:
+    // Either global externalBookingUrl OR at least one ACTIVE service with a bookingUrl
+    const hasGlobalExternalUrl = !!settings?.externalBookingUrl;
+    const hasServiceSpecificUrls = Array.isArray(settings?.servicesCatalog) && 
+      (settings.servicesCatalog as any[]).some(s => s?.active !== false && !!s.bookingUrl);
+    
+    const externalConfigured = settings?.bookingMode === 'external' && 
+      (hasGlobalExternalUrl || hasServiceSpecificUrls);
+    
+    // Demo mode ALWAYS overrides to 'confirmable' regardless of external config
+    // Otherwise, handoff only when external is properly configured
+    const funnelMode: 'handoff' | 'confirmable' = 
+      settings?.quickBookDemoMode === true 
+        ? 'confirmable' 
+        : (externalConfigured ? 'handoff' : 'confirmable');
     
     // Count booking intents from the booking_intents table (source of truth)
     const intentCountResult = await db
@@ -1078,16 +1089,17 @@ export class DbStorage implements IStorage {
     
     const totalBookingIntents = Number(intentCountResult[0]?.count || 0);
     
-    // Count leads captured (where leadCapturedAt is within the date range)
-    // Use leadCapturedAt for filtering, not createdAt, to accurately reflect when leads were captured
+    // Count leads captured - cohort-aligned with totalBookingIntents
+    // Filter by createdAt (same as intents) + leadCapturedAt IS NOT NULL
+    // This ensures funnel stages are from the same cohort of intents
     const leadCapturedResult = await db
       .select({ count: sql<number>`count(*)` })
       .from(bookingIntents)
       .where(and(
         eq(bookingIntents.workspaceId, clientId),
         sql`${bookingIntents.leadCapturedAt} IS NOT NULL`,
-        sql`${bookingIntents.leadCapturedAt} >= ${defaultStartDate}`,
-        sql`${bookingIntents.leadCapturedAt} <= ${defaultEndDate}`
+        gte(bookingIntents.createdAt, defaultStartDate),
+        lte(bookingIntents.createdAt, defaultEndDate)
       ));
     
     const totalLeadCaptured = Number(leadCapturedResult[0]?.count || 0);
@@ -1107,13 +1119,14 @@ export class DbStorage implements IStorage {
     
     const totalLinkClicks = Number(clickCountResult[0]?.count || 0);
     
-    // Pending bookings: started, lead_captured (NOT clicked_to_book - that's terminal for handoff)
+    // Pending bookings: started, lead_captured only (active in-progress states)
+    // clicked_to_book is terminal for handoff mode, not pending
     const pendingCountResult = await db
       .select({ count: sql<number>`count(*)` })
       .from(bookingIntents)
       .where(and(
         eq(bookingIntents.workspaceId, clientId),
-        sql`${bookingIntents.status} IN ('intent', 'started', 'lead_captured')`,
+        sql`${bookingIntents.status} IN ('started', 'lead_captured')`,
         gte(bookingIntents.createdAt, defaultStartDate),
         lte(bookingIntents.createdAt, defaultEndDate)
       ));
@@ -1149,13 +1162,14 @@ export class DbStorage implements IStorage {
       nextDate.setDate(nextDate.getDate() + 1);
       
       // Count intents for this day from booking_intents table
+      // Use gte for start, lt for end to prevent midnight double-counting
       const dayIntentResult = await db
         .select({ count: sql<number>`count(*)` })
         .from(bookingIntents)
         .where(and(
           eq(bookingIntents.workspaceId, clientId),
           gte(bookingIntents.createdAt, currentDate),
-          lte(bookingIntents.createdAt, nextDate)
+          lt(bookingIntents.createdAt, nextDate)
         ));
       
       const dayClickResult = await db
@@ -1165,7 +1179,7 @@ export class DbStorage implements IStorage {
           eq(chatAnalyticsEvents.clientId, clientId),
           eq(chatAnalyticsEvents.eventType, 'booking_link_click'),
           gte(chatAnalyticsEvents.createdAt, currentDate),
-          lte(chatAnalyticsEvents.createdAt, nextDate)
+          lt(chatAnalyticsEvents.createdAt, nextDate)
         ));
       
       dailyTrends.push({
