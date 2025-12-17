@@ -224,7 +224,7 @@ export default function LeadsPage() {
     return filtered;
   }, [rawLeads, tagFilter, bookingStatusFilter]);
   
-  // Quick filter presets for sober living
+  // Quick filter presets for sober living operator console
   const FILTER_PRESETS = [
     { 
       id: 'admissions', 
@@ -236,6 +236,18 @@ export default function LeadsPage() {
         setStatusFilter('');
         setPriorityFilter('');
         setActivePreset('admissions');
+      }
+    },
+    { 
+      id: 'handoff', 
+      label: 'Wants Human', 
+      icon: User,
+      apply: () => {
+        setTagFilter('intent:human_handoff');
+        setBookingStatusFilter('');
+        setStatusFilter('');
+        setPriorityFilter('');
+        setActivePreset('handoff');
       }
     },
     { 
