@@ -11,7 +11,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import path from "path";
 import fs from "fs";
-import { eq, and, sql, desc, or, gte } from "drizzle-orm";
+import { eq, and, sql, desc, or, gte, inArray } from "drizzle-orm";
 import {
   getBotConfig,
   getBotConfigAsync,
@@ -3019,10 +3019,24 @@ These suggestions should be relevant to what was just discussed and help guide t
   // =============================================
 
   // Get all demo bots - fetches from database workspaces with is_demo=true
+  // Currently showing only finished demos: barbershop, salon, nails, faith house
   app.get("/api/demos", async (req, res) => {
     try {
-      // Fetch demo workspaces from database
-      const demoWorkspaces = await db.select().from(workspaces).where(eq(workspaces.isDemo, true));
+      // Only show these finished demos on the public demos page
+      // Keep all templates in codebase - add more here as they're finished
+      const activeDemoWorkspaceIds = [
+        'ws_faith_house_demo',      // Faith House (sober living)
+        'ws_demo_barbershop',       // Classic Cuts Barbershop
+        'demo_glamour_salon',       // Glamour Studio Salon
+        'demo_polished_nails',      // Polished Nail Studio
+      ];
+      
+      // Fetch only active demo workspaces from database
+      const demoWorkspaces = await db.select().from(workspaces)
+        .where(and(
+          eq(workspaces.isDemo, true),
+          inArray(workspaces.id, activeDemoWorkspaceIds)
+        ));
       
       // For each demo workspace, get its primary bot
       const demoBotPromises = demoWorkspaces.map(async (workspace) => {
@@ -3032,21 +3046,16 @@ These suggestions should be relevant to what was just discussed and help guide t
         // Get bot settings for additional info
         const [settings] = await db.select().from(botSettings).where(eq(botSettings.botId, primaryBot.botId)).limit(1);
         
-        // Map demo routes based on workspace slug
+        // Map demo routes based on workspace slug or id
         const demoRouteMap: Record<string, string> = {
           'faith_house_demo': '/demo/faith-house',
-          'demo_paws_suds_grooming_demo': '/demo/paws-suds',
-          'demo_coastline_auto': '/demo/auto-care',
+          'ws_faith_house_demo': '/demo/faith-house',
           'demo_fade_factory': '/demo/barbershop',
-          'demo_iron_coast_fitness': '/demo/fitness',
-          'demo_tc_handyman': '/demo/handyman',
-          'demo_radiance_medspa': '/demo/med-spa',
-          'demo_premier_properties': '/demo/real-estate',
-          'demo_coastal_breeze': '/demo/restaurant',
-          'demo_ink_soul': '/demo/tattoo',
-          'demo_new_horizons': '/demo/recovery-house',
+          'ws_demo_barbershop': '/demo/barbershop',
+          'demo_glamour_salon': '/demo/salon',
+          'demo_polished_nails': '/demo/nails',
         };
-        let demoRoute = demoRouteMap[workspace.slug] || `/demo/${primaryBot.botId}`;
+        let demoRoute = demoRouteMap[workspace.slug] || demoRouteMap[workspace.id] || `/demo/${primaryBot.botId}`;
         
         return {
           botId: primaryBot.botId,
