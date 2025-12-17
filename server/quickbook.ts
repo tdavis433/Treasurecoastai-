@@ -98,9 +98,13 @@ export function registerQuickBookRoutes(app: Express) {
       // Guardrail #4: If no services, use defaults
       const finalServices = services.length > 0 ? services : getDefaultServices();
       
+      // Check workspace status too (UI "Demo" dropdown sets workspace.status = 'demo')
+      const workspace = await storage.getWorkspaceByClientId(clientId);
+      const isWorkspaceDemoStatus = workspace?.status === 'demo';
+      
       // Determine if demo mode
-      // Demo mode if: quickBookDemoMode is true, OR no external booking URL configured
-      const demoMode = settings.quickBookDemoMode || !settings.externalBookingUrl;
+      // Demo mode if: quickBookDemoMode is true, OR workspace status is 'demo', OR no external booking URL configured
+      const demoMode = settings.quickBookDemoMode || isWorkspaceDemoStatus || !settings.externalBookingUrl;
       
       return res.json({
         enabled: settings.quickBookEnabled !== false,
@@ -152,11 +156,15 @@ export function registerQuickBookRoutes(app: Express) {
       
       // Determine handling mode - NO DEMO LEAKAGE
       // Default is 'internal' (lead capture + staff follow-up)
-      // Demo ONLY when explicitly enabled via settings.quickBookDemoMode
+      // Demo when: quickBookDemoMode === true OR workspace status === 'demo'
       // External ONLY when bookingMode='external' AND bookingUrl exists
       let handling: 'internal' | 'external' | 'demo' = 'internal';
       
-      if (settings?.quickBookDemoMode === true) {
+      // Check if workspace is in demo status (from workspace dropdown)
+      const workspace = await storage.getWorkspaceByClientId(clientId);
+      const isWorkspaceDemoStatus = workspace?.status === 'demo';
+      
+      if (settings?.quickBookDemoMode === true || isWorkspaceDemoStatus) {
         handling = 'demo';
       } else if (settings?.bookingMode === 'external' && bookingUrl) {
         handling = 'external';
@@ -275,14 +283,16 @@ export function registerQuickBookRoutes(app: Express) {
         return res.status(404).json({ error: "Booking intent not found" });
       }
       
-      // Get current settings to check if demo mode is NOW enabled
+      // Get current settings and workspace to check if demo mode is NOW enabled
       // This allows demo mode toggle to take effect immediately for pending intents
       const settings = await storage.getSettings(clientId);
+      const workspace = await storage.getWorkspaceByClientId(clientId);
       
       // Determine effective handling mode:
-      // - If demo mode is NOW enabled, override to 'demo' (takes precedence)
+      // - If demo mode is NOW enabled (via quickBookDemoMode OR workspace status), override to 'demo'
       // - Otherwise use the stored handling from intent creation
-      const handling = settings?.quickBookDemoMode === true 
+      const isDemoMode = settings?.quickBookDemoMode === true || workspace?.status === 'demo';
+      const handling = isDemoMode 
         ? 'demo' 
         : (intent.handling || 'internal');
       

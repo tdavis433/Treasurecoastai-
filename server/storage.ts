@@ -1054,12 +1054,14 @@ export class DbStorage implements IStorage {
     const defaultStartDate = startDate || new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const defaultEndDate = endDate || now;
     
-    // Determine funnelMode from client settings (config-driven)
+    // Determine funnelMode from client settings AND workspace status (config-driven)
     // Must align with handling logic in quickbook.ts:
-    // - 'demo' when quickBookDemoMode === true -> ALWAYS confirmable (override)
+    // - 'demo' when quickBookDemoMode === true OR workspace.status === 'demo' -> ALWAYS confirmable (override)
     // - 'external' when bookingMode === 'external' AND (externalBookingUrl OR service-specific URLs) -> handoff
-    // - 'internal' otherwise (default) -> confirmable (staff can confirm)
+    // - 'internal' otherwise (default) -> internal (staff can confirm)
     const settings = await this.getSettings(clientId);
+    const workspace = await this.getWorkspaceByClientId(clientId);
+    const isWorkspaceDemoStatus = workspace?.status === 'demo';
     
     // Check if external booking is configured:
     // Either global externalBookingUrl OR at least one ACTIVE service with a bookingUrl
@@ -1075,7 +1077,7 @@ export class DbStorage implements IStorage {
     // - 'handoff': external booking configured (3 steps, "redirected to external")
     // - 'internal': no external config (3 steps, "we'll follow up to confirm")
     const funnelMode: 'handoff' | 'confirmable' | 'internal' = 
-      settings?.quickBookDemoMode === true
+      (settings?.quickBookDemoMode === true || isWorkspaceDemoStatus)
         ? 'confirmable'
         : (externalConfigured ? 'handoff' : 'internal');
     
