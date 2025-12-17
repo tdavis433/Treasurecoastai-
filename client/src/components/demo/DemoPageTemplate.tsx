@@ -115,6 +115,7 @@ interface QuickBookData {
   selectedService: { name: string; price: string; duration?: string } | null;
   contact: { name: string; phone: string; email: string } | null;
   leadId: string | null;
+  providerName: string | null;
 }
 
 // Detect booking intent from user message
@@ -146,6 +147,7 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
     selectedService: null,
     contact: null,
     leadId: null,
+    providerName: null,
   });
   const [contactForm, setContactForm] = useState({ name: "", phone: "", email: "" });
   const [quickBookLoading, setQuickBookLoading] = useState(false);
@@ -282,6 +284,12 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
       
       const data = await response.json();
       
+      // Store providerName from response
+      setQuickBookData(prev => ({
+        ...prev,
+        providerName: data.providerName || null,
+      }));
+      
       setQuickBookState("DONE");
       
       // Redirect to external booking or demo confirmation
@@ -312,6 +320,7 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
       selectedService: null,
       contact: null,
       leadId: null,
+      providerName: null,
     });
     setContactForm({ name: "", phone: "", email: "" });
     setQuickBookError(null);
@@ -557,32 +566,38 @@ function FloatingChatWidget({ config }: { config: DemoPageConfig }) {
               )}
               
               {/* Quick Book: Ready to Book Button */}
-              {quickBookState === "READY_TO_BOOK" && !quickBookLoading && (
-                <div className="mt-3 p-4 bg-[#1A1D24] rounded-2xl border border-cyan-500/30" data-testid="quickbook-ready">
-                  <div className="flex items-center gap-2 mb-2">
-                    <CheckCircle2 className="h-5 w-5 text-green-400" />
-                    <span className="text-sm font-medium text-white">Contact saved!</span>
-                  </div>
-                  <p className="text-xs text-white/60 mb-3">
-                    You're all set, {quickBookData.contact?.name}. Click below to complete your booking.
-                  </p>
-                  {quickBookError && (
-                    <p className="text-xs text-red-400 mb-2" data-testid="quickbook-error">{quickBookError}</p>
-                  )}
-                  <Button
-                    data-testid="button-quickbook-book-now"
-                    onClick={handleQuickBookNow}
-                    className={cn(
-                      "w-full text-white transition-all",
-                      `bg-gradient-to-r ${config.colors.primary} hover:opacity-90 shadow-lg`
+              {quickBookState === "READY_TO_BOOK" && !quickBookLoading && (() => {
+                const displayProviderName = quickBookData.providerName || "our booking provider";
+                return (
+                  <div className="mt-3 p-4 bg-[#1A1D24] rounded-2xl border border-cyan-500/30" data-testid="quickbook-ready">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle2 className="h-5 w-5 text-green-400" />
+                      <span className="text-sm font-medium text-white">Contact saved!</span>
+                    </div>
+                    <p className="text-xs text-white/60 mb-3">
+                      Perfect — you're all set. Tap <span className="font-semibold text-white">Book Now</span> to finish on our secure scheduling page.
+                    </p>
+                    {quickBookError && (
+                      <p className="text-xs text-red-400 mb-2" data-testid="quickbook-error">{quickBookError}</p>
                     )}
-                  >
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Book Now
-                    <ExternalLink className="h-3 w-3 ml-2" />
-                  </Button>
-                </div>
-              )}
+                    <Button
+                      data-testid="button-quickbook-book-now"
+                      onClick={handleQuickBookNow}
+                      className={cn(
+                        "w-full text-white transition-all",
+                        `bg-gradient-to-r ${config.colors.primary} hover:opacity-90 shadow-lg`
+                      )}
+                    >
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Book Now
+                      <ExternalLink className="h-3 w-3 ml-2" />
+                    </Button>
+                    <p className="mt-3 text-[11px] leading-snug text-white/50">
+                      You'll finish on <span className="text-white/70 font-medium">{displayProviderName}</span>. If you get interrupted, we'll still have your request.
+                    </p>
+                  </div>
+                );
+              })()}
               
               {/* Quick Book: Completed State */}
               {quickBookState === "DONE" && (

@@ -290,6 +290,10 @@ export function registerQuickBookRoutes(app: Express) {
       const externalUrl = intent.externalUrl || null;
       const demoUrl = `/demo-booking-confirmation?intentId=${intentId}`;
       
+      // Get settings for providerName fallback (used in external/demo modes)
+      const settings = await storage.getSettings(clientId);
+      const providerName = intent.externalProviderName || settings?.externalBookingProviderName || null;
+      
       // Guardrail #3: Idempotent - if already clicked, return existing data
       if (['clicked_to_book', 'demo_confirmed', 'confirmed', 'redirected'].includes(intent.status)) {
         return res.json({
@@ -298,6 +302,7 @@ export function registerQuickBookRoutes(app: Express) {
           url: handling === 'external' ? externalUrl : 
                handling === 'demo' ? demoUrl : 
                null,
+          providerName: handling !== 'internal' ? providerName : null,
           message: handling === 'internal' ? 'Our team will reach out to confirm your booking.' : undefined,
           alreadyClicked: true,
         });
@@ -372,13 +377,22 @@ export function registerQuickBookRoutes(app: Express) {
             ok: true,
             redirectType: 'internal',
             url: null,
+            providerName: null,
             message: 'Our team will reach out to confirm your booking.',
           });
         }
         
+        // Merge handoff metadata (never overwrite existing metadata)
+        const intentMetadata = (intent.metadata as Record<string, unknown>) || {};
         await storage.updateBookingIntent(intentId, {
           status: 'clicked_to_book',
           clickedToBookAt: new Date(),
+          metadata: {
+            ...intentMetadata,
+            handoffClickedAt: new Date().toISOString(),
+            provider: providerName,
+            handoffUrl: externalUrl,
+          },
         });
         
         // Log link click for external redirects
@@ -401,6 +415,7 @@ export function registerQuickBookRoutes(app: Express) {
           ok: true,
           redirectType: 'external',
           url: externalUrl,
+          providerName,
         });
       }
       
@@ -408,9 +423,17 @@ export function registerQuickBookRoutes(app: Express) {
       // - Set status='clicked_to_book', clickedToBookAt
       // - Log booking_link_click (a link IS clicked)
       // - Do NOT create appointment (demo confirm endpoint creates it)
+      // Merge handoff metadata (never overwrite existing metadata)
+      const demoIntentMetadata = (intent.metadata as Record<string, unknown>) || {};
       await storage.updateBookingIntent(intentId, {
         status: 'clicked_to_book',
         clickedToBookAt: new Date(),
+        metadata: {
+          ...demoIntentMetadata,
+          handoffClickedAt: new Date().toISOString(),
+          provider: providerName,
+          handoffUrl: demoUrl,
+        },
       });
       
       // Log link click for demo redirects
@@ -433,6 +456,7 @@ export function registerQuickBookRoutes(app: Express) {
         ok: true,
         redirectType: 'demo',
         url: demoUrl,
+        providerName,
       });
     } catch (error) {
       console.error("[QuickBook] Error processing click:", error);
