@@ -251,7 +251,7 @@ export default function DemoNails() {
           <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
             {services.map((service, i) => (
               <Card key={i} className="border-0 relative" style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                {service.popular && <div className="absolute top-2 right-2"><Badge className="bg-pink-400/20 text-pink-300 border-pink-400/30 text-xs">Popular</Badge></div>}
+                {service.popular && <div className="absolute top-2 right-2"><Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30 text-xs">Popular</Badge></div>}
                 <CardContent className="pt-5 pb-4 px-4">
                   <h3 className="text-sm font-semibold text-white mb-1">{service.name}</h3>
                   <div className="text-base font-bold mb-1" style={{ color: primaryColor }}>{service.price}</div>

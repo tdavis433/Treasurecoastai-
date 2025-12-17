@@ -396,7 +396,7 @@ export default function DemoBarbershop() {
               >
                 {service.popular && (
                   <div className="absolute top-3 right-3">
-                    <Badge className="bg-amber-500/20 text-amber-400 border-amber-400/30 text-xs">Popular</Badge>
+                    <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30 text-xs">Popular</Badge>
                   </div>
                 )}
                 <CardContent className="pt-6 pb-5 px-5">

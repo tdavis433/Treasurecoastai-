@@ -248,7 +248,7 @@ export default function DemoSalon() {
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
             {services.map((service, i) => (
               <Card key={i} className="border-0 relative" style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                {service.popular && <div className="absolute top-3 right-3"><Badge className="bg-pink-500/20 text-pink-400 border-pink-400/30 text-xs">Popular</Badge></div>}
+                {service.popular && <div className="absolute top-3 right-3"><Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30 text-xs">Popular</Badge></div>}
                 <CardContent className="pt-6 pb-5 px-5">
                   <h3 className="text-base font-semibold text-white mb-2">{service.name}</h3>
                   <div className="text-lg font-bold mb-2" style={{ color: primaryColor }}>{service.price}</div>
