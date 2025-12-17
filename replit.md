@@ -131,6 +131,13 @@ The recovery router distinguishes tour requests from callback requests:
 - If user changes preference (e.g., tour → callback), the new flag replaces the old one
 - `human_handoff` intent defaults to `callback` preference
 
+### Lead Invariant Check
+At write time (create/update), `validateLeadBookingFields()` enforces:
+- If `flag:callback_request` exists → force `serviceRequested="Callback Request"`
+- If `flag:tour_request` exists → force `serviceRequested="Tour Request"`
+- Never allow both flags at once (log + auto-correct by keeping callback)
+This prevents drift if router logic is modified later.
+
 ### Sober Living Assistant Behavior
 The sober living assistant does NOT perform admissions intake via chat. It only:
 - **Answers questions** about the facility, program, house rules, and amenities

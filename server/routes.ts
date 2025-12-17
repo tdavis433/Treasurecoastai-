@@ -2950,6 +2950,38 @@ These suggestions should be relevant to what was just discussed and help guide t
     return linted;
   }
 
+  // Invariant check: Ensure flag:tour_request/callback_request match serviceRequested
+  // Prevents drift if router logic is modified later
+  function validateLeadBookingFields<T extends { tags?: string[] | null; serviceRequested?: string | null }>(
+    lead: T,
+    context?: string
+  ): T {
+    const tags = lead.tags || [];
+    const hasCallback = tags.includes('flag:callback_request');
+    const hasTour = tags.includes('flag:tour_request');
+    
+    // Auto-correct if both exist (shouldn't happen)
+    if (hasCallback && hasTour) {
+      structuredLogger.warn(`[LeadInvariant] Both tour and callback flags found, keeping callback${context ? ` (${context})` : ''}`);
+      lead.tags = tags.filter(t => t !== 'flag:tour_request');
+    }
+    
+    // Force serviceRequested to match flag (single source of truth)
+    if (hasCallback && lead.serviceRequested !== 'Callback Request') {
+      if (lead.serviceRequested) {
+        structuredLogger.warn(`[LeadInvariant] Correcting serviceRequested "${lead.serviceRequested}" → "Callback Request"${context ? ` (${context})` : ''}`);
+      }
+      lead.serviceRequested = 'Callback Request';
+    } else if (hasTour && lead.serviceRequested !== 'Tour Request') {
+      if (lead.serviceRequested) {
+        structuredLogger.warn(`[LeadInvariant] Correcting serviceRequested "${lead.serviceRequested}" → "Tour Request"${context ? ` (${context})` : ''}`);
+      }
+      lead.serviceRequested = 'Tour Request';
+    }
+    
+    return lead;
+  }
+
   // Auto-create or update lead from chat session with optional AI analysis
   async function autoCaptureLead(
     clientId: string,
@@ -3124,6 +3156,9 @@ These suggestions should be relevant to what was just discussed and help guide t
           (updates as any).bookingStatus = 'pending_followup';
         }
         
+        // Invariant check: ensure flag/serviceRequested consistency
+        validateLeadBookingFields(updates, `update:${existingLead.id}`);
+        
         await storage.updateLead(clientId, existingLead.id, updates);
         structuredLogger.info(`[Auto-Lead] Updated existing lead ${existingLead.id} for session ${sessionId}`);
       } else {
@@ -3172,7 +3207,7 @@ These suggestions should be relevant to what was just discussed and help guide t
         }
         
         // Create new lead - always use the provided clientId/botId
-        const newLead = await storage.createLead({
+        const leadData = {
           clientId,
           botId,
           sessionId,
@@ -3191,7 +3226,12 @@ These suggestions should be relevant to what was just discussed and help guide t
           bookingIntent,
           bookingStatus,
           serviceRequested,
-        });
+        };
+        
+        // Invariant check: ensure flag/serviceRequested consistency
+        validateLeadBookingFields(leadData, `create:${sessionId}`);
+        
+        const newLead = await storage.createLead(leadData);
         
         structuredLogger.info(`[Auto-Lead] Created new lead ${newLead.id} for session ${sessionId} (quality: ${aiAnalysis?.leadQuality || 'unknown'})`);
         
@@ -8759,6 +8799,9 @@ These suggestions should be relevant to what was just discussed and help guide t
         leadData.tags = lintTags(leadData.tags, 'create-lead-api');
       }
       
+      // Invariant check: ensure flag/serviceRequested consistency
+      validateLeadBookingFields(leadData, 'create-lead-api');
+      
       const lead = await storage.createLead(leadData as any);
       
       // Increment monthly leads count
@@ -8823,6 +8866,10 @@ These suggestions should be relevant to what was just discussed and help guide t
       if (updateData.tags) {
         updateData.tags = lintTags(updateData.tags, `lead-api:${paramsValidation.data.id}`);
       }
+      
+      // Invariant check: ensure flag/serviceRequested consistency
+      validateLeadBookingFields(updateData, `lead-api:${paramsValidation.data.id}`);
+      
       const updated = await storage.updateLead(clientId, paramsValidation.data.id, updateData as any);
       
       // Fire webhook if status changed (async, non-blocking)
