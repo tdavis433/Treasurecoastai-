@@ -314,70 +314,115 @@ export function registerQuickBookRoutes(app: Express) {
         });
       }
       
-      // Determine the final URL based on handling mode
-      let finalUrl: string | null = null;
-      if (handling === 'external') {
-        finalUrl = intent.externalUrl;
-      } else if (handling === 'demo') {
-        finalUrl = `/demo-booking-confirmation?intentId=${intentId}`;
-      }
-      // internal mode: no URL, just confirmation message
+      // ========== HANDLING MODE: INTERNAL ==========
+      // - NO status change (keep at lead_captured)
+      // - NO booking_link_click event (no link was clicked)
+      // - Create appointment for staff follow-up
+      // - Return confirmation message only
+      if (handling === 'internal') {
+        // Update lead status to pending_followup
+        if (intent.leadId) {
+          await storage.updateLead(clientId, intent.leadId, { 
+            bookingStatus: 'pending_followup',
+            status: 'qualified',
+          });
+        }
         
+        // Create appointment for staff to follow up (but don't change intent status)
+        if (intent.contactName) {
+          try {
+            const appointment = await storage.createAppointment(clientId, {
+              sessionId: intent.sessionId || undefined,
+              name: intent.contactName || 'Quick Book Customer',
+              contact: intent.contactPhone || intent.contactEmail || '',
+              email: intent.contactEmail || undefined,
+              preferredTime: 'To be scheduled',
+              contactPreference: intent.contactPhone ? 'phone' : 'email',
+              appointmentType: intent.serviceName || 'Quick Book Service',
+              notes: `Quick Book: ${intent.serviceName || 'Service'} - ${intent.priceCents ? `$${(intent.priceCents / 100).toFixed(2)}` : 'Price TBD'} - Staff follow-up required`,
+            });
+            console.log(`[QuickBook] Created appointment ${appointment.id} for internal follow-up, intent ${intentId}`);
+          } catch (appointmentError) {
+            console.error("[QuickBook] Error creating appointment (non-fatal):", appointmentError);
+          }
+        }
+        
+        return res.json({
+          ok: true,
+          redirectType: 'internal',
+          url: null,
+          message: 'Our team will reach out to confirm your booking.',
+        });
+      }
+      
+      // ========== HANDLING MODE: EXTERNAL ==========
+      // - Set status='clicked_to_book', clickedToBookAt
+      // - Log booking_link_click with external URL
+      // - Do NOT create appointment (external system handles it)
+      if (handling === 'external') {
+        const externalUrl = intent.externalUrl;
+        
+        await storage.updateBookingIntent(intentId, {
+          status: 'clicked_to_book',
+          clickedToBookAt: new Date(),
+        });
+        
+        // Log link click for external redirects
+        await storage.logBookingLinkClickEvent({
+          clientId,
+          botId,
+          sessionId: intent.sessionId,
+          leadId: intent.leadId || undefined,
+          bookingUrl: externalUrl || 'external_booking',
+        });
+        
+        // Update lead status
+        if (intent.leadId) {
+          await storage.updateLead(clientId, intent.leadId, { 
+            bookingStatus: 'pending_redirect',
+          });
+        }
+        
+        return res.json({
+          ok: true,
+          redirectType: 'external',
+          url: externalUrl,
+        });
+      }
+      
+      // ========== HANDLING MODE: DEMO ==========
+      // - Redirect to demo confirmation page
+      // - Log booking_link_click (a link IS clicked)
+      // - Do NOT create appointment (demo confirm endpoint creates it)
+      // - Do NOT overwrite intent.externalUrl
+      const demoUrl = `/demo-booking-confirmation?intentId=${intentId}`;
+      
       await storage.updateBookingIntent(intentId, {
         status: 'clicked_to_book',
         clickedToBookAt: new Date(),
-        externalUrl: finalUrl || undefined,
+        // Do NOT set externalUrl - keep original for reference
       });
       
-      // Track the link click in analytics for booking funnel metrics
+      // Log link click for demo redirects
       await storage.logBookingLinkClickEvent({
         clientId,
         botId,
         sessionId: intent.sessionId,
         leadId: intent.leadId || undefined,
-        bookingUrl: finalUrl || 'internal_followup',
+        bookingUrl: demoUrl,
       });
       
-      // Update lead status based on handling mode
+      // Update lead status
       if (intent.leadId) {
-        const bookingStatus = handling === 'demo' ? 'pending_demo' : 
-                              handling === 'external' ? 'pending_redirect' :
-                              'pending_followup';
-        await storage.updateLead(clientId, intent.leadId, { bookingStatus });
-      }
-      
-      // For internal/demo mode, create appointment immediately so it shows in Bookings tab
-      if ((handling === 'demo' || handling === 'internal') && intent.contactName) {
-        try {
-          const appointment = await storage.createAppointment(clientId, {
-            sessionId: intent.sessionId || undefined,
-            name: intent.contactName || 'Quick Book Customer',
-            contact: intent.contactPhone || intent.contactEmail || '',
-            email: intent.contactEmail || undefined,
-            preferredTime: 'To be scheduled',
-            contactPreference: intent.contactPhone ? 'phone' : 'email',
-            appointmentType: intent.serviceName || 'Quick Book Service',
-            notes: `Quick Book: ${intent.serviceName || 'Service'} - ${intent.priceCents ? `$${(intent.priceCents / 100).toFixed(2)}` : 'Price TBD'}`,
-          });
-          console.log(`[QuickBook] Created appointment ${appointment.id} for ${handling} intent ${intentId}`);
-          
-          // Update lead to qualified since booking action completed
-          if (intent.leadId) {
-            await storage.updateLead(clientId, intent.leadId, {
-              bookingStatus: handling === 'demo' ? 'demo_confirmed' : 'awaiting_followup',
-              status: 'qualified',
-            });
-          }
-        } catch (appointmentError) {
-          console.error("[QuickBook] Error creating appointment (non-fatal):", appointmentError);
-        }
+        await storage.updateLead(clientId, intent.leadId, { 
+          bookingStatus: 'pending_demo',
+        });
       }
       
       return res.json({
         ok: true,
-        redirectType: handling,
-        url: finalUrl,
-        message: handling === 'internal' ? 'Our team will reach out to confirm your booking.' : undefined,
+        redirectType: 'demo',
+        url: demoUrl,
       });
     } catch (error) {
       console.error("[QuickBook] Error processing click:", error);
