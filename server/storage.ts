@@ -1078,13 +1078,13 @@ export class DbStorage implements IStorage {
     const totalLinkClicks = Number(clickCountResult[0]?.count || 0);
     
     // Count pending and completed bookings from booking_intents table
-    // Pending: started, lead_captured, clicked_to_book
+    // Pending: intent, started, lead_captured, clicked_to_book
     const pendingCountResult = await db
       .select({ count: sql<number>`count(*)` })
       .from(bookingIntents)
       .where(and(
         eq(bookingIntents.workspaceId, clientId),
-        sql`${bookingIntents.status} IN ('started', 'lead_captured', 'clicked_to_book')`,
+        sql`${bookingIntents.status} IN ('intent', 'started', 'lead_captured', 'clicked_to_book')`,
         gte(bookingIntents.createdAt, defaultStartDate),
         lte(bookingIntents.createdAt, defaultEndDate)
       ));
