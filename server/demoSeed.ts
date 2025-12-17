@@ -196,12 +196,12 @@ const DEMO_CONFIGS: Record<string, DemoWorkspaceConfig> = {
       location: "Stuart, FL",
       phone: "(772) 555-2345",
       email: "book@elitecuts.demo",
-      services: ["Haircuts", "Beard Trims", "Hot Towel Shaves", "Kids Cuts", "Fades"],
+      services: ["Classic Fade", "Signature Haircut", "Beard Trim & Shape", "Hot Towel Shave", "Haircut + Beard Combo", "Kids Cut"],
     },
     systemPrompt: "You are the Elite Cuts Assistant, helping customers book appointments and learn about our premium barbershop services.",
     theme: {
-      primaryColor: "#F59E0B",
-      welcomeMessage: "Welcome to Elite Cuts! Ready to look sharp? Let me help you book your next appointment.",
+      primaryColor: "#8B5CF6",
+      welcomeMessage: "Hey! Ready for a fresh cut? Let me help you out.",
     },
     externalBooking: {
       mode: 'external',
@@ -239,7 +239,7 @@ const DEMO_CONFIGS: Record<string, DemoWorkspaceConfig> = {
         daysAgo: 3,
         messages: [
           { role: 'user', content: "How much for a haircut and beard trim?" },
-          { role: 'bot', content: "Great combo! Our haircut is $25 and beard trim is $15 - so $40 total for both. We also have a loyalty program where your 10th visit is 50% off!" },
+          { role: 'bot', content: "Great combo! Our Haircut + Beard Combo is $50 for the full package. We also have a loyalty program where your 10th visit is 50% off!" },
           { role: 'user', content: "Nice, that's reasonable. What are your hours on Saturday?" },
           { role: 'bot', content: "We're open 9am to 6pm on Saturdays. That's our busiest day, so I'd recommend booking ahead. Want me to reserve a spot for you?" },
         ],
@@ -248,7 +248,7 @@ const DEMO_CONFIGS: Record<string, DemoWorkspaceConfig> = {
         daysAgo: 8,
         messages: [
           { role: 'user', content: "Do you do kids haircuts?" },
-          { role: 'bot', content: "Absolutely! Kids cuts are $18 for ages 12 and under. Our barbers are great with kids and we have tablets to keep them entertained!" },
+          { role: 'bot', content: "Absolutely! Kids cuts are $22 for ages 12 and under. Our barbers are great with kids and we have tablets to keep them entertained!" },
         ],
       },
       {

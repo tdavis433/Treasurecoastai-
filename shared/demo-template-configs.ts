@@ -172,11 +172,11 @@ export const DEMO_TEMPLATE_CONFIGS: Record<string, DemoTemplateConfig> = {
     location: 'Stuart, FL',
     phone: '(772) 555-CUTS',
     email: 'book@classiccuts.demo',
-    services: ['Haircuts', 'Beard Trims', 'Hot Towel Shaves', 'Kids Cuts', 'Fades', 'Hair Coloring'],
+    services: ['Classic Fade', 'Signature Haircut', 'Beard Trim & Shape', 'Hot Towel Shave', 'Haircut + Beard Combo', 'Kids Cut'],
     about: 'Classic Cuts is a premium barbershop delivering expert haircuts and grooming services in a relaxed atmosphere.',
     operatingHours: { ...DEFAULT_OPERATING_HOURS },
     externalBooking: { mode: 'external', url: 'https://square.site/book/example-classic-cuts', providerName: 'Square' },
-    theme: { primaryColor: '#F59E0B', welcomeMessage: 'Welcome to Classic Cuts! Ready to look sharp?' },
+    theme: { primaryColor: '#8B5CF6', welcomeMessage: 'Hey! Ready for a fresh cut? Let me help you out.' },
   },
   'neon-harbor-fitness': {
     slug: 'neon-harbor-fitness',
