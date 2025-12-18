@@ -116,22 +116,6 @@ export default function Home() {
       href: "/demo/faith-house"
     },
     {
-      name: "Paws & Suds",
-      type: "Pet Grooming",
-      description: "AI receptionist for grooming studios: handles pricing questions, checks availability, and fills your grooming calendar automatically.",
-      icon: Heart,
-      color: "from-cyan-400 to-blue-500",
-      href: "/demo/paws-suds"
-    },
-    {
-      name: "Coastal Breeze Grill",
-      type: "Restaurant",
-      description: "AI host for restaurants: answers menu questions, handles reservation requests, and books private events or large parties.",
-      icon: Utensils,
-      color: "from-amber-500 to-orange-500",
-      href: "/demo/restaurant"
-    },
-    {
       name: "Fade Factory",
       type: "Barbershop",
       description: "AI scheduler for barbershops: books appointments, explains service options, and manages walk-in wait time questions.",
@@ -140,20 +124,20 @@ export default function Home() {
       href: "/demo/barbershop"
     },
     {
-      name: "Iron Coast Fitness",
-      type: "Gym & Fitness",
-      description: "AI sales rep for gyms: handles membership inquiries, explains class schedules, and books trial sessions or facility tours.",
-      icon: Dumbbell,
-      color: "from-green-500 to-emerald-500",
-      href: "/demo/fitness"
+      name: "Luxe Locks Salon",
+      type: "Hair Salon",
+      description: "AI receptionist for salons: handles appointment bookings, explains services and pricing, and answers styling questions.",
+      icon: Scissors,
+      color: "from-rose-500 to-pink-500",
+      href: "/demo/salon"
     },
     {
-      name: "Radiance Med Spa",
-      type: "Medical Spa",
-      description: "AI coordinator for med spas: explains treatments, sets expectations on pricing, and books consultations professionally.",
-      icon: Syringe,
-      color: "from-pink-500 to-rose-500",
-      href: "/demo/med-spa"
+      name: "Polished Nails Studio",
+      type: "Nail Salon",
+      description: "AI assistant for nail salons: books manicures and pedicures, explains nail art options, and manages appointment scheduling.",
+      icon: Sparkles,
+      color: "from-fuchsia-500 to-purple-500",
+      href: "/demo/nails"
     }
   ];
 
