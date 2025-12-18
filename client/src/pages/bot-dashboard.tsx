@@ -100,11 +100,13 @@ interface BotConfig {
   notifications?: {
     enabled: boolean;
     emailNotifications: boolean;
+    smsNotifications: boolean;
     notifyOnNewLead: boolean;
     notifyOnBooking: boolean;
     notifyOnCrisis: boolean;
     dailySummary: boolean;
     notificationEmail: string;
+    notificationPhone: string;
   };
   systemPrompt: string;
   faqs: BotFaq[];
@@ -2089,11 +2091,13 @@ function NotificationsTab({ config, updateConfig }: {
   const notifications = config.notifications || {
     enabled: true,
     emailNotifications: true,
+    smsNotifications: false,
     notifyOnNewLead: true,
     notifyOnBooking: true,
     notifyOnCrisis: true,
     dailySummary: false,
     notificationEmail: config.businessProfile.email || '',
+    notificationPhone: config.businessProfile.phone || '',
   };
 
   const updateNotifications = (updates: Partial<typeof notifications>) => {
@@ -2133,17 +2137,69 @@ function NotificationsTab({ config, updateConfig }: {
             </div>
 
             <div className="space-y-4 opacity-100" style={{ opacity: notifications.enabled ? 1 : 0.5 }}>
-              <div>
-                <Label className="text-white/70">Notification Email</Label>
-                <Input
-                  value={notifications.notificationEmail}
-                  onChange={(e) => updateNotifications({ notificationEmail: e.target.value })}
-                  placeholder="alerts@business.com"
-                  className="bg-white/5 border-white/10 text-white mt-1"
-                  disabled={!notifications.enabled}
-                  data-testid="input-notification-email"
-                />
-                <p className="text-white/40 text-xs mt-1">Email address to receive notifications</p>
+              {/* Email Notifications */}
+              <div className="p-4 rounded-lg bg-white/5 border border-white/10">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <Mail className="h-5 w-5 text-cyan-400" />
+                    <div>
+                      <p className="text-white font-medium">Email Notifications</p>
+                      <p className="text-sm text-white/50">Receive alerts via email</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={notifications.emailNotifications}
+                    onCheckedChange={(checked) => updateNotifications({ emailNotifications: checked })}
+                    disabled={!notifications.enabled}
+                    data-testid="switch-email-notifications"
+                  />
+                </div>
+                {notifications.emailNotifications && (
+                  <div className="ml-8">
+                    <Input
+                      value={notifications.notificationEmail}
+                      onChange={(e) => updateNotifications({ notificationEmail: e.target.value })}
+                      placeholder="alerts@business.com"
+                      className="bg-white/5 border-white/10 text-white"
+                      disabled={!notifications.enabled}
+                      data-testid="input-notification-email"
+                    />
+                    <p className="text-white/40 text-xs mt-1">Email address to receive notifications</p>
+                  </div>
+                )}
+              </div>
+
+              {/* SMS Notifications */}
+              <div className="p-4 rounded-lg bg-white/5 border border-white/10">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <Phone className="h-5 w-5 text-green-400" />
+                    <div>
+                      <p className="text-white font-medium">SMS Notifications</p>
+                      <p className="text-sm text-white/50">Receive alerts via text message</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={notifications.smsNotifications}
+                    onCheckedChange={(checked) => updateNotifications({ smsNotifications: checked })}
+                    disabled={!notifications.enabled}
+                    data-testid="switch-sms-notifications"
+                  />
+                </div>
+                {notifications.smsNotifications && (
+                  <div className="ml-8">
+                    <Input
+                      type="tel"
+                      value={notifications.notificationPhone}
+                      onChange={(e) => updateNotifications({ notificationPhone: e.target.value })}
+                      placeholder="+1 (555) 123-4567"
+                      className="bg-white/5 border-white/10 text-white"
+                      disabled={!notifications.enabled}
+                      data-testid="input-notification-phone"
+                    />
+                    <p className="text-white/40 text-xs mt-1">Phone number to receive SMS alerts (requires Twilio setup)</p>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3">
