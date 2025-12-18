@@ -57,6 +57,7 @@ import { GlassCard, GlassCardHeader, GlassCardTitle, GlassCardDescription, Glass
 import { TreasureCoastLogo } from "@/components/treasure-coast-logo";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -74,7 +75,7 @@ import {
   Shield, FileWarning, CheckCircle2, XCircle, Filter, Calendar, UserPlus,
   MoreVertical, MoreHorizontal, Workflow, Palette, ChevronDown, SendHorizontal, MessageCircle,
   CheckCircle, PauseCircle, LayoutGrid, List, Crown, User, HelpCircle, Flag, Database,
-  Loader2, Pencil, Info, TestTube2, ListChecks, GripVertical, Link2
+  Loader2, Pencil, Info, TestTube2, ListChecks, GripVertical, Link2, Bell
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -3245,6 +3246,7 @@ export default function SuperAdmin() {
                       { value: 'services', icon: ListChecks, label: 'Services' },
                       { value: 'booking', icon: Calendar, label: 'Booking & Links' },
                       { value: 'channels', icon: Palette, label: 'Channels & Widget' },
+                      { value: 'notifications', icon: Bell, label: 'Notifications' },
                       { value: 'test-chat', icon: Play, label: 'Test Sandbox', highlight: true },
                     ].map(tab => (
                       <Button
@@ -3329,6 +3331,10 @@ export default function SuperAdmin() {
 
                   {activeTab === 'automations' && (
                     <AutomationsPanel botId={selectedBot.botId} clientId={selectedClient?.id || selectedBot.clientId} />
+                  )}
+
+                  {activeTab === 'notifications' && (
+                    <NotificationsPanel clientId={selectedClient?.id || selectedBot.clientId} botId={selectedBot.botId} />
                   )}
                 </div>
               </div>
@@ -6438,6 +6444,168 @@ function LogsPanel({ clientId, botId }: { clientId: string; botId: string }) {
         )}
       </GlassCardContent>
     </GlassCard>
+  );
+}
+
+// Notifications Panel
+function NotificationsPanel({ clientId, botId }: { clientId: string; botId: string }) {
+  const { toast } = useToast();
+  
+  const { data: settings, isLoading, refetch } = useQuery({
+    queryKey: ["/api/super-admin/clients", clientId, "notifications"],
+    queryFn: async () => {
+      const response = await fetch(`/api/super-admin/clients/${clientId}/notifications`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch notification settings");
+      return response.json();
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (updates: Record<string, any>) => {
+      const response = await apiRequest("PUT", `/api/super-admin/clients/${clientId}/notifications`, updates);
+      return response.json();
+    },
+    onSuccess: () => {
+      refetch();
+      toast({ title: "Saved", description: "Notification settings updated." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to update settings.", variant: "destructive" });
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <GlassCard>
+        <div className="p-6 animate-pulse">
+          <div className="h-5 bg-white/10 rounded w-40 mb-4" />
+          <div className="space-y-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-16 bg-white/10 rounded" />
+            ))}
+          </div>
+        </div>
+      </GlassCard>
+    );
+  }
+
+  const emailEnabled = settings?.enableEmailNotifications ?? false;
+  const smsEnabled = settings?.enableSmsNotifications ?? false;
+
+  return (
+    <div className="space-y-6">
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="flex items-center gap-2">
+            <Bell className="h-5 w-5 text-pink-400" />
+            Notification Settings
+          </GlassCardTitle>
+          <GlassCardDescription>
+            Configure how and when you receive alerts about leads and bookings
+          </GlassCardDescription>
+        </GlassCardHeader>
+        <GlassCardContent>
+          <div className="space-y-6">
+            {/* Email Notifications */}
+            <div className="p-4 rounded-lg bg-white/5 border border-white/10">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <Mail className="h-5 w-5 text-cyan-400" />
+                  <div>
+                    <p className="text-white font-medium">Email Notifications</p>
+                    <p className="text-sm text-white/50">Receive alerts via email</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={emailEnabled}
+                  onCheckedChange={(checked) => updateMutation.mutate({ enableEmailNotifications: checked })}
+                  disabled={updateMutation.isPending}
+                  data-testid="switch-email-notifications"
+                />
+              </div>
+              {emailEnabled && (
+                <div className="ml-8">
+                  <Input
+                    type="email"
+                    defaultValue={settings?.notificationEmail || ''}
+                    onBlur={(e) => {
+                      if (e.target.value !== settings?.notificationEmail) {
+                        updateMutation.mutate({ notificationEmail: e.target.value });
+                      }
+                    }}
+                    placeholder="alerts@business.com"
+                    className="bg-white/5 border-white/10 text-white"
+                    disabled={updateMutation.isPending}
+                    data-testid="input-notification-email"
+                  />
+                  <p className="text-white/40 text-xs mt-1">Email address to receive notifications</p>
+                </div>
+              )}
+            </div>
+
+            {/* SMS Notifications */}
+            <div className="p-4 rounded-lg bg-white/5 border border-white/10">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <Phone className="h-5 w-5 text-green-400" />
+                  <div>
+                    <p className="text-white font-medium">SMS Notifications</p>
+                    <p className="text-sm text-white/50">Receive alerts via text message</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={smsEnabled}
+                  onCheckedChange={(checked) => updateMutation.mutate({ enableSmsNotifications: checked })}
+                  disabled={updateMutation.isPending}
+                  data-testid="switch-sms-notifications"
+                />
+              </div>
+              {smsEnabled && (
+                <div className="ml-8">
+                  <Input
+                    type="tel"
+                    defaultValue={settings?.notificationPhone || ''}
+                    onBlur={(e) => {
+                      if (e.target.value !== settings?.notificationPhone) {
+                        updateMutation.mutate({ notificationPhone: e.target.value });
+                      }
+                    }}
+                    placeholder="+1 (555) 123-4567"
+                    className="bg-white/5 border-white/10 text-white"
+                    disabled={updateMutation.isPending}
+                    data-testid="input-notification-phone"
+                  />
+                  <p className="text-white/40 text-xs mt-1">Phone number to receive SMS alerts (requires Twilio setup)</p>
+                </div>
+              )}
+            </div>
+
+            {updateMutation.isPending && (
+              <div className="flex items-center gap-2 text-cyan-400 text-sm">
+                <RefreshCw className="h-3 w-3 animate-spin" />
+                Saving...
+              </div>
+            )}
+          </div>
+        </GlassCardContent>
+      </GlassCard>
+
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="text-sm">About Notifications</GlassCardTitle>
+        </GlassCardHeader>
+        <GlassCardContent>
+          <div className="space-y-3 text-sm text-white/70">
+            <p>Notifications keep you informed about important bot activity in real-time.</p>
+            <ul className="list-disc list-inside space-y-1 text-white/60">
+              <li>Get alerted when new leads are captured</li>
+              <li>Know immediately when someone requests an appointment</li>
+              <li>SMS requires Twilio integration to be configured</li>
+            </ul>
+          </div>
+        </GlassCardContent>
+      </GlassCard>
+    </div>
   );
 }
 
