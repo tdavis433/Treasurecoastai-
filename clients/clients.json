@@ -143,6 +143,16 @@
       ],
       "status": "active",
       "createdAt": "2025-12-31"
+    },
+    {
+      "id": "qa_test_bot_musrqo_u",
+      "name": "QA Test Business",
+      "type": "general",
+      "bots": [
+        "qa_test_bot_musrqo_u1tq"
+      ],
+      "status": "active",
+      "createdAt": "2025-12-31"
     }
   ]
 }
