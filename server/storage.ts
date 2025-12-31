@@ -1613,14 +1613,24 @@ export class DbStorage implements IStorage {
   }
 
   async getWorkspaceByClientId(clientId: string): Promise<Workspace | undefined> {
-    // The clientId typically IS the workspace slug (e.g., "faith_house")
-    // Directly match workspace slug to clientId for reliable lookup
-    const [workspace] = await db
+    // First try exact slug match (most common case)
+    let [workspace] = await db
       .select()
       .from(workspaces)
       .where(eq(workspaces.slug, clientId))
       .limit(1);
     
+    if (workspace) return workspace;
+    
+    // Then try by workspace ID (UUID or custom ID)
+    [workspace] = await db
+      .select()
+      .from(workspaces)
+      .where(eq(workspaces.id, clientId))
+      .limit(1);
+    
+    // No fallback matching - require exact match for security
+    // If clientId doesn't match slug or id, return undefined (404)
     return workspace;
   }
 

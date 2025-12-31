@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -89,9 +90,13 @@ export default function ClientsSection() {
                     size="sm"
                     variant="outline"
                     className="border-[#00e5ff]/30 text-[#00e5ff] hover:bg-[#00e5ff]/10"
-                    onClick={() => {
-                      fetch(`/api/super-admin/impersonate/${client.id}`, { method: 'POST' })
-                        .then(() => setLocation('/client/dashboard'));
+                    onClick={async () => {
+                      try {
+                        await apiRequest('POST', '/api/super-admin/impersonate', { clientId: client.id });
+                        window.location.href = '/client/dashboard';
+                      } catch (error) {
+                        console.error('Failed to start impersonation:', error);
+                      }
                     }}
                     data-testid={`button-view-as-client-${client.id}`}
                   >

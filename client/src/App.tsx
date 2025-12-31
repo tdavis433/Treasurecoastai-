@@ -57,6 +57,8 @@ interface User {
   username: string;
   role: string;
   mustChangePassword: boolean;
+  isImpersonating?: boolean;
+  effectiveClientId?: string | null;
 }
 
 function PasswordChangeGuard({ children }: { children: React.ReactNode }) {
@@ -172,10 +174,15 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
 }
 
 function ClientGuard({ children }: { children: React.ReactNode }) {
-  const { data: user, isLoading } = useQuery<User>({
+  const { data: user, isLoading, error } = useQuery<User>({
     queryKey: ["/api/auth/me"],
     retry: false,
+    staleTime: 0, // Always refetch to get fresh impersonation state
   });
+
+  useEffect(() => {
+    console.log('[ClientGuard] State:', { user, isLoading, error });
+  }, [user, isLoading, error]);
 
   if (isLoading) {
     return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
@@ -184,10 +191,18 @@ function ClientGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
+    console.log('[ClientGuard] No user, redirecting to login');
     return <Redirect to="/login" />;
   }
 
+  // Allow super_admins who are impersonating a client to view client pages
   if (user.role === "super_admin") {
+    console.log('[ClientGuard] Super admin detected, isImpersonating:', user.isImpersonating, 'effectiveClientId:', user.effectiveClientId);
+    if (user.isImpersonating && user.effectiveClientId) {
+      console.log('[ClientGuard] Allowing impersonation access');
+      return <>{children}</>;
+    }
+    console.log('[ClientGuard] Redirecting super admin to /super-admin');
     return <Redirect to="/super-admin" />;
   }
 

@@ -1,19 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Eye, LogOut } from "lucide-react";
-import { useLocation } from "wouter";
 
 interface ImpersonationStatus {
   isImpersonating: boolean;
-  impersonatedBy?: string;
+  effectiveClientId?: string | null;
   impersonatedByUsername?: string;
   currentUsername: string;
   currentRole: string;
 }
 
 export function ImpersonationBanner() {
-  const [, setLocation] = useLocation();
-
   const { data: status } = useQuery<ImpersonationStatus>({
     queryKey: ["/api/super-admin/impersonation-status"],
     refetchInterval: 30000,
@@ -21,13 +19,8 @@ export function ImpersonationBanner() {
 
   const handleExitImpersonation = async () => {
     try {
-      const response = await fetch("/api/super-admin/exit-impersonation", {
-        method: "POST",
-      });
-
-      if (response.ok) {
-        setLocation("/super-admin");
-      }
+      await apiRequest("POST", "/api/super-admin/impersonate/stop");
+      window.location.href = "/super-admin";
     } catch (error) {
       console.error("Failed to exit impersonation:", error);
     }

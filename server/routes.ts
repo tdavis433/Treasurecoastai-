@@ -5727,38 +5727,89 @@ These suggestions should be relevant to what was just discussed and help guide t
 
   // Get current impersonation status
   app.get("/api/super-admin/impersonation-status", requireSuperAdmin, async (req, res) => {
-    res.json({
-      isImpersonating: req.session.isImpersonating || false,
-      effectiveClientId: req.session.effectiveClientId || null
-    });
+    try {
+      let currentUsername = "Unknown";
+      let impersonatedByUsername = "Unknown";
+      
+      // Get super admin username
+      if (req.session.userId) {
+        const adminUser = await db.select({ username: adminUsers.username })
+          .from(adminUsers)
+          .where(eq(adminUsers.id, req.session.userId))
+          .limit(1);
+        if (adminUser[0]) {
+          impersonatedByUsername = adminUser[0].username;
+        }
+      }
+      
+      // Get impersonated client name
+      if (req.session.effectiveClientId) {
+        try {
+          const workspace = await storage.getWorkspaceByClientId(req.session.effectiveClientId);
+          if (workspace) {
+            currentUsername = workspace.name;
+          }
+        } catch {
+          currentUsername = req.session.effectiveClientId;
+        }
+      }
+      
+      res.json({
+        isImpersonating: req.session.isImpersonating || false,
+        effectiveClientId: req.session.effectiveClientId || null,
+        currentUsername,
+        impersonatedByUsername,
+        currentRole: "client_admin"
+      });
+    } catch (error) {
+      structuredLogger.error("Error getting impersonation status:", error);
+      res.json({
+        isImpersonating: false,
+        effectiveClientId: null,
+        currentUsername: "Unknown",
+        impersonatedByUsername: "Unknown",
+        currentRole: "client_admin"
+      });
+    }
   });
 
   // =============================================
   // SUPER ADMIN API ENDPOINTS
   // =============================================
 
-  // Get list of clients with their bots (includes all from JSON configs)
+  // Get list of clients with their bots (from database workspaces)
   app.get("/api/super-admin/clients", requireSuperAdmin, async (req, res) => {
     try {
-      // Get clients from JSON config
-      const clientsData = getClients();
-      const allBots = getAllBotConfigs();
+      // Get all workspaces from database (canonical source for impersonation)
+      const dbWorkspaces = await db
+        .select()
+        .from(workspaces)
+        .orderBy(desc(workspaces.createdAt));
       
-      // Build client list with bots
-      const clientsWithBots = clientsData.clients.map(client => ({
-        id: client.id,
-        name: client.name,
-        status: client.status || 'active',
-        type: client.type,
-        bots: allBots
-          .filter(bot => bot.clientId === client.id)
+      // Get all bots from database
+      const dbBots = await db
+        .select()
+        .from(bots);
+      
+      // Build client list from database workspaces
+      const clientsWithBots = dbWorkspaces.map(workspace => ({
+        id: workspace.slug, // Use slug as the client ID for impersonation
+        name: workspace.name,
+        status: workspace.status || 'active',
+        type: (workspace as any).businessType || 'general',
+        slug: workspace.slug,
+        plan: workspace.plan || 'Free',
+        botsCount: dbBots.filter(b => b.workspaceId === workspace.id).length,
+        totalConversations: 0, // Could be loaded from analytics if needed
+        bots: dbBots
+          .filter(b => b.workspaceId === workspace.id)
           .map(bot => ({
             botId: bot.botId,
-            name: bot.name,
-            description: bot.description,
-            businessType: bot.businessProfile.type,
-            businessName: bot.businessProfile.businessName,
-            isDemo: bot.metadata?.isDemo ?? false
+            name: bot.name || 'Unnamed Bot',
+            description: bot.description || '',
+            businessType: (bot as any).businessType || 'general',
+            businessName: bot.name || workspace.name,
+            isDemo: workspace.status === 'demo'
           }))
       }));
       

@@ -382,14 +382,21 @@ export default function ClientDashboard() {
     return params.get('clientId');
   }, [location]);
 
-  // Redirect super_admin to super-admin panel if no clientId specified
+  // Redirect super_admin to super-admin panel if not impersonating and no clientId specified
+  // When impersonating, super_admin can view client dashboard without URL params
   useEffect(() => {
-    if (!authLoading && currentUser?.role === 'super_admin' && !urlClientId) {
-      toast({
-        title: "Client Selection Required",
-        description: "Please select a client from the admin panel to view their dashboard.",
-      });
-      setLocation("/super-admin");
+    if (!authLoading && currentUser?.role === 'super_admin') {
+      // Allow access if impersonating via session OR if clientId is in URL
+      const hasImpersonationAccess = (currentUser as any)?.isImpersonating && (currentUser as any)?.effectiveClientId;
+      const hasUrlClientId = !!urlClientId;
+      
+      if (!hasImpersonationAccess && !hasUrlClientId) {
+        toast({
+          title: "Client Selection Required",
+          description: "Please select a client from the admin panel to view their dashboard.",
+        });
+        setLocation("/super-admin");
+      }
     }
   }, [authLoading, currentUser, urlClientId, setLocation, toast]);
 
