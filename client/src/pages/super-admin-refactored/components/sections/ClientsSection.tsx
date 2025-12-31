@@ -25,7 +25,7 @@ export default function ClientsSection() {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-white">Client Management</h2>
         <Button 
-          onClick={() => setLocation("/super-admin/agency-onboarding")}
+          onClick={() => setLocation("/super-admin/onboard")}
           className="bg-[#00e5ff] text-black hover:bg-[#00b8cc]"
           data-testid="button-new-client"
         >

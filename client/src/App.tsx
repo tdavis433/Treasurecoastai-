@@ -48,6 +48,7 @@ import DemoRoofing from "@/pages/demo-roofing";
 import DemoWedding from "@/pages/demo-wedding";
 import DevEmbedTest from "@/pages/dev-embed-test";
 import AgencyOnboardingConsole from "@/pages/agency-onboarding-console";
+import SimpleOnboarding from "@/pages/simple-onboarding";
 import PreviewPage from "@/pages/preview-page";
 import { useEffect } from "react";
 
@@ -362,6 +363,14 @@ function Router() {
         <AuthGuard>
           <SuperAdminGuard>
             <AgencyOnboardingConsole />
+          </SuperAdminGuard>
+        </AuthGuard>
+      </Route>
+      
+      <Route path="/super-admin/onboard">
+        <AuthGuard>
+          <SuperAdminGuard>
+            <SimpleOnboarding />
           </SuperAdminGuard>
         </AuthGuard>
       </Route>

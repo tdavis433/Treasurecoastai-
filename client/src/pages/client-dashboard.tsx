@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TreasureCoastLogo } from "@/components/treasure-coast-logo";
 import { PlatformHelpBot } from "@/components/platform-help-bot";
+import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 import { TenantBadge, DemoInfoBanner } from "@/components/tenant-badge";
 import {
   SidebarProvider,
@@ -3309,6 +3310,7 @@ export default function ClientDashboard() {
 
   return (
     <SidebarProvider style={sidebarStyle as React.CSSProperties}>
+      <ImpersonationBanner />
       <div className="flex h-screen w-full bg-[#0B0E13]">
         <Sidebar className="border-r border-white/10 bg-[#0d1117]">
           <SidebarHeader className="p-4 border-b border-white/10">
