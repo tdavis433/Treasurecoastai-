@@ -65,10 +65,13 @@ export interface Template extends BotConfig {
 }
 
 export interface Workspace {
-  id: string;
+  id: string | number;
   name: string;
   slug: string;
-  plan: string;
+  plan?: string;
+  status?: string;
+  billingEmail?: string;
+  createdAt?: string;
 }
 
 export const BUSINESS_TYPES = [
