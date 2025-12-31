@@ -93,6 +93,56 @@
       ],
       "status": "active",
       "createdAt": "2025-12-16"
+    },
+    {
+      "id": "test_salon_qa999",
+      "name": "Test Salon QA999",
+      "type": "Barbershop",
+      "bots": [
+        "test_salon_qa999_main"
+      ],
+      "status": "active",
+      "createdAt": "2025-12-31"
+    },
+    {
+      "id": "pizza_palace_qa456",
+      "name": "Pizza Palace QA456",
+      "type": "Restaurant",
+      "bots": [
+        "pizza_palace_qa456_main"
+      ],
+      "status": "active",
+      "createdAt": "2025-12-31"
+    },
+    {
+      "id": "burger_joint_qa777",
+      "name": "Burger Joint QA777",
+      "type": "Restaurant",
+      "bots": [
+        "burger_joint_qa777_main"
+      ],
+      "status": "active",
+      "createdAt": "2025-12-31"
+    },
+    {
+      "id": "quick_test_qa333",
+      "name": "Quick Test QA333",
+      "type": "Barbershop",
+      "bots": [
+        "quick_test_qa333_main"
+      ],
+      "status": "active",
+      "createdAt": "2025-12-31"
+    },
+    {
+      "id": "sushi_place_qa555",
+      "name": "Sushi Place QA555",
+      "type": "Restaurant",
+      "bots": [
+        "sushi_place_qa555_main"
+      ],
+      "status": "active",
+      "createdAt": "2025-12-31"
     }
   ]
 }

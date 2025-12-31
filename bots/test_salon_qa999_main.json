@@ -1,0 +1,78 @@
+{
+  "clientId": "test_salon_qa999",
+  "botId": "test_salon_qa999_main",
+  "name": "Test Salon QA999",
+  "description": "AI assistant for Test Salon QA999",
+  "businessProfile": {
+    "businessName": "Test Salon QA999",
+    "location": "",
+    "phone": "",
+    "email": "qa999@example.com",
+    "website": "",
+    "hours": {},
+    "services": [
+      "Haircuts",
+      "Fades",
+      "Beard Trims",
+      "Hot Towel Shave",
+      "Kids Cuts"
+    ]
+  },
+  "rules": {
+    "allowedTopics": [],
+    "forbiddenTopics": [],
+    "crisisHandling": {
+      "onCrisisKeywords": [],
+      "responseTemplate": "If you are in crisis, please call 911 or your local emergency number."
+    }
+  },
+  "systemPrompt": "You are a friendly AI assistant for a barbershop. You help clients book appointments and answer questions about services.",
+  "faqs": [
+    {
+      "question": "How long does a haircut take?",
+      "answer": "Most cuts run 30-45 minutes. Fades and combo services usually take 45-60 minutes depending on the style."
+    },
+    {
+      "question": "Do I need an appointment?",
+      "answer": "Walk-ins are welcome when available, but booking an appointment is the best way to lock in your preferred time."
+    },
+    {
+      "question": "What forms of payment do you accept?",
+      "answer": "We accept cash, credit/debit cards, and most mobile payment options."
+    },
+    {
+      "question": "What is your cancellation / no-show policy?",
+      "answer": "We ask for notice if you need to cancel or reschedule. No-shows may be subject to a fee depending on the service."
+    },
+    {
+      "question": "What if I am running late?",
+      "answer": "If you are running late, message us ASAP. We will do our best to fit you in, but we may need to adjust the service or reschedule."
+    },
+    {
+      "question": "Can I request a specific barber or stylist?",
+      "answer": "Yes — you can request a specific barber/stylist, or choose Any available to get the soonest opening."
+    }
+  ],
+  "automations": {
+    "bookingCapture": {
+      "enabled": true,
+      "mode": "internal",
+      "failsafeEnabled": true
+    }
+  },
+  "personality": {
+    "tone": "casual",
+    "formality": 20
+  },
+  "quickActions": [],
+  "botType": "barber",
+  "metadata": {
+    "isDemo": false,
+    "isTemplate": false,
+    "clonedFrom": "barber_template",
+    "createdAt": "2025-12-31",
+    "version": "2.0",
+    "industryTemplate": "barber_template",
+    "onboardingStatus": "draft"
+  }
+}

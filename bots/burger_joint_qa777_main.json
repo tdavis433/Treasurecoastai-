@@ -1,0 +1,65 @@
+{
+  "clientId": "burger_joint_qa777",
+  "botId": "burger_joint_qa777_main",
+  "name": "Burger Joint QA777",
+  "description": "AI assistant for Burger Joint QA777",
+  "businessProfile": {
+    "businessName": "Burger Joint QA777",
+    "location": "",
+    "phone": "",
+    "email": "burger777@example.com",
+    "website": "",
+    "hours": {},
+    "services": [
+      "Dine-In",
+      "Takeout",
+      "Catering",
+      "Private Events"
+    ]
+  },
+  "rules": {
+    "allowedTopics": [],
+    "forbiddenTopics": [],
+    "crisisHandling": {
+      "onCrisisKeywords": [],
+      "responseTemplate": "If you are in crisis, please call 911 or your local emergency number."
+    }
+  },
+  "systemPrompt": "You are a friendly AI assistant for a restaurant. You help guests with reservations, menu questions, and provide information about the dining experience.",
+  "faqs": [
+    {
+      "question": "Do you take reservations?",
+      "answer": "Yes! We recommend reservations, especially for weekend evenings. You can book through our reservation system."
+    },
+    {
+      "question": "Do you accommodate dietary restrictions?",
+      "answer": "We do our best to accommodate dietary needs. Please let your server know about any allergies or restrictions when you arrive."
+    },
+    {
+      "question": "Is parking available?",
+      "answer": "Please contact us directly for parking information at our location."
+    }
+  ],
+  "automations": {
+    "bookingCapture": {
+      "enabled": true,
+      "mode": "internal",
+      "failsafeEnabled": true
+    }
+  },
+  "personality": {
+    "tone": "friendly",
+    "formality": 30
+  },
+  "quickActions": [],
+  "botType": "restaurant",
+  "metadata": {
+    "isDemo": false,
+    "isTemplate": false,
+    "clonedFrom": "restaurant_template",
+    "createdAt": "2025-12-31",
+    "version": "2.0",
+    "industryTemplate": "restaurant_template",
+    "onboardingStatus": "draft"
+  }
+}

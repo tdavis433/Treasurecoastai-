@@ -1,0 +1,65 @@
+{
+  "clientId": "sushi_place_qa555",
+  "botId": "sushi_place_qa555_main",
+  "name": "Sushi Place QA555",
+  "description": "AI assistant for Sushi Place QA555",
+  "businessProfile": {
+    "businessName": "Sushi Place QA555",
+    "location": "",
+    "phone": "",
+    "email": "sushi555@example.com",
+    "website": "",
+    "hours": {},
+    "services": [
+      "Dine-In",
+      "Takeout",
+      "Catering",
+      "Private Events"
+    ]
+  },
+  "rules": {
+    "allowedTopics": [],
+    "forbiddenTopics": [],
+    "crisisHandling": {
+      "onCrisisKeywords": [],
+      "responseTemplate": "If you are in crisis, please call 911 or your local emergency number."
+    }
+  },
+  "systemPrompt": "You are a friendly AI assistant for a restaurant. You help guests with reservations, menu questions, and provide information about the dining experience.",
+  "faqs": [
+    {
+      "question": "Do you take reservations?",
+      "answer": "Yes! We recommend reservations, especially for weekend evenings. You can book through our reservation system."
+    },
+    {
+      "question": "Do you accommodate dietary restrictions?",
+      "answer": "We do our best to accommodate dietary needs. Please let your server know about any allergies or restrictions when you arrive."
+    },
+    {
+      "question": "Is parking available?",
+      "answer": "Please contact us directly for parking information at our location."
+    }
+  ],
+  "automations": {
+    "bookingCapture": {
+      "enabled": true,
+      "mode": "internal",
+      "failsafeEnabled": true
+    }
+  },
+  "personality": {
+    "tone": "friendly",
+    "formality": 30
+  },
+  "quickActions": [],
+  "botType": "restaurant",
+  "metadata": {
+    "isDemo": false,
+    "isTemplate": false,
+    "clonedFrom": "restaurant_template",
+    "createdAt": "2025-12-31",
+    "version": "2.0",
+    "industryTemplate": "restaurant_template",
+    "onboardingStatus": "draft"
+  }
+}

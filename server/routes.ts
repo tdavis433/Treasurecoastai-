@@ -6667,11 +6667,36 @@ These suggestions should be relevant to what was just discussed and help guide t
         servicesCatalog: clientSettingsSeed.servicesCatalog || [],
       });
       
+      // Also create a workspace for this client (needed for new admin dashboard)
+      // Check if workspace already exists
+      const existingWorkspace = await getWorkspaceBySlug(clientId);
+      let workspace = existingWorkspace;
+      if (!existingWorkspace) {
+        // Get the current super-admin user ID from session to set as owner
+        const ownerId = req.session.userId;
+        if (!ownerId) {
+          return res.status(401).json({ error: "User session not found" });
+        }
+        workspace = await createWorkspace({
+          name: clientName,
+          slug: clientId,
+          ownerId: ownerId,
+          plan: billing?.plan || 'starter',
+          status: 'active',
+          settings: {
+            businessType: clientSettingsSeed.businessType,
+            primaryBotId: newBotId,
+          },
+        });
+        structuredLogger.info('Created workspace for client', { clientId, workspaceId: workspace?.id });
+      }
+      
       res.status(201).json({ 
         success: true,
         clientId: clientId,
         client: clientResult.client,
         botId: newBotId,
+        workspaceId: workspace?.id,
         config: botConfig,
         seeds: {
           clientSettings: clientSettingsSeed,
@@ -6680,8 +6705,14 @@ These suggestions should be relevant to what was just discussed and help guide t
         },
       });
     } catch (error) {
-      structuredLogger.error("Create client from template error:", error);
-      res.status(500).json({ error: "Failed to create client from template" });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : '';
+      structuredLogger.error("Create client from template error:", { 
+        message: errorMessage, 
+        stack: errorStack,
+        body: req.body 
+      });
+      res.status(500).json({ error: "Failed to create client from template", details: errorMessage });
     }
   });
 

@@ -20,42 +20,42 @@ interface Template {
 
 const TEMPLATES: Template[] = [
   {
-    templateId: "barber",
+    templateId: "barber_template",
     name: "Barbershop",
     description: "Perfect for salons and barbershops",
     category: "Beauty",
     preview: "Handles appointments, services, hours"
   },
   {
-    templateId: "restaurant",
+    templateId: "restaurant_template",
     name: "Restaurant",
     description: "Great for cafes and restaurants",
     category: "Food & Beverage",
     preview: "Menu, reservations, delivery info"
   },
   {
-    templateId: "gym",
+    templateId: "gym_template",
     name: "Fitness Center",
     description: "Ideal for gyms and studios",
     category: "Fitness",
     preview: "Memberships, classes, trainers"
   },
   {
-    templateId: "sober_living",
+    templateId: "sober_living_template",
     name: "Recovery House",
     description: "For sober living facilities",
     category: "Healthcare",
     preview: "Admissions, programs, support"
   },
   {
-    templateId: "real_estate",
+    templateId: "real_estate_template",
     name: "Real Estate",
     description: "For realtors and agencies",
     category: "Real Estate",
     preview: "Listings, tours, contact"
   },
   {
-    templateId: "med_spa",
+    templateId: "med_spa_template",
     name: "Med Spa",
     description: "Medical spas and aesthetics",
     category: "Beauty & Wellness",
@@ -84,21 +84,44 @@ export default function SimpleOnboarding() {
       notes: string;
       templateId: string;
     }) => {
-      const response = await apiRequest("POST", "/api/super-admin/clients", data);
+      // Generate a slug from the business name (lowercase, alphanumeric with underscores)
+      const clientId = data.businessName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_|_$/g, '')
+        .substring(0, 50);
+      
+      // Transform to the expected schema for /api/super-admin/clients/from-template
+      const payload = {
+        templateId: data.templateId,
+        clientId,
+        clientName: data.businessName,
+        contact: {
+          phone: data.contactPhone || undefined,
+          email: data.contactEmail || undefined,
+        },
+        billing: {
+          plan: 'starter' as const,
+        },
+      };
+      
+      const response = await apiRequest("POST", "/api/super-admin/clients/from-template", payload);
       return response.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/super-admin/clients"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/workspaces"] });
       toast({
         title: "Client Created!",
         description: `${businessName} is ready to go.`,
       });
-      setLocation(`/super-admin/clients/${data.slug}`);
+      // Navigate to the client detail page using clientId
+      setLocation(`/super-admin/clients/${data.clientId}`);
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Failed to create client. Please try again.",
+        description: error.message || "Failed to create client. Please try again.",
         variant: "destructive",
       });
     },
