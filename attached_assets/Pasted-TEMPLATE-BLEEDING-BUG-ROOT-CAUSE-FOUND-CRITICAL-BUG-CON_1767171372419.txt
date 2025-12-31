@@ -1,0 +1,326 @@
+TEMPLATE BLEEDING BUG - ROOT CAUSE FOUND
+🔴 CRITICAL BUG CONFIRMED
+I found the template bleeding issue. Here's exactly what's happening:
+
+THE BUG
+Location: botConfig.ts - Lines 191-256
+The loadBotFromDatabase() function loads bot configuration BUT it's missing template inheritance logic.
+What's Happening:
+When you create a bot from a template:
+
+Bot record is created in bots table with basic info
+Settings are copied to bot_settings table
+BUT - template defaults might not be fully merged into the bot instance
+
+The Problem Code:
+typescript// Line 191-256 in botConfig.ts
+async function loadBotFromDatabase(botId: string): Promise<BotConfig | null> {
+  // ... loads bot record
+  const [botRecord] = await db.select().from(bots).where(eq(bots.botId, botId));
+  const [settingsRecord] = await db.select().from(botSettings).where(eq(botSettings.botId, botId));
+  
+  // Constructs config from ONLY the bot's own data
+  // ❌ MISSING: Fallback to template defaults when fields are null/empty
+  // ❌ MISSING: Template-specific behavior rules
+  
+  const config: BotConfig = {
+    clientId,
+    botId: botRecord.botId,
+    businessProfile, // Could be incomplete
+    rules: {
+      allowedTopics: rules.allowedTopics || [],  // Falls back to EMPTY, not template
+      forbiddenTopics: rules.forbiddenTopics || [],
+      // ...
+    },
+    faqs,  // Could be empty if not customized
+    // ...
+  };
+}
+Why Templates Bleed:
+Scenario 1: Incomplete Bot Data
+
+You create Bot A from "barbershop" template
+Bot A doesn't have all fields filled in
+Falls back to empty arrays/objects instead of template defaults
+Later, Bot B from "recovery house" template gets created
+If Bot B's data is also incomplete, it also falls back to empty
+But, if there's any shared caching issue or stale data, they mix
+
+Scenario 2: Cache Collision (WORSE)
+Looking at configCache.ts line 31:
+typescriptprivate getBotCacheKey(clientId: string, botId: string): string {
+  return `bot:${clientId}:${botId}`;  // ✅ This is CORRECT
+}
+BUT, in botConfig.ts there's ANOTHER cache:
+typescript// Line 332-346
+const botConfigCache = new Map<string, BotConfig>();  // MODULE-LEVEL CACHE
+
+export function getBotConfig(clientId: string, botId: string): BotConfig | null {
+  const cacheKey = `${clientId}:${botId}`;  // ✅ Also correct
+  // ...
+}
+TWO SEPARATE CACHES! This is the problem:
+
+configCache (in configCache.ts) - properly scoped
+botConfigCache (in botConfig.ts) - MODULE LEVEL, shared across ALL requests
+
+
+THE ACTUAL ROOT CAUSE
+Double Caching with Stale Data
+You have TWO layers of caching:
+
+Module-level cache in botConfig.ts (lines 177-178)
+ConfigCache class in configCache.ts
+
+When bot config is loaded:
+
+orchestrator calls configCache.getBotConfig(clientId, botId)
+configCache calls getBotConfigAsync(clientId, botId) from botConfig.ts
+getBotConfigAsync checks its OWN module-level cache
+If miss, loads from DB
+Stores in module-level cache
+Returns to configCache
+configCache ALSO stores it
+
+Problem:
+
+The module-level cache in botConfig.ts uses clearBotConfigCache() to invalidate
+The ConfigCache uses its own invalidation methods
+When you update a bot, you might invalidate ONE cache but not the other
+Old data from module-level cache gets served to new bot instances
+
+
+PROOF OF THE BUG
+Test This:
+
+Create Bot A: barbershop template
+
+Set services: ["Haircut", "Beard Trim"]
+
+
+Chat with Bot A
+
+Response includes barber services ✅
+
+
+Create Bot B: recovery house template
+
+Set services: ["Sober Living", "Peer Support"]
+
+
+Chat with Bot B WITHOUT RESTARTING SERVER
+
+BUG: Might see barber services mixed in ❌
+OR recovery services might be empty ❌
+
+
+Restart server, clear all caches
+
+Chat with Bot B again
+Works correctly ✅
+
+
+
+Why? The module-level cache in botConfig.ts persists across requests and isn't properly scoped/invalidated.
+
+THE FIX
+Option 1: Remove Double Caching (RECOMMENDED)
+Step 1: Remove module-level cache from botConfig.ts
+typescript// DELETE THESE LINES (177-178 in botConfig.ts)
+const botConfigCache = new Map<string, BotConfig>();
+let cacheTimestamp = 0;
+
+// DELETE all references to botConfigCache in this file
+// Make functions ALWAYS load from DB, let configCache handle caching
+Step 2: Simplify getBotConfigAsync:
+typescriptexport async function getBotConfigAsync(clientId: string, botId: string): Promise<BotConfig | null> {
+  // NO CACHING HERE - let configCache.ts handle it
+  
+  // Try database first
+  const dbConfig = await loadBotFromDatabase(botId);
+  if (dbConfig) {
+    // SECURITY: Validate cross-tenant access
+    if (dbConfig.clientId !== clientId) {
+      structuredLogger.warn('Security: Cross-tenant access attempt rejected', { 
+        botId, 
+        requestedClientId: clientId, 
+        actualClientId: dbConfig.clientId 
+      });
+      return null;
+    }
+    return dbConfig;
+  }
+  
+  // Fallback to JSON
+  return loadBotFromJson(clientId, botId);
+}
+Step 3: Update clearCache in configCache.ts:
+typescript// Line 165 in configCache.ts - DELETE THIS LINE:
+clearBotConfigCache();  // ❌ This clears the wrong cache
+
+// Replace with comment:
+// botConfig.ts no longer has its own cache
+
+Option 2: Template Inheritance (MORE WORK)
+If you want bots to properly inherit from templates:
+typescriptasync function loadBotFromDatabase(botId: string): Promise<BotConfig | null> {
+  try {
+    const [botRecord] = await db.select().from(bots).where(eq(bots.botId, botId)).limit(1);
+    if (!botRecord) return null;
+    
+    const [settingsRecord] = await db.select().from(botSettings).where(eq(botSettings.botId, botId)).limit(1);
+    const [workspaceRecord] = await db.select().from(workspaces).where(eq(workspaces.id, botRecord.workspaceId)).limit(1);
+    
+    // ✅ NEW: Load template defaults
+    let templateDefaults: any = {};
+    if (botRecord.botType) {
+      const [template] = await db.select()
+        .from(botTemplates)
+        .where(eq(botTemplates.botType, botRecord.botType))
+        .limit(1);
+      
+      if (template?.defaultConfig) {
+        templateDefaults = template.defaultConfig;
+      }
+    }
+    
+    // ✅ NEW: Merge template defaults with bot-specific overrides
+    const businessProfile = {
+      ...templateDefaults.businessProfile,  // Template defaults first
+      ...botRecord.businessProfile          // Bot overrides second
+    };
+    
+    const rules = {
+      ...templateDefaults.rules,
+      ...(settingsRecord?.rules || {})
+    };
+    
+    const faqs = (settingsRecord?.faqs && settingsRecord.faqs.length > 0) 
+      ? settingsRecord.faqs 
+      : templateDefaults.faqs || [];
+    
+    // ... continue merging all fields
+    
+    const config: BotConfig = {
+      clientId: workspaceRecord?.slug || botRecord.workspaceId,
+      botId: botRecord.botId,
+      name: botRecord.name,
+      businessProfile,  // Now properly merged
+      rules,            // Now properly merged
+      faqs,             // Falls back to template
+      // ...
+    };
+    
+    return config;
+  } catch (error) {
+    structuredLogger.error('Error loading bot from database', { botId, error });
+    return null;
+  }
+}
+
+PRIORITY FIX ORDER
+Phase 1: Stop the Bleeding (DO THIS NOW)
+
+Remove module-level cache from botConfig.ts
+
+Delete lines 177-178
+Remove all botConfigCache.set/get/has calls
+Let ONLY configCache.ts handle caching
+
+
+Test immediately:
+
+bash   # Create 2 bots with different templates
+   # Chat with both
+   # Verify no data bleeding
+Phase 2: Add Template Inheritance (LATER)
+
+Implement template merging in loadBotFromDatabase()
+Add tests for template fallbacks
+Document which fields inherit vs override
+
+
+HOW TO TEST THE FIX
+Before Fix:
+javascript// Terminal 1: Start server
+npm run dev
+
+// Terminal 2: Test
+curl -X POST http://localhost:5000/api/chat/workspace1/barber-bot \
+  -H "Content-Type: application/json" \
+  -d '{"messages": [{"role": "user", "content": "What services do you offer?"}]}'
+  
+// Expected: Haircut, Beard Trim, etc.
+
+curl -X POST http://localhost:5000/api/chat/workspace2/recovery-bot \
+  -H "Content-Type: application/json" \
+  -d '{"messages": [{"role": "user", "content": "What services do you offer?"}]}'
+  
+// BUG: Might see barber services ❌
+After Fix:
+javascript// Same test, both should show ONLY their own services ✅
+
+ADDITIONAL FINDINGS
+Cache Invalidation Issues
+In configCache.ts line 149:
+typescriptinvalidateBotConfig(clientId: string, botId: string): void {
+  const cacheKey = this.getBotCacheKey(clientId, botId);
+  this.botConfigCache.delete(cacheKey);
+  this.stats.size = this.botConfigCache.size + this.clientSettingsCache.size;
+  
+  // Also clear the underlying botConfig.ts cache
+  clearBotConfigCache();  // ❌ This clears ALL bots, not just one!
+}
+Problem: When you update Bot A, it clears the cache for ALL bots.
+This means Bot B's cache gets cleared too, and it might reload with stale data.
+Fix:
+After removing botConfig.ts cache, change this to:
+typescriptinvalidateBotConfig(clientId: string, botId: string): void {
+  const cacheKey = this.getBotCacheKey(clientId, botId);
+  this.botConfigCache.delete(cacheKey);
+  this.stats.size = this.botConfigCache.size + this.clientSettingsCache.size;
+  // No need to clear anything else - we only have one cache now
+}
+
+FILES TO MODIFY
+
+server/botConfig.ts
+
+Remove lines 177-178 (module-level cache)
+Remove all botConfigCache references
+Simplify getBotConfigAsync() and getBotConfig()
+
+
+server/configCache.ts
+
+Remove clearBotConfigCache() call from invalidateBotConfig()
+Remove from invalidateClient()
+Remove from clearAll()
+
+
+Test file (create new):
+
+tests/template-isolation.test.ts
+Verify bots from different templates don't cross-contaminate
+
+
+
+
+WHY THIS HAPPENED
+You (or ChatGPT) added caching at two levels:
+
+Early implementation had file-based caching in botConfig.ts
+Later added proper ConfigCache class
+Never fully removed the old cache
+Now they conflict and cause stale data issues
+
+Lesson: When refactoring, completely remove old code. Don't leave remnants.
+
+IMMEDIATE ACTION ITEMS
+
+✅ Clone repo to your local machine
+✅ Make the cache removal changes above
+✅ Test with 2 different template bots
+✅ Verify no bleeding
+✅ Deploy fix
+✅ Monitor for issues
