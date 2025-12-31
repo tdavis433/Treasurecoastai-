@@ -7,7 +7,7 @@ import Home from "@/pages/home";
 import AdminDashboard from "@/pages/admin-dashboard";
 import AdminAppointments from "@/pages/admin-appointments";
 import AdminAnalytics from "@/pages/admin-analytics";
-import SuperAdmin from "@/pages/super-admin";
+import SuperAdmin from "@/pages/super-admin-refactored";
 import SuperAdminAuditLogs from "@/pages/super-admin-audit-logs";
 import AdminNotifications from "@/pages/admin-notifications";
 import ClientDetailAdmin from "@/pages/client-detail-admin";
