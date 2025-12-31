@@ -7,7 +7,7 @@ import Home from "@/pages/home";
 import AdminDashboard from "@/pages/admin-dashboard";
 import AdminAppointments from "@/pages/admin-appointments";
 import AdminAnalytics from "@/pages/admin-analytics";
-import SuperAdmin from "@/pages/super-admin-refactored";
+import SuperAdmin from "@/pages/super-admin";
 import SuperAdminAuditLogs from "@/pages/super-admin-audit-logs";
 import AdminNotifications from "@/pages/admin-notifications";
 import ClientDetailAdmin from "@/pages/client-detail-admin";
@@ -31,11 +31,8 @@ import DemoFaithHouse from "@/pages/demo-faith-house";
 import DemoPawsSuds from "@/pages/demo-paws-suds";
 import DemoAutoCare from "@/pages/demo-auto-care";
 import DemoBarbershop from "@/pages/demo-barbershop";
-import DemoSalon from "@/pages/demo-salon";
-import DemoNails from "@/pages/demo-nails";
 import DemoFitness from "@/pages/demo-fitness";
 import DemoHandyman from "@/pages/demo-handyman";
-import DemoBookingConfirmation from "@/pages/demo-booking-confirmation";
 import DemoMedSpa from "@/pages/demo-med-spa";
 import DemoRealEstate from "@/pages/demo-real-estate";
 import DemoRestaurant from "@/pages/demo-restaurant";
@@ -51,12 +48,17 @@ import AgencyOnboardingConsole from "@/pages/agency-onboarding-console";
 import PreviewPage from "@/pages/preview-page";
 import { useEffect } from "react";
 
+// User type definition
 interface User {
   id: string;
   username: string;
   role: string;
   mustChangePassword: boolean;
 }
+
+// ============================================================================
+// ROUTE GUARDS - Enforce agency-first access control
+// ============================================================================
 
 function PasswordChangeGuard({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
@@ -79,6 +81,9 @@ function PasswordChangeGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Requires user to be authenticated
+ */
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
   
@@ -106,6 +111,9 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Requires SUPER_ADMIN role (Tyler only)
+ */
 function SuperAdminGuard({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
   
@@ -115,10 +123,10 @@ function SuperAdminGuard({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
-    if (!isLoading && (!user || user.role !== "super_admin")) {
-      if (user?.role === "client_admin") {
+    if (!isLoading && (!user || user.role !== "SUPER_ADMIN")) {
+      if (user?.role === "CLIENT") {
         setLocation("/client/dashboard");
-      } else if (user?.role === "admin") {
+      } else if (user?.role === "ADMIN") {
         setLocation("/admin/dashboard");
       } else {
         setLocation("/login");
@@ -132,13 +140,16 @@ function SuperAdminGuard({ children }: { children: React.ReactNode }) {
     </div>;
   }
 
-  if (!user || user.role !== "super_admin") {
+  if (!user || user.role !== "SUPER_ADMIN") {
     return null;
   }
 
   return <>{children}</>;
 }
 
+/**
+ * Requires ADMIN or SUPER_ADMIN role (bot management)
+ */
 function AdminGuard({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
   
@@ -148,8 +159,8 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
-    if (!isLoading && (!user || (user.role !== "admin" && user.role !== "super_admin"))) {
-      if (user?.role === "client_admin") {
+    if (!isLoading && (!user || (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN"))) {
+      if (user?.role === "CLIENT") {
         setLocation("/client/dashboard");
       } else {
         setLocation("/login");
@@ -163,18 +174,36 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
     </div>;
   }
 
-  if (!user || (user.role !== "admin" && user.role !== "super_admin")) {
+  if (!user || (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN")) {
     return null;
   }
 
   return <>{children}</>;
 }
 
+/**
+ * Requires CLIENT role (prevents admins from accidentally using client view)
+ */
 function ClientGuard({ children }: { children: React.ReactNode }) {
+  const [location, setLocation] = useLocation();
+  
   const { data: user, isLoading } = useQuery<User>({
     queryKey: ["/api/auth/me"],
     retry: false,
   });
+
+  useEffect(() => {
+    if (!isLoading && user) {
+      // Super admins should use /super-admin, not client dashboard
+      if (user.role === "SUPER_ADMIN") {
+        setLocation("/super-admin");
+      } else if (user.role === "ADMIN") {
+        setLocation("/admin/dashboard");
+      }
+    } else if (!isLoading && !user) {
+      setLocation("/login");
+    }
+  }, [user, isLoading, location, setLocation]);
 
   if (isLoading) {
     return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
@@ -182,16 +211,8 @@ function ClientGuard({ children }: { children: React.ReactNode }) {
     </div>;
   }
 
-  if (!user) {
-    return <Redirect to="/login" />;
-  }
-
-  if (user.role === "super_admin") {
-    return <Redirect to="/super-admin" />;
-  }
-
-  if (user.role === "admin") {
-    return <Redirect to="/admin/dashboard" />;
+  if (!user || user.role === "SUPER_ADMIN" || user.role === "ADMIN") {
+    return null;
   }
 
   return <>{children}</>;
@@ -213,11 +234,8 @@ function Router() {
       <Route path="/demo/paws-suds" component={DemoPawsSuds} />
       <Route path="/demo/auto-care" component={DemoAutoCare} />
       <Route path="/demo/barbershop" component={DemoBarbershop} />
-      <Route path="/demo/salon" component={DemoSalon} />
-      <Route path="/demo/nails" component={DemoNails} />
       <Route path="/demo/fitness" component={DemoFitness} />
       <Route path="/demo/handyman" component={DemoHandyman} />
-      <Route path="/demo-booking-confirmation" component={DemoBookingConfirmation} />
       <Route path="/demo/med-spa" component={DemoMedSpa} />
       <Route path="/demo/real-estate" component={DemoRealEstate} />
       <Route path="/demo/restaurant" component={DemoRestaurant} />
