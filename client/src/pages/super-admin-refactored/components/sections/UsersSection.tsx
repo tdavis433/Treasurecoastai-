@@ -130,8 +130,17 @@ export default function UsersSection() {
   const isValidInviteEmail = (email: string) => !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const isValidPassword = (pw: string) => pw.length >= 8 && /[A-Z]/.test(pw) && /[a-z]/.test(pw) && /[0-9]/.test(pw);
 
+  // Normalize backend roles to frontend display roles
+  // Backend uses: super_admin, client_admin
+  // Frontend displays: super_admin, agency_user, client_owner, client_user
+  const normalizeRole = (backendRole: string): string => {
+    if (backendRole === 'client_admin') return 'client_owner';
+    return backendRole;
+  };
+
   const filteredUsers = users.filter(user => {
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+    const normalizedRole = normalizeRole(user.role);
+    const matchesRole = roleFilter === 'all' || normalizedRole === roleFilter;
     const matchesSearch = !searchQuery || 
       user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -139,7 +148,8 @@ export default function UsersSection() {
   });
 
   const getRoleInfo = (roleId: string) => {
-    return ROLE_DEFINITIONS.find(r => r.id === roleId) || ROLE_DEFINITIONS[3];
+    const normalizedRole = normalizeRole(roleId);
+    return ROLE_DEFINITIONS.find(r => r.id === normalizedRole) || ROLE_DEFINITIONS[3];
   };
 
   const handleInvite = () => {
@@ -176,10 +186,10 @@ export default function UsersSection() {
   };
 
   const usersByRole = {
-    super_admin: users.filter(u => u.role === 'super_admin').length,
-    agency_user: users.filter(u => u.role === 'agency_user').length,
-    client_owner: users.filter(u => u.role === 'client_owner' || u.role === 'client_admin').length,
-    client_user: users.filter(u => u.role === 'client_user').length,
+    super_admin: users.filter(u => normalizeRole(u.role) === 'super_admin').length,
+    agency_user: users.filter(u => normalizeRole(u.role) === 'agency_user').length,
+    client_owner: users.filter(u => normalizeRole(u.role) === 'client_owner').length,
+    client_user: users.filter(u => normalizeRole(u.role) === 'client_user').length,
   };
 
   if (usersLoading) {
