@@ -2,8 +2,8 @@ import { Scissors, Star, Clock, Calendar, TrendingUp, MessageCircle, User, Award
 import { DemoPageConfig } from "../DemoPageTemplate";
 
 export const barberConfig: DemoPageConfig = {
-  clientId: "ws_demo_barbershop",
-  botId: "bot_demo_barbershop",
+  clientId: "demo",
+  botId: "barber_demo",
   
   business: {
     name: "Classic Cuts Barbershop",

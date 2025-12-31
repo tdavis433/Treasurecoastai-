@@ -2,8 +2,8 @@ import { Building2, Home, Clock, Calendar, TrendingUp, MessageCircle, MapPin, Ke
 import { DemoPageConfig } from "../DemoPageTemplate";
 
 export const realEstateConfig: DemoPageConfig = {
-  clientId: "demo_premier_properties",
-  botId: "bot_demo_real_estate",
+  clientId: "demo",
+  botId: "realestate_demo",
   
   business: {
     name: "Coastal Realty Group",

@@ -207,8 +207,8 @@ export default function DemoBarbershop() {
     const script = document.createElement("script");
     script.src = "/widget/embed.js";
     script.async = true;
-    script.dataset.clientId = "ws_demo_barbershop";
-    script.dataset.botId = "bot_demo_barbershop";
+    script.dataset.clientId = "demo";
+    script.dataset.botId = "barber_demo";
     script.dataset.theme = "dark";
     script.dataset.primaryColor = primaryColor;
     script.dataset.greeting = "Hey! I'm the Classic Cuts assistant. I can help you book an appointment, check wait times, or answer any questions about our services. What can I do for you?";

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { TreasureCoastLogo } from "@/components/treasure-coast-logo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LogOut, Crown } from "lucide-react";
+import { queryClient } from "@/lib/queryClient";
 
 import ClientsSection from "./components/sections/ClientsSection";
 import TemplatesSection from "./components/sections/TemplatesSection";
@@ -29,7 +30,8 @@ export default function SuperAdmin() {
   });
 
   const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    queryClient.clear();
     setLocation("/login");
   };
 

@@ -83,18 +83,12 @@ function PasswordChangeGuard({ children }: { children: React.ReactNode }) {
 }
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const [location, setLocation] = useLocation();
-  
-  const { data: user, isLoading } = useQuery<User>({
+  const { data: user, isLoading, error } = useQuery<User>({
     queryKey: ["/api/auth/me"],
     retry: false,
   });
 
-  useEffect(() => {
-    if (!isLoading && !user) {
-      setLocation("/login");
-    }
-  }, [user, isLoading, location, setLocation]);
+  console.log('[AuthGuard] State:', { user, isLoading, error: error?.message });
 
   if (isLoading) {
     return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
@@ -102,32 +96,22 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     </div>;
   }
 
-  if (!user) {
-    return null;
+  // Redirect if no user or if there's an auth error
+  if (!user || error) {
+    console.log('[AuthGuard] Redirecting to login - no user or error');
+    return <Redirect to="/login" />;
   }
 
   return <>{children}</>;
 }
 
 function SuperAdminGuard({ children }: { children: React.ReactNode }) {
-  const [location, setLocation] = useLocation();
-  
-  const { data: user, isLoading } = useQuery<User>({
+  const { data: user, isLoading, error } = useQuery<User>({
     queryKey: ["/api/auth/me"],
     retry: false,
   });
 
-  useEffect(() => {
-    if (!isLoading && (!user || user.role !== "super_admin")) {
-      if (user?.role === "client_admin") {
-        setLocation("/client/dashboard");
-      } else if (user?.role === "admin") {
-        setLocation("/admin/dashboard");
-      } else {
-        setLocation("/login");
-      }
-    }
-  }, [user, isLoading, location, setLocation]);
+  console.log('[SuperAdminGuard] State:', { user, isLoading, error: error?.message });
 
   if (isLoading) {
     return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
@@ -135,30 +119,29 @@ function SuperAdminGuard({ children }: { children: React.ReactNode }) {
     </div>;
   }
 
-  if (!user || user.role !== "super_admin") {
-    return null;
+  // Redirect if no user or if there's an auth error
+  if (!user || error) {
+    console.log('[SuperAdminGuard] Redirecting to login - no user or error');
+    return <Redirect to="/login" />;
+  }
+
+  if (user.role !== "super_admin") {
+    if (user.role === "client_admin") {
+      return <Redirect to="/client/dashboard" />;
+    } else if (user.role === "admin") {
+      return <Redirect to="/admin/dashboard" />;
+    }
+    return <Redirect to="/login" />;
   }
 
   return <>{children}</>;
 }
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
-  const [location, setLocation] = useLocation();
-  
-  const { data: user, isLoading } = useQuery<User>({
+  const { data: user, isLoading, error } = useQuery<User>({
     queryKey: ["/api/auth/me"],
     retry: false,
   });
-
-  useEffect(() => {
-    if (!isLoading && (!user || (user.role !== "admin" && user.role !== "super_admin"))) {
-      if (user?.role === "client_admin") {
-        setLocation("/client/dashboard");
-      } else {
-        setLocation("/login");
-      }
-    }
-  }, [user, isLoading, location, setLocation]);
 
   if (isLoading) {
     return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
@@ -166,8 +149,16 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
     </div>;
   }
 
-  if (!user || (user.role !== "admin" && user.role !== "super_admin")) {
-    return null;
+  // Redirect if no user or if there's an auth error
+  if (!user || error) {
+    return <Redirect to="/login" />;
+  }
+
+  if (user.role !== "admin" && user.role !== "super_admin") {
+    if (user.role === "client_admin") {
+      return <Redirect to="/client/dashboard" />;
+    }
+    return <Redirect to="/login" />;
   }
 
   return <>{children}</>;

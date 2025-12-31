@@ -8,8 +8,8 @@ const TattooIcon = ({ className }: { className?: string }) => (
 );
 
 export const tattooConfig: DemoPageConfig = {
-  clientId: "demo_ink_soul",
-  botId: "bot_demo_tattoo",
+  clientId: "demo",
+  botId: "tattoo_demo",
   
   business: {
     name: "Inkwell Tattoo Studio",

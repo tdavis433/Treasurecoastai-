@@ -32,8 +32,8 @@ const soberLivingDisclaimers: DisclaimerItem[] = [
 ];
 
 export const recoveryHouseConfig: DemoPageConfig = {
-  clientId: "demo_new_horizons",
-  botId: "bot_demo_recovery",
+  clientId: "demo",
+  botId: "soberliving_demo",
   
   safety: soberLivingSafety,
   admissions: soberLivingAdmissions,

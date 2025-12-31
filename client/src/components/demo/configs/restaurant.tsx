@@ -2,8 +2,8 @@ import { Utensils, Star, Clock, Calendar, TrendingUp, MessageCircle, Wine, ChefH
 import { DemoPageConfig } from "../DemoPageTemplate";
 
 export const restaurantConfig: DemoPageConfig = {
-  clientId: "demo_coastal_breeze",
-  botId: "bot_demo_restaurant",
+  clientId: "demo",
+  botId: "restaurant_demo",
   
   business: {
     name: "Sunset Bistro",
