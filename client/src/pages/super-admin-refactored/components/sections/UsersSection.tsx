@@ -162,10 +162,14 @@ export default function UsersSection() {
       return;
     }
     
+    // Map frontend role to backend-accepted role
+    // Backend only accepts: 'super_admin' or 'client_admin'
+    const backendRole = inviteForm.role === 'super_admin' ? 'super_admin' : 'client_admin';
+    
     createUserMutation.mutate({
       username: inviteForm.username,
       password: inviteForm.password,
-      role: inviteForm.role,
+      role: backendRole,
       clientId: inviteForm.clientId || undefined,
       email: inviteForm.email || undefined,
     });
