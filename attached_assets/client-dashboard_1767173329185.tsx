@@ -72,8 +72,6 @@ import {
   Lock,
   Shield,
   KeyRound,
-  Trash2,
-  UserPlus,
 } from "lucide-react";
 import {
   Select,
@@ -278,15 +276,13 @@ interface TopQuestion {
 
 interface BookingAnalytics {
   totalBookingIntents: number;
-  totalLeadCaptured: number;
   totalLinkClicks: number;
   pendingBookings: number;
   completedBookings: number;
-  funnelMode: 'handoff' | 'confirmable' | 'internal';
   dailyTrends: { date: string; intents: number; clicks: number }[];
 }
 
-type SectionType = 'overview' | 'conversations' | 'leads' | 'bookings';
+type SectionType = 'overview' | 'conversations' | 'leads' | 'bookings' | 'settings';
 
 const LEAD_STATUS_OPTIONS = [
   { value: 'new', label: 'New', color: 'bg-green-500/20 text-green-400 border-green-400/40' },
@@ -315,6 +311,7 @@ const SIDEBAR_ITEMS = [
   { id: 'conversations' as SectionType, label: 'Conversations', icon: MessageSquare, description: 'Chat history' },
   { id: 'leads' as SectionType, label: 'Leads', icon: Users, description: 'Captured contacts' },
   { id: 'bookings' as SectionType, label: 'Bookings', icon: Calendar, description: 'Appointments' },
+  // Settings removed - agency controls all configuration
 ];
 
 export default function ClientDashboard() {
@@ -344,15 +341,6 @@ export default function ClientDashboard() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState<string | null>(null);
-  
-  // Team management state
-  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [invitePassword, setInvitePassword] = useState('');
-  const [inviteRole, setInviteRole] = useState<'manager' | 'staff' | 'agent'>('staff');
-  const [inviteError, setInviteError] = useState<string | null>(null);
-  const [invitingMember, setInvitingMember] = useState(false);
-  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
 
   const { data: currentUser, isLoading: authLoading } = useQuery<AuthUser>({
     queryKey: ["/api/auth/me"],
@@ -363,10 +351,6 @@ export default function ClientDashboard() {
     },
     retry: false,
   });
-
-  // Allow both super_admin and client_admin to edit lead/booking statuses
-  // Client admins are workspace owners/managers who need to manage their data
-  const canEditStatus = currentUser?.role === 'super_admin' || currentUser?.role === 'client_admin';
 
   useEffect(() => {
     if (!authLoading && !currentUser) {
@@ -525,97 +509,6 @@ export default function ClientDashboard() {
     enabled: !!currentUser,
   });
 
-  // Team members data
-  interface TeamMember {
-    id: string;
-    username: string;
-    email: string;
-    role: string;
-    membershipRole: string;
-    disabled: boolean;
-    createdAt: string;
-    lastLoginAt: string | null;
-  }
-
-  const { data: teamData, isLoading: teamLoading, refetch: refetchTeam } = useQuery<{
-    members: TeamMember[];
-  }>({
-    queryKey: ["/api/client/team/members", urlClientId],
-    queryFn: async () => {
-      const response = await fetch(appendClientId("/api/client/team/members"), { credentials: "include" });
-      if (!response.ok) throw new Error("Failed to fetch team members");
-      return response.json();
-    },
-    enabled: !!currentUser,
-  });
-
-  // Handle inviting a team member
-  const handleInviteMember = async () => {
-    setInviteError(null);
-    
-    if (!inviteEmail || !invitePassword) {
-      setInviteError("Email and password are required");
-      return;
-    }
-    
-    // Basic password validation
-    if (invitePassword.length < 8) {
-      setInviteError("Password must be at least 8 characters");
-      return;
-    }
-    if (!/[A-Z]/.test(invitePassword)) {
-      setInviteError("Password must contain an uppercase letter");
-      return;
-    }
-    if (!/[a-z]/.test(invitePassword)) {
-      setInviteError("Password must contain a lowercase letter");
-      return;
-    }
-    if (!/[0-9]/.test(invitePassword)) {
-      setInviteError("Password must contain a number");
-      return;
-    }
-    
-    setInvitingMember(true);
-    try {
-      await apiRequest("POST", appendClientId("/api/client/team/members"), {
-        email: inviteEmail,
-        password: invitePassword,
-        membershipRole: inviteRole,
-      });
-      
-      toast({ title: "Team member invited", description: `${inviteEmail} has been added to your team.` });
-      setInviteDialogOpen(false);
-      setInviteEmail('');
-      setInvitePassword('');
-      setInviteRole('staff');
-      refetchTeam();
-    } catch (error: any) {
-      setInviteError(error?.message || "Failed to invite team member");
-    } finally {
-      setInvitingMember(false);
-    }
-  };
-
-  // Handle removing a team member
-  const handleRemoveMember = async (memberId: string, memberEmail: string) => {
-    if (!confirm(`Are you sure you want to remove ${memberEmail} from your team?`)) {
-      return;
-    }
-    
-    setRemovingMemberId(memberId);
-    try {
-      await apiRequest("DELETE", appendClientId(`/api/client/team/members/${memberId}`));
-      toast({ title: "Team member removed", description: `${memberEmail} has been removed from your team.` });
-      refetchTeam();
-    } catch (error: any) {
-      const message = error?.message || "Failed to remove team member";
-      toast({ title: "Error", description: message, variant: "destructive" });
-    } finally {
-      setRemovingMemberId(null);
-    }
-  };
-
   const handleCopyWidgetCode = () => {
     const botId = profile?.botId || stats?.botId || '';
     const clientId = profile?.clientId || stats?.clientId || urlClientId || '';
@@ -752,48 +645,25 @@ export default function ClientDashboard() {
     }
   };
 
-  // Delete conversation
-  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
-  
-  const handleDeleteConversation = async (sessionId: string) => {
-    if (!confirm("Are you sure you want to delete this conversation? This action cannot be undone.")) {
-      return;
-    }
-    
-    setDeletingSessionId(sessionId);
-    try {
-      const response = await fetch(appendClientId(`/api/client/sessions/${sessionId}`), {
-        method: "DELETE",
-        credentials: "include",
-      });
-      
-      if (response.ok) {
-        // Collapse the session if it's expanded
-        if (expandedSession === sessionId) {
-          setExpandedSession(null);
-        }
-        // Invalidate sessions cache
-        queryClient.invalidateQueries({ queryKey: ["/api/client/analytics/sessions", urlClientId] });
-        queryClient.invalidateQueries({ queryKey: ["/api/client/stats", statsRange, urlClientId] });
-        toast({ title: "Deleted", description: "Conversation has been deleted." });
-      } else {
-        throw new Error("Failed to delete");
-      }
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to delete conversation.", variant: "destructive" });
-    } finally {
-      setDeletingSessionId(null);
-    }
-  };
-
   // Update lead status
   const handleUpdateLeadStatus = async (leadId: string, newStatus: string) => {
     setUpdatingLeadId(leadId);
     try {
-      await apiRequest("PATCH", appendClientId(`/api/client/leads/${leadId}`), { status: newStatus });
-      queryClient.invalidateQueries({ queryKey: ["/api/client/leads"], exact: false });
-      queryClient.invalidateQueries({ queryKey: ["/api/client/stats", statsRange, urlClientId] });
-      toast({ title: "Status updated", description: `Lead status changed to ${newStatus}.` });
+      const response = await fetch(appendClientId(`/api/client/leads/${leadId}`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status: newStatus })
+      });
+      
+      if (response.ok) {
+        // Use prefix matching to invalidate all pages of leads (exact: false for partial key match)
+        queryClient.invalidateQueries({ queryKey: ["/api/client/leads"], exact: false });
+        queryClient.invalidateQueries({ queryKey: ["/api/client/stats", statsRange, urlClientId] });
+        toast({ title: "Status updated", description: `Lead status changed to ${newStatus}.` });
+      } else {
+        throw new Error("Failed to update");
+      }
     } catch (error) {
       toast({ title: "Error", description: "Failed to update lead status.", variant: "destructive" });
     } finally {
@@ -805,10 +675,20 @@ export default function ClientDashboard() {
   const handleUpdateBookingStatus = async (bookingId: string, newStatus: string) => {
     setUpdatingBookingId(bookingId);
     try {
-      await apiRequest("PATCH", appendClientId(`/api/client/bookings/${bookingId}`), { status: newStatus });
-      queryClient.invalidateQueries({ queryKey: ["/api/client/appointments", urlClientId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/client/stats", statsRange, urlClientId] });
-      toast({ title: "Status updated", description: `Booking status changed to ${newStatus}.` });
+      const response = await fetch(appendClientId(`/api/client/bookings/${bookingId}`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status: newStatus })
+      });
+      
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ["/api/client/appointments", urlClientId] });
+        queryClient.invalidateQueries({ queryKey: ["/api/client/stats", statsRange, urlClientId] });
+        toast({ title: "Status updated", description: `Booking status changed to ${newStatus}.` });
+      } else {
+        throw new Error("Failed to update");
+      }
     } catch (error) {
       toast({ title: "Error", description: "Failed to update booking status.", variant: "destructive" });
     } finally {
@@ -1976,26 +1856,8 @@ export default function ClientDashboard() {
                                   ))}
                                 </div>
                                 
-                                <div className="mt-4 pt-4 border-t border-white/10 flex justify-between gap-2">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteConversation(session.sessionId);
-                                    }}
-                                    disabled={deletingSessionId === session.sessionId}
-                                    className="border-red-500/30 text-red-400 hover:bg-red-500/10"
-                                    data-testid={`button-delete-conversation-${session.id}`}
-                                  >
-                                    {deletingSessionId === session.sessionId ? (
-                                      <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                      <Trash2 className="h-4 w-4 mr-2" />
-                                    )}
-                                    Delete
-                                  </Button>
-                                  {!isResolved && (
+                                {!isResolved && (
+                                  <div className="mt-4 pt-4 border-t border-white/10 flex justify-end">
                                     <Button
                                       size="sm"
                                       onClick={(e) => {
@@ -2008,8 +1870,8 @@ export default function ClientDashboard() {
                                       <CheckCircle2 className="h-4 w-4 mr-2" />
                                       Mark as Resolved
                                     </Button>
-                                  )}
-                                </div>
+                                  </div>
+                                )}
                               </>
                             ) : (
                               <div className="py-6 text-center text-white/40">
@@ -2231,38 +2093,29 @@ export default function ClientDashboard() {
                             </div>
                           </div>
                           <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
-                            {canEditStatus ? (
-                              <Select
-                                value={lead.status || 'new'}
-                                onValueChange={(value) => handleUpdateLeadStatus(lead.id, value)}
-                                disabled={isUpdating}
+                            <Select
+                              value={lead.status || 'new'}
+                              onValueChange={(value) => handleUpdateLeadStatus(lead.id, value)}
+                              disabled={isUpdating}
+                            >
+                              <SelectTrigger 
+                                className={`w-28 h-8 text-xs border ${statusOption?.color || 'bg-white/10 text-white/60 border-white/20'}`}
+                                data-testid={`select-lead-status-${lead.id}`}
                               >
-                                <SelectTrigger 
-                                  className={`w-28 h-8 text-xs border ${statusOption?.color || 'bg-white/10 text-white/60 border-white/20'}`}
-                                  data-testid={`select-lead-status-${lead.id}`}
-                                >
-                                  {isUpdating ? (
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                  ) : (
-                                    <SelectValue />
-                                  )}
-                                </SelectTrigger>
-                                <SelectContent className="bg-[#1a1d24] border-white/10">
-                                  {LEAD_STATUS_OPTIONS.map(opt => (
-                                    <SelectItem key={opt.value} value={opt.value} className="text-white">
-                                      {opt.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <Badge 
-                                className={`${statusOption?.color || 'bg-white/10 text-white/60 border-white/20'} border`}
-                                data-testid={`badge-lead-status-${lead.id}`}
-                              >
-                                {statusOption?.label || lead.status || 'New'}
-                              </Badge>
-                            )}
+                                {isUpdating ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <SelectValue />
+                                )}
+                              </SelectTrigger>
+                              <SelectContent className="bg-[#1a1d24] border-white/10">
+                                {LEAD_STATUS_OPTIONS.map(opt => (
+                                  <SelectItem key={opt.value} value={opt.value} className="text-white">
+                                    {opt.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                             <span className="text-xs text-white/40">
                               {lead.createdAt ? format(new Date(lead.createdAt), "MMM d, yyyy") : '—'}
                             </span>
@@ -2427,7 +2280,7 @@ export default function ClientDashboard() {
         </GlassCard>
       </div>
 
-      {/* Conversion funnel info - dynamic based on funnelMode */}
+      {/* Conversion funnel info */}
       {bookingAnalytics && bookingAnalytics.totalBookingIntents > 0 && (
         <GlassCard data-testid="card-booking-funnel">
           <GlassCardHeader>
@@ -2436,16 +2289,11 @@ export default function ClientDashboard() {
               Booking Funnel
             </GlassCardTitle>
             <GlassCardDescription>
-              {bookingAnalytics.funnelMode === 'handoff' 
-                ? 'Visitors are redirected to your external booking system'
-                : bookingAnalytics.funnelMode === 'internal'
-                  ? 'We capture leads and follow up to confirm bookings'
-                  : 'How visitors progress through the booking flow'}
+              How visitors progress through the booking flow
             </GlassCardDescription>
           </GlassCardHeader>
           <GlassCardContent>
             <div className="flex items-center justify-between gap-4 text-sm">
-              {/* Step 1: Intent Detection (always shown) */}
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-white/70">Intent Detection</span>
@@ -2454,54 +2302,31 @@ export default function ClientDashboard() {
                 <Progress value={100} className="h-2 bg-white/10" />
               </div>
               <ChevronRight className="h-4 w-4 text-white/30" />
-              
-              {/* Step 2: Lead Captured (always shown) */}
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-white/70">Lead Captured</span>
-                  <span className="text-amber-400 font-medium">{bookingAnalytics.totalLeadCaptured}</span>
+                  <span className="text-white/70">Link Clicks</span>
+                  <span className="text-purple-400 font-medium">{bookingAnalytics.totalLinkClicks}</span>
                 </div>
                 <Progress 
                   value={bookingAnalytics.totalBookingIntents > 0 
-                    ? Math.min(100, (bookingAnalytics.totalLeadCaptured / bookingAnalytics.totalBookingIntents) * 100)
+                    ? (bookingAnalytics.totalLinkClicks / bookingAnalytics.totalBookingIntents) * 100 
                     : 0} 
                   className="h-2 bg-white/10" 
                 />
               </div>
               <ChevronRight className="h-4 w-4 text-white/30" />
-              
-              {/* Step 3: Clicked to Book (always shown) */}
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-white/70">Clicked to Book</span>
-                  <span className="text-purple-400 font-medium">{bookingAnalytics.totalLinkClicks}</span>
+                  <span className="text-white/70">Confirmed</span>
+                  <span className="text-green-400 font-medium">{bookingAnalytics.completedBookings}</span>
                 </div>
                 <Progress 
                   value={bookingAnalytics.totalBookingIntents > 0 
-                    ? Math.min(100, (bookingAnalytics.totalLinkClicks / bookingAnalytics.totalBookingIntents) * 100)
+                    ? (bookingAnalytics.completedBookings / bookingAnalytics.totalBookingIntents) * 100 
                     : 0} 
                   className="h-2 bg-white/10" 
                 />
               </div>
-              
-              {/* Step 4: Confirmed (ONLY shown for confirmable mode) */}
-              {bookingAnalytics.funnelMode === 'confirmable' && (
-                <>
-                  <ChevronRight className="h-4 w-4 text-white/30" />
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-white/70">Confirmed</span>
-                      <span className="text-green-400 font-medium">{bookingAnalytics.completedBookings}</span>
-                    </div>
-                    <Progress 
-                      value={bookingAnalytics.totalBookingIntents > 0 
-                        ? Math.min(100, (bookingAnalytics.completedBookings / bookingAnalytics.totalBookingIntents) * 100)
-                        : 0} 
-                      className="h-2 bg-white/10" 
-                    />
-                  </div>
-                </>
-              )}
             </div>
           </GlassCardContent>
         </GlassCard>
@@ -2629,7 +2454,7 @@ export default function ClientDashboard() {
                         {(() => {
                           const statusOption = BOOKING_STATUS_OPTIONS.find(s => s.value === (apt.status || 'new'));
                           const isUpdating = updatingBookingId === apt.id;
-                          return canEditStatus ? (
+                          return (
                             <Select
                               value={apt.status || 'new'}
                               onValueChange={(value) => handleUpdateBookingStatus(apt.id, value)}
@@ -2658,13 +2483,6 @@ export default function ClientDashboard() {
                                 ))}
                               </SelectContent>
                             </Select>
-                          ) : (
-                            <Badge 
-                              className={`${statusOption?.color || 'bg-amber-500/20 text-amber-400 border-amber-400/40'} border`}
-                              data-testid={`badge-booking-status-${apt.id}`}
-                            >
-                              {statusOption?.label || apt.status || 'New'}
-                            </Badge>
                           );
                         })()}
                         <span className="text-xs text-white/40">
@@ -3047,194 +2865,6 @@ export default function ClientDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Team Management Card */}
-      <GlassCard data-testid="card-team-management">
-        <GlassCardHeader>
-          <GlassCardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-blue-400" />
-            Team Members
-          </GlassCardTitle>
-          <GlassCardDescription>
-            Manage who can access your dashboard
-          </GlassCardDescription>
-        </GlassCardHeader>
-        <GlassCardContent className="space-y-4">
-          {/* Invite button */}
-          <div className="flex justify-end">
-            <Button
-              onClick={() => {
-                setInviteError(null);
-                setInviteEmail('');
-                setInvitePassword('');
-                setInviteRole('staff');
-                setInviteDialogOpen(true);
-              }}
-              className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-400 hover:to-cyan-400 text-white"
-              data-testid="button-invite-member"
-            >
-              <UserPlus className="h-4 w-4 mr-2" />
-              Invite Team Member
-            </Button>
-          </div>
-          
-          {/* Team members list */}
-          {teamLoading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-white/50" />
-            </div>
-          ) : teamData?.members && teamData.members.length > 0 ? (
-            <div className="space-y-3">
-              {teamData.members.filter(m => !m.disabled).map((member) => (
-                <div
-                  key={member.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10"
-                  data-testid={`team-member-${member.id}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-                      <span className="text-white font-medium text-sm">
-                        {member.email?.charAt(0).toUpperCase() || 'U'}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="text-white font-medium">{member.email}</p>
-                      <p className="text-sm text-white/50 capitalize">
-                        {member.membershipRole}
-                        {member.lastLoginAt && (
-                          <span className="ml-2">
-                            Last active: {format(new Date(member.lastLoginAt), 'MMM d')}
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge className={
-                      member.membershipRole === 'owner' ? 'bg-purple-500/20 text-purple-400 border-purple-400/40' :
-                      member.membershipRole === 'manager' ? 'bg-blue-500/20 text-blue-400 border-blue-400/40' :
-                      member.membershipRole === 'staff' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-400/40' :
-                      'bg-gray-500/20 text-gray-400 border-gray-400/40'
-                    }>
-                      {member.membershipRole}
-                    </Badge>
-                    {member.id !== currentUser?.id?.toString() && member.membershipRole !== 'owner' && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleRemoveMember(member.id, member.email)}
-                        disabled={removingMemberId === member.id}
-                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                        data-testid={`button-remove-member-${member.id}`}
-                      >
-                        {removingMemberId === member.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-white/40">
-              <Users className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p className="text-sm">No team members yet</p>
-              <p className="text-xs mt-1">Invite someone to help manage your dashboard</p>
-            </div>
-          )}
-        </GlassCardContent>
-      </GlassCard>
-
-      {/* Invite Team Member Dialog */}
-      <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
-        <DialogContent className="bg-[#0d1117] border border-white/10 text-white max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <UserPlus className="h-5 w-5 text-blue-400" />
-              Invite Team Member
-            </DialogTitle>
-            <DialogDescription className="text-white/60">
-              Add a new member to access your dashboard. They'll need to change their password on first login.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            {inviteError && (
-              <div className="p-3 rounded-lg bg-red-500/10 border border-red-400/30 text-red-400 text-sm">
-                {inviteError}
-              </div>
-            )}
-            
-            <div className="space-y-2">
-              <Label htmlFor="inviteEmail" className="text-white/80">Email Address</Label>
-              <Input
-                id="inviteEmail"
-                type="email"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                placeholder="team@example.com"
-                className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
-                data-testid="input-invite-email"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="invitePassword" className="text-white/80">Temporary Password</Label>
-              <Input
-                id="invitePassword"
-                type="password"
-                value={invitePassword}
-                onChange={(e) => setInvitePassword(e.target.value)}
-                placeholder="Temporary password for first login"
-                className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
-                data-testid="input-invite-password"
-              />
-              <p className="text-xs text-white/40">Min 8 chars, 1 uppercase, 1 lowercase, 1 number</p>
-            </div>
-            
-            <div className="space-y-2">
-              <Label className="text-white/80">Role</Label>
-              <Select value={inviteRole} onValueChange={(v: 'manager' | 'staff' | 'agent') => setInviteRole(v)}>
-                <SelectTrigger className="bg-white/5 border-white/10 text-white" data-testid="select-invite-role">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-[#1a1f2e] border-white/10">
-                  <SelectItem value="manager" className="text-white hover:bg-white/10">Manager - Full access</SelectItem>
-                  <SelectItem value="staff" className="text-white hover:bg-white/10">Staff - Can edit leads & bookings</SelectItem>
-                  <SelectItem value="agent" className="text-white hover:bg-white/10">Agent - View & update only</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setInviteDialogOpen(false)}
-              className="flex-1 border-white/10 text-white hover:bg-white/10"
-              data-testid="button-cancel-invite"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleInviteMember}
-              disabled={!inviteEmail || !invitePassword || invitingMember}
-              className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-400 hover:to-cyan-400 text-white disabled:opacity-50"
-              data-testid="button-submit-invite"
-            >
-              {invitingMember ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <UserPlus className="h-4 w-4 mr-2" />
-              )}
-              Invite Member
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       <GlassCard data-testid="card-widget-code">
         <GlassCardHeader>
           <GlassCardTitle className="flex items-center gap-2">
@@ -3302,6 +2932,8 @@ export default function ClientDashboard() {
         return renderLeadsSection();
       case 'bookings':
         return renderBookingsSection();
+      case 'settings':
+        return renderSettingsSection();
       default:
         return renderOverviewSection();
     }
@@ -3437,7 +3069,7 @@ export default function ClientDashboard() {
 
       {/* Lead Details Dialog */}
       <Dialog open={!!selectedLead} onOpenChange={(open) => !open && setSelectedLead(null)}>
-        <DialogContent className="bg-[#1a1f2e] border-white/10 text-white max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="bg-[#1a1f2e] border-white/10 text-white max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-white">
               <div className="h-12 w-12 rounded-full bg-gradient-to-br from-green-500/30 to-emerald-500/30 flex items-center justify-center">
@@ -3458,48 +3090,39 @@ export default function ClientDashboard() {
             {/* Status Section */}
             <div className="bg-white/5 rounded-lg p-4 space-y-3">
               <h4 className="text-sm font-medium text-white/70 uppercase tracking-wide">Status</h4>
-              {canEditStatus ? (
-                <Select
-                  value={selectedLead?.status || 'new'}
-                  onValueChange={(value) => {
-                    if (selectedLead?.id) {
-                      handleUpdateLeadStatus(selectedLead.id, value);
-                      setSelectedLead((prev: any) => prev ? { ...prev, status: value } : null);
-                    }
-                  }}
-                  disabled={updatingLeadId === selectedLead?.id}
+              <Select
+                value={selectedLead?.status || 'new'}
+                onValueChange={(value) => {
+                  if (selectedLead?.id) {
+                    handleUpdateLeadStatus(selectedLead.id, value);
+                    setSelectedLead((prev: any) => prev ? { ...prev, status: value } : null);
+                  }
+                }}
+                disabled={updatingLeadId === selectedLead?.id}
+              >
+                <SelectTrigger 
+                  className={`w-full h-10 ${LEAD_STATUS_OPTIONS.find(s => s.value === (selectedLead?.status || 'new'))?.color || 'bg-amber-500/20 text-amber-400 border-amber-400/40'}`}
+                  data-testid="select-lead-status-popup"
                 >
-                  <SelectTrigger 
-                    className={`w-full h-10 ${LEAD_STATUS_OPTIONS.find(s => s.value === (selectedLead?.status || 'new'))?.color || 'bg-amber-500/20 text-amber-400 border-amber-400/40'}`}
-                    data-testid="select-lead-status-popup"
-                  >
-                    {updatingLeadId === selectedLead?.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <SelectValue />
-                    )}
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#1a1d23] border-white/20 z-[60]">
-                    {LEAD_STATUS_OPTIONS.map((option) => (
-                      <SelectItem 
-                        key={option.value} 
-                        value={option.value}
-                        className="text-white hover:bg-white/10"
-                        data-testid={`option-lead-status-${option.value}`}
-                      >
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Badge 
-                  className={`${LEAD_STATUS_OPTIONS.find(s => s.value === (selectedLead?.status || 'new'))?.color || 'bg-green-500/20 text-green-400 border-green-400/40'} border text-sm py-2 px-4`}
-                  data-testid="badge-lead-status-popup"
-                >
-                  {LEAD_STATUS_OPTIONS.find(s => s.value === (selectedLead?.status || 'new'))?.label || selectedLead?.status || 'New'}
-                </Badge>
-              )}
+                  {updatingLeadId === selectedLead?.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <SelectValue />
+                  )}
+                </SelectTrigger>
+                <SelectContent className="bg-[#1a1d23] border-white/20 z-[60]">
+                  {LEAD_STATUS_OPTIONS.map((option) => (
+                    <SelectItem 
+                      key={option.value} 
+                      value={option.value}
+                      className="text-white hover:bg-white/10"
+                      data-testid={`option-lead-status-${option.value}`}
+                    >
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Contact Information */}
@@ -3623,7 +3246,7 @@ export default function ClientDashboard() {
 
       {/* Appointment Details Dialog */}
       <Dialog open={!!selectedAppointment} onOpenChange={(open) => !open && setSelectedAppointment(null)}>
-        <DialogContent className="bg-[#1a1f2e] border-white/10 text-white max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="bg-[#1a1f2e] border-white/10 text-white max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-white">
               <div className="h-12 w-12 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/30 flex items-center justify-center">
@@ -3647,48 +3270,39 @@ export default function ClientDashboard() {
             {/* Status Section */}
             <div className="bg-white/5 rounded-lg p-4 space-y-3">
               <h4 className="text-sm font-medium text-white/70 uppercase tracking-wide">Status</h4>
-              {canEditStatus ? (
-                <Select
-                  value={selectedAppointment?.status || 'new'}
-                  onValueChange={(value) => {
-                    if (selectedAppointment?.id) {
-                      handleUpdateBookingStatus(selectedAppointment.id, value);
-                      setSelectedAppointment((prev) => prev ? { ...prev, status: value } : null);
-                    }
-                  }}
-                  disabled={updatingBookingId === selectedAppointment?.id}
+              <Select
+                value={selectedAppointment?.status || 'new'}
+                onValueChange={(value) => {
+                  if (selectedAppointment?.id) {
+                    handleUpdateBookingStatus(selectedAppointment.id, value);
+                    setSelectedAppointment((prev) => prev ? { ...prev, status: value } : null);
+                  }
+                }}
+                disabled={updatingBookingId === selectedAppointment?.id}
+              >
+                <SelectTrigger 
+                  className={`w-full h-10 ${BOOKING_STATUS_OPTIONS.find(s => s.value === (selectedAppointment?.status || 'new'))?.color || 'bg-amber-500/20 text-amber-400 border-amber-400/40'}`}
+                  data-testid="select-booking-status-popup"
                 >
-                  <SelectTrigger 
-                    className={`w-full h-10 ${BOOKING_STATUS_OPTIONS.find(s => s.value === (selectedAppointment?.status || 'new'))?.color || 'bg-amber-500/20 text-amber-400 border-amber-400/40'}`}
-                    data-testid="select-booking-status-popup"
-                  >
-                    {updatingBookingId === selectedAppointment?.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <SelectValue />
-                    )}
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#1a1d23] border-white/20 z-[60]">
-                    {BOOKING_STATUS_OPTIONS.map((option) => (
-                      <SelectItem 
-                        key={option.value} 
-                        value={option.value}
-                        className="text-white hover:bg-white/10"
-                        data-testid={`option-booking-status-${option.value}`}
-                      >
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Badge 
-                  className={`${BOOKING_STATUS_OPTIONS.find(s => s.value === (selectedAppointment?.status || 'new'))?.color || 'bg-amber-500/20 text-amber-400 border-amber-400/40'} border text-sm py-2 px-4`}
-                  data-testid="badge-booking-status-popup"
-                >
-                  {BOOKING_STATUS_OPTIONS.find(s => s.value === (selectedAppointment?.status || 'new'))?.label || selectedAppointment?.status || 'New'}
-                </Badge>
-              )}
+                  {updatingBookingId === selectedAppointment?.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <SelectValue />
+                  )}
+                </SelectTrigger>
+                <SelectContent className="bg-[#1a1d23] border-white/20 z-[60]">
+                  {BOOKING_STATUS_OPTIONS.map((option) => (
+                    <SelectItem 
+                      key={option.value} 
+                      value={option.value}
+                      className="text-white hover:bg-white/10"
+                      data-testid={`option-booking-status-${option.value}`}
+                    >
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Contact Information */}
