@@ -44,9 +44,10 @@ export default function LogsSection() {
   });
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
 
-  const { data: workspaces = [] } = useQuery<Workspace[]>({
+  const { data: workspacesData } = useQuery<{ workspaces: Workspace[]; total: number }>({
     queryKey: ['/api/super-admin/workspaces'],
   });
+  const workspaces = workspacesData?.workspaces || [];
 
   const { data: logsData, isLoading, refetch } = useQuery<LogsResponse>({
     queryKey: ['/api/super-admin/logs', logFilters],

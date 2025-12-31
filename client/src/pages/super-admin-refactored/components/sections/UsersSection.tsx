@@ -79,9 +79,10 @@ export default function UsersSection() {
     queryKey: ['/api/super-admin/users'],
   });
 
-  const { data: workspaces = [] } = useQuery<Workspace[]>({
+  const { data: workspacesData } = useQuery<{ workspaces: Workspace[]; total: number }>({
     queryKey: ['/api/super-admin/workspaces'],
   });
+  const workspaces = workspacesData?.workspaces || [];
 
   const createUserMutation = useMutation({
     mutationFn: async (data: { username: string; password: string; role: string; clientId?: string; email?: string }) => {

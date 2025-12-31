@@ -55,9 +55,10 @@ export default function BillingSection() {
   const [showAssignPlanModal, setShowAssignPlanModal] = useState(false);
   const [assignToWorkspace, setAssignToWorkspace] = useState<string | null>(null);
 
-  const { data: workspaces = [], isLoading } = useQuery<Workspace[]>({
+  const { data: workspacesData, isLoading } = useQuery<{ workspaces: Workspace[]; total: number }>({
     queryKey: ['/api/super-admin/workspaces'],
   });
+  const workspaces = workspacesData?.workspaces || [];
 
   const updatePlanMutation = useMutation({
     mutationFn: async ({ workspaceSlug, planId }: { workspaceSlug: string; planId: string }) => {
