@@ -8,7 +8,7 @@
  * - Statistics for monitoring cache performance
  */
 
-import { BotConfig, getBotConfigAsync, clearCache as clearBotConfigCache, getBotsByWorkspaceId } from './botConfig';
+import { BotConfig, getBotConfigAsync, getBotsByWorkspaceId } from './botConfig';
 import { storage } from './storage';
 
 interface CacheEntry<T> {
@@ -148,14 +148,12 @@ class ConfigCache {
 
   /**
    * Invalidate bot config cache entry
+   * NOTE: botConfig.ts no longer has its own cache - this is the single source of truth
    */
   invalidateBotConfig(clientId: string, botId: string): void {
     const cacheKey = this.getBotCacheKey(clientId, botId);
     this.botConfigCache.delete(cacheKey);
     this.stats.size = this.botConfigCache.size + this.clientSettingsCache.size;
-    
-    // Also clear the underlying botConfig.ts cache
-    clearBotConfigCache();
   }
 
   /**
@@ -169,6 +167,7 @@ class ConfigCache {
 
   /**
    * Invalidate all cache entries for a client (multi-tenant safe)
+   * NOTE: botConfig.ts no longer has its own cache - this is the single source of truth
    */
   invalidateClient(clientId: string): void {
     // Remove all bot configs for this client
@@ -185,17 +184,16 @@ class ConfigCache {
     this.invalidateClientSettings(clientId);
     
     this.stats.size = this.botConfigCache.size + this.clientSettingsCache.size;
-    clearBotConfigCache();
   }
 
   /**
    * Clear all caches
+   * NOTE: botConfig.ts no longer has its own cache - this is the single source of truth
    */
   clearAll(): void {
     this.botConfigCache.clear();
     this.clientSettingsCache.clear();
     this.stats = { hits: 0, misses: 0, size: 0, evictions: 0 };
-    clearBotConfigCache();
   }
 
   /**

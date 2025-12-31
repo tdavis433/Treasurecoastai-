@@ -173,19 +173,22 @@ export interface ClientsData {
 const BOTS_DIR = path.join(process.cwd(), 'bots');
 const CLIENTS_FILE = path.join(process.cwd(), 'clients', 'clients.json');
 
-const botConfigCache: Map<string, BotConfig> = new Map();
-let clientsCache: ClientsData | null = null;
-let cacheTimestamp = 0;
-const CACHE_TTL = 60000;
+// NOTE: Module-level caching removed to fix template bleeding bug.
+// All caching is now handled by configCache.ts (single source of truth).
+// This prevents stale data from one bot leaking into another.
 
-function isCacheValid(): boolean {
-  return Date.now() - cacheTimestamp < CACHE_TTL;
+let clientsCache: ClientsData | null = null;
+let clientsCacheTimestamp = 0;
+const CLIENTS_CACHE_TTL = 60000;
+
+function isClientsCacheValid(): boolean {
+  return Date.now() - clientsCacheTimestamp < CLIENTS_CACHE_TTL;
 }
 
-function clearCache(): void {
-  botConfigCache.clear();
+// Kept for backwards compatibility - now only clears clients cache
+export function clearCache(): void {
   clientsCache = null;
-  cacheTimestamp = 0;
+  clientsCacheTimestamp = 0;
 }
 
 async function loadBotFromDatabase(botId: string): Promise<BotConfig | null> {
@@ -329,28 +332,13 @@ function loadBotFromJsonByBotId(botId: string): BotConfig | null {
 }
 
 export function getBotConfig(clientId: string, botId: string): BotConfig | null {
-  const cacheKey = `${clientId}:${botId}`;
-  
-  if (isCacheValid() && botConfigCache.has(cacheKey)) {
-    return botConfigCache.get(cacheKey)!;
-  }
-  
+  // No module-level caching - configCache.ts handles caching
   const jsonConfig = loadBotFromJson(clientId, botId);
-  if (jsonConfig) {
-    botConfigCache.set(cacheKey, jsonConfig);
-    cacheTimestamp = Date.now();
-    return jsonConfig;
-  }
-  
-  return null;
+  return jsonConfig;
 }
 
 export async function getBotConfigAsync(clientId: string, botId: string): Promise<BotConfig | null> {
-  const cacheKey = `${clientId}:${botId}`;
-  
-  if (isCacheValid() && botConfigCache.has(cacheKey)) {
-    return botConfigCache.get(cacheKey)!;
-  }
+  // No module-level caching - configCache.ts handles caching
   
   // Try database first
   const dbConfig = await loadBotFromDatabase(botId);
@@ -361,73 +349,34 @@ export async function getBotConfigAsync(clientId: string, botId: string): Promis
       structuredLogger.warn('Security: Cross-tenant access attempt rejected', { botId, requestedClientId: clientId, actualClientId: dbConfig.clientId });
       return null; // Reject cross-tenant access
     }
-    botConfigCache.set(cacheKey, dbConfig);
-    cacheTimestamp = Date.now();
     return dbConfig;
   }
   
   // Fallback to JSON (already validates clientId in loadBotFromJson)
   const jsonConfig = loadBotFromJson(clientId, botId);
-  if (jsonConfig) {
-    botConfigCache.set(cacheKey, jsonConfig);
-    cacheTimestamp = Date.now();
-    return jsonConfig;
-  }
-  
-  return null;
+  return jsonConfig;
 }
 
 export function getBotConfigByBotId(botId: string): BotConfig | null {
-  if (isCacheValid()) {
-    const entries = Array.from(botConfigCache.entries());
-    for (const [, config] of entries) {
-      if (config.botId === botId) {
-        return config;
-      }
-    }
-  }
-  
+  // No module-level caching - configCache.ts handles caching
   const jsonConfig = loadBotFromJsonByBotId(botId);
-  if (jsonConfig) {
-    const cacheKey = `${jsonConfig.clientId}:${jsonConfig.botId}`;
-    botConfigCache.set(cacheKey, jsonConfig);
-    cacheTimestamp = Date.now();
-    return jsonConfig;
-  }
-  
-  return null;
+  return jsonConfig;
 }
 
 export async function getBotConfigByBotIdAsync(botId: string): Promise<BotConfig | null> {
-  if (isCacheValid()) {
-    const entries = Array.from(botConfigCache.entries());
-    for (const [, config] of entries) {
-      if (config.botId === botId) {
-        return config;
-      }
-    }
-  }
+  // No module-level caching - configCache.ts handles caching
   
   const dbConfig = await loadBotFromDatabase(botId);
   if (dbConfig) {
-    const cacheKey = `${dbConfig.clientId}:${dbConfig.botId}`;
-    botConfigCache.set(cacheKey, dbConfig);
-    cacheTimestamp = Date.now();
     return dbConfig;
   }
   
   const jsonConfig = loadBotFromJsonByBotId(botId);
-  if (jsonConfig) {
-    const cacheKey = `${jsonConfig.clientId}:${jsonConfig.botId}`;
-    botConfigCache.set(cacheKey, jsonConfig);
-    cacheTimestamp = Date.now();
-    return jsonConfig;
-  }
-  
-  return null;
+  return jsonConfig;
 }
 
 export function getAllBotConfigs(): BotConfig[] {
+  // No module-level caching - configCache.ts handles caching
   try {
     const botFiles = fs.readdirSync(BOTS_DIR).filter(f => f.endsWith('.json'));
     const configs: BotConfig[] = [];
@@ -453,12 +402,8 @@ export function getAllBotConfigs(): BotConfig[] {
       }
       
       configs.push(config);
-      
-      const cacheKey = `${config.clientId}:${config.botId}`;
-      botConfigCache.set(cacheKey, config);
     }
     
-    cacheTimestamp = Date.now();
     return configs;
   } catch (error) {
     structuredLogger.error('Error loading all bot configs', { error: String(error) });
@@ -467,6 +412,7 @@ export function getAllBotConfigs(): BotConfig[] {
 }
 
 export async function getAllBotConfigsAsync(): Promise<BotConfig[]> {
+  // No module-level caching - configCache.ts handles caching
   try {
     const dbBots = await db.select().from(bots);
     const configs: BotConfig[] = [];
@@ -475,8 +421,6 @@ export async function getAllBotConfigsAsync(): Promise<BotConfig[]> {
       const config = await loadBotFromDatabase(botRecord.botId);
       if (config) {
         configs.push(config);
-        const cacheKey = `${config.clientId}:${config.botId}`;
-        botConfigCache.set(cacheKey, config);
       }
     }
     
@@ -488,7 +432,6 @@ export async function getAllBotConfigsAsync(): Promise<BotConfig[]> {
       }
     }
     
-    cacheTimestamp = Date.now();
     return configs;
   } catch (error) {
     structuredLogger.error('Error loading all bot configs async', { error: String(error) });
@@ -517,7 +460,7 @@ export async function getTemplateById(templateId: string): Promise<any | null> {
 }
 
 export function getClients(): ClientsData {
-  if (isCacheValid() && clientsCache) {
+  if (isClientsCacheValid() && clientsCache) {
     return clientsCache;
   }
   
@@ -535,7 +478,7 @@ export function getClients(): ClientsData {
         return { clients: [] };
       }
       
-      cacheTimestamp = Date.now();
+      clientsCacheTimestamp = Date.now();
       return clientsCache!;
     }
     
@@ -1575,5 +1518,3 @@ export function getClientStatus(clientId: string): string | null {
   const client = getClientById(clientId);
   return client?.status || null;
 }
-
-export { clearCache };
