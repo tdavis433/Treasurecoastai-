@@ -3310,8 +3310,9 @@ export default function ClientDashboard() {
 
   return (
     <SidebarProvider style={sidebarStyle as React.CSSProperties}>
-      <ImpersonationBanner />
-      <div className="flex h-screen w-full bg-[#0B0E13]">
+      <div className="flex flex-col h-screen w-full bg-[#0B0E13]">
+        <ImpersonationBanner />
+        <div className="flex flex-1 overflow-hidden">
         <Sidebar className="border-r border-white/10 bg-[#0d1117]">
           <SidebarHeader className="p-4 border-b border-white/10">
             <div className="flex items-center gap-3">
@@ -3435,6 +3436,7 @@ export default function ClientDashboard() {
 
         {/* Platform Help Bot */}
         <PlatformHelpBot variant="dashboard" />
+        </div>
       </div>
 
       {/* Lead Details Dialog */}

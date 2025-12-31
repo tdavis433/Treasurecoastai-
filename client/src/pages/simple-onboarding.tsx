@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -83,15 +84,11 @@ export default function SimpleOnboarding() {
       notes: string;
       templateId: string;
     }) => {
-      const response = await fetch("/api/super-admin/clients", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error("Failed to create client");
+      const response = await apiRequest("POST", "/api/super-admin/clients", data);
       return response.json();
     },
     onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/clients"] });
       toast({
         title: "Client Created!",
         description: `${businessName} is ready to go.`,
