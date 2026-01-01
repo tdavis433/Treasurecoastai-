@@ -1,0 +1,517 @@
+# Implementation Checklist
+
+## Barber Template v4.0 - Development Tasks
+
+This checklist ensures your platform can properly use the ultimate barber template.
+
+-----
+
+## 🔧 BACKEND REQUIREMENTS
+
+### **1. Variable Replacement System**
+
+**Status:** [ ] Not Started [ ] In Progress [ ] Complete
+
+**What’s Needed:**
+Replace all `{{VARIABLE}}` placeholders with actual values from wizard
+
+**Implementation:**
+
+```javascript
+function processTemplate(template, wizardData) {
+  let processed = JSON.stringify(template);
+  
+  // Basic replacements
+  processed = processed.replace(/{{SHOP_NAME}}/g, wizardData.shopName);
+  processed = processed.replace(/{{PHONE}}/g, wizardData.phone);
+  processed = processed.replace(/{{BOOKING_URL}}/g, wizardData.bookingUrl);
+  
+  // Address replacements
+  const fullAddress = `${wizardData.street}, ${wizardData.city}, ${wizardData.state} ${wizardData.zip}`;
+  processed = processed.replace(/{{FULL_ADDRESS}}/g, fullAddress);
+  processed = processed.replace(/{{ENCODED_ADDRESS}}/g, encodeURIComponent(fullAddress));
+  
+  // Generated content
+  processed = processed.replace(/{{HOURS_SUMMARY}}/g, generateHoursSummary(wizardData.hours));
+  processed = processed.replace(/{{PRICING_SUMMARY}}/g, generatePricingSummary(wizardData.services));
+  processed = processed.replace(/{{BARBER_LIST}}/g, generateBarberList(wizardData.barbers));
+  
+  // ... continue for all variables
+  
+  return JSON.parse(processed);
+}
+```
+
+**Variables to Support:**
+
+- Basic: SHOP_NAME, PHONE, EMAIL, WEBSITE
+- Address: FULL_ADDRESS, ENCODED_ADDRESS, APPLE_MAPS_LINK, GOOGLE_MAPS_LINK
+- Hours: HOURS_SUMMARY, MONDAY_HOURS, TUESDAY_HOURS, etc.
+- Services: PRICING_SUMMARY, PRICING_MENU_TEXT, individual service prices
+- Barbers: BARBER_LIST, BARBER_INFO_TEXT, specialist names
+- Policies: CANCELLATION_POLICY, LATE_POLICY
+
+-----
+
+### **2. Intent Detection System**
+
+**Status:** [ ] Not Started [ ] In Progress [ ] Complete
+
+**What’s Needed:**
+Detect booking intent vs info-only questions
+
+**Two Approaches:**
+
+**A) Keyword-Based (Simpler):**
+
+```javascript
+function detectIntent(message) {
+  const bookingKeywords = ['book', 'appointment', 'schedule', 'available', 'openings', 
+                           'today', 'tomorrow', 'walk in', 'need a cut', 'need a fade'];
+  
+  const lowerMessage = message.toLowerCase();
+  const hasBookingIntent = bookingKeywords.some(keyword => lowerMessage.includes(keyword));
+  
+  return hasBookingIntent ? 'booking' : 'info';
+}
+```
+
+**B) AI-Based (Better):**
+
+```javascript
+async function detectIntent(message, conversationHistory) {
+  const prompt = `
+    Analyze this customer message and determine intent:
+    - "booking": wants to schedule/book an appointment
+    - "info": just asking for information (price, hours, location)
+    
+    Message: "${message}"
+    
+    Respond with just the intent type.
+  `;
+  
+  const intent = await callAI(prompt);
+  return intent.toLowerCase().trim();
+}
+```
+
+-----
+
+### **3. Session State Management**
+
+**Status:** [ ] Not Started [ ] In Progress [ ] Complete
+
+**What’s Needed:**
+Track conversation state to prevent spam
+
+**Implementation:**
+
+```javascript
+class ConversationSession {
+  constructor(userId) {
+    this.userId = userId;
+    this.leadCaptureInProgress = false;
+    this.leadCaptureCompleted = false;
+    this.leadCaptureStartedAt = null;
+    this.capturedData = {};
+    this.currentField = null;
+  }
+  
+  startLeadCapture() {
+    if (this.leadCaptureCompleted) {
+      // Don't restart unless user explicitly says "book another"
+      return false;
+    }
+    
+    if (this.leadCaptureInProgress) {
+      // Already in progress, continue existing flow
+      return false;
+    }
+    
+    this.leadCaptureInProgress = true;
+    this.leadCaptureStartedAt = Date.now();
+    this.currentField = 'serviceRequested';
+    return true;
+  }
+  
+  captureField(fieldName, value) {
+    this.capturedData[fieldName] = value;
+    
+    // Determine next field
+    const fields = ['serviceRequested', 'preferredDay', 'preferredTimeWindow', 
+                    'name', 'phone', 'email', 'notes'];
+    const currentIndex = fields.indexOf(fieldName);
+    
+    if (currentIndex < fields.length - 1) {
+      this.currentField = fields[currentIndex + 1];
+    } else {
+      this.completeLeadCapture();
+    }
+  }
+  
+  completeLeadCapture() {
+    this.leadCaptureInProgress = false;
+    this.leadCaptureCompleted = true;
+    this.currentField = null;
+  }
+  
+  shouldTriggerCapture() {
+    const cooldownMinutes = 5;
+    if (this.leadCaptureCompleted && this.leadCaptureStartedAt) {
+      const minutesSince = (Date.now() - this.leadCaptureStartedAt) / 1000 / 60;
+      if (minutesSince < cooldownMinutes) {
+        return false;
+      }
+    }
+    return !this.leadCaptureInProgress && !this.leadCaptureCompleted;
+  }
+}
+```
+
+-----
+
+### **4. After-Hours Detection**
+
+**Status:** [ ] Not Started [ ] In Progress [ ] Complete
+
+**What’s Needed:**
+Check if current time is within business hours
+
+**Implementation:**
+
+```javascript
+function isAfterHours(schedule, timezone) {
+  const now = new Date().toLocaleString('en-US', { timeZone: timezone });
+  const currentTime = new Date(now);
+  const day = currentTime.toLocaleDateString('en-US', { weekday: 'lowercase', timeZone: timezone });
+  
+  const todaySchedule = schedule[day];
+  
+  if (!todaySchedule || todaySchedule === null) {
+    // Closed today
+    return true;
+  }
+  
+  const currentHour = currentTime.getHours();
+  const currentMinute = currentTime.getMinutes();
+  const currentTotalMinutes = currentHour * 60 + currentMinute;
+  
+  const [openHour, openMin] = todaySchedule.open.split(':').map(Number);
+  const [closeHour, closeMin] = todaySchedule.close.split(':').map(Number);
+  
+  const openTotalMinutes = openHour * 60 + openMin;
+  const closeTotalMinutes = closeHour * 60 + closeMin;
+  
+  return currentTotalMinutes < openTotalMinutes || currentTotalMinutes >= closeTotalMinutes;
+}
+```
+
+-----
+
+### **5. Human Handoff Detection**
+
+**Status:** [ ] Not Started [ ] In Progress [ ] Complete
+
+**What’s Needed:**
+Detect when to route to human
+
+**Implementation:**
+
+```javascript
+function shouldHandoffToHuman(message) {
+  const handoffTriggers = [
+    'photo', 'picture', 'image', 'design reference',
+    'group booking', 'party', 'wedding', 'groomsmen',
+    'special needs', 'accessibility', 'autism',
+    'complaint', 'refund', 'manager', 'speak to someone'
+  ];
+  
+  const lowerMessage = message.toLowerCase();
+  return handoffTriggers.some(trigger => lowerMessage.includes(trigger));
+}
+```
+
+-----
+
+## 🎨 FRONTEND REQUIREMENTS
+
+### **6. Wizard Interface**
+
+**Status:** [ ] Not Started [ ] In Progress [ ] Complete
+
+**What’s Needed:**
+8-step wizard to collect shop data
+
+**Steps:**
+
+1. Basic Info (name, phone, email, website)
+1. Location (address, city, state, zip)
+1. Hours (schedule for each day)
+1. Services & Pricing (service list with prices)
+1. Barber Profiles (min 1, max 5 barbers)
+1. Booking System (booking URL)
+1. Policies (cancel, late, optional)
+1. Review & Test (preview, test chat, launch)
+
+**Features:**
+
+- [ ] Progress indicator (step X of 8)
+- [ ] Save draft functionality
+- [ ] Resume incomplete setup
+- [ ] Validation on each step
+- [ ] Test chat interface
+- [ ] Preview mode
+
+-----
+
+### **7. Quick Actions UI**
+
+**Status:** [ ] Not Started [ ] In Progress [ ] Complete
+
+**What’s Needed:**
+Buttons for common actions
+
+**UI Example:**
+
+```
+┌─────────────────────────────────────────┐
+│  📅 Book Now  💰 Prices  🕐 Hours       │
+│  ✂️ Barbers   📍 Directions  📞 Call   │
+└─────────────────────────────────────────┘
+```
+
+**Behavior:**
+
+- Click button → sends prompt to bot
+- E.g., “Book Now” → “I want to book an appointment”
+
+-----
+
+### **8. Mobile Optimization**
+
+**Status:** [ ] Not Started [ ] In Progress [ ] Complete
+
+**Requirements:**
+
+- [ ] Links are clickable (HTTPS, tel:, maps:)
+- [ ] No horizontal scrolling
+- [ ] Text readable without zoom
+- [ ] Buttons thumb-sized (min 44px)
+- [ ] Fast load time (<2s)
+
+-----
+
+## 🧪 TESTING INFRASTRUCTURE
+
+### **9. Automated Testing**
+
+**Status:** [ ] Not Started [ ] In Progress [ ] Complete
+
+**What’s Needed:**
+Run test scenarios automatically
+
+**Implementation:**
+
+```javascript
+async function runTestScenario(botId, scenario) {
+  const conversation = new Conversation(botId);
+  
+  const response = await conversation.sendMessage(scenario.userMessage);
+  
+  const checks = {
+    intentDetected: scenario.expectedIntent === response.detectedIntent,
+    leadCaptureTriggered: scenario.expectLeadCapture === response.leadCaptureStarted,
+    responseContains: scenario.expectedKeywords.every(kw => 
+      response.text.toLowerCase().includes(kw)
+    )
+  };
+  
+  return {
+    scenario: scenario.name,
+    passed: Object.values(checks).every(check => check === true),
+    checks
+  };
+}
+```
+
+-----
+
+### **10. Test Dashboard**
+
+**Status:** [ ] Not Started [ ] In Progress [ ] Complete
+
+**What’s Needed:**
+UI to run tests and see results
+
+**Features:**
+
+- [ ] Run all 20 test scenarios
+- [ ] Show pass/fail for each
+- [ ] Highlight failed tests
+- [ ] Show test conversation logs
+- [ ] Calculate readiness score
+- [ ] Export test report
+
+-----
+
+## 📊 ANALYTICS & MONITORING
+
+### **11. Lead Tracking**
+
+**Status:** [ ] Not Started [ ] In Progress [ ] Complete
+
+**What to Track:**
+
+- Leads captured (name, phone, service, time)
+- Lead source (web widget, IG, SMS)
+- Conversion rate (leads → bookings)
+- Time to capture (seconds from first message)
+
+-----
+
+### **12. Conversation Metrics**
+
+**Status:** [ ] Not Started [ ] In Progress [ ] Complete
+
+**What to Track:**
+
+- Total conversations
+- After-hours conversations
+- FAQ deflections (questions answered without human)
+- Booking link clicks
+- Human handoffs
+- Failed scenarios (errors, confusion)
+
+-----
+
+### **13. Performance Metrics**
+
+**Status:** [ ] Not Started [ ] In Progress [ ] Complete
+
+**What to Track:**
+
+- Response time (bot latency)
+- Uptime (99.9% target)
+- Error rate (<1% target)
+- Session duration
+- Messages per conversation
+
+-----
+
+## 🚀 DEPLOYMENT
+
+### **14. Production Checklist**
+
+**Before Launch:**
+
+- [ ] All 20 test scenarios pass (95%+)
+- [ ] Mobile tested (iOS + Android)
+- [ ] Links verified (booking, maps, phone)
+- [ ] After-hours mode tested
+- [ ] Anti-spam tested (no double capture)
+- [ ] Barber selection rule verified
+- [ ] Wizard tested end-to-end
+- [ ] Analytics configured
+- [ ] Error logging configured
+- [ ] Backup/restore tested
+
+-----
+
+### **15. Post-Launch Monitoring**
+
+**First Week:**
+
+- [ ] Monitor conversations daily
+- [ ] Check for failed scenarios
+- [ ] Validate lead quality
+- [ ] Test from real customer perspective
+- [ ] Collect shop owner feedback
+
+**First Month:**
+
+- [ ] Review analytics weekly
+- [ ] Identify common failures
+- [ ] Tune intent detection
+- [ ] Optimize conversion rate
+- [ ] Document improvements
+
+-----
+
+## 📝 DOCUMENTATION
+
+### **16. Developer Docs**
+
+**Status:** [ ] Not Started [ ] In Progress [ ] Complete
+
+**Needed:**
+
+- [ ] Template structure guide
+- [ ] Variable replacement docs
+- [ ] Intent detection logic
+- [ ] Session state management
+- [ ] Testing guide
+- [ ] Deployment guide
+
+-----
+
+### **17. User Docs**
+
+**Status:** [ ] Not Started [ ] In Progress [ ] Complete
+
+**Needed:**
+
+- [ ] Wizard walkthrough
+- [ ] Embed code instructions
+- [ ] Instagram setup guide
+- [ ] Testing your bot guide
+- [ ] Troubleshooting guide
+- [ ] FAQ for shop owners
+
+-----
+
+## ✅ PRIORITY ORDER
+
+### **Phase 1: Core Functionality** (Week 1)
+
+1. Variable replacement system
+1. Basic wizard (steps 1-6)
+1. Template processing
+
+### **Phase 2: Intelligence** (Week 2)
+
+1. Intent detection (start with keywords)
+1. Session state management
+1. After-hours detection
+
+### **Phase 3: Polish** (Week 3)
+
+1. Wizard step 8 (testing)
+1. Quick actions
+1. Mobile optimization
+
+### **Phase 4: Launch Prep** (Week 4)
+
+1. Automated testing
+1. Analytics
+1. Documentation
+1. First pilot shop
+
+-----
+
+## 🎯 SUCCESS CRITERIA
+
+**Ready to Launch When:**
+
+- ✅ Can onboard a shop in 15 minutes via wizard
+- ✅ All 20 test scenarios pass
+- ✅ Mobile experience perfect
+- ✅ Analytics tracking
+- ✅ First pilot shop live and working
+
+-----
+
+**Current Status:** [Update this section as you progress]
+
+**Blockers:** [List any blocking issues]
+
+**Next Steps:** [What’s being worked on now]

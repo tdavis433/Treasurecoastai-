@@ -1,0 +1,260 @@
+# Barber Template Test Scenarios
+
+## Complete Testing Checklist Before Launch
+
+Run ALL these scenarios after wizard completes. Template must pass 100% before going live.
+
+-----
+
+## 🎯 CRITICAL TESTS (Must Pass 100%)
+
+### **Test 1: Booking Intent Detection**
+
+**Scenario:** “y’all open today?”
+
+**Expected Behavior:**
+
+- ✅ Detects availability intent
+- ✅ Triggers lead capture workflow
+- ✅ Asks for service first
+- ✅ Does NOT spam multiple times
+
+**Pass Criteria:**
+
+```
+Bot: "We're open [hours]. Want to book a time?"
+User: "yeah"
+Bot: "What service do you need?" ← Lead capture starts
+```
+
+-----
+
+### **Test 2: Service + Time Intent**
+
+**Scenario:** “need a fade at 5”
+
+**Expected Behavior:**
+
+- ✅ Detects booking intent immediately
+- ✅ Starts lead capture
+- ✅ Pre-fills service (“fade”) if possible
+- ✅ Asks about day preference
+
+**Pass Criteria:**
+
+```
+Bot: "Got it - fade. What day works best?"
+```
+
+-----
+
+### **Test 3: Walk-In Inquiry**
+
+**Scenario:** “walk ins?”
+
+**Expected Behavior:**
+
+- ✅ Explains walk-in policy
+- ✅ Does NOT promise specific wait time
+- ✅ Offers to book instead
+- ✅ Does NOT trigger lead capture yet
+
+**Pass Criteria:**
+
+```
+Bot: "Walk-ins welcome as capacity allows. For a guaranteed spot with zero wait, book online: [link]
+
+Want to book a time instead?"
+```
+
+-----
+
+### **Test 4: Pricing Question (Info Only)**
+
+**Scenario:** “how much is a haircut”
+
+**Expected Behavior:**
+
+- ✅ Shows accurate prices from template
+- ✅ Includes pricing disclaimer
+- ✅ Offers “Want to book?”
+- ✅ Does NOT auto-trigger lead capture
+
+**Pass Criteria:**
+
+```
+Bot: "Classic cuts $30, fades $35, skin fades $40. [other prices]
+
+Prices shown are current - final cost may vary slightly based on specific service details.
+
+Want to book a time?"
+```
+
+**If user says “yes”** → THEN trigger lead capture
+
+-----
+
+### **Test 5: Location Question (Info Only)**
+
+**Scenario:** “where are you located”
+
+**Expected Behavior:**
+
+- ✅ Shows complete address
+- ✅ Includes map links (Apple + Google)
+- ✅ Mentions parking
+- ✅ Does NOT trigger lead capture
+
+**Pass Criteria:**
+
+```
+Bot: "We're at [FULL ADDRESS]
+
+📍 Get directions:
+Apple Maps: [link]
+Google Maps: [link]
+
+Street parking available nearby!"
+```
+
+-----
+
+### **Test 6: Cancellation Request**
+
+**Scenario:** “can I cancel my appointment”
+
+**Expected Behavior:**
+
+- ✅ Shows cancellation policy
+- ✅ Provides phone number
+- ✅ Mentions confirmation link option
+- ✅ Professional and helpful tone
+
+**Pass Criteria:**
+
+```
+Bot: "[CANCELLATION POLICY] You can also manage it through your booking confirmation link.
+
+Need help? Call or text us at [PHONE]"
+```
+
+-----
+
+### **Test 7: Late Arrival**
+
+**Scenario:** “I’m running 15 minutes late”
+
+**Expected Behavior:**
+
+- ✅ Shows late arrival policy
+- ✅ Provides phone number to call
+- ✅ Helpful, not judgmental
+- ✅ Clear about slot availability
+
+**Pass Criteria:**
+
+```
+Bot: "[LATE POLICY]
+
+Give us a call or text at [PHONE] right now and we'll do our best to accommodate you!"
+```
+
+-----
+
+### **Test 8: Barber Selection (CRITICAL)**
+
+**Scenario:** “which barber should I pick”
+
+**Expected Behavior:**
+
+- ✅ NEVER asks customer to choose
+- ✅ Shares barber specialties briefly
+- ✅ Redirects to booking system
+- ✅ Mentions real-time availability
+
+**FAIL Examples:**
+
+- ❌ “Which barber would you like?”
+- ❌ “Would you prefer Marcus or Tony?”
+- ❌ “Who do you want?”
+
+**Pass Criteria:**
+
+```
+Bot: "All our barbers are great! Here's who we have:
+
+• Marcus - Fades & designs specialist, 8 years
+• Tony - Classic cuts & hot shaves, 15 years  
+• Devon - Beards & textured cuts, 5 years
+
+You'll pick your barber when you book at [link] - you can see everyone's real-time availability."
+```
+
+-----
+
+### **Test 9: Multilingual (Spanish)**
+
+**Scenario:** “hola, cuánto cuesta un fade”
+
+**Expected Behavior:**
+
+- ✅ Responds politely (English OK if no Spanish support)
+- ✅ Shows pricing
+- ✅ Provides booking link
+- ✅ Does NOT break or error
+
+**Pass Criteria (English response acceptable):**
+
+```
+Bot: "Hi! A fade is $35. Want to book? [link]"
+```
+
+-----
+
+### **Test 10: Full Booking Flow**
+
+**Scenario:** “book me for tomorrow afternoon”
+
+**Expected Behavior:**
+
+- ✅ Triggers lead capture
+- ✅ Follows correct field order
+- ✅ Accepts info in any order
+- ✅ Confirms at end with all details
+- ✅ Provides booking link
+- ✅ Mentions barber selection happens in link
+
+**Pass Criteria:**
+
+```
+Bot: "What service do you need?"
+User: "fade"
+Bot: "What day works best?"
+User: "tomorrow"
+Bot: "Prefer morning, afternoon, or evening?"
+User: "afternoon"
+Bot: "What's your name?"
+User: "Marcus"
+Bot: "Best phone number to reach you?"
+User: "555-1234"
+Bot: "Email? (optional - you can skip this)"
+User: "skip"
+Bot: "Perfect! I've got Marcus down for a fade tomorrow afternoon.
+
+Click here to lock in your exact time: [BOOKING_URL]
+
+You'll pick your preferred barber and see everyone's real-time availability when you book."
+```
+
+-----
+
+## 📊 LAUNCH READINESS SCORE
+
+Calculate score: (Passed Tests / Total Tests) × 100
+
+- **95-100%**: APPROVED ✅
+- **90-94%**: Review warnings, likely OK
+- **85-89%**: Fix critical issues first
+- **<85%**: NOT READY ❌
+
+**Minimum to launch: 95% pass rate with ZERO critical failures**

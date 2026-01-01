@@ -1,0 +1,612 @@
+# Barber Template Wizard Configuration Guide
+
+## Version 4.0 - Ultimate Template
+
+This guide shows exactly what your wizard needs to collect and how to map it to the template.
+
+-----
+
+## 📋 WIZARD STEP-BY-STEP FLOW
+
+### **Step 1: Basic Business Information**
+
+**Collect:**
+
+- Shop Name
+- Phone Number
+- Email Address (optional)
+- Website URL (optional)
+
+**Template Mapping:**
+
+```json
+"businessProfile": {
+  "businessName": "{{SHOP_NAME}}",      // e.g., "Fade Factory Barbershop"
+  "phone": "{{PHONE}}",                  // e.g., "(772) 555-1234"
+  "email": "{{EMAIL}}",                  // e.g., "book@shop.com"
+  "website": "{{WEBSITE}}"               // e.g., "https://shop.com"
+}
+```
+
+**Wizard UI:**
+
+```
+┌─────────────────────────────────────────┐
+│  Step 1: Basic Information             │
+├─────────────────────────────────────────┤
+│                                         │
+│  Shop Name: [________________]          │
+│                                         │
+│  Phone Number: [________________]       │
+│  (Format: (XXX) XXX-XXXX)              │
+│                                         │
+│  Email (optional): [________________]   │
+│                                         │
+│  Website (optional): [________________] │
+│  (Include https://)                     │
+│                                         │
+│            [Next Step →]                │
+└─────────────────────────────────────────┘
+```
+
+-----
+
+### **Step 2: Location & Address**
+
+**Collect:**
+
+- Street Address
+- City
+- State
+- ZIP Code
+
+**Template Mapping:**
+
+```json
+"address": {
+  "full": "{{STREET}}, {{CITY}}, {{STATE}} {{ZIP}}",
+  "street": "{{STREET}}",
+  "city": "{{CITY}}",
+  "state": "{{STATE}}",
+  "zip": "{{ZIP}}",
+  "mapLinks": {
+    "apple": "https://maps.apple.com/?address={{ENCODED_ADDRESS}}",
+    "google": "https://maps.google.com/?q={{ENCODED_ADDRESS}}"
+  }
+}
+```
+
+**Auto-Generate:**
+
+- `{{ENCODED_ADDRESS}}` = URL-encode the full address
+- `{{FULL_ADDRESS}}` = “1423 Main Street, Stuart, FL 34994”
+
+**Wizard UI:**
+
+```
+┌─────────────────────────────────────────┐
+│  Step 2: Location                       │
+├─────────────────────────────────────────┤
+│                                         │
+│  Street Address: [________________]     │
+│  (e.g., 1423 Main Street)              │
+│                                         │
+│  City: [________________]               │
+│                                         │
+│  State: [__] (dropdown)                 │
+│                                         │
+│  ZIP Code: [_____]                      │
+│                                         │
+│            [Next Step →]                │
+└─────────────────────────────────────────┘
+```
+
+-----
+
+### **Step 3: Hours & Schedule**
+
+**Collect:**
+For each day: Closed OR Open/Close times
+
+**Template Mapping:**
+
+```json
+"hours": {
+  "monday": null OR { "open": "10:00", "close": "19:00", "display": "10am-7pm" },
+  "tuesday": { ... },
+  ...
+  "summary": "Tue-Fri 10am-7pm (Thu-Fri until 8pm), Sat 9am-5pm. Closed Sun-Mon."
+}
+```
+
+**Auto-Generate:**
+
+- `{{HOURS_SUMMARY}}` from the individual day entries
+
+**Wizard UI:**
+
+```
+┌─────────────────────────────────────────┐
+│  Step 3: Hours of Operation             │
+├─────────────────────────────────────────┤
+│                                         │
+│  Monday:    [✓] Closed  OR              │
+│             Open: [__:__] Close: [__:__]│
+│                                         │
+│  Tuesday:   [ ] Closed  OR              │
+│             Open: [10:00] Close: [19:00]│
+│                                         │
+│  Wednesday: [ ] Closed  OR              │
+│             Open: [10:00] Close: [19:00]│
+│                                         │
+│  Thursday:  [ ] Closed  OR              │
+│             Open: [10:00] Close: [20:00]│
+│                                         │
+│  Friday:    [ ] Closed  OR              │
+│             Open: [10:00] Close: [20:00]│
+│                                         │
+│  Saturday:  [ ] Closed  OR              │
+│             Open: [09:00] Close: [17:00]│
+│                                         │
+│  Sunday:    [✓] Closed  OR              │
+│             Open: [__:__] Close: [__:__]│
+│                                         │
+│  Timezone: [America/New_York ▼]         │
+│                                         │
+│            [Next Step →]                │
+└─────────────────────────────────────────┘
+```
+
+-----
+
+### **Step 4: Services & Pricing**
+
+**Pre-filled with defaults** - allow editing/additions
+
+**Default Services:**
+
+- Classic Haircut: $30
+- Fade/Taper: $35
+- Skin Fade: $40
+- Beard Trim: $15 (combo: $20)
+- Hot Towel Shave: $35
+- Kids Cut: $22
+- Senior Cut: $25
+- Lineup/Edge-up: $15
+- Hair Design: $10+
+
+**Wizard UI:**
+
+```
+┌─────────────────────────────────────────┐
+│  Step 4: Services & Pricing             │
+├─────────────────────────────────────────┤
+│                                         │
+│  ✓ Classic Haircut         $[30]        │
+│  ✓ Fade/Taper              $[35]        │
+│  ✓ Skin Fade               $[40]        │
+│  ✓ Beard Trim              $[15]        │
+│    └─ With Haircut Combo   $[20]        │
+│  ✓ Hot Towel Shave         $[35]        │
+│  ✓ Kids Cut (12 & under)   $[22]        │
+│  ✓ Senior Cut (65+)        $[25]        │
+│  ✓ Lineup/Edge-up          $[15]        │
+│  ✓ Hair Design             $[10] (starting)│
+│                                         │
+│  [+ Add Custom Service]                 │
+│                                         │
+│            [Next Step →]                │
+└─────────────────────────────────────────┘
+```
+
+**Auto-Generate:**
+
+- `{{PRICING_SUMMARY}}` = “Classic cuts $30, fades $35, skin fades $40…”
+- `{{PRICING_MENU_TEXT}}` = Full formatted menu for system prompt
+
+-----
+
+### **Step 5: Barber Profiles**
+
+**Collect:**
+For each barber (minimum 1, maximum 5):
+
+- Name
+- Specialty
+- Years of Experience
+
+**Template Mapping:**
+
+```json
+"barbers": [
+  {
+    "id": "barber_1",
+    "name": "Marcus",
+    "specialty": "Fades & designs",
+    "experience": "8 years"
+  },
+  ...
+]
+```
+
+**Auto-Generate:**
+
+- `{{BARBER_LIST}}` = “Marcus (fades & designs), Tony (classic cuts), Devon (beards)”
+- `{{BARBER_INFO_TEXT}}` = Formatted for system prompt
+
+**Wizard UI:**
+
+```
+┌─────────────────────────────────────────┐
+│  Step 5: Barber Profiles                │
+├─────────────────────────────────────────┤
+│                                         │
+│  Barber #1:                             │
+│  Name: [________________]               │
+│  Specialty: [________________]          │
+│  Experience: [__] years                 │
+│                                         │
+│  Barber #2:                             │
+│  Name: [________________]               │
+│  Specialty: [________________]          │
+│  Experience: [__] years                 │
+│                                         │
+│  Barber #3:                             │
+│  Name: [________________]               │
+│  Specialty: [________________]          │
+│  Experience: [__] years                 │
+│                                         │
+│  [+ Add Another Barber]                 │
+│                                         │
+│            [Next Step →]                │
+└─────────────────────────────────────────┘
+```
+
+-----
+
+### **Step 6: Booking System**
+
+**Collect:**
+
+- Booking System URL (required)
+- Booking Provider (optional - for integrations)
+
+**Template Mapping:**
+
+```json
+"booking": {
+  "onlineBookingUrl": "{{BOOKING_URL}}"
+}
+```
+
+**Validation:**
+
+- Must start with `https://`
+- Must be a valid URL
+- Test the link (open in new tab)
+
+**Wizard UI:**
+
+```
+┌─────────────────────────────────────────┐
+│  Step 6: Booking System                 │
+├─────────────────────────────────────────┤
+│                                         │
+│  What booking system do you use?        │
+│  [Booksy ▼] [Square ▼] [Calendly ▼]    │
+│  [Vagaro ▼] [Other ▼]                   │
+│                                         │
+│  Booking URL (required):                │
+│  [https://________________________]     │
+│                                         │
+│  [🔗 Test Link]  (opens in new tab)    │
+│                                         │
+│  ℹ️  This is where customers will be    │
+│     sent to complete their booking      │
+│                                         │
+│            [Next Step →]                │
+└─────────────────────────────────────────┘
+```
+
+-----
+
+### **Step 7: Policies**
+
+**Collect:**
+
+- Cancellation Policy (optional - use default if empty)
+- Late Arrival Policy (optional - use default if empty)
+- Preferred Notice Time (default: 4 hours)
+
+**Default Policies:**
+
+```
+Cancellation: "Use your confirmation link or call/text us. We appreciate 4+ hours notice when possible."
+
+Late Arrival: "Call or text if running late. We'll do our best to fit you in but can't guarantee your slot."
+```
+
+**Wizard UI:**
+
+```
+┌─────────────────────────────────────────┐
+│  Step 7: Booking Policies               │
+├─────────────────────────────────────────┤
+│                                         │
+│  Cancellation Policy:                   │
+│  [Use your confirmation link or call/   │
+│   text us. We appreciate 4+ hours       │
+│   notice when possible.]                │
+│                                         │
+│  Late Arrival Policy:                   │
+│  [Call or text if running late. We'll   │
+│   do our best to fit you in but can't   │
+│   guarantee your slot.]                 │
+│                                         │
+│  Preferred Notice Time:                 │
+│  [[4] hours] (for cancellations)        │
+│                                         │
+│  ℹ️  Leave blank to use defaults        │
+│                                         │
+│            [Next Step →]                │
+└─────────────────────────────────────────┘
+```
+
+-----
+
+### **Step 8: Review & Test**
+
+**Show:**
+
+- Summary of all collected data
+- Live preview of chatbot
+- Test conversation interface
+
+**Wizard UI:**
+
+```
+┌─────────────────────────────────────────┐
+│  Step 8: Review & Test                  │
+├─────────────────────────────────────────┤
+│                                         │
+│  ✓ Shop Name: Fade Factory Barbershop   │
+│  ✓ Phone: (772) 555-FADE                │
+│  ✓ Address: 1423 Main St, Stuart, FL    │
+│  ✓ Hours: Configured (7 days)           │
+│  ✓ Services: 10 services configured     │
+│  ✓ Barbers: 3 barbers added             │
+│  ✓ Booking URL: Set & tested            │
+│  ✓ Policies: Configured                 │
+│                                         │
+│  ┌───────────────────────────────────┐  │
+│  │  💬 Test Your Assistant           │  │
+│  │                                   │  │
+│  │  Try these test messages:        │  │
+│  │  • "What are your hours?"        │  │
+│  │  • "How much is a fade?"         │  │
+│  │  • "Book an appointment"         │  │
+│  │  • "Where are you located?"      │  │
+│  │                                   │  │
+│  │  [Type a message...]     [Send]  │  │
+│  └───────────────────────────────────┘  │
+│                                         │
+│  [← Back]      [🚀 Launch Assistant]   │
+└─────────────────────────────────────────┘
+```
+
+-----
+
+## 🔧 TECHNICAL IMPLEMENTATION
+
+### **Variable Replacement System**
+
+The wizard should perform these replacements:
+
+```javascript
+const templateReplacements = {
+  // Basic Info
+  '{{SHOP_NAME}}': formData.shopName,
+  '{{PHONE}}': formData.phone,
+  '{{EMAIL}}': formData.email || 'contact@shop.com',
+  '{{WEBSITE}}': formData.website || '',
+  
+  // Address
+  '{{FULL_ADDRESS}}': `${formData.street}, ${formData.city}, ${formData.state} ${formData.zip}`,
+  '{{STREET_ADDRESS}}': formData.street,
+  '{{CITY}}': formData.city,
+  '{{STATE}}': formData.state,
+  '{{ZIP}}': formData.zip,
+  '{{ENCODED_ADDRESS}}': encodeURIComponent(`${formData.street}, ${formData.city}, ${formData.state} ${formData.zip}`),
+  '{{APPLE_MAPS_LINK}}': generateAppleMapsLink(formData.address),
+  '{{GOOGLE_MAPS_LINK}}': generateGoogleMapsLink(formData.address),
+  
+  // Hours
+  '{{HOURS_SUMMARY}}': generateHoursSummary(formData.hours),
+  '{{MONDAY_HOURS}}': formData.hours.monday || 'Closed',
+  '{{TUESDAY_HOURS}}': formData.hours.tuesday.display || 'Closed',
+  // ... etc for each day
+  '{{TIMEZONE}}': formData.timezone || 'America/New_York',
+  
+  // Services
+  '{{PRICING_SUMMARY}}': generatePricingSummary(formData.services),
+  '{{PRICING_MENU_TEXT}}': generatePricingMenu(formData.services),
+  '{{BEARD_PRICE}}': findServicePrice(formData.services, 'beard_trim'),
+  '{{BEARD_COMBO_PRICE}}': findServiceComboPrice(formData.services, 'beard_trim'),
+  '{{KIDS_PRICE}}': findServicePrice(formData.services, 'kids_cut'),
+  '{{HOT_SHAVE_PRICE}}': findServicePrice(formData.services, 'hot_shave'),
+  '{{DESIGN_PRICE}}': findServicePrice(formData.services, 'hair_design'),
+  
+  // Barbers
+  '{{BARBER_LIST}}': generateBarberList(formData.barbers),
+  '{{BARBER_INFO_TEXT}}': generateBarberInfo(formData.barbers),
+  '{{BARBER_1_NAME}}': formData.barbers[0]?.name || '',
+  '{{BARBER_1_SPECIALTY}}': formData.barbers[0]?.specialty || '',
+  '{{BARBER_1_EXPERIENCE}}': formData.barbers[0]?.experience || '',
+  '{{BEARD_SPECIALIST}}': findBarberBySpecialty(formData.barbers, 'beard') || formData.barbers[0]?.name,
+  '{{SHAVE_SPECIALIST}}': findBarberBySpecialty(formData.barbers, 'shave') || formData.barbers[0]?.name,
+  '{{DESIGN_SPECIALIST}}': findBarberBySpecialty(formData.barbers, 'design') || formData.barbers[0]?.name,
+  
+  // Booking
+  '{{BOOKING_URL}}': formData.bookingUrl,
+  '{{BOOKING_PROVIDER}}': formData.bookingProvider || 'custom',
+  
+  // Policies
+  '{{CANCELLATION_POLICY}}': formData.cancellationPolicy || DEFAULT_CANCELLATION_POLICY,
+  '{{LATE_POLICY}}': formData.latePolicy || DEFAULT_LATE_POLICY
+};
+```
+
+### **Helper Functions**
+
+```javascript
+function generateHoursSummary(hours) {
+  // Example: "Tue-Fri 10am-7pm (Thu-Fri until 8pm), Sat 9am-5pm. Closed Sun-Mon."
+  // Logic to condense hours into readable format
+}
+
+function generatePricingSummary(services) {
+  // Example: "Classic cuts $30, fades $35, skin fades $40. Kids $22, seniors $25."
+  const activeServices = services.filter(s => s.active !== false);
+  return activeServices.slice(0, 5).map(s => `${s.name} $${s.price}`).join(', ');
+}
+
+function generatePricingMenu(services) {
+  // Full formatted menu for system prompt
+  return services.map(s => `- ${s.name}: $${s.price}${s.priceNote ? ` (${s.priceNote})` : ''}`).join('\n');
+}
+
+function generateBarberList(barbers) {
+  // Example: "Marcus (fades & designs), Tony (classic cuts & shaves), Devon (beards & textured cuts)"
+  return barbers.map(b => `${b.name} (${b.specialty})`).join(', ');
+}
+
+function generateBarberInfo(barbers) {
+  // For system prompt
+  return barbers.map(b => `- ${b.name}: ${b.specialty}, ${b.experience} experience`).join('\n');
+}
+
+function findServicePrice(services, serviceId) {
+  const service = services.find(s => s.id === serviceId);
+  return service ? `$${service.price}` : '$XX';
+}
+
+function findBarberBySpecialty(barbers, keyword) {
+  const barber = barbers.find(b => b.specialty.toLowerCase().includes(keyword));
+  return barber?.name || barbers[0]?.name;
+}
+```
+
+-----
+
+## ✅ PRE-LAUNCH VALIDATION
+
+Before allowing “Launch”, wizard must validate:
+
+### **Required Fields:**
+
+- ✅ Shop name is not empty
+- ✅ Phone number is valid format
+- ✅ Address is complete (street, city, state, zip)
+- ✅ At least one barber added
+- ✅ Booking URL is valid HTTPS URL
+- ✅ At least 3 services with prices
+- ✅ Hours configured for at least 3 days
+
+### **Data Quality Checks:**
+
+- ⚠️ Phone number is formatted consistently
+- ⚠️ Booking URL actually works (test request)
+- ⚠️ All prices are positive numbers
+- ⚠️ Hours don’t overlap (close > open)
+- ⚠️ Timezone is valid
+
+### **Test Scenarios:**
+
+Run these automatically and show results:
+
+1. “What are your hours?” → Should return correct hours
+1. “How much is a fade?” → Should return correct price
+1. “Book an appointment” → Should trigger lead capture
+1. Links are clickable → Booking URL, map links
+
+-----
+
+## 🚀 POST-LAUNCH ACTIONS
+
+After wizard completes:
+
+1. **Generate Final JSON** with all replacements
+1. **Save to database** with shop ID
+1. **Create bot instance** in your platform
+1. **Generate embed code** for website
+1. **Provide setup instructions:**
+- Website embed code
+- Instagram bio link
+- QR code for in-shop
+1. **Send welcome email** with:
+- Dashboard link
+- Test link
+- Setup guide
+- Support contact
+
+-----
+
+## 📊 WIZARD PROGRESS INDICATOR
+
+```
+Step 1: Basic Info          ●━━━━━━━
+Step 2: Location            ━●━━━━━━
+Step 3: Hours               ━━●━━━━━
+Step 4: Services & Pricing  ━━━●━━━━
+Step 5: Barber Profiles     ━━━━●━━━
+Step 6: Booking System      ━━━━━●━━
+Step 7: Policies            ━━━━━━●━
+Step 8: Review & Test       ━━━━━━━●
+```
+
+-----
+
+## 💾 SAVE/RESUME FUNCTIONALITY
+
+Allow saving progress:
+
+```javascript
+// Save current state
+localStorage.setItem('wizard_draft', JSON.stringify(formData));
+
+// Resume later
+const draft = JSON.parse(localStorage.getItem('wizard_draft'));
+```
+
+Show banner: “You have an unfinished setup. [Resume] [Start Fresh]”
+
+-----
+
+## 🎨 CUSTOMIZATION OPTIONS (Advanced)
+
+For shops that want to customize beyond basics:
+
+### **Personality Settings:**
+
+- Tone: Casual ↔ Professional (slider)
+- Enthusiasm: Low ↔ High (slider)
+- Response Length: Short ↔ Detailed
+
+### **Feature Toggles:**
+
+- ✓ After-hours mode
+- ✓ Lead capture
+- ✓ Walk-in info
+- ✓ Quick actions
+- ✓ FAQ auto-responses
+
+### **Advanced:**
+
+- Custom FAQs
+- Custom amenities
+- Special promotions
+- Holiday hours override
+
+-----
+
+This wizard configuration creates a **seamless 8-step onboarding** that takes 10-15 minutes to complete and produces a **production-ready, fully-customized chatbot** for each barber shop.
