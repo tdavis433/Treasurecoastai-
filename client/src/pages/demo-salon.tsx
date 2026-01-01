@@ -348,8 +348,24 @@ export default function DemoSalon() {
               <div className="flex items-center gap-2"><Clock className="h-4 w-4" style={{ color: primaryColor }} /><span>Tue-Fri 9-8 • Sat 9-5</span></div>
             </div>
             <div className="mt-6 flex justify-center gap-4">
-              <Button size="lg" style={{ background: primaryColor }} className="text-white font-semibold"><Calendar className="h-4 w-4 mr-2" />Book Appointment</Button>
-              <Button variant="outline" size="lg" className="border-white/20 text-white"><Phone className="h-4 w-4 mr-2" />Call Salon</Button>
+              <Button 
+                size="lg" 
+                style={{ background: primaryColor }} 
+                className="text-white font-semibold"
+                onClick={() => window.TreasureCoastAI?.open()}
+                data-testid="button-book-appointment"
+              >
+                <Calendar className="h-4 w-4 mr-2" />Book Appointment
+              </Button>
+              <Button 
+                variant="outline" 
+                size="lg" 
+                className="border-white/20 text-white"
+                onClick={() => window.location.href = 'tel:+17725550000'}
+                data-testid="button-call-salon"
+              >
+                <Phone className="h-4 w-4 mr-2" />Call Salon
+              </Button>
             </div>
           </div>
         </section>

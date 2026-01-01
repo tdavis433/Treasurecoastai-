@@ -995,15 +995,42 @@ export default function SuperAdmin() {
               </Button>
             </div>
           )}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
-            <div className="h-6 w-6 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-xs font-bold text-white">
-              {currentUser?.username?.charAt(0).toUpperCase()}
-            </div>
-            <span className="text-sm text-white/70">{currentUser?.username}</span>
-          </div>
-          <Button data-testid="button-logout" variant="ghost" size="icon" onClick={handleLogout} className="text-white/70 hover:bg-white/10 hover:text-white">
-            <LogOut className="h-4 w-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10"
+                data-testid="button-user-menu"
+              >
+                <div className="h-6 w-6 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-xs font-bold text-white">
+                  {currentUser?.username?.charAt(0).toUpperCase()}
+                </div>
+                <span className="text-sm text-white/70">{currentUser?.username}</span>
+                <ChevronDown className="h-4 w-4 text-white/50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 bg-[#1a1d24] border-white/10">
+              <DropdownMenuLabel className="text-white/50">My Account</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-white/10" />
+              <DropdownMenuItem 
+                className="text-white hover:bg-white/10 cursor-pointer"
+                onClick={() => setLocation('/change-password')}
+                data-testid="menu-item-account-settings"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Account Settings
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-white/10" />
+              <DropdownMenuItem 
+                className="text-red-400 hover:bg-white/10 cursor-pointer"
+                onClick={handleLogout}
+                data-testid="menu-item-logout"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 

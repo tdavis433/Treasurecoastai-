@@ -74,6 +74,30 @@ export default function SimpleOnboarding() {
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [notes, setNotes] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validateStep2 = () => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!businessName.trim()) {
+      newErrors.businessName = "Business name is required";
+    }
+    
+    if (!contactEmail.trim()) {
+      newErrors.contactEmail = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(contactEmail)) {
+      newErrors.contactEmail = "Please enter a valid email address";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleNextStep2 = () => {
+    if (validateStep2()) {
+      setStep(3);
+    }
+  };
 
   const createClient = useMutation({
     mutationFn: async (data: {
@@ -246,11 +270,17 @@ export default function SimpleOnboarding() {
                   <Input
                     id="businessName"
                     value={businessName}
-                    onChange={(e) => setBusinessName(e.target.value)}
+                    onChange={(e) => {
+                      setBusinessName(e.target.value);
+                      if (errors.businessName) setErrors(prev => ({ ...prev, businessName: '' }));
+                    }}
                     placeholder="e.g., Classic Cuts Barbershop"
-                    className="bg-white/5 border-white/10 text-white"
+                    className={`bg-white/5 border-white/10 text-white ${errors.businessName ? 'border-red-500' : ''}`}
                     data-testid="input-business-name"
                   />
+                  {errors.businessName && (
+                    <p className="text-red-500 text-sm mt-1" data-testid="error-business-name">{errors.businessName}</p>
+                  )}
                 </div>
 
                 <div>
@@ -276,11 +306,17 @@ export default function SimpleOnboarding() {
                       id="contactEmail"
                       type="email"
                       value={contactEmail}
-                      onChange={(e) => setContactEmail(e.target.value)}
+                      onChange={(e) => {
+                        setContactEmail(e.target.value);
+                        if (errors.contactEmail) setErrors(prev => ({ ...prev, contactEmail: '' }));
+                      }}
                       placeholder="john@business.com"
-                      className="bg-white/5 border-white/10 text-white"
+                      className={`bg-white/5 border-white/10 text-white ${errors.contactEmail ? 'border-red-500' : ''}`}
                       data-testid="input-contact-email"
                     />
+                    {errors.contactEmail && (
+                      <p className="text-red-500 text-sm mt-1" data-testid="error-contact-email">{errors.contactEmail}</p>
+                    )}
                   </div>
 
                   <div>
@@ -326,8 +362,7 @@ export default function SimpleOnboarding() {
                   Back
                 </Button>
                 <Button
-                  onClick={() => setStep(3)}
-                  disabled={!businessName || !contactEmail}
+                  onClick={handleNextStep2}
                   className="bg-[#00e5ff] text-black hover:bg-[#00b8cc]"
                   data-testid="button-next-step-2"
                 >

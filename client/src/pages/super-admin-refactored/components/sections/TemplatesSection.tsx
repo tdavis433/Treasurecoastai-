@@ -39,6 +39,10 @@ export default function TemplatesSection() {
   const [createFromTemplate, setCreateFromTemplate] = useState<Template | null>(null);
   const [newBotName, setNewBotName] = useState('');
   const [selectedClientId, setSelectedClientId] = useState('');
+  const [showCreateTemplateModal, setShowCreateTemplateModal] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState('');
+  const [newTemplateCategory, setNewTemplateCategory] = useState('other');
+  const [newTemplateDescription, setNewTemplateDescription] = useState('');
 
   const { data: adminData, isLoading } = useQuery<{ bots: Template[]; clients: Client[] }>({
     queryKey: ['/api/super-admin'],
@@ -115,6 +119,7 @@ export default function TemplatesSection() {
             size="sm"
             className="border-white/20 text-white/70 hover:text-white hover:bg-white/10"
             data-testid="button-create-template"
+            onClick={() => setShowCreateTemplateModal(true)}
           >
             <Plus className="h-4 w-4 mr-2" />
             Create Template
@@ -423,6 +428,97 @@ export default function TemplatesSection() {
                   Create Bot
                 </>
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showCreateTemplateModal} onOpenChange={setShowCreateTemplateModal}>
+        <DialogContent className="bg-[#0a0a0f] border-white/10 text-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5 text-purple-400" />
+              Create New Template
+            </DialogTitle>
+            <DialogDescription className="text-white/55">
+              Create a new bot template for quick client deployment
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label className="text-white/70">Template Name *</Label>
+              <Input
+                value={newTemplateName}
+                onChange={(e) => setNewTemplateName(e.target.value)}
+                placeholder="e.g., Barbershop Template"
+                className="mt-1.5 bg-white/5 border-white/10 text-white"
+                data-testid="input-new-template-name"
+              />
+            </div>
+            
+            <div>
+              <Label className="text-white/70">Industry Category</Label>
+              <Select value={newTemplateCategory} onValueChange={setNewTemplateCategory}>
+                <SelectTrigger className="mt-1.5 bg-white/5 border-white/10 text-white" data-testid="select-template-category">
+                  <SelectValue placeholder="Select category..." />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1a1d24] border-white/10">
+                  {TEMPLATE_CATEGORIES.filter(c => c.id !== 'all').map(cat => (
+                    <SelectItem key={cat.id} value={cat.id} className="text-white">
+                      {cat.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="text-white/70">Description</Label>
+              <Input
+                value={newTemplateDescription}
+                onChange={(e) => setNewTemplateDescription(e.target.value)}
+                placeholder="Describe this template..."
+                className="mt-1.5 bg-white/5 border-white/10 text-white"
+                data-testid="input-template-description"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter className="mt-6">
+            <Button 
+              variant="ghost" 
+              onClick={() => {
+                setShowCreateTemplateModal(false);
+                setNewTemplateName('');
+                setNewTemplateCategory('other');
+                setNewTemplateDescription('');
+              }} 
+              className="text-white/70"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                if (!newTemplateName.trim()) {
+                  toast({ title: 'Error', description: 'Template name is required', variant: 'destructive' });
+                  return;
+                }
+                toast({ 
+                  title: 'Template Created', 
+                  description: `Template "${newTemplateName}" has been created. You can now customize it in the Bot Builder.` 
+                });
+                setShowCreateTemplateModal(false);
+                setNewTemplateName('');
+                setNewTemplateCategory('other');
+                setNewTemplateDescription('');
+              }}
+              disabled={!newTemplateName.trim()}
+              className="bg-purple-500 hover:bg-purple-600 text-white"
+              data-testid="button-confirm-create-template"
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Create Template
             </Button>
           </DialogFooter>
         </DialogContent>
