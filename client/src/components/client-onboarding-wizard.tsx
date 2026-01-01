@@ -12,8 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/glass-card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
-  ChevronRight, ChevronLeft, Check, X, Plus, Loader2, Copy, ExternalLink,
+  ChevronRight, ChevronLeft, ChevronDown, Check, X, Plus, Loader2, Copy, ExternalLink,
   Building2, MapPin, Clock, FileText, Calendar, Bell, Sparkles, ClipboardCheck,
   AlertCircle, CheckCircle2, Globe, Phone, Mail, Store, Utensils, Scissors, Car,
   Home, Dumbbell, Heart, Building, Palette, Briefcase
@@ -67,17 +68,13 @@ interface Template {
   displayOrder: number;
 }
 
-// Step definitions
+// Step definitions - Streamlined 5-step wizard
 const WIZARD_STEPS = [
   { id: 1, label: 'Template', icon: Store, description: 'Choose industry template' },
-  { id: 2, label: 'Business', icon: Building2, description: 'Business name & basics' },
-  { id: 3, label: 'Contact', icon: MapPin, description: 'Contact & location' },
-  { id: 4, label: 'Hours', icon: Clock, description: 'Operating hours' },
-  { id: 5, label: 'Knowledge', icon: FileText, description: 'Services, FAQs, About' },
-  { id: 6, label: 'Booking', icon: Calendar, description: 'Booking behavior' },
-  { id: 7, label: 'Add-ons', icon: Sparkles, description: 'Industry-specific fields' },
-  { id: 8, label: 'Notifications', icon: Bell, description: 'Staff alerts' },
-  { id: 9, label: 'Review', icon: ClipboardCheck, description: 'Review & launch' },
+  { id: 2, label: 'Business Info', icon: Building2, description: 'Business details & contact' },
+  { id: 3, label: 'Hours & Services', icon: Clock, description: 'Hours, services & FAQs' },
+  { id: 4, label: 'Booking & Settings', icon: Calendar, description: 'Booking mode & notifications' },
+  { id: 5, label: 'Review', icon: ClipboardCheck, description: 'Review & launch' },
 ];
 
 // Default operating hours schedule
@@ -280,7 +277,7 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
   const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const isValidHttpsUrl = (url: string) => url.startsWith('https://');
   
-  // Validate current step
+  // Validate current step (5-step wizard)
   const validateStep = useCallback((stepNum: number): boolean => {
     const newErrors: WizardErrors = {};
     
@@ -292,6 +289,7 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
         }
         break;
       case 2:
+        // Business Info step - combines name, slug, contact
         if (!data.businessName.trim()) {
           newErrors.businessName = 'Business name is required';
         }
@@ -300,15 +298,14 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
         } else if (!/^[a-z0-9_]+$/.test(data.slug)) {
           newErrors.slug = 'Slug must be lowercase letters, numbers, and underscores only';
         }
-        break;
-      case 3:
         if (!data.contactEmail.trim()) {
           newErrors.contactEmail = 'Contact email is required';
         } else if (!isValidEmail(data.contactEmail)) {
           newErrors.contactEmail = 'Please enter a valid email address';
         }
         break;
-      case 6:
+      case 4:
+        // Booking & Settings step
         if (data.bookingMode === 'external' && data.externalBookingUrl && !isValidHttpsUrl(data.externalBookingUrl)) {
           newErrors.externalBookingUrl = 'External booking URL must start with https://';
         }
@@ -319,21 +316,22 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
     return Object.keys(newErrors).length === 0;
   }, [data, toast]);
   
-  // Handle next step
+  // Handle next step (5-step wizard)
   const handleNext = () => {
     if (validateStep(step)) {
-      if (step < 9) {
+      if (step < 5) {
         setStep(s => s + 1);
       }
     } else {
       // Mark all fields as touched for current step
       const touchedFields: Record<string, boolean> = { ...touched };
       if (step === 2) {
+        // Business Info step - all required fields
         touchedFields.businessName = true;
         touchedFields.slug = true;
-      } else if (step === 3) {
         touchedFields.contactEmail = true;
-      } else if (step === 6) {
+      } else if (step === 4) {
+        // Booking step
         touchedFields.externalBookingUrl = true;
       }
       setTouched(touchedFields);
@@ -359,7 +357,7 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
   
   // Handle close
   const handleClose = () => {
-    if (step === 9 && result?.success) {
+    if (step === 5 && result?.success) {
       resetWizard();
       onOpenChange(false);
     }
@@ -569,14 +567,14 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
   
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
-      if (!isOpen && step === 9 && result?.success) {
+      if (!isOpen && step === 5 && result?.success) {
         handleClose();
       }
     }}>
       <DialogContent 
         className="bg-[#0a0a0f] border-white/10 max-w-4xl max-h-[90vh] flex flex-col p-0 gap-0"
-        onInteractOutside={(e) => { if (step < 9 || !result?.success) e.preventDefault(); }}
-        onEscapeKeyDown={(e) => { if (step < 9 || !result?.success) e.preventDefault(); }}
+        onInteractOutside={(e) => { if (step < 5 || !result?.success) e.preventDefault(); }}
+        onEscapeKeyDown={(e) => { if (step < 5 || !result?.success) e.preventDefault(); }}
       >
         {/* Header with stepper */}
         <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0 border-b border-white/5">
@@ -719,9 +717,9 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
               </div>
             )}
             
-            {/* Step 2: Business Basics */}
+            {/* Step 2: Business Info (combined Business + Contact) */}
             {step === 2 && (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2 md:col-span-2">
                     <Label className="text-white/85">Business Name *</Label>
@@ -776,24 +774,6 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
-              </div>
-            )}
-            
-            {/* Step 3: Contact/Location */}
-            {step === 3 && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-white/85">Contact Name</Label>
-                    <Input
-                      value={data.contactName}
-                      onChange={(e) => updateData({ contactName: e.target.value })}
-                      className="bg-white/5 border-white/10 text-white"
-                      placeholder="John Smith"
-                      data-testid="wizard-input-contact-name"
-                    />
-                  </div>
                   
                   <div className="space-y-2">
                     <Label className="text-white/85">Contact Email *</Label>
@@ -827,17 +807,6 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
                       className="bg-white/5 border-white/10 text-white"
                       placeholder="(555) 123-4567"
                       data-testid="wizard-input-phone"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label className="text-white/85">Website</Label>
-                    <Input
-                      value={data.websiteUrl}
-                      onChange={(e) => updateData({ websiteUrl: e.target.value })}
-                      className="bg-white/5 border-white/10 text-white"
-                      placeholder="https://example.com"
-                      data-testid="wizard-input-website"
                     />
                   </div>
                   
@@ -881,8 +850,8 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
               </div>
             )}
             
-            {/* Step 4: Hours */}
-            {step === 4 && (
+            {/* Step 3: Hours & Services */}
+            {step === 3 && (
               <div className="space-y-4">
                 <p className="text-white/60 text-sm">Set the operating hours for this business.</p>
                 
@@ -956,8 +925,8 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
               </div>
             )}
             
-            {/* Step 5: Services/FAQs/About */}
-            {step === 5 && (
+            {/* Step 3 continued: Services/FAQs */}
+            {step === 3 && (
               <div className="space-y-6">
                 <div className="space-y-2">
                   <Label className="text-white/85">About the Business</Label>
@@ -1035,8 +1004,8 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
               </div>
             )}
             
-            {/* Step 6: Booking Behavior */}
-            {step === 6 && (
+            {/* Step 4: Booking & Settings */}
+            {step === 4 && (
               <div className="space-y-6">
                 <GlassCard>
                   <GlassCardContent className="p-4">
@@ -1171,8 +1140,8 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
               </div>
             )}
             
-            {/* Step 7: Industry Add-ons */}
-            {step === 7 && (
+            {/* Step 3 continued: Industry Add-ons */}
+            {step === 3 && getIndustryAddonFields().length > 0 && (
               <div className="space-y-4">
                 <p className="text-white/60 text-sm">
                   Configure industry-specific fields for {selectedTemplate?.name || 'this template'}.
@@ -1243,8 +1212,8 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
               </div>
             )}
             
-            {/* Step 8: Notifications */}
-            {step === 8 && (
+            {/* Step 4 continued: Notifications */}
+            {step === 4 && (
               <div className="space-y-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -1328,8 +1297,8 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
               </div>
             )}
             
-            {/* Step 9: Review + Readiness */}
-            {step === 9 && !result?.success && (
+            {/* Step 5: Review + Readiness */}
+            {step === 5 && !result?.success && (
               <div className="space-y-6">
                 {/* Readiness Score */}
                 <GlassCard className={`${
@@ -1444,7 +1413,7 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
             )}
             
             {/* Success State */}
-            {step === 9 && result?.success && (
+            {step === 5 && result?.success && (
               <div className="space-y-6">
                 <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-6 text-center">
                   <CheckCircle2 className="h-16 w-16 text-green-400 mx-auto mb-4" />
@@ -1568,7 +1537,7 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
                   </Button>
                 )}
                 
-                {step < 9 ? (
+                {step < 5 ? (
                   <Button
                     onClick={handleNext}
                     className="bg-cyan-500 hover:bg-cyan-600 text-white"
