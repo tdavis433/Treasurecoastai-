@@ -1,0 +1,79 @@
+{
+  "clientId": "final_test_9zzj",
+  "botId": "final_test_9zzj_main",
+  "name": "Final Test 9zZJ",
+  "description": "AI assistant for Final Test 9zZJ",
+  "businessProfile": {
+    "businessName": "Final Test 9zZJ",
+    "location": "",
+    "phone": "",
+    "email": "",
+    "website": "",
+    "hours": {},
+    "services": [
+      "Haircuts",
+      "Color",
+      "Highlights",
+      "Blowouts",
+      "Treatments",
+      "Styling"
+    ]
+  },
+  "rules": {
+    "allowedTopics": [],
+    "forbiddenTopics": [],
+    "crisisHandling": {
+      "onCrisisKeywords": [],
+      "responseTemplate": "If you are in crisis, please call 911 or your local emergency number."
+    }
+  },
+  "systemPrompt": "You are a friendly AI assistant for a hair salon. You help clients book appointments and answer questions about services and styling.",
+  "faqs": [
+    {
+      "question": "Do I need an appointment or can I walk in?",
+      "answer": "We recommend booking an appointment to guarantee your spot, especially for color services. Walk-ins are welcome when availability allows."
+    },
+    {
+      "question": "How long do salon services take?",
+      "answer": "Haircuts typically take 45-60 minutes. Color services range from 90 minutes (root touch-up) to 3+ hours (full highlights or balayage)."
+    },
+    {
+      "question": "What is your cancellation / no-show policy?",
+      "answer": "We ask for at least 24 hours notice to cancel or reschedule. Late cancellations or no-shows may be subject to a fee."
+    },
+    {
+      "question": "What if I am running late?",
+      "answer": "Please let us know as soon as possible. We'll do our best to accommodate you, but we may need to modify your service or reschedule."
+    },
+    {
+      "question": "Why does color pricing vary?",
+      "answer": "Color pricing depends on hair length, thickness, current color, and desired result. We provide exact quotes during consultation."
+    },
+    {
+      "question": "Can I request a specific stylist?",
+      "answer": "Absolutely! You can request your favorite stylist or choose Any Available for the soonest opening."
+    }
+  ],
+  "automations": {
+    "bookingCapture": {
+      "enabled": true,
+      "mode": "internal",
+      "failsafeEnabled": true
+    }
+  },
+  "personality": {
+    "tone": "friendly",
+    "formality": 30
+  },
+  "quickActions": [],
+  "botType": "salon",
+  "metadata": {
+    "isDemo": false,
+    "isTemplate": false,
+    "clonedFrom": "salon_template",
+    "createdAt": "2026-01-01",
+    "version": "2.0",
+    "industryTemplate": "salon_template",
+    "onboardingStatus": "draft"
+  }
+}

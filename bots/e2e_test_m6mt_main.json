@@ -1,0 +1,57 @@
+{
+  "clientId": "e2e_test_m6mt",
+  "botId": "e2e_test_m6mt_main",
+  "name": "E2E Test m6mT",
+  "description": "AI assistant for E2E Test m6mT",
+  "businessProfile": {
+    "businessName": "E2E Test m6mT",
+    "location": "",
+    "phone": "",
+    "email": "",
+    "website": "",
+    "hours": {},
+    "services": []
+  },
+  "rules": {
+    "allowedTopics": [
+      "general information",
+      "services",
+      "pricing",
+      "hours",
+      "contact"
+    ],
+    "forbiddenTopics": [
+      "medical advice",
+      "legal advice",
+      "financial advice"
+    ],
+    "crisisHandling": {
+      "onCrisisKeywords": [],
+      "responseTemplate": "If you are in crisis, please call 911 or your local emergency number."
+    }
+  },
+  "systemPrompt": "You are a helpful AI assistant for Test Spa Template. Be professional, friendly, and helpful. Answer questions about the business and assist customers.",
+  "faqs": [],
+  "automations": {
+    "bookingCapture": {
+      "enabled": true,
+      "mode": "internal",
+      "failsafeEnabled": true
+    }
+  },
+  "personality": {
+    "tone": "friendly",
+    "formality": 50
+  },
+  "quickActions": [],
+  "botType": "barber",
+  "metadata": {
+    "isDemo": false,
+    "isTemplate": false,
+    "clonedFrom": "custom_test_spa_template_1767237604708",
+    "createdAt": "2026-01-01",
+    "version": "2.0",
+    "industryTemplate": "custom_test_spa_template_1767237604708",
+    "onboardingStatus": "draft"
+  }
+}

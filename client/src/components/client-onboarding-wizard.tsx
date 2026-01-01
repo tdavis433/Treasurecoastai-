@@ -219,12 +219,12 @@ function calculateReadinessScore(data: WizardData, selectedTemplate: Template | 
   const earnedWeight = checks.filter(c => c.passed).reduce((sum, c) => sum + c.weight, 0);
   const score = Math.round((earnedWeight / totalWeight) * 100);
   
-  // Determine status
+  // Determine status - only block if required fields are missing
   const hasRequiredMissing = checks.some(c => c.required && !c.passed);
   let status: 'green' | 'yellow' | 'red';
-  if (hasRequiredMissing || score < 70) {
+  if (hasRequiredMissing) {
     status = 'red';
-  } else if (score < 100) {
+  } else if (score < 80) {
     status = 'yellow';
   } else {
     status = 'green';
@@ -459,13 +459,21 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
       return response.json();
     },
     onSuccess: (resultData) => {
+      // API returns flat structure: { success, clientId, botId, workspaceId, config, seeds }
+      // Map to WizardResult structure for UI
       const wizardResult: WizardResult = {
         success: true,
-        workspace: resultData.workspace,
-        bot: resultData.bot,
+        workspace: {
+          slug: resultData.clientId,
+          name: data.businessName,
+        },
+        bot: {
+          botId: resultData.botId,
+          name: `${data.businessName} Assistant`,
+        },
         clientCredentials: resultData.clientCredentials,
-        widgetEmbedCode: resultData.widgetEmbedCode,
-        viewAsClientUrl: resultData.viewAsClientUrl,
+        widgetEmbedCode: resultData.widgetEmbedCode || `<script src="https://chat.treasurecoastai.com/widget.js" data-client-id="${resultData.clientId}" data-bot-id="${resultData.botId}"></script>`,
+        viewAsClientUrl: resultData.viewAsClientUrl || `/client/${resultData.clientId}`,
       };
       setResult(wizardResult);
       queryClient.invalidateQueries({ queryKey: ["/api/super-admin/clients"] });
@@ -582,7 +590,8 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
       const response = await apiRequest('POST', `/api/admin/bots/${result.bot.botId}/health-check`, {
         clientId: result.workspace.slug
       });
-      setHealthCheck({ loading: false, result: response });
+      const healthResult = await response.json();
+      setHealthCheck({ loading: false, result: healthResult });
     } catch (error) {
       toast({
         title: 'Health check failed',

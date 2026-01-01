@@ -163,6 +163,36 @@
       ],
       "status": "active",
       "createdAt": "2026-01-01"
+    },
+    {
+      "id": "test_shop_l1dy",
+      "name": "Test Shop l1Dy",
+      "type": "Barbershop",
+      "bots": [
+        "test_shop_l1dy_main"
+      ],
+      "status": "active",
+      "createdAt": "2026-01-01"
+    },
+    {
+      "id": "e2e_test_m6mt",
+      "name": "E2E Test m6mT",
+      "type": "barber",
+      "bots": [
+        "e2e_test_m6mt_main"
+      ],
+      "status": "active",
+      "createdAt": "2026-01-01"
+    },
+    {
+      "id": "final_test_9zzj",
+      "name": "Final Test 9zZJ",
+      "type": "Hair Salon",
+      "bots": [
+        "final_test_9zzj_main"
+      ],
+      "status": "active",
+      "createdAt": "2026-01-01"
     }
   ]
 }

@@ -9,7 +9,11 @@ import { Eye, Search, Plus } from "lucide-react";
 import { useLocation } from "wouter";
 import type { Client } from "../../types";
 
-export default function ClientsSection() {
+interface ClientsSectionProps {
+  onNewClient?: () => void;
+}
+
+export default function ClientsSection({ onNewClient }: ClientsSectionProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [, setLocation] = useLocation();
   
@@ -26,7 +30,7 @@ export default function ClientsSection() {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-white">Client Management</h2>
         <Button 
-          onClick={() => setLocation("/super-admin/onboard")}
+          onClick={onNewClient}
           className="bg-[#00e5ff] text-black hover:bg-[#00b8cc]"
           data-testid="button-new-client"
         >

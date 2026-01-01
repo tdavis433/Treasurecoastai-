@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { LogOut, Crown, Settings, ChevronDown } from "lucide-react";
 import { queryClient } from "@/lib/queryClient";
+import { ClientOnboardingWizard } from "@/components/client-onboarding-wizard";
 
 import ClientsSection from "./components/sections/ClientsSection";
 import TemplatesSection from "./components/sections/TemplatesSection";
@@ -25,6 +26,7 @@ interface User {
 export default function SuperAdmin() {
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("clients");
+  const [showOnboardingWizard, setShowOnboardingWizard] = useState(false);
 
   const { data: user } = useQuery<User>({
     queryKey: ["/api/auth/me"],
@@ -102,7 +104,7 @@ export default function SuperAdmin() {
             </TabsList>
 
             <TabsContent value="clients">
-              <ClientsSection />
+              <ClientsSection onNewClient={() => setShowOnboardingWizard(true)} />
             </TabsContent>
 
             <TabsContent value="templates">
@@ -126,6 +128,14 @@ export default function SuperAdmin() {
             </TabsContent>
           </Tabs>
         </div>
+        
+        <ClientOnboardingWizard 
+          open={showOnboardingWizard}
+          onOpenChange={setShowOnboardingWizard}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ["/api/super-admin/clients"] });
+          }}
+        />
       </div>
     </SaveLockProvider>
   );
