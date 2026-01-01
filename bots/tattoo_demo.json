@@ -170,8 +170,8 @@
     "leadCapture": {
       "enabled": true,
       "triggerKeywords": ["book", "appointment", "consultation", "custom", "cover-up"],
-      "captureFields": ["name", "phone", "email", "tattoo_idea", "preferred_artist"],
-      "successMessage": "Awesome! We'll reach out soon to discuss your tattoo idea and schedule a consultation. In the meantime, check out our artists on Instagram @inkandsoulfl!"
+      "captureFields": ["name", "phone", "email", "tattoo_idea"],
+      "successMessage": "Awesome! Book your free consultation here: https://inkandsoulfl.com/book - You'll see each artist's availability and can pick the perfect time. Check out our work on Instagram @inkandsoulfl!"
     }
   },
   "personality": {
