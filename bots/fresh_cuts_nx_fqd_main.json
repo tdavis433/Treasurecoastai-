@@ -1,0 +1,82 @@
+{
+  "clientId": "fresh_cuts_nx_fqd",
+  "botId": "fresh_cuts_nx_fqd_main",
+  "name": "Fresh Cuts NX-fqD",
+  "description": "AI assistant for Fresh Cuts NX-fqD",
+  "businessProfile": {
+    "businessName": "Fresh Cuts NX-fqD",
+    "location": "456 Harbor Drive, Fort Pierce, FL 34950",
+    "phone": "",
+    "email": "",
+    "website": "",
+    "hours": {},
+    "services": [
+      "Haircuts",
+      "Fades",
+      "Beard Trims",
+      "Hot Towel Shave",
+      "Kids Cuts"
+    ],
+    "streetAddress": "456 Harbor Drive",
+    "city": "Fort Pierce",
+    "state": "FL",
+    "zip": "34950"
+  },
+  "rules": {
+    "allowedTopics": [],
+    "forbiddenTopics": [],
+    "crisisHandling": {
+      "onCrisisKeywords": [],
+      "responseTemplate": "If you are in crisis, please call 911 or your local emergency number."
+    }
+  },
+  "systemPrompt": "You are a friendly AI assistant for a barbershop. You help clients book appointments and answer questions about services.",
+  "faqs": [
+    {
+      "question": "How long does a haircut take?",
+      "answer": "Most cuts run 30-45 minutes. Fades and combo services usually take 45-60 minutes depending on the style."
+    },
+    {
+      "question": "Do I need an appointment?",
+      "answer": "Walk-ins are welcome when available, but booking an appointment is the best way to lock in your preferred time."
+    },
+    {
+      "question": "What forms of payment do you accept?",
+      "answer": "We accept cash, credit/debit cards, and most mobile payment options."
+    },
+    {
+      "question": "What is your cancellation / no-show policy?",
+      "answer": "We ask for notice if you need to cancel or reschedule. No-shows may be subject to a fee depending on the service."
+    },
+    {
+      "question": "What if I am running late?",
+      "answer": "If you are running late, message us ASAP. We will do our best to fit you in, but we may need to adjust the service or reschedule."
+    },
+    {
+      "question": "Can I request a specific barber or stylist?",
+      "answer": "Yes — you can request a specific barber/stylist, or choose Any available to get the soonest opening."
+    }
+  ],
+  "automations": {
+    "bookingCapture": {
+      "enabled": true,
+      "mode": "internal",
+      "failsafeEnabled": true
+    }
+  },
+  "personality": {
+    "tone": "casual",
+    "formality": 20
+  },
+  "quickActions": [],
+  "botType": "barber",
+  "metadata": {
+    "isDemo": false,
+    "isTemplate": false,
+    "clonedFrom": "barber_template",
+    "createdAt": "2026-01-01",
+    "version": "2.0",
+    "industryTemplate": "barber_template",
+    "onboardingStatus": "draft"
+  }
+}

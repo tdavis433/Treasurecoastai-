@@ -203,6 +203,16 @@
       ],
       "status": "active",
       "createdAt": "2026-01-01"
+    },
+    {
+      "id": "fresh_cuts_nx_fqd",
+      "name": "Fresh Cuts NX-fqD",
+      "type": "Barbershop",
+      "bots": [
+        "fresh_cuts_nx_fqd_main"
+      ],
+      "status": "active",
+      "createdAt": "2026-01-01"
     }
   ]
 }
