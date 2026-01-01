@@ -1524,12 +1524,12 @@ function BotOverviewTab({ botId, botConfig }: { botId: string; botConfig: BotCon
             <div className="space-y-4">
               <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
                 <span className="text-white/70">Business Name</span>
-                <span className="text-white font-medium">{botConfig.businessProfile.businessName}</span>
+                <span className="text-white font-medium">{botConfig.businessProfile?.businessName || 'Not configured'}</span>
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
                 <span className="text-white/70">Business Type</span>
                 <NeonBadge variant="default" className="capitalize">
-                  {botConfig.businessProfile.type.replace('_', ' ')}
+                  {(botConfig.businessProfile?.type || 'other').replace('_', ' ')}
                 </NeonBadge>
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
@@ -1827,11 +1827,11 @@ function TestChatTab({ botId, botConfig }: { botId: string; botConfig: BotConfig
             <div className="space-y-3 text-sm">
               <div>
                 <p className="text-white/55">Business</p>
-                <p className="text-white font-medium">{botConfig.businessProfile.businessName}</p>
+                <p className="text-white font-medium">{botConfig.businessProfile?.businessName || 'Not configured'}</p>
               </div>
               <div>
                 <p className="text-white/55">Type</p>
-                <p className="text-white capitalize">{botConfig.businessProfile.type.replace('_', ' ')}</p>
+                <p className="text-white capitalize">{(botConfig.businessProfile?.type || 'other').replace('_', ' ')}</p>
               </div>
               <div>
                 <p className="text-white/55">FAQs Available</p>
