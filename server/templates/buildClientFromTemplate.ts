@@ -119,6 +119,43 @@ function normalizeFaqQuestion(question: string): string {
 }
 
 /**
+ * Replace placeholders in FAQ answers with actual business data
+ * Supports: {{businessName}}, {{location}}, {{phone}}, {{email}}, {{website}}, {{mapsUrl}}
+ */
+function replaceFaqPlaceholders(
+  faqs: BotFaq[],
+  businessProfile: BotBusinessProfile,
+  contact?: { phone?: string; email?: string }
+): BotFaq[] {
+  // Build Maps URL from location (URL-encode the address)
+  const mapsUrl = businessProfile.location 
+    ? `https://maps.google.com/?q=${encodeURIComponent(businessProfile.location)}`
+    : '';
+  const appleMapsUrl = businessProfile.location
+    ? `https://maps.apple.com/?address=${encodeURIComponent(businessProfile.location)}`
+    : '';
+  
+  const replacements: Record<string, string> = {
+    '{{businessName}}': businessProfile.businessName || '',
+    '{{location}}': businessProfile.location || '',
+    '{{phone}}': contact?.phone || businessProfile.phone || '',
+    '{{email}}': contact?.email || businessProfile.email || '',
+    '{{website}}': businessProfile.website || '',
+    '{{mapsUrl}}': mapsUrl,
+    '{{googleMapsUrl}}': mapsUrl,
+    '{{appleMapsUrl}}': appleMapsUrl,
+  };
+  
+  return faqs.map(faq => ({
+    ...faq,
+    answer: Object.entries(replacements).reduce(
+      (text, [placeholder, value]) => text.replace(new RegExp(placeholder.replace(/[{}]/g, '\\$&'), 'g'), value),
+      faq.answer
+    ),
+  }));
+}
+
+/**
  * Merge FAQs with deduplication by normalized question
  * Template FAQs come first, custom FAQs override matching ones
  */
@@ -282,7 +319,10 @@ export function buildClientFromTemplate(
   // Merge FAQs with deduplication
   const templateFaqs = templateConfig.faqs || [];
   const customFaqs = overrides.customFaqs || [];
-  const mergedFaqs = mergeFaqs(templateFaqs, customFaqs);
+  const rawMergedFaqs = mergeFaqs(templateFaqs, customFaqs);
+  
+  // Replace placeholders in FAQ answers with actual business data
+  const mergedFaqs = replaceFaqPlaceholders(rawMergedFaqs, mergedBusinessProfile, overrides.contact);
   
   // Get behavior preset (default to support_lead_focused)
   const behaviorPreset = overrides.behaviorPreset || 'support_lead_focused';

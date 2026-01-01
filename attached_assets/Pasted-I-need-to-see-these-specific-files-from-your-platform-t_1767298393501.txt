@@ -1,0 +1,214 @@
+I need to see these specific files from your platform to validate everything works together:
+
+## 📋 **Files I Need to Review:**
+
+### **1. Your Existing Wizard Code**
+
+**Path:** Probably something like:
+
+- `/wizard/barber-onboarding.js` or `.tsx`
+- `/components/wizard/BarberWizard.tsx`
+- `/pages/onboarding/barber.tsx`
+
+**What I’m checking:**
+
+- ✅ Does it collect all required fields?
+- ✅ Can it handle the `{{VARIABLE}}` replacement?
+- ✅ Does it have all 8 steps we designed?
+- ✅ Validation logic in place?
+
+-----
+
+### **2. Template Loading/Processing System**
+
+**Path:** Something like:
+
+- `/lib/template-processor.js`
+- `/utils/loadTemplate.js`
+- `/services/bot-creator.js`
+
+**What I’m checking:**
+
+- ✅ How does it load the template JSON?
+- ✅ How does it replace variables?
+- ✅ Where does it save the final processed template?
+- ✅ Can it handle all our new variables?
+
+-----
+
+### **3. Bot Runtime/Engine**
+
+**Path:** Like:
+
+- `/bot/engine.js`
+- `/services/conversation-handler.js`
+- `/lib/chat-processor.js`
+
+**What I’m checking:**
+
+- ✅ How does intent detection work?
+- ✅ Is session state tracking implemented?
+- ✅ Can it handle `triggerOncePerSession`?
+- ✅ How does lead capture work currently?
+- ✅ Can it enforce the “no barber selection in chat” rule?
+
+-----
+
+### **4. Current Barber Template (Old Version)**
+
+**Path:**
+
+- `/templates/barber_demo.json` (the one you uploaded earlier)
+- Or wherever current templates live
+
+**What I’m checking:**
+
+- ✅ Compare old vs new structure
+- ✅ Identify breaking changes
+- ✅ Migration plan needed?
+
+-----
+
+### **5. Database Schema (if applicable)**
+
+**Path:**
+
+- `/prisma/schema.prisma`
+- `/db/schema.sql`
+- Or your database models
+
+**What I’m checking:**
+
+- ✅ Can it store all the new fields?
+- ✅ Session state tracking schema?
+- ✅ Lead capture data structure?
+
+-----
+
+### **6. Frontend Chat Component**
+
+**Path:**
+
+- `/components/Chat.tsx`
+- `/components/BotWidget.tsx`
+- `/lib/chat-ui.js`
+
+**What I’m checking:**
+
+- ✅ Quick actions implementation
+- ✅ Mobile optimization
+- ✅ Link clickability (phone, maps, booking)
+- ✅ Message formatting
+
+-----
+
+## 🎯 **Minimum Required for Validation:**
+
+If you can only share a few files, prioritize these 3:
+
+1. **Wizard code** - Need to see how you collect shop data
+1. **Template processor** - Need to see how variables are replaced
+1. **Bot engine/conversation handler** - Need to see how conversations work
+
+-----
+
+## 📤 **How to Share:**
+
+You can either:
+
+**Option A:** Upload the files directly
+
+```
+Just drag and drop the files here
+```
+
+**Option B:** Show me your project structure
+
+```bash
+# Run this in your project root
+tree -L 3 -I 'node_modules|.git|dist|build'
+```
+
+**Option C:** Share specific code snippets
+
+```
+Copy/paste the key functions from each file
+```
+
+-----
+
+## 🔍 **What I’ll Validate:**
+
+Once I see your files, I’ll check:
+
+### **Compatibility Checks:**
+
+- [ ] Template structure matches your system
+- [ ] All variables can be replaced by wizard
+- [ ] Intent detection works with our triggers
+- [ ] Session state can be tracked
+- [ ] Lead capture flow compatible
+- [ ] After-hours detection works
+- [ ] Human handoff can be implemented
+
+### **Integration Points:**
+
+- [ ] Wizard → Template (data flow)
+- [ ] Template → Bot Engine (execution)
+- [ ] Bot → Database (persistence)
+- [ ] Bot → Frontend (rendering)
+
+### **Missing Features:**
+
+- [ ] What needs to be built?
+- [ ] What can use existing code?
+- [ ] What needs refactoring?
+
+-----
+
+## 💬 **Quick Questions While We Wait:**
+
+To speed things up, can you answer these:
+
+1. **How does your wizard currently work?**
+
+- Is it a multi-step form?
+- Does it save drafts?
+- How does it create the final bot?
+
+1. **How do you handle variables in templates?**
+
+- Find/replace in JSON?
+- Template strings at runtime?
+- Some other system?
+
+1. **How does lead capture work now?**
+
+- Keyword triggers?
+- AI detection?
+- Manual flow?
+
+1. **Do you track session state?**
+
+- Per conversation?
+- In database or in-memory?
+- How long do sessions last?
+
+1. **What’s your tech stack?**
+
+- Frontend: React? Next.js? Vue?
+- Backend: Node? Python? Other?
+- Database: Postgres? MongoDB? Other?
+- AI: OpenAI? Anthropic? Custom?
+
+-----
+
+Once I see your actual code, I can give you:
+
+- ✅ Exact compatibility analysis
+- ✅ Migration guide (old template → new)
+- ✅ Code modifications needed
+- ✅ Implementation timeline
+- ✅ Green light to onboard (or what needs fixing first)
+
+**Upload whatever files you can share!**
