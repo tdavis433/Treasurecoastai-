@@ -459,6 +459,49 @@ export async function getTemplateById(templateId: string): Promise<any | null> {
   }
 }
 
+export async function createTemplate(data: {
+  templateId: string;
+  name: string;
+  description?: string;
+  botType: string;
+  icon?: string;
+  defaultConfig: {
+    businessProfile: Record<string, any>;
+    systemPrompt: string;
+    faqs: Array<{ question: string; answer: string }>;
+    rules: Record<string, any>;
+    automations: Record<string, any>;
+    theme: Record<string, any>;
+    personality: Record<string, any>;
+  };
+  displayOrder?: number;
+  isActive?: boolean;
+}): Promise<{ success: boolean; template?: any; error?: string }> {
+  try {
+    const existing = await getTemplateById(data.templateId);
+    if (existing) {
+      return { success: false, error: `Template with ID '${data.templateId}' already exists` };
+    }
+    
+    const [template] = await db.insert(botTemplates).values({
+      templateId: data.templateId,
+      name: data.name,
+      description: data.description || '',
+      botType: data.botType,
+      icon: data.icon || 'Bot',
+      defaultConfig: data.defaultConfig,
+      displayOrder: data.displayOrder || 999,
+      isActive: data.isActive !== false,
+    }).returning();
+    
+    structuredLogger.info('Template created', { templateId: data.templateId, name: data.name });
+    return { success: true, template };
+  } catch (error) {
+    structuredLogger.error('Error creating template', { templateId: data.templateId, error: String(error) });
+    return { success: false, error: String(error) };
+  }
+}
+
 export function getClients(): ClientsData {
   if (isClientsCacheValid() && clientsCache) {
     return clientsCache;

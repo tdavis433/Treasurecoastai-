@@ -21,6 +21,7 @@ import {
   getAllBotConfigsAsync,
   getAllTemplates,
   getTemplateById,
+  createTemplate,
   getWorkspaces,
   getWorkspaceBySlug,
   createWorkspace,
@@ -6561,6 +6562,71 @@ These suggestions should be relevant to what was just discussed and help guide t
     } catch (error) {
       structuredLogger.error("Get templates error:", error);
       res.status(500).json({ error: "Failed to fetch templates" });
+    }
+  });
+
+  // Create a new template
+  app.post("/api/super-admin/templates", requireSuperAdmin, async (req, res) => {
+    try {
+      const { name, description, botType, icon } = req.body;
+      
+      if (!name?.trim()) {
+        return res.status(400).json({ error: "Template name is required" });
+      }
+      
+      if (!botType?.trim()) {
+        return res.status(400).json({ error: "Bot type/category is required" });
+      }
+      
+      const templateId = `custom_${name.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now()}`;
+      
+      const result = await createTemplate({
+        templateId,
+        name: name.trim(),
+        description: description?.trim() || `Custom ${name} template`,
+        botType: botType.trim(),
+        icon: icon || 'Bot',
+        defaultConfig: {
+          businessProfile: {
+            businessName: name,
+            type: botType,
+            location: '',
+            phone: '',
+            email: '',
+            website: '',
+            hours: { officeHours: 'Mon-Fri 9am-5pm' },
+            services: [],
+          },
+          systemPrompt: `You are a helpful AI assistant for ${name}. Be professional, friendly, and helpful. Answer questions about the business and assist customers.`,
+          faqs: [],
+          rules: {
+            allowedTopics: ['general information', 'services', 'pricing', 'hours', 'contact'],
+            forbiddenTopics: ['medical advice', 'legal advice', 'financial advice'],
+          },
+          automations: {},
+          theme: {
+            primaryColor: '#00e5ff',
+            headerStyle: 'gradient',
+          },
+          personality: {
+            style: 'professional',
+            traits: ['helpful', 'friendly', 'knowledgeable'],
+          },
+        },
+      });
+      
+      if (result.success) {
+        res.status(201).json({ 
+          success: true, 
+          template: result.template,
+          message: 'Template created successfully'
+        });
+      } else {
+        res.status(400).json({ error: result.error || 'Failed to create template' });
+      }
+    } catch (error) {
+      structuredLogger.error("Create template error:", error);
+      res.status(500).json({ error: "Failed to create template" });
     }
   });
 

@@ -4,7 +4,8 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { TreasureCoastLogo } from "@/components/treasure-coast-logo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LogOut, Crown } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
+import { LogOut, Crown, Settings, ChevronDown } from "lucide-react";
 import { queryClient } from "@/lib/queryClient";
 
 import ClientsSection from "./components/sections/ClientsSection";
@@ -49,19 +50,42 @@ export default function SuperAdmin() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-4">
-                <span className="text-white/60 text-sm" data-testid="text-username">{user?.username}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleLogout}
-                  className="text-white/60 hover:text-white"
-                  data-testid="button-logout"
-                >
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Logout
-                </Button>
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10"
+                    data-testid="button-user-menu"
+                  >
+                    <div className="h-6 w-6 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-xs font-bold text-white">
+                      {user?.username?.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="text-sm text-white/70">{user?.username}</span>
+                    <ChevronDown className="h-4 w-4 text-white/50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48 bg-[#1a1d24] border-white/10">
+                  <DropdownMenuLabel className="text-white/50">My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-white/10" />
+                  <DropdownMenuItem 
+                    className="text-white hover:bg-white/10 cursor-pointer"
+                    onClick={() => setLocation('/change-password')}
+                    data-testid="menu-item-account-settings"
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Account Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-white/10" />
+                  <DropdownMenuItem 
+                    className="text-red-400 hover:bg-white/10 cursor-pointer"
+                    onClick={handleLogout}
+                    data-testid="menu-item-logout"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>

@@ -44,11 +44,41 @@ export default function TemplatesSection() {
   const [newTemplateCategory, setNewTemplateCategory] = useState('other');
   const [newTemplateDescription, setNewTemplateDescription] = useState('');
 
-  const { data: adminData, isLoading } = useQuery<{ bots: Template[]; clients: Client[] }>({
+  const { data: adminData, isLoading: adminLoading } = useQuery<{ bots: Template[]; clients: Client[] }>({
     queryKey: ['/api/super-admin'],
   });
 
-  const templates = (adminData?.bots || []).filter(bot => bot.metadata?.isTemplate) as Template[];
+  const { data: dbTemplates, isLoading: templatesLoading } = useQuery<Array<{
+    id: string;
+    templateId: string;
+    name: string;
+    description: string;
+    botType: string;
+    icon: string;
+    isActive: boolean;
+    displayOrder: number;
+    defaultConfig: any;
+  }>>({
+    queryKey: ['/api/super-admin/templates'],
+  });
+
+  const isLoading = adminLoading || templatesLoading;
+
+  // Merge bot templates (from metadata) with database templates
+  const botTemplates = (adminData?.bots || []).filter(bot => bot.metadata?.isTemplate) as Template[];
+  const templates = [
+    ...botTemplates,
+    ...(dbTemplates || []).map(t => ({
+      botId: t.templateId,
+      name: t.name,
+      description: t.description || '',
+      metadata: { 
+        isTemplate: true, 
+        templateCategory: t.botType 
+      },
+      defaultConfig: t.defaultConfig,
+    } as Template))
+  ];
   const clients = adminData?.clients || [];
 
   const existingCategories = new Set(templates.map(t => t.metadata?.templateCategory || 'other'));
@@ -88,6 +118,44 @@ export default function TemplatesSection() {
       template: createFromTemplate,
       clientId: selectedClientId,
       name: newBotName.trim(),
+    });
+  };
+
+  const createTemplateMutation = useMutation({
+    mutationFn: async (data: { name: string; category: string; description: string }) => {
+      return apiRequest('POST', '/api/super-admin/templates', {
+        name: data.name,
+        description: data.description,
+        botType: data.category,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/super-admin'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/super-admin/templates'] });
+      setShowCreateTemplateModal(false);
+      setNewTemplateName('');
+      setNewTemplateCategory('other');
+      setNewTemplateDescription('');
+      toast({ title: 'Template Created', description: 'New template has been created. You can now customize it in the Bot Builder.' });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Error', 
+        description: error?.message || 'Failed to create template', 
+        variant: 'destructive' 
+      });
+    }
+  });
+
+  const handleCreateTemplate = () => {
+    if (!newTemplateName.trim()) {
+      toast({ title: 'Error', description: 'Template name is required', variant: 'destructive' });
+      return;
+    }
+    createTemplateMutation.mutate({
+      name: newTemplateName.trim(),
+      category: newTemplateCategory,
+      description: newTemplateDescription.trim(),
     });
   };
 
@@ -499,26 +567,22 @@ export default function TemplatesSection() {
               Cancel
             </Button>
             <Button 
-              onClick={() => {
-                if (!newTemplateName.trim()) {
-                  toast({ title: 'Error', description: 'Template name is required', variant: 'destructive' });
-                  return;
-                }
-                toast({ 
-                  title: 'Template Created', 
-                  description: `Template "${newTemplateName}" has been created. You can now customize it in the Bot Builder.` 
-                });
-                setShowCreateTemplateModal(false);
-                setNewTemplateName('');
-                setNewTemplateCategory('other');
-                setNewTemplateDescription('');
-              }}
-              disabled={!newTemplateName.trim()}
+              onClick={handleCreateTemplate}
+              disabled={!newTemplateName.trim() || createTemplateMutation.isPending}
               className="bg-purple-500 hover:bg-purple-600 text-white"
               data-testid="button-confirm-create-template"
             >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Create Template
+              {createTemplateMutation.isPending ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Create Template
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
