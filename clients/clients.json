@@ -153,6 +153,16 @@
       ],
       "status": "active",
       "createdAt": "2025-12-31"
+    },
+    {
+      "id": "test_client_qa_9jfg",
+      "name": "Test Client QA-9jfG",
+      "type": "Barbershop",
+      "bots": [
+        "test_client_qa_9jfg_main"
+      ],
+      "status": "active",
+      "createdAt": "2026-01-01"
     }
   ]
 }
