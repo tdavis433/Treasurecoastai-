@@ -15,6 +15,7 @@ import AnalyticsSection from "./components/sections/AnalyticsSection";
 import UsersSection from "./components/sections/UsersSection";
 import BillingSection from "./components/sections/BillingSection";
 import LogsSection from "./components/sections/LogsSection";
+import BotRequestsSection from "./components/sections/BotRequestsSection";
 import { SaveLockProvider } from "./hooks/useSaveLock";
 
 interface User {
@@ -96,6 +97,7 @@ export default function SuperAdmin() {
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-8 bg-white/5 border border-white/10">
               <TabsTrigger value="clients" data-testid="tab-clients">Clients</TabsTrigger>
+              <TabsTrigger value="requests" data-testid="tab-requests">Bot Requests</TabsTrigger>
               <TabsTrigger value="templates" data-testid="tab-templates">Templates</TabsTrigger>
               <TabsTrigger value="analytics" data-testid="tab-analytics">Analytics</TabsTrigger>
               <TabsTrigger value="users" data-testid="tab-users">Users</TabsTrigger>
@@ -105,6 +107,10 @@ export default function SuperAdmin() {
 
             <TabsContent value="clients">
               <ClientsSection onNewClient={() => setShowOnboardingWizard(true)} />
+            </TabsContent>
+
+            <TabsContent value="requests">
+              <BotRequestsSection />
             </TabsContent>
 
             <TabsContent value="templates">
