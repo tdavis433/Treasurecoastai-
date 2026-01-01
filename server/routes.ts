@@ -98,6 +98,7 @@ import { csrfProtection } from './csrfMiddleware';
 import { structuredLogger } from './structuredLogger';
 import { buildClientFromTemplate, validateTemplateForProvisioning, ensureTemplatesSeeded, type TemplateOverrides } from './templates';
 import { routeRecoveryMessage, isSoberLivingBusiness, type RecoveryIntent } from './recoveryRouter';
+import { runBotHealthCheck, type BotHealthCheckResult } from './botHealthCheck';
 
 // =============================================
 // PHASE 2.4: SIGNED WIDGET TOKENS
@@ -5178,6 +5179,28 @@ These suggestions should be relevant to what was just discussed and help guide t
     }
   });
 
+  // =============================================
+  // BOT HEALTH CHECK (Super Admin Only)
+  // Auto-test bot responses for common queries
+  // =============================================
+  
+  app.post("/api/admin/bots/:botId/health-check", requireSuperAdmin, async (req, res) => {
+    try {
+      const { botId } = req.params;
+      const { clientId } = req.body;
+      
+      if (!clientId) {
+        return res.status(400).json({ error: "clientId is required" });
+      }
+      
+      const result = await runBotHealthCheck(clientId, botId);
+      res.json(result);
+    } catch (error) {
+      structuredLogger.error("Bot health check error:", error);
+      res.status(500).json({ error: "Failed to run health check" });
+    }
+  });
+  
   // =============================================
   // ADMIN PLATFORM ERRORS (Super Admin Only)
   // Quick view of recent platform errors

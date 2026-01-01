@@ -256,6 +256,15 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [result, setResult] = useState<WizardResult | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [healthCheck, setHealthCheck] = useState<{
+    loading: boolean;
+    result: null | {
+      overallStatus: 'healthy' | 'issues' | 'critical';
+      score: number;
+      tests: Array<{ id: string; name: string; status: 'pass' | 'fail' | 'warning'; response?: string }>;
+      recommendations: string[];
+    };
+  }>({ loading: false, result: null });
   
   // Autosave state
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -562,6 +571,25 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
         return [
           { key: 'customField1', label: 'Additional Info', type: 'textarea' },
         ];
+    }
+  };
+  
+  const runHealthCheck = async () => {
+    if (!result?.workspace?.slug || !result?.bot?.botId) return;
+    
+    setHealthCheck({ loading: true, result: null });
+    try {
+      const response = await apiRequest('POST', `/api/admin/bots/${result.bot.botId}/health-check`, {
+        clientId: result.workspace.slug
+      });
+      setHealthCheck({ loading: false, result: response });
+    } catch (error) {
+      toast({
+        title: 'Health check failed',
+        description: 'Could not complete bot health check',
+        variant: 'destructive'
+      });
+      setHealthCheck({ loading: false, result: null });
     }
   };
   
@@ -1498,6 +1526,100 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
                     </GlassCardContent>
                   </GlassCard>
                 )}
+                
+                <GlassCard>
+                  <GlassCardHeader>
+                    <GlassCardTitle className="text-sm flex items-center justify-between">
+                      <span>Bot Health Check</span>
+                      {healthCheck.result && (
+                        <Badge 
+                          variant={healthCheck.result.overallStatus === 'healthy' ? 'default' : 'destructive'}
+                          className={healthCheck.result.overallStatus === 'healthy' ? 'bg-green-500/20 text-green-400' : ''}
+                        >
+                          {healthCheck.result.score}% - {healthCheck.result.overallStatus}
+                        </Badge>
+                      )}
+                    </GlassCardTitle>
+                  </GlassCardHeader>
+                  <GlassCardContent>
+                    {!healthCheck.result && !healthCheck.loading && (
+                      <div className="text-center py-4">
+                        <p className="text-white/60 text-sm mb-3">
+                          Run automated tests to verify your bot responds correctly to common queries.
+                        </p>
+                        <Button
+                          onClick={runHealthCheck}
+                          className="bg-cyan-500/20 border border-cyan-500/30 hover:bg-cyan-500/30 text-cyan-400"
+                          data-testid="wizard-run-health-check"
+                        >
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Run Health Check
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {healthCheck.loading && (
+                      <div className="text-center py-6">
+                        <Loader2 className="h-8 w-8 text-cyan-400 mx-auto animate-spin mb-3" />
+                        <p className="text-white/60 text-sm">Testing bot responses...</p>
+                      </div>
+                    )}
+                    
+                    {healthCheck.result && (
+                      <div className="space-y-3">
+                        {healthCheck.result.tests.map((test) => (
+                          <div 
+                            key={test.id}
+                            className={`flex items-center justify-between p-2 rounded-lg ${
+                              test.status === 'pass' ? 'bg-green-500/10' : 
+                              test.status === 'warning' ? 'bg-yellow-500/10' : 
+                              'bg-red-500/10'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              {test.status === 'pass' ? (
+                                <CheckCircle2 className="h-4 w-4 text-green-400" />
+                              ) : test.status === 'warning' ? (
+                                <AlertCircle className="h-4 w-4 text-yellow-400" />
+                              ) : (
+                                <X className="h-4 w-4 text-red-400" />
+                              )}
+                              <span className="text-white text-sm">{test.name}</span>
+                            </div>
+                            <Badge 
+                              variant={test.status === 'pass' ? 'default' : 'destructive'}
+                              className={`text-xs ${test.status === 'pass' ? 'bg-green-500/20 text-green-400' : test.status === 'warning' ? 'bg-yellow-500/20 text-yellow-400' : ''}`}
+                            >
+                              {test.status}
+                            </Badge>
+                          </div>
+                        ))}
+                        
+                        {healthCheck.result.recommendations.length > 0 && (
+                          <div className="mt-4 p-3 bg-white/5 rounded-lg">
+                            <h5 className="text-white/80 text-sm font-medium mb-2">Recommendations:</h5>
+                            <ul className="text-white/60 text-xs space-y-1">
+                              {healthCheck.result.recommendations.map((rec, idx) => (
+                                <li key={idx}>• {rec}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={runHealthCheck}
+                          className="w-full mt-2 text-white/60 hover:text-white"
+                          data-testid="wizard-rerun-health-check"
+                        >
+                          <Loader2 className="h-3 w-3 mr-2" />
+                          Re-run Health Check
+                        </Button>
+                      </div>
+                    )}
+                  </GlassCardContent>
+                </GlassCard>
               </div>
             )}
           </div>
