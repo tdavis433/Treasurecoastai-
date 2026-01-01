@@ -83,22 +83,31 @@ function PasswordChangeGuard({ children }: { children: React.ReactNode }) {
 }
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { data: user, isLoading, error } = useQuery<User>({
+  const { data: user, status } = useQuery<User | null>({
     queryKey: ["/api/auth/me"],
+    queryFn: async () => {
+      const res = await fetch("/api/auth/me", { credentials: "include" });
+      if (res.status === 401) return null;
+      if (!res.ok) throw new Error("Auth check failed");
+      return res.json();
+    },
     retry: false,
+    staleTime: 0,
+    gcTime: 0,
   });
 
-  console.log('[AuthGuard] State:', { user, isLoading, error: error?.message });
+  console.log('[AuthGuard] State:', { user, status });
 
-  if (isLoading) {
-    return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-      <div className="text-white">Loading...</div>
+  // Show loading only briefly
+  if (status === 'pending') {
+    return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center" data-testid="auth-loading">
+      <div className="text-white text-lg">Loading...</div>
     </div>;
   }
 
-  // Redirect if no user or if there's an auth error
-  if (!user || error) {
-    console.log('[AuthGuard] Redirecting to login - no user or error');
+  // Redirect on error or no user (including 401 which returns null)
+  if (status === 'error' || !user) {
+    console.log('[AuthGuard] Redirecting to login - status:', status, 'user:', !!user);
     return <Redirect to="/login" />;
   }
 
@@ -106,22 +115,30 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 function SuperAdminGuard({ children }: { children: React.ReactNode }) {
-  const { data: user, isLoading, error } = useQuery<User>({
+  const { data: user, status } = useQuery<User | null>({
     queryKey: ["/api/auth/me"],
+    queryFn: async () => {
+      const res = await fetch("/api/auth/me", { credentials: "include" });
+      if (res.status === 401) return null;
+      if (!res.ok) throw new Error("Auth check failed");
+      return res.json();
+    },
     retry: false,
+    staleTime: 0,
+    gcTime: 0,
   });
 
-  console.log('[SuperAdminGuard] State:', { user, isLoading, error: error?.message });
+  console.log('[SuperAdminGuard] State:', { user, status });
 
-  if (isLoading) {
-    return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-      <div className="text-white">Loading...</div>
+  if (status === 'pending') {
+    return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center" data-testid="auth-loading">
+      <div className="text-white text-lg">Loading...</div>
     </div>;
   }
 
-  // Redirect if no user or if there's an auth error
-  if (!user || error) {
-    console.log('[SuperAdminGuard] Redirecting to login - no user or error');
+  // Redirect on error or no user
+  if (status === 'error' || !user) {
+    console.log('[SuperAdminGuard] Redirecting to login - status:', status);
     return <Redirect to="/login" />;
   }
 
@@ -138,19 +155,27 @@ function SuperAdminGuard({ children }: { children: React.ReactNode }) {
 }
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
-  const { data: user, isLoading, error } = useQuery<User>({
+  const { data: user, status } = useQuery<User | null>({
     queryKey: ["/api/auth/me"],
+    queryFn: async () => {
+      const res = await fetch("/api/auth/me", { credentials: "include" });
+      if (res.status === 401) return null;
+      if (!res.ok) throw new Error("Auth check failed");
+      return res.json();
+    },
     retry: false,
+    staleTime: 0,
+    gcTime: 0,
   });
 
-  if (isLoading) {
-    return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-      <div className="text-white">Loading...</div>
+  if (status === 'pending') {
+    return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center" data-testid="auth-loading">
+      <div className="text-white text-lg">Loading...</div>
     </div>;
   }
 
-  // Redirect if no user or if there's an auth error
-  if (!user || error) {
+  // Redirect on error or no user
+  if (status === 'error' || !user) {
     return <Redirect to="/login" />;
   }
 
@@ -165,24 +190,32 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
 }
 
 function ClientGuard({ children }: { children: React.ReactNode }) {
-  const { data: user, isLoading, error } = useQuery<User>({
+  const { data: user, status } = useQuery<User | null>({
     queryKey: ["/api/auth/me"],
+    queryFn: async () => {
+      const res = await fetch("/api/auth/me", { credentials: "include" });
+      if (res.status === 401) return null;
+      if (!res.ok) throw new Error("Auth check failed");
+      return res.json();
+    },
     retry: false,
-    staleTime: 0, // Always refetch to get fresh impersonation state
+    staleTime: 0,
+    gcTime: 0,
   });
 
   useEffect(() => {
-    console.log('[ClientGuard] State:', { user, isLoading, error });
-  }, [user, isLoading, error]);
+    console.log('[ClientGuard] State:', { user, status });
+  }, [user, status]);
 
-  if (isLoading) {
-    return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-      <div className="text-white">Loading...</div>
+  if (status === 'pending') {
+    return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center" data-testid="auth-loading">
+      <div className="text-white text-lg">Loading...</div>
     </div>;
   }
 
-  if (!user) {
-    console.log('[ClientGuard] No user, redirecting to login');
+  // Redirect on error or no user
+  if (status === 'error' || !user) {
+    console.log('[ClientGuard] Redirecting to login - status:', status);
     return <Redirect to="/login" />;
   }
 
