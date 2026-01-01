@@ -193,6 +193,16 @@
       ],
       "status": "active",
       "createdAt": "2026-01-01"
+    },
+    {
+      "id": "health_check_verify_ddjr",
+      "name": "Health Check Verify dDjr",
+      "type": "Barbershop",
+      "bots": [
+        "health_check_verify_ddjr_main"
+      ],
+      "status": "active",
+      "createdAt": "2026-01-01"
     }
   ]
 }

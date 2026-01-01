@@ -1,0 +1,419 @@
+# MESSAGE TO REPLIT AGENT - OPTIMIZE EXISTING WIZARD
+
+---
+
+## OBJECTIVE
+
+Improve the existing `client-onboarding-wizard.tsx` to create the perfect barbershop onboarding flow in 5 minutes or less.
+
+---
+
+## CURRENT STATE
+
+✅ You already built a 9-step wizard (1,614 lines)
+✅ It works and generates bot configs
+⚠️ Needs optimization for speed and correct workflow
+
+---
+
+## CRITICAL WORKFLOW CORRECTION
+
+### THE BARBER SELECTION ISSUE
+
+**PROBLEM:** 
+The bot should NEVER ask customers to select a barber during the conversation flow, because we don't know barber availability in real-time.
+
+**WHY:**
+- The client uses Booksy/Calendly/Square for booking
+- Those systems show real-time barber availability
+- If bot asks "Pick Marcus or Tony" and Marcus is booked → customer frustrated
+- Customer should pick barber INSIDE the booking system, not in chat
+
+**CORRECT FLOW:**
+
+1. Customer: "I want a fade"
+2. Bot: "Perfect! Fade is $35. What's your name?"
+3. Customer: "Mike"
+4. Bot: "What's your phone number?"
+5. Customer: "772-555-1234"
+6. Bot: "And email?"
+7. Customer: "mike@email.com"
+8. Bot: "All set Mike! ✅ Click here to pick your time and barber: [BOOKING_LINK]"
+9. **[LEAD SAVED: Name, phone, email, service requested]**
+10. Customer clicks → Goes to Booksy → Sees available barbers & times → Books
+
+**BARBER INFO IS ONLY FOR:**
+- Answering "Who are your barbers?"
+- Introducing the team in conversation
+- Marketing ("Marcus specializes in fades!")
+
+**BARBER INFO IS NOT FOR:**
+- Asking customer to pick a barber
+- Creating barber preference logic
+- Booking flow
+
+---
+
+## PRIORITY IMPROVEMENTS
+
+### 1. STREAMLINE WIZARD FROM 9 STEPS TO 6 STEPS
+
+**Current 9 steps:**
+1. Template Selection
+2. Business name & basics
+3. Contact & location
+4. Operating hours
+5. Services, FAQs, About
+6. Booking behavior
+7. Industry-specific add-ons
+8. Notifications
+9. Review & launch
+
+**Optimized 6 steps:**
+
+**STEP 1: TEMPLATE SELECTION**
+```
+Choose your industry:
+○ Barbershop / Salon
+○ Restaurant
+○ Recovery House / Sober Living
+○ Auto Repair
+○ Med Spa
+○ Fitness / Gym
+... (other templates)
+
+[Select Template →]
+```
+
+**STEP 2: BUSINESS INFO**
+```
+Business Name: [                    ]
+Phone: [                    ] (format: XXX-XXX-XXXX)
+Email: [                    ]
+Address: [                    ]
+Booking URL: [                    ] (Booksy/Calendly/Square link)
+
+[Next →]
+```
+
+**STEP 3: HOURS & SERVICES**
+```
+HOURS:
+Mon: [Closed ▼] or [10:00 AM ▼] to [7:00 PM ▼]
+Tue: [10:00 AM ▼] to [7:00 PM ▼]
+... (all days)
+
+SERVICES (pre-filled from template, edit prices):
+☑ Classic Haircut - $[30]
+☑ Fade/Taper - $[35]
+☑ Beard Trim - $[15]
+... (template defaults, user edits)
+
++ Add Custom Service
+
+[Next →]
+```
+
+**STEP 4: TEAM (OPTIONAL)**
+```
+MEET THE TEAM (Optional - for "Who are your barbers?" responses)
+
+⚠️ Note: Customers will pick barbers based on availability 
+   in your booking system (Booksy/Calendly). This is just 
+   for introducing your team.
+
+Barber 1:
+  Name: [              ]
+  Specialty: [              ]
+
++ Add Barber
+
+[Skip This Step] [Next →]
+```
+
+**STEP 5: WALK-INS & PREFERENCES**
+```
+WALK-IN POLICY:
+○ Accept walk-ins (recommended for weekends)
+○ Appointments only
+
+Note (optional):
+[Walk-ins welcome as capacity allows]
+
+BOT PERSONALITY:
+Friendliness: [━━━━━━━●━━] 70%
+Formality:    [━━━●━━━━━━] 30%
+
+[Next →]
+```
+
+**STEP 6: REVIEW & DEPLOY**
+```
+PREVIEW & TEST YOUR BOT
+
+[Live Chat Widget Preview]
+
+🧪 AUTO HEALTH CHECK:
+✅ Hours info - PASSED
+✅ Pricing info - PASSED
+✅ Lead capture - PASSED
+✅ Walk-in policy - PASSED
+
+EMBED CODE (copy & paste on website):
+[Copy to Clipboard]
+
+[← Edit] [Deploy Bot →]
+```
+
+---
+
+### 2. FIX BARBER HANDLING IN BOT CONFIG
+
+**In the generated bot config (`systemPrompt`):**
+
+**DON'T INCLUDE:**
+```
+❌ "Ask customer which barber they prefer"
+❌ "Let them choose Marcus, Tony, or Devon"
+❌ Any barber selection logic
+```
+
+**DO INCLUDE:**
+```
+✅ "Our barbers are Marcus (fades specialist), Tony (classic cuts), 
+    and Devon (beard expert)"
+✅ "If asked about barbers, introduce the team"
+✅ "When booking, customers pick based on availability in our 
+    booking system"
+```
+
+**EXAMPLE SYSTEM PROMPT (CORRECTED):**
+```
+You are the digital assistant for [BUSINESS_NAME].
+
+OUR TEAM:
+- Marcus: Fade specialist, 8 years experience
+- Tony: Classic cuts & hot shaves, 15 years
+- Devon: Beard expert, 5 years
+
+When someone wants to book:
+1. Ask for name, phone, email
+2. Confirm the service they want
+3. Provide the booking link: [BOOKING_URL]
+4. Let them know they'll pick their barber and time in the booking system
+
+DO NOT ask them to choose a barber in the chat - they'll see 
+availability and pick when they book online.
+```
+
+---
+
+### 3. ADD BOT HEALTH CHECK (AUTO-TEST AFTER CREATION)
+
+After bot is created, automatically send 4 test messages:
+
+```javascript
+const healthCheck = async (botId) => {
+  const tests = [
+    {
+      message: "What are your hours?",
+      shouldInclude: ["monday", "tuesday", "open", "closed"],
+      name: "Hours info"
+    },
+    {
+      message: "How much is a haircut?",
+      shouldInclude: ["$", "price"],
+      name: "Pricing info"
+    },
+    {
+      message: "I want to book",
+      shouldInclude: ["name", "phone", "email"],
+      name: "Lead capture"
+    },
+    {
+      message: "Do you take walk-ins?",
+      shouldInclude: ["walk", "appointment"],
+      name: "Walk-in policy"
+    }
+  ];
+
+  // Send each message, check if response includes expected keywords
+  // Display results: ✅ PASSED or ❌ FAILED
+};
+```
+
+**Display in Step 6:**
+```
+🧪 BOT HEALTH CHECK
+
+✅ Hours info - PASSED
+✅ Pricing info - PASSED  
+✅ Lead capture - PASSED
+✅ Walk-in policy - PASSED
+
+Your bot is ready to deploy!
+```
+
+If any test fails, show warning and let user edit config.
+
+---
+
+### 4. IMPROVE STEP 3 - COMBINE HOURS & SERVICES
+
+**Current:** Separate steps for hours and services (2 steps)
+**Better:** Combine into one step (saves time)
+
+**Layout:**
+```
+┌─────────────────────────────────────────┐
+│ HOURS                                   │
+│ Mon: [Closed ▼]                         │
+│ Tue: [10:00 AM ▼] to [7:00 PM ▼]      │
+│ ...                                     │
+├─────────────────────────────────────────┤
+│ SERVICES & PRICING                      │
+│ ☑ Classic Haircut     $[30]            │
+│ ☑ Fade/Taper         $[35]            │
+│ ☑ Beard Trim         $[15]            │
+│ + Add Custom Service                    │
+└─────────────────────────────────────────┘
+```
+
+Scrollable if needed, but all on one page.
+
+---
+
+### 5. MAKE "USE TEMPLATE" MORE PROMINENT
+
+**On Templates page:**
+
+Add big "Use This Template" button on each template card:
+
+```
+┌──────────────────────────────────┐
+│  💈 BARBERSHOP TEMPLATE          │
+│                                  │
+│  Perfect for barbershops,        │
+│  salons, and grooming services   │
+│                                  │
+│  [Use This Template →]           │
+│  [Preview Demo]                  │
+└──────────────────────────────────┘
+```
+
+**Clicking "Use This Template":**
+- Opens wizard at Step 1 with template pre-selected
+- All defaults pre-filled (services, prices, FAQs)
+- User just edits business-specific info (name, phone, address, booking URL)
+- Creates bot in ~3 minutes
+
+---
+
+### 6. VALIDATION IMPROVEMENTS
+
+**Required fields:**
+- Business name
+- Phone (format: XXX-XXX-XXXX or (XXX) XXX-XXXX)
+- Email (valid email format)
+- Address
+- Booking URL (valid https:// URL)
+- At least 1 service selected
+
+**Optional fields:**
+- Barbers (can skip entirely)
+- Walk-in note
+- Custom services
+
+**Inline validation:**
+- Show errors immediately as user types
+- Red border + error message below field
+- "Next" button disabled until all required fields valid
+
+---
+
+## TECHNICAL REQUIREMENTS
+
+### Form State
+Use existing form library (react-hook-form already in use?)
+
+### Bot Config Generation
+1. Load template JSON (e.g., `barber_demo.json`)
+2. Replace placeholders with form data
+3. Generate `systemPrompt` with:
+   - Actual business name, hours, services, prices
+   - Correct barber handling (no selection in chat)
+   - Booking URL
+4. Generate FAQs with actual info
+5. Set `externalBookingUrl` to booking URL from form
+
+### Lead Capture Config
+Ensure `automations.leadCapture` is set correctly:
+
+```json
+"leadCapture": {
+  "enabled": true,
+  "triggerKeywords": ["book", "appointment", "schedule"],
+  "captureFields": ["name", "phone", "email"],
+  "successMessage": "Got it! Click here to pick your time: [BOOKING_URL]"
+}
+```
+
+**DO NOT include `"preferred_barber"` in `captureFields`**
+
+---
+
+## SUCCESS METRICS
+
+After these improvements:
+
+- ⏱️ Time to complete wizard: <5 minutes
+- ✅ Wizard completion rate: >80%
+- ✅ Health check pass rate: >95%
+- 🎯 User feedback: "That was easy!"
+
+---
+
+## TESTING CHECKLIST
+
+Before marking complete:
+
+- [ ] Can complete wizard in under 5 minutes
+- [ ] Template pre-fills work correctly
+- [ ] Generated bot responds to "What are your hours?"
+- [ ] Generated bot responds to "How much is a haircut?"
+- [ ] Generated bot captures lead (name, phone, email) on "I want to book"
+- [ ] Generated bot does NOT ask to pick a barber
+- [ ] Booking URL is included in bot responses
+- [ ] Health check runs automatically
+- [ ] Embed code copies to clipboard
+- [ ] "Use Template" button works
+
+---
+
+## SUMMARY
+
+**Current state:** 9-step wizard that works but could be faster
+
+**Goal:** 6-step wizard that onboards a client in 5 minutes
+
+**Key changes:**
+1. Streamline 9 steps → 6 steps (combine hours/services, remove unnecessary steps)
+2. Fix barber handling (informational only, never ask customer to pick)
+3. Add auto health check (4 test messages)
+4. Improve template cloning ("Use This Template" button)
+5. Better validation and UX
+
+**Timeline:** 1-2 days of improvements
+
+**Result:** Fast, foolproof onboarding that scales to 100+ clients
+
+---
+
+## QUESTIONS?
+
+If anything is unclear:
+- Barber workflow: See `WIZARD_CORRECTION_BARBERS.md`
+- Template structure: See `barber_demo.json`
+- Conversation flow: See `BARBERSHOP_CHATBOT_TEMPLATE.md`
+
+Let's make this the best onboarding experience possible! 🚀
