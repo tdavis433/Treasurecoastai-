@@ -103,8 +103,10 @@ export interface WizardData {
   contactEmail: string;
   contactPhone: string;
   websiteUrl: string;
+  streetAddress: string;
   city: string;
   state: string;
+  zip: string;
   timezone: string;
   
   // Step 4: Hours
@@ -148,8 +150,10 @@ const INITIAL_WIZARD_DATA: WizardData = {
   contactEmail: '',
   contactPhone: '',
   websiteUrl: '',
+  streetAddress: '',
   city: '',
   state: '',
+  zip: '',
   timezone: 'America/New_York',
   operatingHours: DEFAULT_HOURS,
   afterHoursMessage: "Thanks for reaching out! We're currently closed but will respond as soon as we open.",
@@ -212,7 +216,7 @@ function calculateReadinessScore(data: WizardData, selectedTemplate: Template | 
   checks.push({ label: 'At least 1 FAQ added', passed: data.faqs.length > 0, weight: 5, required: false });
   checks.push({ label: 'Services listed', passed: data.services.length > 0, weight: 5, required: false });
   checks.push({ label: 'Staff notifications configured', passed: data.staffEmails.length > 0 || data.staffPhones.length > 0, weight: 5, required: false });
-  checks.push({ label: 'City/State set', passed: !!(data.city && data.state), weight: 5, required: false });
+  checks.push({ label: 'Full address set', passed: !!(data.streetAddress && data.city && data.state && data.zip), weight: 5, required: false });
   
   // Calculate score
   const totalWeight = checks.reduce((sum, c) => sum + c.weight, 0);
@@ -420,6 +424,17 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
         contactEmail: data.contactEmail,
         contactPhone: data.contactPhone,
         websiteUrl: data.websiteUrl,
+        // Build full location from address fields
+        businessProfile: {
+          businessName: data.businessName,
+          location: data.streetAddress 
+            ? `${data.streetAddress}, ${data.city}, ${data.state} ${data.zip}`.trim()
+            : `${data.city}, ${data.state}`.trim(),
+          streetAddress: data.streetAddress,
+          city: data.city,
+          state: data.state,
+          zip: data.zip,
+        },
         city: data.city,
         state: data.state,
         timezone: data.timezone,
@@ -847,6 +862,17 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
                     />
                   </div>
                   
+                  <div className="space-y-2 md:col-span-2">
+                    <Label className="text-white/85">Street Address</Label>
+                    <Input
+                      value={data.streetAddress}
+                      onChange={(e) => updateData({ streetAddress: e.target.value })}
+                      className="bg-white/5 border-white/10 text-white"
+                      placeholder="1423 Main Street"
+                      data-testid="wizard-input-street"
+                    />
+                  </div>
+                  
                   <div className="space-y-2">
                     <Label className="text-white/85">City</Label>
                     <Input
@@ -869,7 +895,18 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
                     />
                   </div>
                   
-                  <div className="space-y-2 md:col-span-2">
+                  <div className="space-y-2">
+                    <Label className="text-white/85">ZIP Code</Label>
+                    <Input
+                      value={data.zip}
+                      onChange={(e) => updateData({ zip: e.target.value })}
+                      className="bg-white/5 border-white/10 text-white"
+                      placeholder="34994"
+                      data-testid="wizard-input-zip"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
                     <Label className="text-white/85">Timezone</Label>
                     <Select value={data.timezone} onValueChange={(v) => updateData({ timezone: v })}>
                       <SelectTrigger className="bg-white/5 border-white/10 text-white" data-testid="wizard-select-timezone">
@@ -1410,7 +1447,7 @@ export function ClientOnboardingWizard({ open, onOpenChange, onSuccess }: Client
                       <div className="space-y-1 text-sm">
                         <div><span className="text-white/50">Email:</span> <span className="text-white">{data.contactEmail}</span></div>
                         <div><span className="text-white/50">Phone:</span> <span className="text-white">{data.contactPhone || '-'}</span></div>
-                        <div><span className="text-white/50">Location:</span> <span className="text-white">{data.city && data.state ? `${data.city}, ${data.state}` : '-'}</span></div>
+                        <div><span className="text-white/50">Location:</span> <span className="text-white">{data.streetAddress ? `${data.streetAddress}, ${data.city}, ${data.state} ${data.zip}` : (data.city && data.state ? `${data.city}, ${data.state}` : '-')}</span></div>
                       </div>
                     </GlassCardContent>
                   </GlassCard>

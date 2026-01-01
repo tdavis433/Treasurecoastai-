@@ -54,7 +54,11 @@
       "booking appointments",
       "barber availability and specialties",
       "walk-in policy",
-      "services offered"
+      "services offered",
+      "directions and location",
+      "cancellations and rescheduling",
+      "payment methods",
+      "parking information"
     ],
     "forbiddenTopics": [
       "personal style guarantees",
@@ -144,6 +148,27 @@
       "question": "What payment methods do you accept?",
       "answer": "We accept cash, all major credit cards, Apple Pay, and Google Pay. Tips are always appreciated but never required!",
       "active": true
+    },
+    {
+      "id": "faq-11",
+      "category": "Booking",
+      "question": "How do I cancel or reschedule my appointment?",
+      "answer": "Use your confirmation link or give us a call/text at (772) 555-FADE. We appreciate 4+ hours notice when possible so we can offer the slot to another customer.",
+      "active": true
+    },
+    {
+      "id": "faq-12",
+      "category": "Booking",
+      "question": "What if I'm running late?",
+      "answer": "Give us a call or text at (772) 555-FADE right away. We'll do our best to fit you in, but we can't guarantee your slot if you're more than 10-15 minutes late.",
+      "active": true
+    },
+    {
+      "id": "faq-13",
+      "category": "Location",
+      "question": "How do I get directions to the shop?",
+      "answer": "We're at 1423 Main Street, Stuart, FL 34994. Get directions: Apple Maps - https://maps.apple.com/?address=1423+Main+Street+Stuart+FL+34994 | Google Maps - https://maps.google.com/?q=1423+Main+Street+Stuart+FL+34994. Street parking available nearby!",
+      "active": true
     }
   ],
   "automations": {
@@ -163,7 +188,7 @@
     },
     "leadCapture": {
       "enabled": true,
-      "triggerKeywords": ["book", "appointment", "schedule", "reservation"],
+      "triggerKeywords": ["book", "appointment", "schedule", "reservation", "fade", "cut", "haircut", "taper", "lineup", "shave", "beard", "today", "tomorrow", "this week", "this weekend", "available", "openings", "open", "walk in", "walk-in"],
       "captureFields": ["name", "phone", "email"],
       "successMessage": "All set! Click here to pick your time and barber: https://fadefactoryfl.com/book - You'll see real-time availability for Marcus, Tony, and Devon."
     }
