@@ -1,0 +1,80 @@
+1. Add triggerOncePerSession: true (Critical)
+This is the one I'd fix before the first client goes live. Without it, chatty customers trigger lead capture repeatedly.
+json"leadCapture": {
+  "enabled": true,
+  "triggerOncePerSession": true,
+  ...
+}
+2. Enable After-Hours Mode
+Right now it's false. When someone messages at 10pm, they should get the after-hours experience with lead capture prioritized.
+json"enableAfterHoursMode": true
+3. Add a Few Missing Trigger Keywords
+Your current list is solid, but I noticed some natural phrases that won't trigger:
+json"triggerKeywords": [
+  // Add these:
+  "price", "cost", "how much",  // Pricing intent often = booking intent
+  "wait", "busy",               // Walk-in availability questions
+  "first time", "new client"    // New customer signals
+]
+4. Consider Adding Spanish Trigger Keywords
+You have Spanish support in the platform, but trigger keywords are English-only:
+json"triggerKeywords": [
+  // Spanish additions:
+  "cita", "reservar", "agendar", "corte", "disponible", "abierto"
+]
+5. Add tel: Link Format in FAQs
+Your phone FAQs show the number but aren't clickable on mobile. Consider:
+json{
+  "question": "How do I cancel or reschedule?",
+  "answer": "...give us a call/text at [{{phone}}](tel:{{phone}})..."
+}
+```
+
+Actually, check if your widget renders markdown links—if not, this might need platform-level support.
+
+---
+
+## 🤔 Things to Consider (Not Urgent)
+
+### 6. **Barber Personality Injection**
+Your barbers have specialties but the bot doesn't really *sell* them. Consider adding to system prompt:
+```
+When discussing barbers, add personality:
+- Marcus is the artist - intricate designs, Instagram-worthy fades
+- Tony is old school - 15 years of classic cuts, best hot shave in town  
+- Devon is the beard whisperer - if you're growing it out, he's your guy
+```
+
+### 7. **Combo Pricing in System Prompt**
+You mention "$20 with haircut combo" for beard trim, but there's no explicit combo section. Customers ask "how much for a fade AND beard trim?" frequently:
+```
+=== COMBOS ===
+- Haircut + Beard Trim: $50 (save $5)
+- Fade + Lineup: $45
+- Hot Shave + Haircut: $60
+8. Walk-In Expectations
+The current walk-in FAQ is good but could set clearer expectations:
+json{
+  "question": "Do you take walk-ins?",
+  "answer": "Walk-ins welcome! Weekday mornings are usually quickest. Saturdays get busy—booking ahead guarantees your spot. If you walk in and we're slammed, we'll give you an honest wait estimate or help you book for later."
+}
+```
+
+### 9. **No-Show / Late Policy in System Prompt**
+This isn't in the main prompt, only in FAQs. Consider adding:
+```
+=== LATE POLICY ===
+More than 15 min late = we may need to reschedule. Give us a heads up if you're running behind.
+
+📊 Template Metadata Suggestion
+Your metadata section could be more useful for tracking:
+json"metadata": {
+  "isDemo": false,          // Change when deploying real clients
+  "isTemplate": true,
+  "templateCategory": "Barber / Salon",
+  "templateVersion": "2.1", // Bump this
+  "createdAt": "2025-11-27",
+  "lastValidated": "2026-01-02",
+  "validationScore": 90,
+  "version": "2.1"
+}

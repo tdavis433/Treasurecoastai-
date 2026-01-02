@@ -90,7 +90,7 @@
       "id": "faq-2",
       "category": "Booking",
       "question": "Do you take walk-ins?",
-      "answer": "Walk-ins are welcome when our barbers have availability! For a guaranteed spot, especially on weekends, we recommend booking online at fadefactoryfl.com/book or calling (772) 555-FADE.",
+      "answer": "Walk-ins welcome! Weekday mornings are usually quickest. Saturdays get busy - booking ahead guarantees your spot. If you walk in and we're slammed, we'll give you an honest wait estimate or help you book for later.",
       "active": true
     },
     {
@@ -184,11 +184,12 @@
       },
       "timezone": "America/New_York",
       "afterHoursMessage": "Hey! Fade Factory is currently closed. We're open Tue-Fri 10am-7pm (Thu-Fri until 8pm) and Sat 9am-5pm. Book online at fadefactoryfl.com/book or leave us a message!",
-      "enableAfterHoursMode": false
+      "enableAfterHoursMode": true
     },
     "leadCapture": {
       "enabled": true,
-      "triggerKeywords": ["book", "appointment", "schedule", "reservation", "fade", "cut", "haircut", "taper", "lineup", "shave", "beard", "today", "tomorrow", "this week", "this weekend", "available", "openings", "open", "walk in", "walk-in"],
+      "triggerOncePerSession": true,
+      "triggerKeywords": ["book", "appointment", "schedule", "reservation", "fade", "cut", "haircut", "taper", "lineup", "shave", "beard", "today", "tomorrow", "this week", "this weekend", "available", "openings", "open", "walk in", "walk-in", "price", "cost", "how much", "wait", "busy", "first time", "new client"],
       "captureFields": ["name", "phone", "email"],
       "successMessage": "All set! Click here to pick your time and barber: https://fadefactoryfl.com/book - You'll see real-time availability for Marcus, Tony, and Devon."
     }
