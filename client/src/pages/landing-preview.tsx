@@ -997,6 +997,10 @@ export default function LandingPreview() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700;800&display=swap');
         
+        html {
+          scroll-behavior: smooth;
+        }
+        
         @keyframes float {
           0%, 100% { transform: rotate(2deg) translateY(0); }
           50% { transform: rotate(2deg) translateY(-8px); }
