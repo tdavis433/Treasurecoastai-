@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import cosmicBg from "@assets/generated_images/purple_magenta_tropical_sunset.png";
+import cosmicBg from "@assets/generated_images/tropical_cosmic_sunset_skyline.png";
 import { 
   MessageSquare, 
   Calendar,
@@ -637,13 +637,12 @@ export default function LandingPreview() {
               >
                 Book a Demo <ChevronRight className="w-5 h-5 ml-2" />
               </Button>
-              <Button 
-                variant="link"
-                className="text-white/80 hover:text-white text-base"
+              <button 
+                className="text-white/80 hover:text-white text-base underline underline-offset-4"
                 onClick={() => document.getElementById('demos')?.scrollIntoView({ behavior: 'smooth' })}
               >
                 Try the Live Demo
-              </Button>
+              </button>
             </div>
           </motion.div>
         </div>
