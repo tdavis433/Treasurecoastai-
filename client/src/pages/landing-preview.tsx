@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import bgImage from "@assets/IMG_1888_1767528747402.png";
+import phoneImage from "@assets/80C6108A-A430-49A8-A44D-F78715AF6CB4_1767530168873.png";
 
 export default function LandingPreview() {
   useEffect(() => {
@@ -339,138 +340,24 @@ export default function LandingPreview() {
               </div>
             </div>
             
-            {/* Right Column - Chat Mock Card */}
+            {/* Right Column - Phone Mockup Image */}
             <div style={{
               display: "flex",
               justifyContent: "center",
               alignItems: "center",
             }}>
-              <div
+              <img
+                src={phoneImage}
+                alt="AI Assistant Chat Interface"
                 style={{
-                  width: "min(400px, 92vw)",
-                  padding: "24px",
-                  borderRadius: "30px",
-                  background: "rgba(255,255,255,0.06)",
-                  border: "1px solid rgba(57,213,255,0.25)",
-                  backdropFilter: "blur(16px) saturate(130%)",
-                  WebkitBackdropFilter: "blur(16px) saturate(130%)",
-                  boxShadow: `
-                    0 0 0 1px rgba(255,255,255,0.06),
-                    0 18px 60px rgba(0,0,0,0.55),
-                    0 0 30px rgba(57,213,255,0.12),
-                    inset 0 1px 0 rgba(255,255,255,0.1)
-                  `,
+                  maxWidth: "min(380px, 85vw)",
+                  height: "auto",
                   transform: "rotate(2deg)",
                   animation: "float 8s ease-in-out infinite",
-                  position: "relative",
+                  filter: "drop-shadow(0 25px 50px rgba(0,0,0,0.5)) drop-shadow(0 0 40px rgba(57,213,255,0.15))",
                 }}
-                className="chat-card"
-              >
-                {/* Inner gradient sheen */}
-                <div style={{
-                  position: "absolute",
-                  inset: 0,
-                  borderRadius: "30px",
-                  background: "linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 50%)",
-                  pointerEvents: "none",
-                }} />
-                
-                {/* Window dots */}
-                <div style={{ display: "flex", gap: "6px", marginBottom: "20px", justifyContent: "flex-end" }}>
-                  <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#39d5ff", boxShadow: "0 0 8px rgba(57,213,255,0.5)" }} />
-                  <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#39d5ff", opacity: 0.6 }} />
-                  <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#39d5ff", opacity: 0.3 }} />
-                </div>
-                
-                {/* Message Pills */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "18px" }}>
-                  {["How much is a haircut?", "Are you open today?", "Can I book for tomorrow at 5?"].map((msg, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        padding: "12px 16px",
-                        borderRadius: "16px",
-                        background: "rgba(255,255,255,0.08)",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        fontSize: "14px",
-                        color: "var(--text)",
-                      }}
-                    >
-                      <span>{msg}</span>
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ opacity: 0.5 }}>
-                        <path d="M6 3L11 8L6 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </div>
-                  ))}
-                </div>
-                
-                {/* Status Chips */}
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "18px" }}>
-                  {[
-                    { label: "Lead Captured", color: "#39d5ff", iconType: "check" },
-                    { label: "Booking Link Sent", color: "#0a5cff", iconType: "link" },
-                    { label: "Follow-Up Automated", color: "#31f7a5", iconType: "check" },
-                  ].map((chip, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        padding: "8px 12px",
-                        borderRadius: "999px",
-                        background: `rgba(${chip.color === "#39d5ff" ? "57,213,255" : chip.color === "#0a5cff" ? "10,92,255" : "49,247,165"},0.12)`,
-                        border: `1px solid ${chip.color}33`,
-                        fontSize: "12px",
-                        fontWeight: 600,
-                        color: chip.color,
-                        boxShadow: `0 0 12px ${chip.color}22`,
-                      }}
-                    >
-                      {chip.iconType === "check" ? (
-                        <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
-                          <path d="M13.5 4.5L6 12L2.5 8.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      ) : (
-                        <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
-                          <path d="M6 10L10 6M10 6H6M10 6V10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      )}
-                      {chip.label}
-                    </div>
-                  ))}
-                </div>
-                
-                {/* Input Bar */}
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "14px 18px",
-                  borderRadius: "16px",
-                  background: "rgba(255,255,255,0.06)",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                }}>
-                  <span style={{ color: "var(--muted)", fontSize: "14px" }}>Ask Anything…</span>
-                  <div style={{
-                    width: "32px",
-                    height: "32px",
-                    borderRadius: "50%",
-                    background: "linear-gradient(135deg, #39d5ff, #ff4fd8)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    boxShadow: "0 0 15px rgba(57,213,255,0.3)",
-                  }}>
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                      <path d="M3 8H13M13 8L8 3M13 8L8 13" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </div>
-                </div>
-              </div>
+                data-testid="img-phone-mockup"
+              />
             </div>
           </div>
         </section>
