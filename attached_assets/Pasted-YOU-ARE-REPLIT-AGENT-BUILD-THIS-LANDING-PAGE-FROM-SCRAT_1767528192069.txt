@@ -1,0 +1,336 @@
+YOU ARE REPLIT AGENT. BUILD THIS LANDING PAGE FROM SCRATCH WITH ZERO PRE-EXISTING FILES AND ZERO IMAGE ASSETS.
+No photos. No downloaded backgrounds. No external PNG/SVG assets. Everything must be generated in code using HTML/CSS (and inline SVG where needed). The final result must visually match the reference layout/vibe as closely as possible: “cosmic starfield + sunset coast horizon + neon-glass UI,” two-column hero, chat mock card, feature chip row, built-for buttons, and bottom CTA section.
+
+PRIMARY GOAL
+Recreate the exact landing page composition shown in the reference:
+- Top nav (logo + TREASURE COAST AI, links, Book Demo button)
+- Hero left: “AI Chatbots that run your front desk 24/7.” + subtext + 2 CTAs
+- Hero right: glowing glass chat mock card with message bubbles + status chips + input
+- Feature chips row: 4 items in a single glass capsule
+- Built For: title + 4 glass buttons with icons
+- Bottom CTA: “Unlock the Future of Sales.” + 2 buttons
+- Background: starry cosmos at top, warm sunset horizon, ocean/shoreline, faint skyline silhouette near the horizon, curved neon wave lines. MUST NOT REPEAT / TILE.
+
+ABSOLUTE HARD RULES
+1) NO external images or asset downloads. Background must be procedural CSS gradients + inline SVG shapes only.
+2) NO repeating background tiles anywhere. Do not use repeating-gradient. Do not tile star textures.
+3) MUST be responsive and look premium (glass blur, glow borders, spacing, typography).
+4) No payment processing. Pricing section is informational only (no checkout).
+5) The visuals must feel “multi-million dollar agency built it,” not a generic template.
+
+STACK CHOICE (KEEP SIMPLE)
+Build a single-page static site using plain HTML + CSS + a tiny amount of vanilla JS only if needed.
+- Files you will create:
+  /index.html
+  /styles.css
+  /app.js (optional: only if needed for smooth scrolling / minor interactions)
+
+No frameworks required. The goal is deterministic pixel-perfect styling.
+
+CONTENT (USE EXACT COPY)
+Nav:
+- Brand text: “TREASURE COAST AI”
+- Links: “How It Works”, “Templates”, “Pricing”
+- Button: “Book Demo”
+
+Hero (left):
+Headline with line breaks:
+AI Chatbots that
+run your front desk
+24/7.
+Subtext:
+Answer questions instantly, capture leads,
+and send customers to booking—without
+hiring staff.
+Buttons:
+- “Book a Live Demo” (primary)
+- “View Interactive Demo” (secondary)
+
+Chat mock (right card):
+Message pills:
+- “How much is a haircut?”
+- “Are you open today?”
+- “Can I book for tomorrow at 5?”
+Status chips:
+- “Lead Captured”
+- “Booking Link Sent”
+- “Follow-Up Automated”
+Input bar:
+- placeholder text: “Ask Anything…”
+
+Feature chips row (single capsule with 4 items):
+- “24/7 Responses”
+- “Lead Capture + Booking”
+- “Done-For-You Setup”
+- “Multi-industry Templates”
+
+Built For section:
+Title: “Built For:”
+Buttons:
+- “Barbershops”
+- “Salons”
+- “Sober Living”
+- “Home Services”
+
+Bottom CTA section:
+Headline: “Unlock the Future of Sales.”
+Buttons:
+- “Book a Demo”
+- “Try the Live Demo”
+
+LINKS (PLACEHOLDERS)
+- Book Demo / Book a Live Demo / Book a Demo -> #book-demo
+- View Interactive Demo / Try the Live Demo -> #demos
+- How It Works -> #how-it-works
+- Templates -> #templates
+- Pricing -> #pricing
+
+VISUAL DESIGN SPEC (MATCH REFERENCE)
+Overall theme:
+- Deep space background with stars/nebula at top.
+- Warm sunset/orange-pink horizon band mid-lower.
+- Ocean/shoreline gradients at bottom.
+- Subtle distant skyline silhouette near horizon.
+- Curved neon wave streaks along lower edges.
+- Foreground elements are glassmorphism panels and neon-glow buttons.
+- Use subtle noise/grain overlay to avoid “flat gradient” look.
+
+TYPOGRAPHY
+Use only web-safe fonts OR optionally load free Google Fonts via <link> if allowed.
+Preferred pairing to match the look:
+- Headings: “DM Serif Display” (or “Playfair Display”)
+- Body/UI: “Inter” (or “system-ui” fallback)
+If you load fonts, do it in index.html via <link rel="preconnect"> and <link href="...">.
+If you can’t, use:
+- Heading: Georgia / serif
+- Body: system-ui / -apple-system / Segoe UI
+
+COLOR TOKENS (CSS VARIABLES)
+In :root define:
+--bg0: #05060a;
+--bg1: #070818;
+--text: rgba(255,255,255,0.92);
+--muted: rgba(255,255,255,0.72);
+--glass: rgba(255,255,255,0.06);
+--glass2: rgba(255,255,255,0.10);
+--stroke: rgba(255,255,255,0.14);
+--shadow: rgba(0,0,0,0.55);
+--cyan: #39d5ff;
+--blue: #0a5cff;
+--magenta: #ff4fd8;
+--pink: #ff4a8a;
+--orange: #ff7a3d;
+--lime: #31f7a5;
+
+GLASS / GLOW SYSTEM (MUST LOOK PREMIUM)
+Create reusable utility classes in CSS:
+.glass:
+- background: var(--glass);
+- border: 1px solid var(--stroke);
+- backdrop-filter: blur(14px) saturate(130%);
+- -webkit-backdrop-filter: blur(14px) saturate(130%);
+- box-shadow:
+  0 0 0 1px rgba(255,255,255,0.06),
+  0 18px 60px rgba(0,0,0,0.55);
+- border-radius: 24px;
+
+.glow-border (for key panels/buttons):
+- border: 1px solid rgba(57,213,255,0.25);
+- box-shadow:
+  0 0 0 1px rgba(255,255,255,0.06),
+  0 18px 60px rgba(0,0,0,0.55),
+  0 0 26px rgba(57,213,255,0.18);
+
+Buttons:
+- Pill shape (border-radius: 999px)
+- Primary button uses subtle gradient + glow and a right arrow chevron.
+- Hover: slightly brighter border + translateY(-1px)
+- Active: translateY(0)
+- Focus: visible outline using cyan glow.
+
+BACKGROUND (NO IMAGES) — PROCEDURAL BUILD
+Build the entire hero + page background using layered gradients and inline SVG overlays. Approach:
+1) The <body> background is deep space with a subtle vignette.
+2) Add a fixed full-page “cosmos” layer via ::before with multiple radial-gradients for stars (NOT repeating).
+3) Add a “nebula cloud” layer via ::after using large blurred radial gradients (purple/magenta/blue).
+4) Create a “horizon band” inside the hero using a positioned div that adds sunset gradient across the middle-lower portion.
+5) Create ocean/shoreline near bottom with a gradient + subtle shimmer.
+6) Add an inline SVG skyline silhouette positioned near the horizon with opacity ~0.25 and a slight blur.
+7) Add curved neon wave streaks using inline SVG paths with stroke gradients and glow filters.
+
+IMPORTANT: Do NOT use repeating-linear-gradient or repeating-radial-gradient (they can look tiled). Use multiple explicit radial-gradients with varied positions/sizes.
+
+STARFIELD SPEC
+Implement on body::before:
+background-image: a comma-separated list of ~18–30 radial-gradients like:
+radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.9) 50%, transparent 52%),
+radial-gradient(1px 1px at 80% 30%, rgba(255,255,255,0.8) 50%, transparent 52%),
+... (vary positions and sizes: 1px–2px, and some faint 3px glow stars).
+Also add a very subtle large radial vignette:
+radial-gradient(1200px 600px at 50% 0%, rgba(0,0,0,0.2), transparent 70%)
+
+NEBULA SPEC
+On body::after:
+background: multiple large radial gradients:
+- one magenta/purple cloud at top right
+- one blue/cyan cloud at mid-left
+- one warm pink/orange haze near horizon
+Apply:
+filter: blur(40px);
+opacity: 0.55;
+mix-blend-mode: screen (or lighten) where supported, otherwise normal.
+
+SUNSET HORIZON SPEC
+Inside hero, add a div .horizon that sits behind content:
+- position absolute; left 0; right 0; bottom: 0; height: 60%;
+- background: linear-gradient(to top,
+  rgba(255,122,61,0.55) 0%,
+  rgba(255,74,138,0.35) 25%,
+  rgba(10,92,255,0.18) 55%,
+  rgba(5,6,10,0) 100%);
+Add subtle “sun core” glow:
+- ::before in horizon: radial-gradient(600px 260px at 45% 70%, rgba(255,160,90,0.55), transparent 70%)
+
+OCEAN/SHORE SPEC
+At the bottom of hero, add .ocean layer:
+- a gradient band with dark blues/purples + slight specular highlights:
+linear-gradient(to top,
+  rgba(0,0,0,0.7) 0%,
+  rgba(10,12,28,0.85) 25%,
+  rgba(40,20,70,0.35) 55%,
+  transparent 100%)
+Add a subtle light streak near waterline:
+- a thin horizontal gradient line with low opacity.
+
+SKYLINE SILHOUETTE (INLINE SVG)
+Create an inline <svg> that sits near horizon, centered, width ~420px, height ~80px, opacity ~0.22.
+Use simple rectangles of varying heights to suggest buildings. Add a soft blur via CSS filter: blur(0.6px).
+Place it around 55–65% down the hero.
+
+CURVED NEON WAVES (INLINE SVG)
+Add an absolute positioned <svg> covering the lower third of the hero. Draw 2–3 curved paths that arc from left to right.
+Stroke:
+- gradient from cyan -> magenta -> orange (low saturation)
+- stroke-width 3–5
+- opacity 0.35–0.55
+Add glow via SVG filter (feGaussianBlur + feColorMatrix) or CSS drop-shadow.
+
+NOISE / GRAIN
+Add a noise overlay using pure CSS:
+- Use a tiny inline SVG noise as background-image via data URI OR use a subtle multiple-gradient trick.
+If data URI feels too heavy, use:
+background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+background-size: 3px 3px;
+BUT keep opacity extremely low to avoid looking tiled. Prefer a single overlay with very low alpha.
+
+LAYOUT SPEC (PIXEL INTENT)
+Set a max-width container:
+.container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+Hero height: min-height: 92vh; padding-top ~110px; padding-bottom ~80px.
+
+NAV BAR
+- height ~76px
+- position: absolute or fixed at top with transparent background
+- left: neon logo mark (inline SVG diamond/circuit) + “TREASURE COAST AI”
+- center: links spaced evenly
+- right: “Book Demo” pill button
+
+LOGO MARK (INLINE SVG)
+Create a 28–34px neon diamond icon:
+- Outer diamond stroke with gradient cyan->magenta
+- Simple “circuit lines” inside (few lines + nodes)
+- Add a subtle glow via CSS filter: drop-shadow(0 0 10px rgba(57,213,255,0.4))
+
+HERO GRID
+Desktop:
+- display: grid; grid-template-columns: 1.05fr 0.95fr;
+- gap: 56px;
+Left:
+- Headline: clamp(44px, 5vw, 78px)
+- Use line-height ~0.98 for the headline.
+- Make “24/7.” bold and slightly larger.
+Subtext:
+- font-size 18–20px; line-height 1.6; max-width 480px; color var(--muted)
+Buttons:
+- two stacked buttons with ~14px gap
+- include a right arrow chevron icon on each (inline SVG)
+
+RIGHT CHAT MOCK CARD
+- width: min(440px, 92vw); height: ~420–460px
+- border radius: 30px
+- Slight tilt: transform: rotate(2.2deg)
+- Add inner gradient sheen (top-left to bottom-right) using ::before
+Inside:
+- Top right three dots (small cyan circles) like window controls
+- Message pills: pill backgrounds with a soft glass look; right chevron on each
+- Status chips: compact, with tiny icons and different accent glows (cyan/blue/green)
+- Input bar at bottom: “Ask Anything…” with a right arrow button
+
+FEATURE CHIP ROW
+- A single long capsule (glass) spanning container width but not full bleed
+- 4 items equally spaced
+- Each item has an icon left and text right
+- On mobile: switch to 2 rows (2x2), maintaining the same capsule look
+
+BUILT FOR SECTION
+- center title “Built For:”
+- below: 4 glass buttons in a row
+- each has an icon and label
+- hover: glow increases, border brightens
+
+BOTTOM CTA SECTION
+- Continue background theme (reuse horizon/ocean layers but slightly dimmer)
+- Big headline centered
+- Two buttons centered vertically stacked on mobile, inline on desktop
+
+SECTIONS FOR NAV LINKS
+Include invisible anchors or actual sections:
+- #how-it-works, #templates, #pricing, #demos, #book-demo
+These can be simple placeholder sections below bottom CTA with minimal content so links don’t break, BUT keep them styled in the same theme (glass cards) so page feels complete.
+
+INTERACTION / ANIMATION (SUBTLE)
+- Buttons: hover glow + slight lift
+- Chat card: optional slow float animation (translateY 6px over 8s)
+- Respect prefers-reduced-motion
+
+RESPONSIVE RULES
+- <= 980px: hero becomes stacked (left then right)
+- chat card centers
+- nav becomes: logo left, Book Demo right, links collapse into a simple “Menu” (optional) OR wrap neatly
+- feature chips become 2x2
+- built-for buttons wrap into 2 rows
+
+ACCESSIBILITY
+- Ensure contrast is readable.
+- Focus states visible.
+- Buttons are actual <a> or <button> with aria-labels as needed.
+
+BUILD STEPS (DO IN ORDER)
+1) Create index.html with semantic structure:
+   - body
+   - header/nav
+   - main: hero, feature chips, built-for, bottom CTA, extra sections for anchors, footer
+2) Create styles.css:
+   - tokens, global background layers, typography, glass utilities
+   - layout grid, buttons, chat card, chips, sections
+3) Implement procedural background layers exactly as described:
+   - starfield + nebula + horizon + ocean + skyline + neon waves
+4) Fine-tune spacing/typography to match reference composition:
+   - The hero content must feel like the screenshot: left text large; right card big; chips centered.
+5) Verify NO repeating artifacts at any viewport width.
+
+QUALITY / ACCEPTANCE CHECKLIST (MUST PASS)
+- Looks extremely close in composition: nav, hero split, chat card, chip capsule, built-for row, bottom CTA.
+- Background has stars + nebula + sunset coast vibe without any visible tiling or repeating patterns.
+- Glass and glow look premium (blur + border + shadow).
+- Mobile layout is intentional, not cramped.
+- No payment/checkout elements.
+- Links work to anchors.
+
+OUTPUT REQUIREMENT
+After building, print a short summary:
+- Files created (index.html, styles.css, app.js if used)
+- Any optional notes about where to tweak values for even closer matching (e.g., “adjust horizon opacity from 0.55 to 0.62”).
+
+NOW BUILD THE SITE.
+Do not ask me questions. Make reasonable decisions to match the reference as closely as possible.
