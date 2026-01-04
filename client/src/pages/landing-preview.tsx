@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import bgImage from "@assets/IMG_1888_1767528747402.png";
+import bgImage from "@assets/47B289FC-AAF6-4D8F-87ED-62D154B4A2DF_1767530630754.png";
 import phoneImage from "@assets/80C6108A-A430-49A8-A44D-F78715AF6CB4_1767530168873.png";
 
 export default function LandingPreview() {
