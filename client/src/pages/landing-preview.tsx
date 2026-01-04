@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import bgImage from "@assets/47B289FC-AAF6-4D8F-87ED-62D154B4A2DF_1767530630754.png";
 import phoneImage from "@assets/80C6108A-A430-49A8-A44D-F78715AF6CB4_1767530168873.png";
+import buttonsImage from "@assets/B9843D18-3E73-4096-A29F-9FA2ED9B7043_1767530995218.png";
 
 export default function LandingPreview() {
   useEffect(() => {
@@ -267,139 +268,63 @@ export default function LandingPreview() {
                 hiring staff.
               </p>
               
-              {/* CTA Buttons - Neon Glassmorphism Style */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "18px", maxWidth: "320px" }}>
-                {/* Book a Live Demo Button */}
-                <div style={{ position: "relative" }}>
+              {/* CTA Buttons - Using actual PNG bubbles */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px", maxWidth: "340px" }}>
+                {/* Buttons image with clickable areas */}
+                <div style={{ position: "relative", width: "100%" }}>
+                  <img
+                    src={buttonsImage}
+                    alt="Action Buttons"
+                    style={{
+                      width: "100%",
+                      height: "auto",
+                      maxWidth: "340px",
+                    }}
+                  />
+                  {/* Clickable overlay for "Book a Live Demo" - top button */}
                   <a
                     href="#book-demo"
                     onClick={(e) => handleSmoothScroll(e, "#book-demo")}
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "10px",
-                      padding: "18px 36px",
-                      borderRadius: "999px",
-                      background: "linear-gradient(135deg, rgba(57,213,255,0.25) 0%, rgba(120,80,200,0.3) 50%, rgba(255,79,216,0.25) 100%)",
-                      border: "2px solid rgba(57,213,255,0.5)",
-                      color: "var(--text)",
-                      fontSize: "17px",
-                      fontWeight: 600,
-                      textDecoration: "none",
-                      backdropFilter: "blur(20px)",
-                      WebkitBackdropFilter: "blur(20px)",
-                      boxShadow: `
-                        0 0 30px rgba(57,213,255,0.35),
-                        0 0 60px rgba(255,79,216,0.2),
-                        inset 0 1px 0 rgba(255,255,255,0.15),
-                        0 15px 35px rgba(0,0,0,0.4)
-                      `,
-                      transition: "all 0.25s ease",
-                      position: "relative",
-                      overflow: "hidden",
+                      position: "absolute",
+                      top: "0%",
+                      left: "5%",
+                      width: "70%",
+                      height: "22%",
+                      cursor: "pointer",
+                      transition: "transform 0.2s ease",
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = "translateY(-3px) scale(1.02)";
-                      e.currentTarget.style.boxShadow = `
-                        0 0 45px rgba(57,213,255,0.5),
-                        0 0 80px rgba(255,79,216,0.35),
-                        inset 0 1px 0 rgba(255,255,255,0.2),
-                        0 20px 45px rgba(0,0,0,0.45)
-                      `;
+                      e.currentTarget.style.transform = "scale(1.03)";
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = "translateY(0) scale(1)";
-                      e.currentTarget.style.boxShadow = `
-                        0 0 30px rgba(57,213,255,0.35),
-                        0 0 60px rgba(255,79,216,0.2),
-                        inset 0 1px 0 rgba(255,255,255,0.15),
-                        0 15px 35px rgba(0,0,0,0.4)
-                      `;
+                      e.currentTarget.style.transform = "scale(1)";
                     }}
                     data-testid="button-book-live-demo"
-                  >
-                    Book a Live Demo
-                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
-                      <path d="M6 3L11 8L6 13" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </a>
-                  {/* Reflection/glow under button */}
-                  <div style={{
-                    position: "absolute",
-                    bottom: "-12px",
-                    left: "15%",
-                    right: "15%",
-                    height: "20px",
-                    background: "linear-gradient(90deg, transparent, rgba(57,213,255,0.3) 30%, rgba(255,79,216,0.25) 70%, transparent)",
-                    filter: "blur(12px)",
-                    borderRadius: "50%",
-                    pointerEvents: "none",
-                  }} />
-                </div>
-                
-                {/* View Interactive Demo Button */}
-                <div style={{ position: "relative" }}>
+                    aria-label="Book a Live Demo"
+                  />
+                  {/* Clickable overlay for "View Interactive Demo" - second button */}
                   <a
                     href="#demos"
                     onClick={(e) => handleSmoothScroll(e, "#demos")}
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "10px",
-                      padding: "18px 36px",
-                      borderRadius: "999px",
-                      background: "linear-gradient(135deg, rgba(80,60,180,0.25) 0%, rgba(120,80,200,0.2) 50%, rgba(180,100,220,0.2) 100%)",
-                      border: "2px solid rgba(140,100,220,0.5)",
-                      color: "var(--text)",
-                      fontSize: "17px",
-                      fontWeight: 600,
-                      textDecoration: "none",
-                      backdropFilter: "blur(20px)",
-                      WebkitBackdropFilter: "blur(20px)",
-                      boxShadow: `
-                        0 0 25px rgba(140,100,220,0.25),
-                        inset 0 1px 0 rgba(255,255,255,0.1),
-                        0 12px 30px rgba(0,0,0,0.35)
-                      `,
-                      transition: "all 0.25s ease",
+                      position: "absolute",
+                      top: "26%",
+                      left: "8%",
+                      width: "60%",
+                      height: "20%",
+                      cursor: "pointer",
+                      transition: "transform 0.2s ease",
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = "translateY(-3px) scale(1.02)";
-                      e.currentTarget.style.boxShadow = `
-                        0 0 40px rgba(140,100,220,0.4),
-                        inset 0 1px 0 rgba(255,255,255,0.15),
-                        0 18px 40px rgba(0,0,0,0.4)
-                      `;
+                      e.currentTarget.style.transform = "scale(1.03)";
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = "translateY(0) scale(1)";
-                      e.currentTarget.style.boxShadow = `
-                        0 0 25px rgba(140,100,220,0.25),
-                        inset 0 1px 0 rgba(255,255,255,0.1),
-                        0 12px 30px rgba(0,0,0,0.35)
-                      `;
+                      e.currentTarget.style.transform = "scale(1)";
                     }}
                     data-testid="button-view-interactive-demo"
-                  >
-                    View Interactive Demo
-                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
-                      <path d="M6 3L11 8L6 13" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </a>
-                  {/* Reflection/glow under button */}
-                  <div style={{
-                    position: "absolute",
-                    bottom: "-10px",
-                    left: "20%",
-                    right: "20%",
-                    height: "16px",
-                    background: "linear-gradient(90deg, transparent, rgba(140,100,220,0.25), transparent)",
-                    filter: "blur(10px)",
-                    borderRadius: "50%",
-                    pointerEvents: "none",
-                  }} />
+                    aria-label="View Interactive Demo"
+                  />
                 </div>
               </div>
             </div>
