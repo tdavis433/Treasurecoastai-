@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import bgImage from "@assets/IMG_1888_1767528747402.png";
 
 export default function LandingPreview() {
   useEffect(() => {
@@ -36,144 +37,18 @@ export default function LandingPreview() {
       overflow: "hidden",
     }}>
       
-      {/* ===== PROCEDURAL BACKGROUND LAYERS ===== */}
+      {/* ===== BACKGROUND IMAGE ===== */}
       
-      {/* Starfield Layer */}
-      <div style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 0,
-        pointerEvents: "none",
-        backgroundImage: `
-          radial-gradient(1px 1px at 10% 8%, rgba(255,255,255,0.95) 50%, transparent 52%),
-          radial-gradient(1px 1px at 25% 15%, rgba(255,255,255,0.85) 50%, transparent 52%),
-          radial-gradient(2px 2px at 45% 5%, rgba(255,255,255,0.9) 50%, transparent 52%),
-          radial-gradient(1px 1px at 60% 12%, rgba(255,255,255,0.8) 50%, transparent 52%),
-          radial-gradient(1px 1px at 80% 8%, rgba(255,255,255,0.88) 50%, transparent 52%),
-          radial-gradient(2px 2px at 92% 18%, rgba(255,255,255,0.75) 50%, transparent 52%),
-          radial-gradient(1px 1px at 15% 25%, rgba(255,255,255,0.82) 50%, transparent 52%),
-          radial-gradient(1px 1px at 35% 22%, rgba(255,255,255,0.78) 50%, transparent 52%),
-          radial-gradient(2px 2px at 55% 28%, rgba(255,255,255,0.85) 50%, transparent 52%),
-          radial-gradient(1px 1px at 72% 20%, rgba(255,255,255,0.9) 50%, transparent 52%),
-          radial-gradient(1px 1px at 88% 30%, rgba(255,255,255,0.72) 50%, transparent 52%),
-          radial-gradient(1px 1px at 5% 35%, rgba(255,255,255,0.68) 50%, transparent 52%),
-          radial-gradient(2px 2px at 22% 38%, rgba(255,255,255,0.8) 50%, transparent 52%),
-          radial-gradient(1px 1px at 42% 32%, rgba(255,255,255,0.75) 50%, transparent 52%),
-          radial-gradient(1px 1px at 65% 35%, rgba(255,255,255,0.82) 50%, transparent 52%),
-          radial-gradient(1px 1px at 78% 40%, rgba(255,255,255,0.7) 50%, transparent 52%),
-          radial-gradient(2px 2px at 95% 25%, rgba(255,255,255,0.88) 50%, transparent 52%),
-          radial-gradient(1px 1px at 8% 45%, rgba(255,255,255,0.65) 50%, transparent 52%),
-          radial-gradient(1px 1px at 30% 48%, rgba(255,255,255,0.72) 50%, transparent 52%),
-          radial-gradient(1px 1px at 50% 42%, rgba(255,255,255,0.78) 50%, transparent 52%),
-          radial-gradient(2px 2px at 68% 48%, rgba(255,255,255,0.68) 50%, transparent 52%),
-          radial-gradient(1px 1px at 85% 45%, rgba(255,255,255,0.6) 50%, transparent 52%),
-          radial-gradient(1px 1px at 18% 52%, rgba(255,255,255,0.55) 50%, transparent 52%),
-          radial-gradient(1px 1px at 40% 55%, rgba(255,255,255,0.5) 50%, transparent 52%),
-          radial-gradient(1200px 600px at 50% 0%, rgba(0,0,0,0.25), transparent 70%)
-        `,
-      }} />
-      
-      {/* Nebula Layer */}
-      <div style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 1,
-        pointerEvents: "none",
-        background: `
-          radial-gradient(800px 600px at 85% 15%, rgba(255,79,216,0.18), transparent 70%),
-          radial-gradient(600px 500px at 15% 35%, rgba(57,213,255,0.12), transparent 65%),
-          radial-gradient(900px 400px at 50% 75%, rgba(255,74,138,0.15), transparent 60%),
-          radial-gradient(700px 350px at 70% 60%, rgba(10,92,255,0.1), transparent 55%)
-        `,
-        filter: "blur(40px)",
-        opacity: 0.6,
-        mixBlendMode: "screen",
-      }} />
-      
-      {/* Horizon Sunset Band */}
-      <div style={{
-        position: "fixed",
-        left: 0,
-        right: 0,
-        bottom: 0,
-        height: "60%",
-        zIndex: 2,
-        pointerEvents: "none",
-        background: `linear-gradient(to top,
-          rgba(255,122,61,0.45) 0%,
-          rgba(255,74,138,0.30) 20%,
-          rgba(10,92,255,0.15) 45%,
-          rgba(5,6,10,0) 100%
-        )`,
-      }}>
-        {/* Sun Core Glow */}
-        <div style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          bottom: "15%",
-          height: "40%",
-          background: "radial-gradient(600px 260px at 45% 100%, rgba(255,160,90,0.45), transparent 70%)",
-        }} />
-      </div>
-      
-      {/* Ocean/Shore Layer */}
-      <div style={{
-        position: "fixed",
-        left: 0,
-        right: 0,
-        bottom: 0,
-        height: "25%",
-        zIndex: 3,
-        pointerEvents: "none",
-        background: `linear-gradient(to top,
-          rgba(0,0,0,0.75) 0%,
-          rgba(10,12,28,0.7) 30%,
-          rgba(40,20,70,0.25) 60%,
-          transparent 100%
-        )`,
-      }}>
-        {/* Water shimmer line */}
-        <div style={{
-          position: "absolute",
-          left: "10%",
-          right: "10%",
-          top: "35%",
-          height: "1px",
-          background: "linear-gradient(90deg, transparent, rgba(255,200,150,0.15) 30%, rgba(255,200,150,0.25) 50%, rgba(255,200,150,0.15) 70%, transparent)",
-        }} />
-      </div>
-      
-      {/* Skyline Silhouette SVG */}
-      <svg 
+      {/* Main Background Image */}
+      <div 
+        className="fixed inset-0 z-0 pointer-events-none bg-cover bg-center bg-no-repeat"
         style={{
-          position: "fixed",
-          left: "50%",
-          top: "55%",
-          transform: "translateX(-50%)",
-          width: "420px",
-          height: "80px",
-          opacity: 0.18,
-          filter: "blur(0.5px)",
-          zIndex: 4,
-          pointerEvents: "none",
-        }}
-        viewBox="0 0 420 80"
-        fill="rgba(0,0,0,0.9)"
-      >
-        <rect x="20" y="50" width="18" height="30" />
-        <rect x="45" y="35" width="22" height="45" />
-        <rect x="75" y="45" width="15" height="35" />
-        <rect x="100" y="25" width="28" height="55" />
-        <rect x="135" y="40" width="20" height="40" />
-        <rect x="165" y="15" width="35" height="65" />
-        <rect x="208" y="30" width="25" height="50" />
-        <rect x="240" y="20" width="30" height="60" />
-        <rect x="278" y="38" width="18" height="42" />
-        <rect x="305" y="28" width="26" height="52" />
-        <rect x="340" y="42" width="22" height="38" />
-        <rect x="370" y="35" width="30" height="45" />
-      </svg>
+          backgroundImage: `url(${bgImage})`,
+        }} 
+      />
+      
+      {/* Dark Overlay for Text Readability */}
+      <div className="fixed inset-0 z-[1] pointer-events-none bg-gradient-to-b from-black/60 via-black/30 to-black/50" />
       
       {/* Curved Neon Wave Streaks SVG */}
       <svg
