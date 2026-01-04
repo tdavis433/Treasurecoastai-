@@ -267,76 +267,140 @@ export default function LandingPreview() {
                 hiring staff.
               </p>
               
-              {/* CTA Buttons */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "14px", maxWidth: "280px" }}>
-                <a
-                  href="#book-demo"
-                  onClick={(e) => handleSmoothScroll(e, "#book-demo")}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "8px",
-                    padding: "14px 28px",
-                    borderRadius: "999px",
-                    background: "linear-gradient(135deg, rgba(57,213,255,0.18), rgba(255,79,216,0.14))",
-                    border: "1px solid rgba(57,213,255,0.4)",
-                    color: "var(--text)",
-                    fontSize: "15px",
-                    fontWeight: 600,
-                    textDecoration: "none",
-                    boxShadow: "0 0 25px rgba(57,213,255,0.2), 0 8px 32px rgba(0,0,0,0.3)",
-                    transition: "all 0.2s",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "translateY(-2px)";
-                    e.currentTarget.style.boxShadow = "0 0 35px rgba(57,213,255,0.3), 0 12px 40px rgba(0,0,0,0.35)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.boxShadow = "0 0 25px rgba(57,213,255,0.2), 0 8px 32px rgba(0,0,0,0.3)";
-                  }}
-                  data-testid="button-book-live-demo"
-                >
-                  Book a Live Demo
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path d="M6 3L11 8L6 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </a>
+              {/* CTA Buttons - Neon Glassmorphism Style */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "18px", maxWidth: "320px" }}>
+                {/* Book a Live Demo Button */}
+                <div style={{ position: "relative" }}>
+                  <a
+                    href="#book-demo"
+                    onClick={(e) => handleSmoothScroll(e, "#book-demo")}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "10px",
+                      padding: "18px 36px",
+                      borderRadius: "999px",
+                      background: "linear-gradient(135deg, rgba(57,213,255,0.25) 0%, rgba(120,80,200,0.3) 50%, rgba(255,79,216,0.25) 100%)",
+                      border: "2px solid rgba(57,213,255,0.5)",
+                      color: "var(--text)",
+                      fontSize: "17px",
+                      fontWeight: 600,
+                      textDecoration: "none",
+                      backdropFilter: "blur(20px)",
+                      WebkitBackdropFilter: "blur(20px)",
+                      boxShadow: `
+                        0 0 30px rgba(57,213,255,0.35),
+                        0 0 60px rgba(255,79,216,0.2),
+                        inset 0 1px 0 rgba(255,255,255,0.15),
+                        0 15px 35px rgba(0,0,0,0.4)
+                      `,
+                      transition: "all 0.25s ease",
+                      position: "relative",
+                      overflow: "hidden",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-3px) scale(1.02)";
+                      e.currentTarget.style.boxShadow = `
+                        0 0 45px rgba(57,213,255,0.5),
+                        0 0 80px rgba(255,79,216,0.35),
+                        inset 0 1px 0 rgba(255,255,255,0.2),
+                        0 20px 45px rgba(0,0,0,0.45)
+                      `;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0) scale(1)";
+                      e.currentTarget.style.boxShadow = `
+                        0 0 30px rgba(57,213,255,0.35),
+                        0 0 60px rgba(255,79,216,0.2),
+                        inset 0 1px 0 rgba(255,255,255,0.15),
+                        0 15px 35px rgba(0,0,0,0.4)
+                      `;
+                    }}
+                    data-testid="button-book-live-demo"
+                  >
+                    Book a Live Demo
+                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+                      <path d="M6 3L11 8L6 13" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </a>
+                  {/* Reflection/glow under button */}
+                  <div style={{
+                    position: "absolute",
+                    bottom: "-12px",
+                    left: "15%",
+                    right: "15%",
+                    height: "20px",
+                    background: "linear-gradient(90deg, transparent, rgba(57,213,255,0.3) 30%, rgba(255,79,216,0.25) 70%, transparent)",
+                    filter: "blur(12px)",
+                    borderRadius: "50%",
+                    pointerEvents: "none",
+                  }} />
+                </div>
                 
-                <a
-                  href="#demos"
-                  onClick={(e) => handleSmoothScroll(e, "#demos")}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "8px",
-                    padding: "14px 28px",
-                    borderRadius: "999px",
-                    background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.18)",
-                    color: "var(--text)",
-                    fontSize: "15px",
-                    fontWeight: 600,
-                    textDecoration: "none",
-                    transition: "all 0.2s",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "translateY(-2px)";
-                    e.currentTarget.style.background = "rgba(255,255,255,0.08)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.background = "rgba(255,255,255,0.04)";
-                  }}
-                  data-testid="button-view-interactive-demo"
-                >
-                  View Interactive Demo
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path d="M6 3L11 8L6 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </a>
+                {/* View Interactive Demo Button */}
+                <div style={{ position: "relative" }}>
+                  <a
+                    href="#demos"
+                    onClick={(e) => handleSmoothScroll(e, "#demos")}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "10px",
+                      padding: "18px 36px",
+                      borderRadius: "999px",
+                      background: "linear-gradient(135deg, rgba(80,60,180,0.25) 0%, rgba(120,80,200,0.2) 50%, rgba(180,100,220,0.2) 100%)",
+                      border: "2px solid rgba(140,100,220,0.5)",
+                      color: "var(--text)",
+                      fontSize: "17px",
+                      fontWeight: 600,
+                      textDecoration: "none",
+                      backdropFilter: "blur(20px)",
+                      WebkitBackdropFilter: "blur(20px)",
+                      boxShadow: `
+                        0 0 25px rgba(140,100,220,0.25),
+                        inset 0 1px 0 rgba(255,255,255,0.1),
+                        0 12px 30px rgba(0,0,0,0.35)
+                      `,
+                      transition: "all 0.25s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-3px) scale(1.02)";
+                      e.currentTarget.style.boxShadow = `
+                        0 0 40px rgba(140,100,220,0.4),
+                        inset 0 1px 0 rgba(255,255,255,0.15),
+                        0 18px 40px rgba(0,0,0,0.4)
+                      `;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0) scale(1)";
+                      e.currentTarget.style.boxShadow = `
+                        0 0 25px rgba(140,100,220,0.25),
+                        inset 0 1px 0 rgba(255,255,255,0.1),
+                        0 12px 30px rgba(0,0,0,0.35)
+                      `;
+                    }}
+                    data-testid="button-view-interactive-demo"
+                  >
+                    View Interactive Demo
+                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+                      <path d="M6 3L11 8L6 13" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </a>
+                  {/* Reflection/glow under button */}
+                  <div style={{
+                    position: "absolute",
+                    bottom: "-10px",
+                    left: "20%",
+                    right: "20%",
+                    height: "16px",
+                    background: "linear-gradient(90deg, transparent, rgba(140,100,220,0.25), transparent)",
+                    filter: "blur(10px)",
+                    borderRadius: "50%",
+                    pointerEvents: "none",
+                  }} />
+                </div>
               </div>
             </div>
             
