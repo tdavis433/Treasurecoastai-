@@ -77,18 +77,58 @@ export default function LandingPreview() {
             
             {/* Nav Links */}
             <div className="hidden md:flex items-center gap-8">
-              <a href="#products" className="text-white/80 hover:text-white transition-colors flex items-center gap-1" data-testid="link-products">
-                Products
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                  <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </a>
-              <a href="#templates" className="text-white/80 hover:text-white transition-colors flex items-center gap-1" data-testid="link-templates">
-                Templates
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                  <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </a>
+              {/* Products Dropdown */}
+              <div className="relative group">
+                <button className="text-white/80 hover:text-white transition-colors flex items-center gap-1" data-testid="link-products">
+                  Products
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="transition-transform group-hover:rotate-180">
+                    <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+                <div className="absolute top-full left-0 pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                  <div className="w-56 p-3 rounded-xl bg-black/80 backdrop-blur-xl border border-white/10 shadow-xl shadow-black/30">
+                    <a href="#ai-chatbot" className="block px-4 py-3 rounded-lg hover:bg-white/10 transition-colors" data-testid="link-ai-chatbot">
+                      <div className="font-medium text-white">AI Chatbot</div>
+                      <div className="text-sm text-white/60">24/7 customer support</div>
+                    </a>
+                    <a href="#booking" className="block px-4 py-3 rounded-lg hover:bg-white/10 transition-colors" data-testid="link-booking">
+                      <div className="font-medium text-white">Booking System</div>
+                      <div className="text-sm text-white/60">Instant appointment links</div>
+                    </a>
+                    <a href="#lead-capture" className="block px-4 py-3 rounded-lg hover:bg-white/10 transition-colors" data-testid="link-lead-capture">
+                      <div className="font-medium text-white">Lead Capture</div>
+                      <div className="text-sm text-white/60">Convert more visitors</div>
+                    </a>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Templates Dropdown */}
+              <div className="relative group">
+                <button className="text-white/80 hover:text-white transition-colors flex items-center gap-1" data-testid="link-templates-nav">
+                  Templates
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="transition-transform group-hover:rotate-180">
+                    <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+                <div className="absolute top-full left-0 pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                  <div className="w-56 p-3 rounded-xl bg-black/80 backdrop-blur-xl border border-white/10 shadow-xl shadow-black/30">
+                    <a href="#restaurant" className="block px-4 py-3 rounded-lg hover:bg-white/10 transition-colors" data-testid="link-restaurant">
+                      <div className="font-medium text-white">Restaurant</div>
+                      <div className="text-sm text-white/60">Menus & reservations</div>
+                    </a>
+                    <a href="#salon" className="block px-4 py-3 rounded-lg hover:bg-white/10 transition-colors" data-testid="link-salon">
+                      <div className="font-medium text-white">Salon & Spa</div>
+                      <div className="text-sm text-white/60">Appointment booking</div>
+                    </a>
+                    <a href="#medical" className="block px-4 py-3 rounded-lg hover:bg-white/10 transition-colors" data-testid="link-medical">
+                      <div className="font-medium text-white">Healthcare</div>
+                      <div className="text-sm text-white/60">Patient scheduling</div>
+                    </a>
+                  </div>
+                </div>
+              </div>
+              
               <a href="#pricing" className="text-white/80 hover:text-white transition-colors" data-testid="link-pricing">
                 Pricing
               </a>
