@@ -50,6 +50,7 @@ import DevEmbedTest from "@/pages/dev-embed-test";
 import AgencyOnboardingConsole from "@/pages/agency-onboarding-console";
 import SimpleOnboarding from "@/pages/simple-onboarding";
 import PreviewPage from "@/pages/preview-page";
+import LandingPreview from "@/pages/landing-preview";
 import { useEffect } from "react";
 
 interface User {
@@ -270,6 +271,7 @@ function Router() {
       <Route path="/demo/wedding" component={DemoWedding} />
       <Route path="/demo/:botId" component={DemoBotPage} />
       <Route path="/preview/:workspaceSlug" component={PreviewPage} />
+      <Route path="/landing-preview" component={LandingPreview} />
       <Route path="/dev/embed-test" component={DevEmbedTest} />
 
       {/* ===== SHARED AUTH ROUTES ===== */}
