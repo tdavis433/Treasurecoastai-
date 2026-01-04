@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import tropicalBg from "@assets/stock_images/tropical_coastal_sun_45ef332b.jpg";
+import cosmicBg from "@assets/generated_images/purple_magenta_tropical_sunset.png";
 import { 
   MessageSquare, 
   Calendar,
@@ -13,47 +13,87 @@ import {
   Check,
   Scissors,
   Heart,
-  Sparkles,
   Home as HomeIcon,
   Clock,
   Link2,
-  TrendingUp,
-  Wrench,
+  Sparkles,
   ChevronRight,
   Send,
   Menu,
-  X
+  X,
+  CheckCircle,
+  Mail
 } from "lucide-react";
 
-const NeonLogo = ({ className = "" }: { className?: string }) => (
-  <svg viewBox="0 0 60 60" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+// Diamond circuit-board logo matching the mockup exactly
+const TreasureCoastLogo = ({ className = "" }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <linearGradient id="neonGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#00E5CC" />
-        <stop offset="50%" stopColor="#8B5CF6" />
-        <stop offset="100%" stopColor="#00E5CC" />
-      </linearGradient>
-      <filter id="neonGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <filter id="logoGlow" x="-50%" y="-50%" width="200%" height="200%">
         <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
         <feMerge>
+          <feMergeNode in="coloredBlur"/>
           <feMergeNode in="coloredBlur"/>
           <feMergeNode in="SourceGraphic"/>
         </feMerge>
       </filter>
+      <linearGradient id="diamondGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#00D4FF"/>
+        <stop offset="50%" stopColor="#8B5CF6"/>
+        <stop offset="100%" stopColor="#00D4FF"/>
+      </linearGradient>
+      <linearGradient id="innerFill" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#1a1040"/>
+        <stop offset="100%" stopColor="#2d1b69"/>
+      </linearGradient>
     </defs>
-    <g filter="url(#neonGlow)">
-      <rect x="10" y="10" width="40" height="40" rx="4" transform="rotate(45 30 30)" 
-        stroke="url(#neonGradient)" strokeWidth="2" fill="none"/>
-      <rect x="15" y="15" width="30" height="30" rx="3" transform="rotate(45 30 30)" 
-        stroke="url(#neonGradient)" strokeWidth="1.5" fill="rgba(0,229,204,0.1)"/>
-      <circle cx="30" cy="20" r="3" fill="#00E5CC"/>
-      <circle cx="22" cy="30" r="2.5" fill="#8B5CF6"/>
-      <circle cx="38" cy="30" r="2.5" fill="#8B5CF6"/>
-      <circle cx="30" cy="38" r="2" fill="#00E5CC"/>
-      <line x1="30" y1="23" x2="30" y2="35" stroke="#00E5CC" strokeWidth="1.5"/>
-      <line x1="24" y1="30" x2="36" y2="30" stroke="#8B5CF6" strokeWidth="1.5"/>
-      <line x1="30" y1="20" x2="22" y2="30" stroke="url(#neonGradient)" strokeWidth="1"/>
-      <line x1="30" y1="20" x2="38" y2="30" stroke="url(#neonGradient)" strokeWidth="1"/>
+    
+    {/* Diamond shape rotated 45 degrees */}
+    <g transform="translate(50,50) rotate(45) translate(-32,-32)" filter="url(#logoGlow)">
+      <rect x="0" y="0" width="64" height="64" rx="6" 
+        fill="url(#innerFill)" 
+        stroke="url(#diamondGrad)" 
+        strokeWidth="2.5"/>
+      <rect x="6" y="6" width="52" height="52" rx="3" 
+        fill="none" 
+        stroke="#00D4FF" 
+        strokeWidth="1"
+        opacity="0.5"/>
+    </g>
+    
+    {/* Circuit pattern */}
+    <g transform="translate(50,50)" filter="url(#logoGlow)">
+      {/* Main vertical line */}
+      <line x1="0" y1="-20" x2="0" y2="20" stroke="#00D4FF" strokeWidth="2"/>
+      
+      {/* Top branches */}
+      <line x1="0" y1="-16" x2="-12" y2="-16" stroke="#00D4FF" strokeWidth="1.5"/>
+      <line x1="0" y1="-16" x2="12" y2="-16" stroke="#00D4FF" strokeWidth="1.5"/>
+      <line x1="-12" y1="-16" x2="-12" y2="-6" stroke="#00D4FF" strokeWidth="1.5"/>
+      <line x1="12" y1="-16" x2="12" y2="-6" stroke="#00D4FF" strokeWidth="1.5"/>
+      
+      {/* Middle branches */}
+      <line x1="0" y1="0" x2="-16" y2="0" stroke="#00D4FF" strokeWidth="1.5"/>
+      <line x1="0" y1="0" x2="16" y2="0" stroke="#00D4FF" strokeWidth="1.5"/>
+      <line x1="-16" y1="0" x2="-16" y2="10" stroke="#00D4FF" strokeWidth="1.5"/>
+      <line x1="16" y1="0" x2="16" y2="10" stroke="#00D4FF" strokeWidth="1.5"/>
+      
+      {/* Bottom branches */}
+      <line x1="0" y1="12" x2="-8" y2="12" stroke="#00D4FF" strokeWidth="1.5"/>
+      <line x1="0" y1="12" x2="8" y2="12" stroke="#00D4FF" strokeWidth="1.5"/>
+      
+      {/* Circuit nodes */}
+      <circle cx="0" cy="-20" r="3.5" fill="#00D4FF"/>
+      <circle cx="-12" cy="-16" r="2.5" fill="#00D4FF"/>
+      <circle cx="12" cy="-16" r="2.5" fill="#00D4FF"/>
+      <circle cx="-12" cy="-6" r="2" fill="#00D4FF"/>
+      <circle cx="12" cy="-6" r="2" fill="#00D4FF"/>
+      <circle cx="0" cy="0" r="3" fill="#00D4FF"/>
+      <circle cx="-16" cy="0" r="2" fill="#00D4FF"/>
+      <circle cx="16" cy="0" r="2" fill="#00D4FF"/>
+      <circle cx="-16" cy="10" r="2" fill="#00D4FF"/>
+      <circle cx="16" cy="10" r="2" fill="#00D4FF"/>
+      <circle cx="0" cy="20" r="3.5" fill="#00D4FF"/>
     </g>
   </svg>
 );
@@ -76,104 +116,48 @@ export default function LandingPreview() {
       });
       
       if (response.ok) {
-        toast({
-          title: "Request received!",
-          description: "We'll be in touch within 24 hours.",
-        });
+        toast({ title: "Request received!", description: "We'll be in touch within 24 hours." });
         setContactForm({ name: '', email: '', phone: '', message: '' });
       } else {
         const data = await response.json().catch(() => ({}));
-        toast({
-          title: "Something went wrong",
-          description: data.error || "Please try again.",
-          variant: "destructive",
-        });
+        toast({ title: "Something went wrong", description: data.error || "Please try again.", variant: "destructive" });
       }
     } catch (error) {
-      toast({
-        title: "Connection error",
-        description: "Please check your connection and try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Connection error", description: "Please check your connection and try again.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const features = [
-    { icon: Clock, label: "24/7 Responses", desc: "Never miss a lead" },
-    { icon: Link2, label: "Lead Capture + Booking", desc: "Automatic follow-up" },
-    { icon: Wrench, label: "Done-For-You Setup", desc: "We handle everything" },
-    { icon: Sparkles, label: "Multi-Industry Templates", desc: "Ready to deploy" }
-  ];
-
-  const industries = [
-    { icon: Scissors, label: "Barbershops" },
-    { icon: Sparkles, label: "Salons" },
-    { icon: Heart, label: "Sober Living" },
-    { icon: HomeIcon, label: "Home Services" }
-  ];
-
-  const demos = [
-    {
-      name: "Faith House",
-      type: "Sober Living",
-      features: ["Pricing, admission, payment FAQs", "Availability inquiries", "Book tour link + lead capture"],
-      href: "/demo/faith-house",
-      gradient: "from-cyan-500/20 to-teal-500/20"
-    },
-    {
-      name: "Fade Factory",
-      type: "Barbershop",
-      features: ["Pricing, services, hours", "Availability questions", "Booking link + lead capture"],
-      href: "/demo/barbershop",
-      gradient: "from-purple-500/20 to-pink-500/20"
-    },
-    {
-      name: "Luxe Locks",
-      type: "Salon",
-      features: ["Pricing, services, hours", "Availability questions", "Booking link + lead capture"],
-      href: "/demo/salon",
-      gradient: "from-rose-500/20 to-pink-500/20"
-    },
-    {
-      name: "Polished Nails",
-      type: "Nails Studio",
-      features: ["Pricing, services, hours", "Availability questions", "Booking link + lead capture"],
-      href: "/demo/nails",
-      gradient: "from-fuchsia-500/20 to-purple-500/20"
-    }
+  const chatMessages = [
+    "How much is a haircut?",
+    "Are you open today?",
+    "Can I book for tomorrow at 5?",
   ];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white overflow-x-hidden">
+    <div className="min-h-screen bg-[#0a0612] text-white overflow-x-hidden">
       {/* ══════════════════════════════════════════════════════════════
-          NAVIGATION - Clean, minimal
+          NAVIGATION
       ══════════════════════════════════════════════════════════════ */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0f]/80 backdrop-blur-xl border-b border-white/5">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0a0612]/60 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3" data-testid="logo">
-            <NeonLogo className="w-10 h-10" />
-            <span className="font-semibold text-lg tracking-tight">
-              <span className="text-white">TREASURE COAST</span>
-              <span className="text-cyan-400 ml-1">AI</span>
+          <div className="flex items-center gap-2" data-testid="logo">
+            <TreasureCoastLogo className="w-10 h-10" />
+            <span className="font-semibold text-lg tracking-tight text-white">
+              TREASURE COAST AI
             </span>
           </div>
           
-          <div className="hidden md:flex items-center gap-8 text-sm text-white/70">
-            <a href="#how-it-works" className="hover:text-white transition-colors" data-testid="nav-how-it-works">How It Works</a>
-            <a href="#demos" className="hover:text-white transition-colors" data-testid="nav-demos">Templates</a>
-            <a href="#pricing" className="hover:text-white transition-colors" data-testid="nav-pricing">Pricing</a>
+          <div className="hidden md:flex items-center gap-8 text-sm text-white/80">
+            <a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a>
+            <a href="#demos" className="hover:text-white transition-colors">Templates</a>
+            <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
           </div>
           
           <div className="flex items-center gap-3">
-            <Link href="/login" className="hidden sm:block">
-              <Button variant="ghost" className="text-white/70 hover:text-white" data-testid="nav-login">
-                Login
-              </Button>
-            </Link>
             <Button 
-              className="hidden sm:flex bg-gradient-to-r from-cyan-500 to-cyan-400 text-black font-medium px-5 hover:opacity-90 transition-opacity"
+              className="hidden sm:flex bg-transparent border border-white/50 text-white hover:bg-white/10 font-medium px-5 rounded-full"
               onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
               data-testid="nav-book-demo"
             >
@@ -198,46 +182,18 @@ export default function LandingPreview() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="md:hidden bg-[#0a0a0f]/95 backdrop-blur-xl border-t border-white/5"
+              className="md:hidden bg-[#0a0612]/95 backdrop-blur-xl border-t border-white/5"
             >
               <div className="px-4 py-4 space-y-3">
-                <a 
-                  href="#how-it-works" 
-                  className="block py-2 text-white/70 hover:text-white transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
+                <a href="#how-it-works" className="block py-2 text-white/70 hover:text-white" onClick={() => setMobileMenuOpen(false)}>How It Works</a>
+                <a href="#demos" className="block py-2 text-white/70 hover:text-white" onClick={() => setMobileMenuOpen(false)}>Templates</a>
+                <a href="#pricing" className="block py-2 text-white/70 hover:text-white" onClick={() => setMobileMenuOpen(false)}>Pricing</a>
+                <Button 
+                  className="w-full bg-transparent border border-white/50 text-white hover:bg-white/10 rounded-full"
+                  onClick={() => { setMobileMenuOpen(false); document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' }); }}
                 >
-                  How It Works
-                </a>
-                <a 
-                  href="#demos" 
-                  className="block py-2 text-white/70 hover:text-white transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Templates
-                </a>
-                <a 
-                  href="#pricing" 
-                  className="block py-2 text-white/70 hover:text-white transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Pricing
-                </a>
-                <div className="pt-3 border-t border-white/10 flex flex-col gap-2">
-                  <Link href="/login">
-                    <Button variant="ghost" className="w-full text-white/70 hover:text-white justify-start">
-                      Login
-                    </Button>
-                  </Link>
-                  <Button 
-                    className="w-full bg-gradient-to-r from-cyan-500 to-cyan-400 text-black font-medium hover:opacity-90"
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
-                    }}
-                  >
-                    Book Demo
-                  </Button>
-                </div>
+                  Book Demo
+                </Button>
               </div>
             </motion.div>
           )}
@@ -245,130 +201,157 @@ export default function LandingPreview() {
       </nav>
 
       {/* ══════════════════════════════════════════════════════════════
-          HERO SECTION - Cinematic background, clean content
+          HERO SECTION
       ══════════════════════════════════════════════════════════════ */}
-      <section className="relative min-h-screen flex items-center pt-16">
-        {/* Cinematic Background - 20% of visual weight */}
-        <div className="absolute inset-0">
-          <img 
-            src={tropicalBg} 
-            alt="" 
-            className="w-full h-full object-cover opacity-40"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0f] via-[#0a0a0f]/70 to-[#0a0a0f]" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0f] via-transparent to-[#0a0a0f]/80" />
+      <section className="relative min-h-screen flex items-center pt-16 overflow-hidden">
+        {/* Background Image */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${cosmicBg})` }}
+        />
+        {/* Gradient overlays */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0a0612]/60 via-transparent to-[#0a0612]" />
+        
+        {/* Neon light trails at bottom */}
+        <div className="absolute bottom-0 left-0 right-0 h-40 pointer-events-none">
+          <svg className="w-full h-full" viewBox="0 0 1200 120" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="heroTrail1" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#00D4FF" stopOpacity="0"/>
+                <stop offset="30%" stopColor="#00D4FF" stopOpacity="0.8"/>
+                <stop offset="70%" stopColor="#8B5CF6" stopOpacity="0.6"/>
+                <stop offset="100%" stopColor="#EC4899" stopOpacity="0"/>
+              </linearGradient>
+              <linearGradient id="heroTrail2" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#EC4899" stopOpacity="0"/>
+                <stop offset="50%" stopColor="#8B5CF6" stopOpacity="0.5"/>
+                <stop offset="100%" stopColor="#00D4FF" stopOpacity="0"/>
+              </linearGradient>
+              <filter id="heroGlow">
+                <feGaussianBlur stdDeviation="4" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <path d="M0,70 Q300,30 600,60 T1200,50" stroke="url(#heroTrail1)" strokeWidth="3" fill="none" filter="url(#heroGlow)"/>
+            <path d="M0,90 Q400,60 800,80 T1200,70" stroke="url(#heroTrail2)" strokeWidth="2" fill="none" filter="url(#heroGlow)"/>
+          </svg>
         </div>
-
-        {/* Subtle neon glow accents */}
-        <div className="absolute top-1/3 left-1/4 w-[500px] h-[500px] bg-cyan-500/5 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-purple-500/5 rounded-full blur-[100px] pointer-events-none" />
-
-        {/* Content - 80% clean SaaS */}
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 w-full">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Left: Headlines */}
+        
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-20 w-full">
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+            {/* Left Column - Text */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
+              transition={{ duration: 0.8 }}
             >
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight mb-6" data-testid="hero-headline">
-                <span className="text-white">AI Chatbots</span>
-                <span className="text-white/80"> that run your front desk </span>
-                <span className="bg-gradient-to-r from-cyan-400 to-cyan-300 bg-clip-text text-transparent">24/7.</span>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight mb-6">
+                <span className="text-white">AI Chatbots </span>
+                <span className="text-white/70">that run your front desk </span>
+                <span className="text-white">24/7.</span>
               </h1>
               
-              <p className="text-lg sm:text-xl text-white/60 mb-8 max-w-lg leading-relaxed">
+              <p className="text-lg text-white/60 mb-8 max-w-md">
                 Answer questions instantly, capture leads, and send customers to booking—without hiring staff.
               </p>
-
+              
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button 
                   size="lg"
-                  className="bg-gradient-to-r from-cyan-500 to-cyan-400 text-black font-semibold px-8 py-6 text-lg hover:opacity-90 transition-opacity group"
+                  className="bg-transparent border-2 border-white text-white hover:bg-white/10 font-medium px-8 py-6 text-base rounded-full group"
                   onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
                   data-testid="hero-book-demo"
                 >
                   Book a Live Demo
                   <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
                 </Button>
-                <Link href="/demos">
-                  <Button 
-                    size="lg"
-                    variant="outline"
-                    className="border-white/20 text-white hover:bg-white/5 px-8 py-6 text-lg"
-                    data-testid="hero-view-demos"
-                  >
-                    View Interactive Demo
-                  </Button>
-                </Link>
+                <Button 
+                  size="lg"
+                  variant="ghost"
+                  className="border border-white/40 text-white/90 hover:bg-white/5 font-medium px-8 py-6 text-base rounded-full"
+                  onClick={() => document.getElementById('demos')?.scrollIntoView({ behavior: 'smooth' })}
+                  data-testid="hero-view-demos"
+                >
+                  View Interactive Demo
+                  <ChevronRight className="w-5 h-5 ml-2" />
+                </Button>
               </div>
             </motion.div>
 
-            {/* Right: Chat Widget Mockup */}
+            {/* Right Column - Phone Mockup */}
             <motion.div
-              initial={{ opacity: 0, x: 30 }}
+              initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="hidden lg:block"
+              transition={{ duration: 0.8, delay: 0.3 }}
+              className="flex justify-center lg:justify-end"
             >
-              <div className="relative">
-                {/* Glow behind widget */}
-                <div className="absolute -inset-4 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 rounded-3xl blur-2xl opacity-50" />
+              {/* Phone Frame */}
+              <div className="relative w-[280px] sm:w-[320px]">
+                {/* Phone glow */}
+                <div className="absolute -inset-4 bg-gradient-to-br from-purple-500/40 via-cyan-500/20 to-pink-500/40 rounded-[3rem] blur-2xl" />
                 
-                {/* Chat Widget */}
-                <div className="relative bg-[#12121a]/90 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-2xl">
-                  {/* Widget Header */}
-                  <div className="flex items-center gap-3 mb-6">
-                    <NeonLogo className="w-8 h-8" />
-                    <div>
-                      <div className="font-semibold text-white">Treasure Coast AI</div>
-                      <div className="text-xs text-white/50">Your Business, Upgraded.</div>
-                    </div>
-                    <div className="ml-auto flex gap-1">
+                {/* Phone body */}
+                <div className="relative bg-gradient-to-br from-[#1a1040]/95 to-[#0d0620]/95 backdrop-blur-xl rounded-[2rem] border-2 border-purple-500/40 p-4 shadow-2xl">
+                  {/* Phone notch */}
+                  <div className="flex justify-center mb-2">
+                    <div className="flex items-center gap-6">
                       <div className="w-2 h-2 rounded-full bg-white/20" />
                       <div className="w-2 h-2 rounded-full bg-white/20" />
                       <div className="w-2 h-2 rounded-full bg-white/20" />
                     </div>
                   </div>
-
-                  {/* Sample Questions */}
-                  <div className="space-y-3 mb-6">
-                    {[
-                      "How much is a haircut?",
-                      "Are you open today?",
-                      "Can I book for tomorrow at 5?"
-                    ].map((q, i) => (
-                      <div 
+                  
+                  {/* Chat messages */}
+                  <div className="space-y-3 mb-4">
+                    {chatMessages.map((msg, i) => (
+                      <motion.div
                         key={i}
-                        className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-sm text-white/80 flex items-center justify-between cursor-pointer transition-colors"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.8 + i * 0.15 }}
+                        className="flex items-center justify-between bg-white/90 text-gray-800 rounded-xl px-4 py-3 text-sm font-medium"
                       >
-                        {q}
-                        <ChevronRight className="w-4 h-4 text-white/40" />
-                      </div>
+                        <span>{msg}</span>
+                        <ChevronRight className="w-4 h-4 text-gray-400" />
+                      </motion.div>
                     ))}
                   </div>
-
-                  {/* Status Badges */}
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    <div className="flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/30 rounded-full px-3 py-1.5 text-xs">
-                      <Check className="w-3 h-3 text-cyan-400" />
-                      <span className="text-cyan-300">Lead Captured</span>
-                    </div>
-                    <div className="flex items-center gap-2 bg-purple-500/10 border border-purple-500/30 rounded-full px-3 py-1.5 text-xs">
-                      <Calendar className="w-3 h-3 text-purple-400" />
-                      <span className="text-purple-300">Booking Link Sent</span>
-                    </div>
-                    <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-full px-3 py-1.5 text-xs">
-                      <Check className="w-3 h-3 text-green-400" />
-                      <span className="text-green-300">Follow-Up Automated</span>
-                    </div>
+                  
+                  {/* Status badges */}
+                  <div className="space-y-2 mb-4">
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 1.4 }}
+                      className="flex items-center gap-2 text-sm"
+                    >
+                      <CheckCircle className="w-4 h-4 text-cyan-400" />
+                      <span className="text-white/80">Lead Captured</span>
+                    </motion.div>
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 1.55 }}
+                      className="flex items-center gap-2 text-sm"
+                    >
+                      <Link2 className="w-4 h-4 text-purple-400" />
+                      <span className="text-white/80">Booking Link Sent</span>
+                    </motion.div>
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 1.7 }}
+                      className="flex items-center gap-2 text-sm"
+                    >
+                      <Check className="w-4 h-4 text-green-400" />
+                      <span className="text-white/80">Follow-Up Automated</span>
+                    </motion.div>
                   </div>
-
+                  
                   {/* Input */}
-                  <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-4 py-3">
-                    <span className="text-white/40 text-sm flex-1">Ask Anything...</span>
-                    <ChevronRight className="w-4 h-4 text-white/40" />
+                  <div className="flex items-center justify-between bg-white/90 text-gray-500 rounded-xl px-4 py-3 text-sm">
+                    <span>Ask Anything...</span>
+                    <ChevronRight className="w-4 h-4" />
                   </div>
                 </div>
               </div>
@@ -378,28 +361,27 @@ export default function LandingPreview() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════
-          FEATURE STRIP - Clean pills
+          FEATURE STRIP - Light background with 4 features
       ══════════════════════════════════════════════════════════════ */}
-      <section className="py-12 border-y border-white/5 bg-[#0a0a0f]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {features.map((f, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: i * 0.1 }}
-                className="text-center"
-                data-testid={`feature-${i}`}
-              >
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-white/5 border border-white/10 mb-3">
-                  <f.icon className="w-5 h-5 text-cyan-400" />
-                </div>
-                <div className="font-medium text-white mb-1">{f.label}</div>
-                <div className="text-sm text-white/50">{f.desc}</div>
-              </motion.div>
-            ))}
+      <section className="py-6 bg-white/95">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-4 text-gray-700">
+            <div className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-gray-500" />
+              <span className="text-sm font-medium">24/7 Responses</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-gray-500" />
+              <span className="text-sm font-medium">Lead Capture + Booking</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-gray-500" />
+              <span className="text-sm font-medium">Done-For-You Setup</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-gray-500" />
+              <span className="text-sm font-medium">Multi-industry Templates</span>
+            </div>
           </div>
         </div>
       </section>
@@ -407,85 +389,67 @@ export default function LandingPreview() {
       {/* ══════════════════════════════════════════════════════════════
           BUILT FOR SECTION
       ══════════════════════════════════════════════════════════════ */}
-      <section className="py-16 bg-[#0a0a0f]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
-          <div className="text-sm text-white/40 uppercase tracking-wider mb-6">Built For</div>
+      <section className="py-12 bg-white/95">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+          <div className="flex items-center justify-center gap-4 mb-8">
+            <div className="h-px flex-1 max-w-[100px] bg-gray-300" />
+            <h2 className="text-xl font-medium text-gray-700">Built For:</h2>
+            <div className="h-px flex-1 max-w-[100px] bg-gray-300" />
+          </div>
+          
           <div className="flex flex-wrap justify-center gap-4">
-            {industries.map((ind, i) => (
-              <motion.div
+            {[
+              { icon: Scissors, label: "Barbershops" },
+              { icon: Sparkles, label: "Salons" },
+              { icon: Heart, label: "Sober Living" },
+              { icon: HomeIcon, label: "Home Services" },
+            ].map((industry, i) => (
+              <div
                 key={i}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.3, delay: i * 0.1 }}
-                className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-5 py-2.5 hover:border-cyan-500/30 transition-colors"
-                data-testid={`industry-${i}`}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg border border-gray-200 bg-white text-gray-700"
               >
-                <ind.icon className="w-4 h-4 text-cyan-400" />
-                <span className="text-white/80 text-sm font-medium">{ind.label}</span>
-              </motion.div>
+                <industry.icon className="w-4 h-4 text-purple-500" />
+                <span className="text-sm font-medium">{industry.label}</span>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
       {/* ══════════════════════════════════════════════════════════════
-          HOW IT WORKS
+          HOW IT WORKS SECTION
       ══════════════════════════════════════════════════════════════ */}
-      <section id="how-it-works" className="py-24 bg-[#0a0a0f] relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-500/[0.02] to-transparent pointer-events-none" />
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
-          <motion.div 
-            className="text-center mb-16"
+      <section id="how-it-works" className="py-20 bg-[#0a0612]">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
+            className="text-center mb-12"
           >
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4" data-testid="how-it-works-title">
-              How It Works
+            <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+              <span className="text-white">How It </span>
+              <span className="text-cyan-400">Works</span>
             </h2>
-            <p className="text-lg text-white/50 max-w-2xl mx-auto">
-              Get your 24/7 AI front desk live in three simple steps
-            </p>
           </motion.div>
-
+          
           <div className="grid md:grid-cols-3 gap-8">
             {[
-              {
-                step: "01",
-                title: "Install Chat Widget",
-                desc: "Drop one script tag on your website. We provide the code and can install it for you.",
-                icon: MessageSquare
-              },
-              {
-                step: "02",
-                title: "Capture Leads & Bookings",
-                desc: "AI answers questions, captures contact info, and sends booking links automatically.",
-                icon: TrendingUp
-              },
-              {
-                step: "03",
-                title: "Grow Your Business",
-                desc: "Review leads and conversations in your dashboard. We optimize the AI for you.",
-                icon: Sparkles
-              }
+              { step: "01", title: "Install the Widget", desc: "Add our embed code to your website. Takes less than 5 minutes." },
+              { step: "02", title: "AI Answers & Qualifies", desc: "Your assistant handles FAQs, captures leads, and sends booking links." },
+              { step: "03", title: "Track Conversions", desc: "Monitor leads, bookings, and conversations from your dashboard." },
             ].map((item, i) => (
               <motion.div
                 key={i}
-                initial={{ opacity: 0, y: 30 }}
+                initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.15 }}
-                className="bg-white/[0.02] border border-white/10 rounded-2xl p-8 hover:border-cyan-500/20 transition-colors"
-                data-testid={`step-${i}`}
+                transition={{ delay: i * 0.15 }}
+                className="relative bg-gradient-to-br from-[#1a1040]/60 to-[#0d0620]/60 backdrop-blur-xl rounded-2xl border border-white/10 p-6 text-center"
               >
-                <div className="text-cyan-400 text-sm font-mono mb-4">Step {item.step}</div>
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/10 to-purple-500/10 border border-white/10 flex items-center justify-center mb-5">
-                  <item.icon className="w-6 h-6 text-cyan-400" />
-                </div>
-                <h3 className="text-xl font-semibold text-white mb-3">{item.title}</h3>
-                <p className="text-white/50 leading-relaxed">{item.desc}</p>
+                <div className="text-4xl font-bold text-cyan-400/30 mb-4">{item.step}</div>
+                <h3 className="text-lg font-semibold text-white mb-2">{item.title}</h3>
+                <p className="text-sm text-white/60">{item.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -495,70 +459,50 @@ export default function LandingPreview() {
       {/* ══════════════════════════════════════════════════════════════
           DEMO SHOWCASE
       ══════════════════════════════════════════════════════════════ */}
-      <section id="demos" className="py-24 bg-[#0a0a0f] relative">
-        {/* Subtle cinematic accent */}
-        <div className="absolute bottom-0 left-0 right-0 h-[400px] overflow-hidden pointer-events-none">
-          <img 
-            src={tropicalBg} 
-            alt="" 
-            className="w-full h-full object-cover object-bottom opacity-20"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-[#0a0a0f]/90 to-transparent" />
-        </div>
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
-          <motion.div 
-            className="text-center mb-16"
+      <section id="demos" className="relative py-20 overflow-hidden">
+        <div 
+          className="absolute inset-0 bg-cover bg-center opacity-40"
+          style={{ backgroundImage: `url(${cosmicBg})` }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0a0612] via-transparent to-[#0a0612]" />
+        
+        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6">
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
+            className="text-center mb-12"
           >
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4" data-testid="demos-title">
-              Demo Showcase
+            <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+              <span className="text-white">Beautiful, </span>
+              <span className="text-cyan-400">High-Converting Templates</span>
             </h2>
-            <p className="text-lg text-white/50 max-w-2xl mx-auto">
-              See how our AI handles FAQs and appointments for different industries
-            </p>
           </motion.div>
-
+          
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {demos.map((demo, i) => (
+            {[
+              { name: "Faith House", type: "Sober Living", path: "/demo/faith-house" },
+              { name: "Fade Factory", type: "Barbershop", path: "/demo/barber" },
+              { name: "Luxe Locks", type: "Salon", path: "/demo/luxe-locks" },
+              { name: "Polished Nails", type: "Nail Salon", path: "/demo/polished-nails" },
+            ].map((demo, i) => (
               <motion.div
                 key={i}
-                initial={{ opacity: 0, y: 30 }}
+                initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-                className="group"
-                data-testid={`demo-card-${i}`}
+                transition={{ delay: i * 0.1 }}
               >
-                <div className={`bg-gradient-to-br ${demo.gradient} rounded-2xl p-[1px]`}>
-                  <div className="bg-[#0f0f18] rounded-2xl p-6 h-full">
-                    <div className="mb-4">
-                      <div className="text-xl font-semibold text-white mb-1">{demo.name}</div>
-                      <div className="text-sm text-white/50">{demo.type}</div>
-                    </div>
-                    
-                    <div className="space-y-2 mb-6">
-                      {demo.features.map((f, fi) => (
-                        <div key={fi} className="flex items-start gap-2 text-sm text-white/60">
-                          <Check className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
-                          <span>{f}</span>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    <Link href={demo.href}>
-                      <Button 
-                        className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white"
-                        data-testid={`demo-button-${i}`}
-                      >
-                        Try the Demo
-                        <ArrowRight className="w-4 h-4 ml-2" />
-                      </Button>
-                    </Link>
+                <Link href={demo.path}>
+                  <div className="group relative bg-gradient-to-br from-[#1a1040]/80 to-[#0d0620]/80 backdrop-blur-xl rounded-2xl border border-purple-500/20 p-6 hover:border-cyan-400/50 transition-all cursor-pointer">
+                    <TreasureCoastLogo className="w-12 h-12 mb-4" />
+                    <h3 className="text-lg font-semibold text-white mb-1">{demo.name}</h3>
+                    <p className="text-sm text-white/50 mb-4">{demo.type}</p>
+                    <span className="text-cyan-400 text-sm font-medium flex items-center">
+                      Try the Demo <ArrowRight className="w-4 h-4 ml-1" />
+                    </span>
                   </div>
-                </div>
+                </Link>
               </motion.div>
             ))}
           </div>
@@ -566,165 +510,140 @@ export default function LandingPreview() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════
-          PRICING
+          PRICING SECTION
       ══════════════════════════════════════════════════════════════ */}
-      <section id="pricing" className="py-24 bg-[#0a0a0f]">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <motion.div 
-            className="text-center mb-16"
+      <section id="pricing" className="py-20 bg-[#0a0612]">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6">
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
+            className="text-center mb-12"
           >
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4" data-testid="pricing-title">
-              Simple, Affordable Pricing
+            <h2 className="text-3xl sm:text-4xl font-bold">
+              <span className="text-white">Simple, </span>
+              <span className="text-cyan-400">Affordable Pricing</span>
             </h2>
-            <p className="text-lg text-white/50">
-              No setup fees. No contracts. Cancel anytime.
-            </p>
           </motion.div>
-
+          
           <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
-            {/* Starter Plan */}
+            {/* Starter */}
             <motion.div
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-              className="bg-white/[0.02] border border-white/10 rounded-2xl p-8"
-              data-testid="pricing-starter"
+              className="bg-gradient-to-br from-[#1a1040]/60 to-[#0d0620]/60 rounded-2xl border border-white/10 p-8"
             >
-              <div className="mb-6">
-                <div className="text-lg font-medium text-white mb-2">Starter Plan</div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold text-white">$29</span>
-                  <span className="text-white/50">/mo</span>
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h3 className="text-xl font-semibold text-white">Starter Plan</h3>
+                  <p className="text-sm text-white/50">Starts at</p>
                 </div>
+                <div className="text-3xl font-bold text-white">$29<span className="text-lg font-normal text-white/50">/mo</span></div>
               </div>
               
-              <div className="space-y-3 mb-8">
-                {[
-                  "24/7 AI Chatbot",
-                  "Instant Booking Links",
-                  "Professional Templates",
-                  "Email Notifications"
-                ].map((f, i) => (
-                  <div key={i} className="flex items-center gap-3 text-white/70">
-                    <Check className="w-4 h-4 text-cyan-400" />
-                    <span>{f}</span>
-                  </div>
-                ))}
-              </div>
+              <ul className="space-y-3 mb-8 text-sm text-white/70">
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-cyan-400" /> 1 AI Assistant</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-cyan-400" /> 500 conversations/mo</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-cyan-400" /> Lead capture & booking links</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-cyan-400" /> Email support</li>
+              </ul>
               
-              <Button 
-                variant="outline" 
-                className="w-full border-white/20 text-white hover:bg-white/5"
-                onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
-                data-testid="pricing-starter-cta"
-              >
-                Start Free
-                <ChevronRight className="w-4 h-4 ml-2" />
+              <Button className="w-full bg-transparent border border-white/30 text-white hover:bg-white/10 rounded-full">
+                Start Free <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             </motion.div>
-
-            {/* Pro Plan */}
+            
+            {/* Pro */}
             <motion.div
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="relative bg-gradient-to-br from-cyan-500/10 to-purple-500/10 rounded-2xl p-[1px]"
-              data-testid="pricing-pro"
+              transition={{ delay: 0.1 }}
+              className="relative bg-gradient-to-br from-[#1a1040]/60 to-[#0d0620]/60 rounded-2xl border border-cyan-500/40 p-8"
             >
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <span className="bg-gradient-to-r from-cyan-500 to-cyan-400 text-black text-xs font-semibold px-3 py-1 rounded-full">
-                  Most Popular
-                </span>
-              </div>
-              <div className="bg-[#0f0f18] rounded-2xl p-8 h-full">
-                <div className="mb-6">
-                  <div className="text-lg font-medium text-white mb-2">Pro Plan</div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-white">$79</span>
-                    <span className="text-white/50">/mo</span>
-                  </div>
+              <div className="absolute -inset-px rounded-2xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 blur-sm -z-10" />
+              
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h3 className="text-xl font-semibold text-white">Pro Plan</h3>
+                  <p className="text-sm text-white/50">Starts at</p>
                 </div>
-                
-                <div className="space-y-3 mb-8">
-                  {[
-                    "Everything in Starter",
-                    "Priority Support",
-                    "Advanced Analytics",
-                    "Custom Branding",
-                    "Multiple Locations"
-                  ].map((f, i) => (
-                    <div key={i} className="flex items-center gap-3 text-white/70">
-                      <Check className="w-4 h-4 text-cyan-400" />
-                      <span>{f}</span>
-                    </div>
-                  ))}
-                </div>
-                
-                <Button 
-                  className="w-full bg-gradient-to-r from-cyan-500 to-cyan-400 text-black font-semibold hover:opacity-90"
-                  onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
-                  data-testid="pricing-pro-cta"
-                >
-                  Get Started
-                  <ChevronRight className="w-4 h-4 ml-2" />
-                </Button>
+                <div className="text-3xl font-bold text-cyan-400">$79<span className="text-lg font-normal text-white/50">/mo</span></div>
               </div>
+              
+              <ul className="space-y-3 mb-8 text-sm text-white/70">
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-cyan-400" /> Unlimited AI Assistants</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-cyan-400" /> Unlimited conversations</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-cyan-400" /> Advanced analytics</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-cyan-400" /> Priority support</li>
+              </ul>
+              
+              <Button className="w-full bg-gradient-to-r from-cyan-500 to-cyan-400 text-black font-semibold hover:opacity-90 rounded-full">
+                Get Started <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
             </motion.div>
           </div>
         </div>
       </section>
 
       {/* ══════════════════════════════════════════════════════════════
-          UNLOCK THE FUTURE CTA
+          CTA SECTION - Unlock the Future
       ══════════════════════════════════════════════════════════════ */}
-      <section className="py-24 relative overflow-hidden">
-        {/* Cinematic background accent */}
-        <div className="absolute inset-0">
-          <img 
-            src={tropicalBg} 
-            alt="" 
-            className="w-full h-full object-cover opacity-30"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-[#0a0a0f]/80 to-[#0a0a0f]" />
+      <section className="relative py-24 overflow-hidden">
+        <div 
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${cosmicBg})` }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0612] via-[#0a0612]/40 to-[#0a0612]" />
+        
+        {/* Neon trails */}
+        <div className="absolute top-1/2 left-0 right-0 h-32 pointer-events-none -translate-y-1/2">
+          <svg className="w-full h-full" viewBox="0 0 1200 100" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="ctaTrail1" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#00D4FF" stopOpacity="0"/>
+                <stop offset="50%" stopColor="#00D4FF" stopOpacity="0.8"/>
+                <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0"/>
+              </linearGradient>
+              <linearGradient id="ctaTrail2" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0"/>
+                <stop offset="50%" stopColor="#EC4899" stopOpacity="0.6"/>
+                <stop offset="100%" stopColor="#00D4FF" stopOpacity="0"/>
+              </linearGradient>
+              <filter id="ctaGlow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            </defs>
+            <path d="M0,50 Q300,30 600,50 T1200,40" stroke="url(#ctaTrail1)" strokeWidth="2" fill="none" filter="url(#ctaGlow)" opacity="0.6"/>
+            <path d="M0,60 Q400,80 800,50 T1200,70" stroke="url(#ctaTrail2)" strokeWidth="2" fill="none" filter="url(#ctaGlow)" opacity="0.6"/>
+          </svg>
         </div>
-
-        <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 text-center">
+        
+        <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 text-center">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6" data-testid="cta-title">
-              Unlock the <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">Future of Sales.</span>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-8">
+              <span className="text-white">Unlock the </span>
+              <span className="font-bold text-white">Future of Sales.</span>
             </h2>
-            <p className="text-lg text-white/60 mb-8 max-w-2xl mx-auto">
-              Your business should never miss a lead. Let AI handle your front desk 24/7.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            
+            <div className="flex flex-col items-center gap-4">
               <Button 
                 size="lg"
-                className="bg-gradient-to-r from-cyan-500 to-cyan-400 text-black font-semibold px-8 py-6 text-lg hover:opacity-90"
+                className="bg-gradient-to-r from-cyan-500 to-cyan-400 text-black font-semibold px-8 py-6 text-lg hover:opacity-90 rounded-full"
                 onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
-                data-testid="cta-book-demo"
               >
-                Book a Demo
-                <ChevronRight className="w-5 h-5 ml-2" />
+                Book a Demo <ChevronRight className="w-5 h-5 ml-2" />
               </Button>
-              <Link href="/demos">
-                <Button 
-                  size="lg"
-                  variant="outline"
-                  className="border-white/20 text-white hover:bg-white/5 px-8 py-6 text-lg"
-                  data-testid="cta-try-demo"
-                >
-                  Try the Live Demo
-                </Button>
-              </Link>
+              <Button 
+                variant="link"
+                className="text-white/80 hover:text-white text-base"
+                onClick={() => document.getElementById('demos')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                Try the Live Demo
+              </Button>
             </div>
           </motion.div>
         </div>
@@ -733,127 +652,87 @@ export default function LandingPreview() {
       {/* ══════════════════════════════════════════════════════════════
           CONTACT FORM
       ══════════════════════════════════════════════════════════════ */}
-      <section id="contact" className="py-24 bg-[#0a0a0f]">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            {/* Left: Info */}
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
+      <section id="contact" className="py-20 bg-[#0a0612]">
+        <div className="max-w-xl mx-auto px-4 sm:px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-8"
+          >
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">Ready to Get Started?</h2>
+            <p className="text-white/60">Book a demo and we'll show you how it works.</p>
+          </motion.div>
+          
+          <motion.form
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            onSubmit={handleContactSubmit}
+            className="bg-gradient-to-br from-[#1a1040]/60 to-[#0d0620]/60 rounded-2xl border border-white/10 p-8 space-y-4"
+          >
+            <Input
+              placeholder="Your Name"
+              value={contactForm.name}
+              onChange={(e) => setContactForm(prev => ({ ...prev, name: e.target.value }))}
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-cyan-400"
+              data-testid="input-contact-name"
+              required
+            />
+            <Input
+              type="email"
+              placeholder="Email Address"
+              value={contactForm.email}
+              onChange={(e) => setContactForm(prev => ({ ...prev, email: e.target.value }))}
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-cyan-400"
+              data-testid="input-contact-email"
+              required
+            />
+            <Input
+              type="tel"
+              placeholder="Phone Number"
+              value={contactForm.phone}
+              onChange={(e) => setContactForm(prev => ({ ...prev, phone: e.target.value }))}
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-cyan-400"
+              data-testid="input-contact-phone"
+            />
+            <Textarea
+              placeholder="Tell us about your business..."
+              value={contactForm.message}
+              onChange={(e) => setContactForm(prev => ({ ...prev, message: e.target.value }))}
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-cyan-400 min-h-[100px]"
+              data-testid="input-contact-message"
+            />
+            <Button 
+              type="submit" 
+              disabled={isSubmitting}
+              className="w-full bg-gradient-to-r from-cyan-500 to-cyan-400 text-black font-semibold py-6 hover:opacity-90 rounded-full"
+              data-testid="button-contact-submit"
             >
-              <div className="flex items-center gap-3 mb-6">
-                <NeonLogo className="w-12 h-12" />
-                <div>
-                  <div className="font-semibold text-xl text-white">TREASURE COAST AI</div>
-                  <div className="text-white/50 text-sm">Your Business, Upgraded.</div>
-                </div>
-              </div>
-              
-              <h3 className="text-2xl sm:text-3xl font-bold text-white mb-4" data-testid="contact-title">
-                Book a Demo
-              </h3>
-              <p className="text-white/60 mb-6 leading-relaxed">
-                See how Treasure Coast AI can transform your business with a personalized demo. We'll show you exactly how our AI chatbots can capture leads and book appointments 24/7.
-              </p>
-              
-              <div className="space-y-4 text-white/50 text-sm">
-                <div className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-cyan-400" />
-                  <span>Free 15-minute demo call</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-cyan-400" />
-                  <span>Done-for-you setup included</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-cyan-400" />
-                  <span>No technical skills required</span>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Right: Form */}
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-            >
-              <form onSubmit={handleContactSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm text-white/70 mb-2">Name</label>
-                  <Input
-                    value={contactForm.name}
-                    onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
-                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
-                    placeholder="Your name"
-                    required
-                    data-testid="input-name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-white/70 mb-2">Email</label>
-                  <Input
-                    type="email"
-                    value={contactForm.email}
-                    onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
-                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
-                    placeholder="you@example.com"
-                    required
-                    data-testid="input-email"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-white/70 mb-2">Phone</label>
-                  <Input
-                    type="tel"
-                    value={contactForm.phone}
-                    onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
-                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
-                    placeholder="(555) 123-4567"
-                    data-testid="input-phone"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-white/70 mb-2">Message (optional)</label>
-                  <Textarea
-                    value={contactForm.message}
-                    onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
-                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30 min-h-[100px]"
-                    placeholder="Tell us about your business..."
-                    data-testid="input-message"
-                  />
-                </div>
-                <Button 
-                  type="submit"
-                  className="w-full bg-gradient-to-r from-cyan-500 to-cyan-400 text-black font-semibold py-6 hover:opacity-90"
-                  disabled={isSubmitting}
-                  data-testid="button-submit"
-                >
-                  {isSubmitting ? "Sending..." : "Send Message"}
-                  <Send className="w-4 h-4 ml-2" />
-                </Button>
-              </form>
-            </motion.div>
-          </div>
+              {isSubmitting ? "Sending..." : "Send Message"} <Send className="w-4 h-4 ml-2" />
+            </Button>
+          </motion.form>
         </div>
       </section>
 
       {/* ══════════════════════════════════════════════════════════════
           FOOTER
       ══════════════════════════════════════════════════════════════ */}
-      <footer className="py-8 border-t border-white/5 bg-[#0a0a0f]">
+      <footer className="py-12 border-t border-white/10 bg-[#0a0612]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
-              <NeonLogo className="w-6 h-6" />
-              <span className="text-white/50 text-sm">© 2025 Treasure Coast AI. All rights reserved.</span>
+              <TreasureCoastLogo className="w-8 h-8" />
+              <span className="font-semibold text-white">TREASURE COAST AI</span>
             </div>
-            <div className="flex items-center gap-6 text-sm text-white/40">
-              <a href="#" className="hover:text-white/70 transition-colors">Privacy</a>
-              <a href="#" className="hover:text-white/70 transition-colors">Terms</a>
-              <Link href="/login" className="hover:text-white/70 transition-colors">Login</Link>
+            
+            <div className="flex gap-8 text-sm text-white/50">
+              <a href="#" className="hover:text-white">Privacy</a>
+              <a href="#" className="hover:text-white">Terms</a>
+              <Link href="/login" className="hover:text-white">Login</Link>
             </div>
+            
+            <p className="text-sm text-white/40">© 2025 Treasure Coast AI. All rights reserved.</p>
           </div>
         </div>
       </footer>
