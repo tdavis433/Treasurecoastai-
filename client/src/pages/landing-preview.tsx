@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link } from "wouter";
 
 export default function LandingPreview() {
@@ -483,108 +483,149 @@ export default function LandingPreview() {
 }
 
 function WidgetPreviewPoster() {
-  const frame = "/landing/assets/widget/widget-frame.png";
-  const bubbleL = "/landing/assets/widget/message-bubble-left.png";
-  const bubbleR = "/landing/assets/widget/message-bubble-right.png";
-  const input = "/landing/assets/widget/input-bar.png";
-  const pill = "/landing/assets/widget/status-pill.png";
-
-  useEffect(() => { console.log("WidgetPreviewPoster mounted"); }, []);
-
   return (
-    <div className="relative mx-auto w-[min(380px,90vw)] aspect-[2/3] z-10">
-      <div className="absolute left-3 top-3 z-[9999] rounded-full bg-lime-400 px-3 py-1 text-xs font-black text-black">
-        WIDGET_POSTER_ACTIVE
-      </div>
-      <div className="absolute -inset-10 rounded-[48px] bg-cyan-400/10 blur-3xl" />
-      <div className="absolute -inset-10 rounded-[48px] bg-fuchsia-500/10 blur-3xl" />
+    <div className="relative mx-auto w-[min(520px,92vw)] z-10">
+      <div className="pointer-events-none absolute -inset-8 rounded-[40px] bg-cyan-400/10 blur-3xl" />
+      <div className="pointer-events-none absolute -inset-8 rounded-[40px] bg-fuchsia-500/10 blur-3xl" />
 
-      <img
-        src={frame}
-        alt="Widget frame"
-        className="absolute inset-0 h-full w-full select-none pointer-events-none drop-shadow-[0_28px_70px_rgba(0,0,0,0.55)]"
-        draggable={false}
-      />
+      <div
+        className="
+          relative overflow-hidden rounded-[32px]
+          border border-white/12
+          bg-gradient-to-b from-white/10 via-white/6 to-white/3
+          backdrop-blur-2xl
+          shadow-[0_30px_90px_rgba(0,0,0,0.55)]
+        "
+      >
+        <div className="pointer-events-none absolute inset-0 rounded-[32px] ring-1 ring-white/10" />
+        <div className="pointer-events-none absolute -inset-1 rounded-[34px] bg-gradient-to-r from-cyan-400/25 via-fuchsia-500/15 to-violet-500/25 blur-xl opacity-70" />
 
-      <div className="absolute inset-[7%] flex flex-col">
-        <div className="flex items-center gap-3">
-          <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-cyan-400/30 to-fuchsia-500/25 border border-white/15 shadow-[0_0_22px_rgba(0,255,255,0.18)]" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/35 to-transparent" />
+
+        <div className="relative flex items-center gap-3 px-6 pt-6">
+          <div className="h-12 w-12 rounded-2xl border border-white/15 bg-gradient-to-br from-cyan-400/35 to-fuchsia-500/25 shadow-[0_0_24px_rgba(0,255,255,0.16)]" />
           <div className="leading-tight">
-            <div className="font-extrabold tracking-wide text-white/90">TREASURE COAST AI</div>
+            <div className="text-white/90 font-extrabold tracking-wide">
+              TREASURE COAST AI
+            </div>
             <div className="text-sm text-white/55">Your Business, Upgraded</div>
           </div>
-        </div>
-
-        <div className="mt-5 flex-1 space-y-4">
-          <Bubble img={bubbleL}>Welcome! How can I help you today?</Bubble>
-          <Bubble img={bubbleR} align="right">I'd like to book an appointment</Bubble>
-          <Bubble img={bubbleL}>Perfect! I can help with that. When works best for you?</Bubble>
-
-          <div className="mt-2 flex gap-2 flex-wrap">
-            <QuickPill label="Book Now" />
-            <QuickPill label="View Services" />
-            <QuickPill label="Hours" />
-          </div>
-
-          <div className="mt-2 flex flex-wrap gap-2">
-            <StatusPill img={pill} label="Lead Captured" />
-            <StatusPill img={pill} label="Booking Link Sent" />
-            <StatusPill img={pill} label="Follow-Up Automated" />
+          <div className="ml-auto flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-cyan-300/90" />
+            <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-300/80" />
+            <span className="h-1.5 w-1.5 rounded-full bg-violet-300/80" />
           </div>
         </div>
 
-        <div className="relative mt-4">
-          <img
-            src={input}
-            alt="Input bar"
-            className="w-full select-none pointer-events-none opacity-95"
-            draggable={false}
-          />
-          <div className="absolute inset-0 flex items-center px-5 text-white/35 font-semibold">Ask anything...</div>
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-2xl bg-cyan-400/25 border border-white/15 shadow-[0_0_18px_rgba(0,255,255,0.18)]" />
+        <div className="relative px-6 pt-5 pb-6 space-y-4">
+          <Bubble side="left">
+            Welcome! How can I help you today?
+          </Bubble>
+
+          <Bubble side="right">
+            I'd like to book an appointment
+          </Bubble>
+
+          <Bubble side="left">
+            Perfect! I can help with that. When works best for you?
+          </Bubble>
+
+          <div className="flex flex-wrap gap-2 pt-1">
+            <QuickPill tone="cyan" label="Book Now" />
+            <QuickPill tone="violet" label="View Services" />
+            <QuickPill tone="pink" label="Hours" />
+          </div>
+
+          <div className="flex flex-wrap gap-2 pt-2">
+            <StatusPill label="Lead Captured" />
+            <StatusPill label="Booking Link Sent" />
+            <StatusPill label="Follow-Up Automated" />
+          </div>
+
+          <div className="mt-5">
+            <div
+              className="
+                relative flex items-center gap-3
+                rounded-2xl border border-white/10
+                bg-black/25 backdrop-blur-xl
+                px-4 py-3
+                shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]
+              "
+            >
+              <div className="text-white/35 font-semibold">Ask anything...</div>
+              <div className="ml-auto h-10 w-10 rounded-2xl border border-white/15 bg-cyan-400/20 shadow-[0_0_18px_rgba(0,255,255,0.14)]" />
+            </div>
+          </div>
         </div>
+
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/35 to-transparent" />
       </div>
     </div>
   );
 }
 
-function Bubble({ img, align, children }: { img: string; align?: "right"; children: React.ReactNode }) {
+function Bubble({
+  side,
+  children,
+}: {
+  side: "left" | "right";
+  children: React.ReactNode;
+}) {
+  const align = side === "right" ? "justify-end" : "justify-start";
+  const bubbleBase =
+    "max-w-[88%] rounded-2xl px-4 py-3 text-white/85 font-medium leading-snug " +
+    "border border-white/10 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]";
+
+  const leftStyle =
+    "bg-gradient-to-br from-white/10 via-white/6 to-white/4";
+  const rightStyle =
+    "bg-gradient-to-br from-cyan-400/14 via-fuchsia-500/10 to-violet-500/12";
+
   return (
-    <div className={align === "right" ? "flex justify-end" : "flex justify-start"}>
-      <div
-        className="relative w-[88%] max-w-[420px] px-5 py-4 text-white/85 font-medium leading-snug"
-        style={{
-          backgroundImage: `url('${img}')`,
-          backgroundSize: "100% 100%",
-          backgroundRepeat: "no-repeat",
-        }}
-      >
+    <div className={`flex ${align}`}>
+      <div className={`${bubbleBase} ${side === "right" ? rightStyle : leftStyle}`}>
         {children}
       </div>
     </div>
   );
 }
 
-function QuickPill({ label }: { label: string }) {
+function QuickPill({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: "cyan" | "violet" | "pink";
+}) {
+  const toneClass =
+    tone === "cyan"
+      ? "shadow-[0_0_18px_rgba(0,255,255,0.12)]"
+      : tone === "violet"
+      ? "shadow-[0_0_18px_rgba(160,90,255,0.12)]"
+      : "shadow-[0_0_18px_rgba(255,90,200,0.10)]";
+
   return (
     <button
       type="button"
-      className="rounded-full px-4 py-2 text-sm font-extrabold border border-white/12 bg-white/5 backdrop-blur-xl text-white/80 shadow-[0_0_18px_rgba(140,80,255,0.12),inset_0_1px_0_rgba(255,255,255,0.10)] hover:bg-white/10 transition"
+      className={`
+        rounded-full px-4 py-2 text-sm font-extrabold
+        border border-white/12 bg-white/6 backdrop-blur-xl
+        text-white/80 hover:bg-white/10 transition
+        ${toneClass}
+      `}
     >
       {label}
     </button>
   );
 }
 
-function StatusPill({ img, label }: { img: string; label: string }) {
+function StatusPill({ label }: { label: string }) {
   return (
     <div
-      className="px-3 py-1.5 text-xs font-extrabold text-white/75"
-      style={{
-        backgroundImage: `url('${img}')`,
-        backgroundSize: "100% 100%",
-        backgroundRepeat: "no-repeat",
-      }}
+      className="
+        rounded-full px-3 py-1.5 text-xs font-extrabold text-white/70
+        border border-white/10 bg-black/20 backdrop-blur-xl
+      "
     >
       {label}
     </div>
