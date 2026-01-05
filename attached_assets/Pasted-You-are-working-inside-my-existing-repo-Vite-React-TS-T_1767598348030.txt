@@ -1,0 +1,50 @@
+You are working inside my existing repo (Vite + React + TS + Tailwind + wouter). 
+GOAL: Make a premium “poster-vibe” landing page that actually functions. Create it at /landing-preview without breaking anything else.
+
+CONTEXT:
+- The full asset pack ZIP has already been uploaded and extracted into the repo.
+- Assets live under: client/public/landing/assets/
+- The landing page component file exists or must be created at: client/src/pages/LandingPreview.tsx
+- Routing is controlled in: client/src/App.tsx using wouter
+
+REQUIREMENTS (DO NOT IGNORE):
+1) Add a new route:
+   - /landing-preview -> LandingPreview component
+   - Do NOT replace the existing landing page yet.
+2) Use the hero background image:
+   - /landing/assets/backgrounds/tca-hero-bg-4k.jpg
+   - MUST be single image, NO repeating:
+     background-size: cover; background-repeat: no-repeat; background-position: center;
+3) Add a bottom fade so the skyline blends into the base page color (#0B0E13) and never looks tiled.
+4) All buttons must be real clickable elements:
+   - “Client Login” -> /login (existing route)
+   - “Book Demo” scrolls to #book
+   - “See Interactive Demo” scrolls to #templates
+   - Nav items scroll to #how, #templates, #pricing
+5) Build the hero as a two-column SaaS layout:
+   - Left: Headline + subtext + 2 CTAs + chip row
+   - Right: Widget preview card + neon wave overlay
+6) Use the provided asset overlays to match the poster vibe:
+   - Neon wave: /landing/assets/decor/neon-wave-4096x1024.png (transparent)
+   - Orbs: /landing/assets/fx/orb-cyan-2048.png, orb-magenta-2048.png, orb-violet-2048.png
+   - Optional grain: /landing/assets/fx/noise-overlay-4k.png (very subtle)
+7) Use Tailwind for layout, but if needed create a small CSS module OR add a tiny global CSS section for:
+   - background layering
+   - overlay blend modes (screen/overlay)
+   - glow shadows
+8) Below the hero, build real sections (functional SaaS landing):
+   - #how (3 steps)
+   - #templates (demo cards)
+   - #pricing (2 plans)
+   - #book (contact/demo form)
+   Keep the glassmorphism style consistent.
+
+DELIVERABLES:
+- Update client/src/App.tsx to include the new Route
+- Create/update client/src/pages/LandingPreview.tsx to use the assets above and match the cinematic look
+- Verify the background does not repeat at any screen size
+- Verify all buttons/links work
+- Return a list of files changed and the exact preview URL path (/landing-preview)
+
+IMPORTANT:
+If any asset paths differ after extraction, search the repo for “tca-hero-bg-4k.jpg” and “neon-wave-4096x1024.png” and adjust paths accordingly. Do not invent paths.
