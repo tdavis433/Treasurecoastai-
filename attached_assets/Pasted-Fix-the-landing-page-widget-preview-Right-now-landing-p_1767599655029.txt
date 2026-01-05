@@ -1,0 +1,118 @@
+Fix the landing page widget preview. Right now /landing-preview shows a generic white placeholder widget (empty rectangles). I want the widget preview to match the poster style by composing it from my PNG assets.
+
+DO THIS EXACTLY:
+
+1) Open client/src/pages/landing-preview.tsx
+2) In the HERO right column, find whatever is rendering the current widget preview (it looks like a white rounded card with empty boxes).
+   - Delete that widget markup completely.
+   - Replace it with <WidgetPreviewPoster /> (new component you will add).
+
+3) BEFORE coding, inspect the real asset filenames:
+   - Look in client/public/landing/assets/
+   - Find the widget-related PNGs (frame, message bubbles, input bar, status pill).
+   - Use the REAL filenames you see. Do not guess.
+
+4) Add this component at the bottom of landing-preview.tsx (or in the same file). Use the correct paths from step 3:
+
+// IMPORTANT: Use correct paths based on the extracted folder structure.
+// In Vite, anything in client/public is served at root, so use paths like "/landing/assets/..."
+
+function WidgetPreviewPoster() {
+  const frame = "<PUT_REAL_PATH_TO_WIDGET_FRAME_PNG>";
+  const bubbleL = "<PUT_REAL_PATH_TO_LEFT_BUBBLE_PNG>";
+  const bubbleR = "<PUT_REAL_PATH_TO_RIGHT_BUBBLE_PNG>";
+  const input = "<PUT_REAL_PATH_TO_INPUT_BAR_PNG>";
+  const pill = "<PUT_REAL_PATH_TO_STATUS_PILL_PNG>";
+
+  return (
+    <div className="relative mx-auto w-[min(520px,90vw)] aspect-[2/3]">
+      <div className="absolute -inset-10 rounded-[48px] bg-cyan-400/10 blur-3xl" />
+      <div className="absolute -inset-10 rounded-[48px] bg-fuchsia-500/10 blur-3xl" />
+
+      <img
+        src={frame}
+        alt="Widget frame"
+        className="absolute inset-0 h-full w-full select-none pointer-events-none drop-shadow-[0_28px_70px_rgba(0,0,0,0.55)]"
+        draggable={false}
+      />
+
+      <div className="absolute inset-[7%] flex flex-col">
+        <div className="flex items-center gap-3">
+          <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-cyan-400/30 to-fuchsia-500/25 border border-white/15 shadow-[0_0_22px_rgba(0,255,255,0.18)]" />
+          <div className="leading-tight">
+            <div className="font-extrabold tracking-wide text-white/90">TREASURE COAST AI</div>
+            <div className="text-sm text-white/55">Your Business, Upgraded</div>
+          </div>
+        </div>
+
+        <div className="mt-5 flex-1 space-y-4">
+          <Bubble img={bubbleL}>Welcome! How can I help you today?</Bubble>
+          <Bubble img={bubbleR} align="right">I’d like to book an appointment</Bubble>
+          <Bubble img={bubbleL}>Perfect! I can help with that. When works best for you?</Bubble>
+
+          <div className="mt-2 flex gap-2 flex-wrap">
+            <QuickPill label="Book Now" />
+            <QuickPill label="View Services" />
+            <QuickPill label="Hours" />
+          </div>
+
+          <div className="mt-2 flex flex-wrap gap-2">
+            <StatusPill img={pill} label="Lead Captured" />
+            <StatusPill img={pill} label="Booking Link Sent" />
+            <StatusPill img={pill} label="Follow-Up Automated" />
+          </div>
+        </div>
+
+        <div className="relative mt-4">
+          <img src={input} alt="Input bar" className="w-full select-none pointer-events-none opacity-95" draggable={false} />
+          <div className="absolute inset-0 flex items-center px-5 text-white/35 font-semibold">Ask anything…</div>
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-2xl bg-cyan-400/25 border border-white/15 shadow-[0_0_18px_rgba(0,255,255,0.18)]" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Bubble({ img, align, children }: { img: string; align?: "right"; children: React.ReactNode }) {
+  return (
+    <div className={align === "right" ? "flex justify-end" : "flex justify-start"}>
+      <div
+        className="relative w-[88%] max-w-[420px] px-5 py-4 text-white/85 font-medium leading-snug"
+        style={{ backgroundImage: `url('${img}')`, backgroundSize: "100% 100%", backgroundRepeat: "no-repeat" }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function QuickPill({ label }: { label: string }) {
+  return (
+    <button
+      type="button"
+      className="rounded-full px-4 py-2 text-sm font-extrabold border border-white/12 bg-white/5 backdrop-blur-xl text-white/80
+                 shadow-[0_0_18px_rgba(140,80,255,0.12),inset_0_1px_0_rgba(255,255,255,0.10)]
+                 hover:bg-white/10 transition"
+    >
+      {label}
+    </button>
+  );
+}
+
+function StatusPill({ img, label }: { img: string; label: string }) {
+  return (
+    <div
+      className="px-3 py-1.5 text-xs font-extrabold text-white/75"
+      style={{ backgroundImage: `url('${img}')`, backgroundSize: "100% 100%", backgroundRepeat: "no-repeat" }}
+    >
+      {label}
+    </div>
+  );
+}
+
+5) After implementing, verify the browser is not 404’ing any of these PNGs:
+   - Open devtools Network tab and filter by “png”
+   - If any 404, fix the paths to match actual filenames.
+
+6) Confirm /landing-preview now shows the poster-style widget (NOT the white placeholder).
+Return the exact asset paths you used and confirm no 404s.
