@@ -3694,6 +3694,83 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // =============================================
+  // PUBLIC LEAD ENDPOINT - Landing page contact form
+  // =============================================
+  
+  // Rate limiter for public lead endpoint (5 requests per minute per IP)
+  const publicLeadLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 5,
+    message: { error: "Too many requests. Please try again in a minute." },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  
+  // Zod schema for public lead validation
+  const publicLeadSchema = z.object({
+    name: z.string().min(1, "Name is required").max(100, "Name is too long"),
+    businessName: z.string().max(200, "Business name is too long").optional().nullable(),
+    email: z.string().email("Invalid email format").max(255, "Email is too long"),
+    phone: z.string().max(30, "Phone number is too long").optional().nullable(),
+    message: z.string().max(2000, "Message is too long").optional().nullable(),
+    honeypot: z.string().optional(), // Hidden field to catch bots
+  });
+  
+  app.post("/api/public/lead", publicLeadLimiter, async (req, res) => {
+    try {
+      // Validate request body with Zod
+      const validatedData = publicLeadSchema.parse(req.body);
+      
+      // Honeypot check - if filled, it's a bot
+      if (validatedData.honeypot && validatedData.honeypot.trim() !== '') {
+        structuredLogger.info(`[Public Lead] Honeypot triggered - rejecting bot submission from ${validatedData.email}`);
+        return res.json({ success: true, message: "Thank you! We'll be in touch within 24 hours." });
+      }
+      
+      // Log the lead
+      structuredLogger.info(`[Public Lead] New demo request from ${validatedData.name} (${validatedData.email}) - Business: ${validatedData.businessName || 'N/A'}`);
+      
+      // Try to store in bot_requests table as a lead
+      try {
+        const hourBucket = Math.floor(Date.now() / 3600000);
+        const dedupeInput = `${validatedData.email}${validatedData.phone || ''}public_lead${hourBucket}`;
+        const dedupeHash = crypto.createHash('sha256').update(dedupeInput).digest('hex');
+        
+        await db.insert(botRequests).values({
+          name: validatedData.name,
+          email: validatedData.email,
+          phone: validatedData.phone || undefined,
+          businessName: validatedData.businessName || undefined,
+          businessType: undefined,
+          message: validatedData.message || 'Demo request from landing page',
+          source: 'landing_page_demo',
+          status: 'new',
+          priority: 'normal',
+          dedupeHash,
+        });
+        
+        structuredLogger.info(`[Public Lead] Stored lead from ${validatedData.email} in database`);
+      } catch (insertError: any) {
+        // If duplicate, that's fine - still return success
+        if (insertError?.code === '23505') {
+          structuredLogger.info(`[Public Lead] Duplicate lead from ${validatedData.email} - already in system`);
+        } else {
+          structuredLogger.warn(`[Public Lead] Could not store lead in database:`, insertError);
+        }
+      }
+      
+      res.json({ success: true, message: "Thank you! We'll be in touch within 24 hours." });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        structuredLogger.warn("[Public Lead] Validation error:", error.errors);
+        return res.status(400).json({ error: "Invalid form data", details: error.errors.map(e => e.message) });
+      }
+      structuredLogger.error("[Public Lead] Error processing lead:", error);
+      res.status(500).json({ error: "Failed to submit request" });
+    }
+  });
+
+  // =============================================
   // BOT REQUEST ENDPOINTS - Contact form submissions
   // =============================================
 

@@ -51,6 +51,10 @@ import AgencyOnboardingConsole from "@/pages/agency-onboarding-console";
 import SimpleOnboarding from "@/pages/simple-onboarding";
 import PreviewPage from "@/pages/preview-page";
 import LandingPreview from "@/pages/landing-preview";
+import Terms from "@/pages/terms";
+import Privacy from "@/pages/privacy";
+import AcceptableUse from "@/pages/acceptable-use";
+import Cookies from "@/pages/cookies";
 import { useEffect } from "react";
 
 interface User {
@@ -272,6 +276,10 @@ function Router() {
       <Route path="/demo/:botId" component={DemoBotPage} />
       <Route path="/preview/:workspaceSlug" component={PreviewPage} />
       <Route path="/landing-preview" component={LandingPreview} />
+      <Route path="/terms" component={Terms} />
+      <Route path="/privacy" component={Privacy} />
+      <Route path="/acceptable-use" component={AcceptableUse} />
+      <Route path="/cookies" component={Cookies} />
       <Route path="/dev/embed-test" component={DevEmbedTest} />
 
       {/* ===== SHARED AUTH ROUTES ===== */}

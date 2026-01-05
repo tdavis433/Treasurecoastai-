@@ -68,6 +68,7 @@ export function getSkipCsrfPaths(): string[] {
     "/api/widget",
     "/api/health",
     "/api/quickbook",
+    "/api/public/lead", // Landing page contact form
   ];
 }
 

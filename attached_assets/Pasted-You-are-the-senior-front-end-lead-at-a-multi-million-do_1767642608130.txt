@@ -1,0 +1,126 @@
+You are the senior front-end lead at a multi-million-dollar design/dev agency. 
+Goal: Replace the current /landing-preview page with a jaw-dropping, high-tech, “Treasure Coast AI” landing page that feels premium and modern, with cinematic background + neon-glass UI overlays + subtle animations. Must work perfectly on mobile.
+
+STACK CONSTRAINTS:
+- Vite + React + TypeScript
+- Tailwind CSS
+- wouter routing (SPA)
+- Express backend exists, but landing page is client-side route
+- Do NOT introduce Next.js or new frameworks.
+- Do NOT rely on chopped poster assets. Build UI in HTML/CSS.
+
+PRIMARY OBJECTIVE:
+Make the landing page feel “state-of-the-art AI SaaS” with character:
+- dark ocean/space vibe
+- neon cyan/magenta accents
+- glassmorphism panels
+- cinematic background (single non-repeating image)
+- subtle motion (orbs drift, button glow, card hover)
+- extreme polish: spacing, typography, responsiveness
+
+PAGES/ROUTES TO IMPLEMENT:
+1) /landing-preview (main landing)
+2) /terms
+3) /privacy
+4) /acceptable-use
+5) /cookies
+6) Add a footer to landing linking to the above.
+
+LANDING PAGE STRUCTURE (build exactly):
+A) Sticky Nav (glass)
+- left: Treasure Coast AI logo + wordmark
+- center: links (How It Works, Templates, Pricing, FAQ)
+- right: buttons (Client Login -> /login) and (Book Demo -> scroll to #book)
+- on scroll: background blur increases slightly, border appears
+
+B) Hero Section (two-column)
+Left column:
+- Headline: “AI Chatbots that run your front desk 24/7.”
+- Subtext: “Answer questions instantly, capture leads, and send customers to booking — without hiring staff.”
+- Primary CTA: “Book a Live Demo” -> scroll #book
+- Secondary CTA: “See Interactive Demos” -> scroll #templates
+- Trust chips (3): “24/7 AI Replies”, “Lead Capture + Booking”, “Done-For-You Setup”
+- Stats strip: “3× more leads”, “50% time saved”, “10+ industries”, “No new staff”
+
+Right column:
+- A CSS-built “widget preview” card (NO PNG widget assets)
+- It must look like a premium neon-glass chat widget:
+  - header with “TREASURE COAST AI / Your Business, Upgraded”
+  - 3 chat bubbles (left/right)
+  - 3 quick action pills (“Book Now”, “View Services”, “Hours”)
+  - 3 status pills (“Lead Captured”, “Booking Link Sent”, “Follow-Up Automated”)
+  - input bar “Ask anything…” with a glowing send button
+- Widget must be responsive and never appear as a white wireframe.
+
+C) How It Works (#how)
+- 3 glass cards with step numbers and small icons
+  1) “Add widget to your site”
+  2) “AI chats + qualifies leads 24/7”
+  3) “Send to booking + track in dashboard”
+- Add a “Done-for-you setup included” mini callout.
+
+D) Templates / Demos (#templates)
+- Grid of 6 demo cards (glass)
+- Each card has:
+  - industry name
+  - 1-line value
+  - button “View Demo”
+- Use your existing demo routes if present; if not, use placeholders with href="#book".
+- Must look premium.
+
+E) Pricing (#pricing)
+- 2 plans:
+  Starter $29/mo
+  Pro $79/mo
+- Pro plan visually highlighted with glow border
+- bullet features with check icons
+- CTA buttons: “Start Free” (scroll #book)
+
+F) FAQ (#faq)
+- Accordion style, glass panels
+- 8 solid questions (non-technical, setup time, edits, integrations, what if AI is wrong, support, cancel anytime, data privacy)
+- Smooth expand/collapse animation
+
+G) Book Demo / Contact (#book)
+- High-converting glass form:
+  Name, Business Name, Email, Phone, Message
+- Submit shows success state
+- If there is an existing API endpoint for leads, wire it. If not, create a minimal POST route in Express:
+  POST /api/public/lead
+  Validate fields, store to DB if available, otherwise log to server and return success.
+- Include “We respond within 24 hours” microcopy.
+
+VISUAL DESIGN SYSTEM (use consistently):
+- Background: single full-bleed image (non-repeating), with bottom fade into #0B0E13
+- Add 2–3 blurred “orb” divs (cyan/magenta/violet) using CSS gradients + blur + opacity
+- Add subtle animated noise overlay (very low opacity)
+- Glass cards: bg-white/8, border-white/12, backdrop-blur-xl, inner highlight
+- Buttons: rounded-full, neon gradient border, glow on hover, press animation
+- Typography: modern, confident, high contrast; clamp() responsive scaling
+- Animations: subtle, not cheesy; respect prefers-reduced-motion
+
+TECH REQUIREMENTS:
+- Lighthouse: keep it reasonably performant (compress background, lazy-load any non-critical images)
+- No background repeat anywhere (background-size: cover; background-repeat: no-repeat)
+- Mobile-first: hero stacks nicely, widget preview stays attractive on 375px width
+- Use clean, readable Tailwind + a small CSS module or global CSS only if needed.
+
+FILES TO CHANGE (likely):
+- client/src/pages/landing-preview.tsx (or create if needed)
+- client/src/App.tsx (ensure routes exist for /landing-preview and legal pages)
+- client/public/landing/assets/ (place a single background image; if none exists, create a placeholder and reference it)
+- Add new pages for /terms, /privacy, /acceptable-use, /cookies
+- Add a consistent Footer component used on landing + legal pages.
+
+DELIVERABLES:
+- A beautiful, working /landing-preview page with all sections, working buttons/scroll.
+- 4 legal pages with clean formatting (no lorem ipsum).
+- Footer links.
+- Confirm with screenshots (desktop + mobile) and list changed files.
+
+DO NOT:
+- Do not use the old PNG widget assets.
+- Do not produce a “poster screenshot” style page where text is baked into an image.
+- Do not add new frameworks.
+
+START NOW.
