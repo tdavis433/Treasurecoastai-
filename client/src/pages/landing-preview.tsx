@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 
 export default function LandingPreview() {
@@ -489,8 +489,13 @@ function WidgetPreviewPoster() {
   const input = "/landing/assets/widget/input-bar.png";
   const pill = "/landing/assets/widget/status-pill.png";
 
+  useEffect(() => { console.log("WidgetPreviewPoster mounted"); }, []);
+
   return (
     <div className="relative mx-auto w-[min(380px,90vw)] aspect-[2/3] z-10">
+      <div className="absolute left-3 top-3 z-[9999] rounded-full bg-lime-400 px-3 py-1 text-xs font-black text-black">
+        WIDGET_POSTER_ACTIVE
+      </div>
       <div className="absolute -inset-10 rounded-[48px] bg-cyan-400/10 blur-3xl" />
       <div className="absolute -inset-10 rounded-[48px] bg-fuchsia-500/10 blur-3xl" />
 
