@@ -1,0 +1,182 @@
+You are working in my existing repo (Vite + React + TS + Tailwind + wouter). 
+Goal: Fix the landing page widget preview so it matches the “poster” style using the extracted PNG assets (NOT a generic glass div). The landing page route already exists at /landing-preview.
+
+IMPORTANT:
+- Do NOT redesign the whole page.
+- Only replace the widget preview component in client/src/pages/landing-preview.tsx with an asset-based composition.
+- Use the assets in client/public/landing/assets/ (search the folder to confirm exact filenames and paths; do not invent paths).
+- If file names differ, update the constants accordingly.
+
+TASKS:
+1) Open: client/src/pages/landing-preview.tsx
+2) Find the hero’s right-side “widget preview” (likely a component named WidgetPreview or similar).
+3) Replace it with a new component that composes the widget using PNG assets:
+   - Widget frame PNG (transparent)
+   - Left and right message bubble PNGs
+   - Input bar PNG
+   - Optional status pill PNG
+4) The widget should look like the mockup:
+   - Header with small icon + “TREASURE COAST AI” + “Your Business, Upgraded”
+   - 3 chat bubbles (left, right, left)
+   - 3 quick action buttons: Book Now, View Services, Hours
+   - Status pills: Lead Captured, Booking Link Sent, Follow-Up Automated
+   - Bottom input bar with “Ask anything…” placeholder
+5) After you add the new component, replace the old widget call in the hero with <WidgetPreviewPoster />.
+6) Verify /landing-preview looks correct on mobile (widget scales down and stays centered).
+
+PASTE THIS CODE INTO client/src/pages/landing-preview.tsx
+(You may place components at the bottom of the file. Ensure exports/imports still compile.)
+
+--- START CODE ---
+
+// Replace the existing widget preview component usage in the HERO RIGHT COLUMN with:
+// <WidgetPreviewPoster />
+
+function WidgetPreviewPoster() {
+  // IMPORTANT: update these paths by searching the extracted assets folder.
+  // Use the real filenames you find under client/public/landing/assets/
+  const frame = "/landing/assets/widget/tca-widget-frame.png";
+  const bubbleL = "/landing/assets/widget/tca-message-bubble-left.png";
+  const bubbleR = "/landing/assets/widget/tca-message-bubble-right.png";
+  const input = "/landing/assets/widget/tca-input-bar.png";
+  const pill = "/landing/assets/widget/tca-status-pill.png";
+
+  return (
+    <div className="relative mx-auto w-[min(520px,90vw)] aspect-[2/3]">
+      {/* Glow behind */}
+      <div className="absolute -inset-10 rounded-[48px] bg-cyan-400/10 blur-3xl" />
+      <div className="absolute -inset-10 rounded-[48px] bg-fuchsia-500/10 blur-3xl" />
+
+      {/* Frame image (transparent PNG) */}
+      <img
+        src={frame}
+        alt="Widget frame"
+        className="absolute inset-0 h-full w-full select-none pointer-events-none
+                   drop-shadow-[0_28px_70px_rgba(0,0,0,0.55)]"
+        draggable={false}
+      />
+
+      {/* Content inside frame */}
+      <div className="absolute inset-[7%] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-cyan-400/30 to-fuchsia-500/25 border border-white/15
+                          shadow-[0_0_22px_rgba(0,255,255,0.18)]" />
+          <div className="leading-tight">
+            <div className="font-extrabold tracking-wide text-white/90">
+              TREASURE COAST AI
+            </div>
+            <div className="text-sm text-white/55">Your Business, Upgraded</div>
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div className="mt-5 flex-1 space-y-4">
+          <Bubble img={bubbleL}>
+            Welcome! How can I help you today?
+          </Bubble>
+
+          <Bubble img={bubbleR} align="right">
+            I’d like to book an appointment
+          </Bubble>
+
+          <Bubble img={bubbleL}>
+            Perfect! I can help with that. When works best for you?
+          </Bubble>
+
+          {/* Quick actions */}
+          <div className="mt-2 flex gap-2 flex-wrap">
+            <QuickPill label="Book Now" />
+            <QuickPill label="View Services" />
+            <QuickPill label="Hours" />
+          </div>
+
+          {/* Status pills */}
+          <div className="mt-2 flex flex-wrap gap-2">
+            <StatusPill img={pill} label="Lead Captured" />
+            <StatusPill img={pill} label="Booking Link Sent" />
+            <StatusPill img={pill} label="Follow-Up Automated" />
+          </div>
+        </div>
+
+        {/* Input */}
+        <div className="relative mt-4">
+          <img
+            src={input}
+            alt="Input bar"
+            className="w-full select-none pointer-events-none opacity-95"
+            draggable={false}
+          />
+          <div className="absolute inset-0 flex items-center px-5 text-white/35 font-semibold">
+            Ask anything…
+          </div>
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-2xl
+                          bg-cyan-400/25 border border-white/15
+                          shadow-[0_0_18px_rgba(0,255,255,0.18)]" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Bubble({
+  img,
+  align,
+  children,
+}: {
+  img: string;
+  align?: "right";
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={align === "right" ? "flex justify-end" : "flex justify-start"}>
+      <div
+        className="relative w-[88%] max-w-[420px] px-5 py-4 text-white/85 font-medium leading-snug"
+        style={{
+          backgroundImage: `url('${img}')`,
+          backgroundSize: "100% 100%",
+          backgroundRepeat: "no-repeat",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function QuickPill({ label }: { label: string }) {
+  return (
+    <button
+      type="button"
+      className="rounded-full px-4 py-2 text-sm font-extrabold
+                 border border-white/12 bg-white/5 backdrop-blur-xl text-white/80
+                 shadow-[0_0_18px_rgba(140,80,255,0.12),inset_0_1px_0_rgba(255,255,255,0.10)]
+                 hover:bg-white/10 transition"
+    >
+      {label}
+    </button>
+  );
+}
+
+function StatusPill({ img, label }: { img: string; label: string }) {
+  return (
+    <div
+      className="px-3 py-1.5 text-xs font-extrabold text-white/75"
+      style={{
+        backgroundImage: `url('${img}')`,
+        backgroundSize: "100% 100%",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
+      {label}
+    </div>
+  );
+}
+
+--- END CODE ---
+
+FINAL CHECKS:
+- Confirm the widget assets exist and the paths are correct.
+- If the widget images are in a different folder, update the 5 constants.
+- Ensure the hero now uses <WidgetPreviewPoster />.
+- Verify /landing-preview on mobile shows the widget centered and scaled down.

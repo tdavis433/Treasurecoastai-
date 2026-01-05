@@ -211,52 +211,7 @@ export default function LandingPreview() {
                 style={{ mixBlendMode: 'screen' }}
               />
               
-              {/* Widget Card */}
-              <div className="relative z-10 w-[320px] md:w-[380px] p-6 rounded-3xl bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/20 shadow-2xl shadow-black/50">
-                {/* Widget Header */}
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-white">
-                      <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2"/>
-                    </svg>
-                  </div>
-                  <div>
-                    <div className="font-semibold text-white">TREASURE COAST AI</div>
-                    <div className="text-xs text-white/60">Your Business, Upgraded</div>
-                  </div>
-                </div>
-                
-                {/* Chat Messages Preview */}
-                <div className="space-y-3 mb-6">
-                  <div className="bg-white/10 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-white/90 max-w-[85%]">
-                    Welcome! How can I help you today?
-                  </div>
-                  <div className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 rounded-2xl rounded-tr-sm px-4 py-3 text-sm text-white/90 max-w-[85%] ml-auto">
-                    I'd like to book an appointment
-                  </div>
-                  <div className="bg-white/10 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-white/90 max-w-[85%]">
-                    Perfect! I can help with that. When works best for you?
-                  </div>
-                </div>
-                
-                {/* Quick Actions */}
-                <div className="flex flex-wrap gap-2 mb-4">
-                  <span className="px-3 py-1.5 rounded-full bg-cyan-500/20 border border-cyan-500/30 text-xs text-cyan-300">Book Now</span>
-                  <span className="px-3 py-1.5 rounded-full bg-purple-500/20 border border-purple-500/30 text-xs text-purple-300">View Services</span>
-                  <span className="px-3 py-1.5 rounded-full bg-pink-500/20 border border-pink-500/30 text-xs text-pink-300">Hours</span>
-                </div>
-                
-                {/* Input Bar */}
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10">
-                  <input type="text" placeholder="Ask anything..." className="flex-1 bg-transparent text-sm text-white placeholder:text-white/40 outline-none" disabled />
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-white">
-                      <path d="M22 2L11 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </div>
-                </div>
-              </div>
+              <WidgetPreviewPoster />
             </div>
           </div>
         </section>
@@ -523,6 +478,110 @@ export default function LandingPreview() {
           </div>
         </footer>
       </div>
+    </div>
+  );
+}
+
+function WidgetPreviewPoster() {
+  const frame = "/landing/assets/widget/widget-frame.png";
+  const bubbleL = "/landing/assets/widget/message-bubble-left.png";
+  const bubbleR = "/landing/assets/widget/message-bubble-right.png";
+  const input = "/landing/assets/widget/input-bar.png";
+  const pill = "/landing/assets/widget/status-pill.png";
+
+  return (
+    <div className="relative mx-auto w-[min(380px,90vw)] aspect-[2/3] z-10">
+      <div className="absolute -inset-10 rounded-[48px] bg-cyan-400/10 blur-3xl" />
+      <div className="absolute -inset-10 rounded-[48px] bg-fuchsia-500/10 blur-3xl" />
+
+      <img
+        src={frame}
+        alt="Widget frame"
+        className="absolute inset-0 h-full w-full select-none pointer-events-none drop-shadow-[0_28px_70px_rgba(0,0,0,0.55)]"
+        draggable={false}
+      />
+
+      <div className="absolute inset-[7%] flex flex-col">
+        <div className="flex items-center gap-3">
+          <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-cyan-400/30 to-fuchsia-500/25 border border-white/15 shadow-[0_0_22px_rgba(0,255,255,0.18)]" />
+          <div className="leading-tight">
+            <div className="font-extrabold tracking-wide text-white/90">TREASURE COAST AI</div>
+            <div className="text-sm text-white/55">Your Business, Upgraded</div>
+          </div>
+        </div>
+
+        <div className="mt-5 flex-1 space-y-4">
+          <Bubble img={bubbleL}>Welcome! How can I help you today?</Bubble>
+          <Bubble img={bubbleR} align="right">I'd like to book an appointment</Bubble>
+          <Bubble img={bubbleL}>Perfect! I can help with that. When works best for you?</Bubble>
+
+          <div className="mt-2 flex gap-2 flex-wrap">
+            <QuickPill label="Book Now" />
+            <QuickPill label="View Services" />
+            <QuickPill label="Hours" />
+          </div>
+
+          <div className="mt-2 flex flex-wrap gap-2">
+            <StatusPill img={pill} label="Lead Captured" />
+            <StatusPill img={pill} label="Booking Link Sent" />
+            <StatusPill img={pill} label="Follow-Up Automated" />
+          </div>
+        </div>
+
+        <div className="relative mt-4">
+          <img
+            src={input}
+            alt="Input bar"
+            className="w-full select-none pointer-events-none opacity-95"
+            draggable={false}
+          />
+          <div className="absolute inset-0 flex items-center px-5 text-white/35 font-semibold">Ask anything...</div>
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-2xl bg-cyan-400/25 border border-white/15 shadow-[0_0_18px_rgba(0,255,255,0.18)]" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Bubble({ img, align, children }: { img: string; align?: "right"; children: React.ReactNode }) {
+  return (
+    <div className={align === "right" ? "flex justify-end" : "flex justify-start"}>
+      <div
+        className="relative w-[88%] max-w-[420px] px-5 py-4 text-white/85 font-medium leading-snug"
+        style={{
+          backgroundImage: `url('${img}')`,
+          backgroundSize: "100% 100%",
+          backgroundRepeat: "no-repeat",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function QuickPill({ label }: { label: string }) {
+  return (
+    <button
+      type="button"
+      className="rounded-full px-4 py-2 text-sm font-extrabold border border-white/12 bg-white/5 backdrop-blur-xl text-white/80 shadow-[0_0_18px_rgba(140,80,255,0.12),inset_0_1px_0_rgba(255,255,255,0.10)] hover:bg-white/10 transition"
+    >
+      {label}
+    </button>
+  );
+}
+
+function StatusPill({ img, label }: { img: string; label: string }) {
+  return (
+    <div
+      className="px-3 py-1.5 text-xs font-extrabold text-white/75"
+      style={{
+        backgroundImage: `url('${img}')`,
+        backgroundSize: "100% 100%",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
+      {label}
     </div>
   );
 }
