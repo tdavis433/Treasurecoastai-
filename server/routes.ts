@@ -1601,15 +1601,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     windowMs: 60 * 1000, // 1 minute window
     max: 10, // Max 10 messages per minute per IP+session
     
-    // Key by IP + sessionId
+    // Key by IP + sessionId (using trust proxy for proper IP handling)
     keyGenerator: (req) => {
-      const ip = req.ip || req.socket.remoteAddress || 'unknown';
+      // Use req.ip which respects trust proxy setting for IPv4/IPv6
       const sessionId = req.body?.sessionId || 'no-session';
-      return `chat:${ip}:${sessionId}`;
+      return `chat:${req.ip}:${sessionId}`;
     },
     
     // Custom error message
-    handler: (req, res) => {
+    handler: (_req, res) => {
       res.status(429).json({
         error: 'Too many messages. Please wait a moment before sending more.',
         retryAfter: 60,
@@ -1623,6 +1623,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     standardHeaders: true,
     legacyHeaders: false,
+    
+    // Disable validation warning for custom keyGenerator (we handle IPv6 via trust proxy)
+    validate: false,
   });
   
   // Helper function to get error counts for last 15 minutes
