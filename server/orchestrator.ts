@@ -2139,12 +2139,12 @@ class ConversationOrchestrator {
         // Extract preferred date/time for sober living tour requests
         // Persist to session so it's not lost when user provides contact info in later messages
         const preferredDateTimeRaw = extractPreferredDateTime(userMessage);
-        if (preferredDateTimeRaw && !sessionData.preferredDateTime) {
-          sessionData.preferredDateTime = preferredDateTimeRaw;
+        if (preferredDateTimeRaw && !(sessionData as any).preferredDateTime) {
+          (sessionData as any).preferredDateTime = preferredDateTimeRaw;
         }
         
         // Use session's preferredDateTime (first extracted value is authoritative)
-        const effectivePreferredDateTime = sessionData.preferredDateTime || preferredDateTimeRaw;
+        const effectivePreferredDateTime = (sessionData as any).preferredDateTime || preferredDateTimeRaw;
         const preferredScheduledAt = effectivePreferredDateTime ? parseVagueTimeToDatetime(effectivePreferredDateTime) : null;
         
         // Determine booking intent from session context

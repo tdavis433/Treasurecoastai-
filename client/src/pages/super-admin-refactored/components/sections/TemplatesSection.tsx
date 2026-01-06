@@ -77,7 +77,7 @@ export default function TemplatesSection() {
         templateCategory: t.botType 
       },
       defaultConfig: t.defaultConfig,
-    } as Template))
+    } as unknown as Template))
   ];
   const clients = adminData?.clients || [];
 
