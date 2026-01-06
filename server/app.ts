@@ -1,3 +1,24 @@
+import * as Sentry from "@sentry/node";
+
+// Initialize Sentry FIRST (before any other code)
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  environment: process.env.NODE_ENV || 'production',
+  tracesSampleRate: 0.1, // 10% of transactions for performance monitoring
+  
+  // Scrub sensitive data before sending to Sentry
+  beforeSend(event) {
+    if (event.request) {
+      delete event.request.cookies;
+      if (event.request.headers) {
+        delete event.request.headers['authorization'];
+        delete event.request.headers['cookie'];
+      }
+    }
+    return event;
+  },
+});
+
 import { type Server } from "node:http";
 
 import express, {
@@ -116,6 +137,8 @@ app.use(express.json({
   }
 }));
 app.use(express.urlencoded({ extended: false, limit: '100kb' }));
+
+// Sentry integration for Express is automatic in SDK v8+
 
 // Security: CORS for widget embeds on third-party sites ONLY
 // Admin/internal routes use same-origin policy (no CORS)
@@ -368,6 +391,14 @@ export default async function runApp(
   setup: (app: Express, server: Server) => Promise<void>,
 ) {
   const server = await registerRoutes(app);
+
+  // Test endpoint for Sentry verification (temporary - remove after testing)
+  app.get('/api/test-sentry-error', (_req, _res) => {
+    throw new Error('Test error for Sentry verification');
+  });
+
+  // Sentry error handler - MUST be before custom error handler
+  Sentry.setupExpressErrorHandler(app);
 
   app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
