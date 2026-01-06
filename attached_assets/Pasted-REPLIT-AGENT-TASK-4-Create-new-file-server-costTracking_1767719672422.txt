@@ -1,0 +1,95 @@
+REPLIT AGENT TASK 4:
+
+Create new file: server/costTracking.ts
+
+Add this exact content:
+
+import { db } from './storage';
+import { sql, eq, and } from 'drizzle-orm';
+import { pgTable, varchar, integer, timestamp, date } from 'drizzle-orm/pg-core';
+
+// Define the workspace_daily_usage table
+export const workspaceDailyUsage = pgTable("workspace_daily_usage", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull(),
+  date: date("date").notNull(),
+  aiSpendCents: integer("ai_spend_cents").default(0),
+  tokensUsed: integer("tokens_used").default(0),
+  messagesCount: integer("messages_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// OpenAI pricing (as of Jan 2026)
+const MODEL_PRICING = {
+  'gpt-4': { input: 0.03, output: 0.06 },
+  'gpt-4-turbo': { input: 0.01, output: 0.03 },
+  'gpt-3.5-turbo': { input: 0.0005, output: 0.0015 },
+} as const;
+
+export async function trackOpenAIUsage(
+  workspaceId: string,
+  tokensUsed: number,
+  model: string = 'gpt-4-turbo'
+) {
+  const pricing = MODEL_PRICING[model] || MODEL_PRICING['gpt-4-turbo'];
+  const costPerToken = (pricing.input + pricing.output) / 2000;
+  const costCents = Math.ceil(tokensUsed * costPerToken);
+  
+  const today = new Date().toISOString().split('T')[0];
+  
+  try {
+    await db
+      .insert(workspaceDailyUsage)
+      .values({
+        workspaceId,
+        date: today,
+        aiSpendCents: costCents,
+        tokensUsed,
+        messagesCount: 1,
+      })
+      .onConflictDoUpdate({
+        target: [workspaceDailyUsage.workspaceId, workspaceDailyUsage.date],
+        set: {
+          aiSpendCents: sql`${workspaceDailyUsage.aiSpendCents} + ${costCents}`,
+          tokensUsed: sql`${workspaceDailyUsage.tokensUsed} + ${tokensUsed}`,
+          messagesCount: sql`${workspaceDailyUsage.messagesCount} + 1`,
+          updatedAt: new Date(),
+        },
+      });
+    
+    console.log(`💰 Tracked: ${tokensUsed} tokens, $${(costCents/100).toFixed(4)}, workspace: ${workspaceId}`);
+  } catch (error) {
+    console.error('Failed to track OpenAI usage:', error);
+  }
+}
+
+export async function checkDailySpendingLimit(
+  workspaceId: string
+): Promise<{ allowed: boolean; spent: number; limit: number; remaining: number }> {
+  const today = new Date().toISOString().split('T')[0];
+  const DAILY_LIMIT_CENTS = 5000; // $50 per day
+  
+  const usage = await db.select()
+    .from(workspaceDailyUsage)
+    .where(and(
+      eq(workspaceDailyUsage.workspaceId, workspaceId),
+      eq(workspaceDailyUsage.date, today)
+    ))
+    .limit(1);
+  
+  const spent = usage[0]?.aiSpendCents || 0;
+  const remaining = DAILY_LIMIT_CENTS - spent;
+  
+  return {
+    allowed: spent < DAILY_LIMIT_CENTS,
+    spent,
+    limit: DAILY_LIMIT_CENTS,
+    remaining: Math.max(0, remaining),
+  };
+}
+
+Verify:
+1. File created without errors
+2. TypeScript compiles: npm run check
+3. No import errors
