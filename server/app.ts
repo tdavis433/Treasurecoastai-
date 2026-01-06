@@ -18,26 +18,27 @@ import { registerRoutes } from "./routes";
 import { createCsrfMiddleware, csrfTokenEndpoint } from "./csrfMiddleware";
 import { requestIdMiddleware } from "./requestId";
 import { structuredLogger, redactPII } from "./structuredLogger";
+import { getEnv } from './env';
 
-// Production-ready connection pool configuration
+const env = getEnv();
+
 const pgPool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: env.DATABASE_URL,
   max: 20,                      // Maximum 20 connections
   min: 5,                       // Keep 5 connections alive
-  idleTimeoutMillis: 30000,     // Close idle connections after 30s
-  connectionTimeoutMillis: 2000,// Timeout if can't get connection in 2s
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  idleTimeoutMillis: 30000,     // Close idle after 30s
+  connectionTimeoutMillis: 2000,// Timeout if can't connect in 2s
+  ssl: env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 });
 
-// Critical: Add error handler to prevent crashes
+// Critical: Log pool errors
 pgPool.on('error', (err) => {
-  console.error('Unexpected database pool error:', err);
-  // Don't crash - let health checks detect it
+  console.error('❌ Database pool error:', err);
 });
 
-// Log pool stats periodically (every minute)
+// Log pool stats every minute
 setInterval(() => {
-  console.log('DB Pool:', {
+  console.log('📊 DB Pool:', {
     total: pgPool.totalCount,
     idle: pgPool.idleCount,
     waiting: pgPool.waitingCount,
