@@ -1533,6 +1533,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // =============================================
   // HEALTH CHECK ENDPOINTS
   // =============================================
+
+  // Health check endpoint - no auth required (for load balancers/uptime monitors)
+  app.get('/health', async (req, res) => {
+    const health: {
+      status: string;
+      timestamp: string;
+      uptime: number;
+      checks: { database: string; memory: string };
+    } = {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      checks: {
+        database: 'checking',
+        memory: 'ok',
+      }
+    };
+
+    // Check database connection
+    try {
+      await db.execute(sql`SELECT 1`);
+      health.checks.database = 'ok';
+    } catch (err) {
+      health.checks.database = 'error';
+      health.status = 'degraded';
+    }
+
+    // Check memory usage
+    const memUsage = process.memoryUsage();
+    const memUsedMB = Math.round(memUsage.heapUsed / 1024 / 1024);
+    if (memUsedMB > 1024) {
+      health.checks.memory = 'warning';
+    }
+
+    const statusCode = health.status === 'ok' ? 200 : 503;
+    res.status(statusCode).json(health);
+  });
+
+  // Readiness check for load balancers
+  app.get('/ready', async (req, res) => {
+    try {
+      await db.execute(sql`SELECT 1`);
+      res.status(200).json({ ready: true });
+    } catch {
+      res.status(503).json({ ready: false });
+    }
+  });
   
   // Helper function to get error counts for last 15 minutes
   async function getErrorCounts(): Promise<{ counts: Record<string, number>; total: number }> {
