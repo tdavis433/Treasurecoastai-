@@ -42,6 +42,7 @@ import {
   AutomationResult
 } from './automations';
 import { checkMessageLimit, incrementMessageCount, incrementAutomationCount } from './planLimits';
+import { trackOpenAIUsage, checkDailySpendingLimit } from './costTracking';
 import { getClientStatus } from './botConfig';
 import { addDays, addWeeks, setHours, setMinutes, startOfDay, format, getDay } from 'date-fns';
 import { extractContactSignals, mergeContactSignals } from '@shared/contactSignals';
@@ -1396,6 +1397,17 @@ class ConversationOrchestrator {
         return;
       }
 
+      // Check daily spending limit before OpenAI call
+      const costCheck = await checkDailySpendingLimit(clientId);
+      if (!costCheck.allowed) {
+        structuredLogger.warn(`Daily limit reached for workspace ${clientId}`, { 
+          spent: costCheck.spent, 
+          limit: costCheck.limit 
+        });
+        yield { type: 'error', message: 'Daily AI usage limit reached. Please try again tomorrow.' };
+        return;
+      }
+
       const clientSettings = await configCache.getClientSettings(clientId);
       
       // Inject external URLs into bot config for prompt building
@@ -1441,6 +1453,12 @@ class ConversationOrchestrator {
           fullReply += content;
           yield { type: 'chunk', content };
         }
+      }
+
+      // Track OpenAI usage (estimate tokens for streaming - ~4 chars per token average)
+      const estimatedTokens = Math.ceil((systemPrompt.length + messages.reduce((acc, m) => acc + m.content.length, 0) + fullReply.length) / 4);
+      if (estimatedTokens > 0) {
+        await trackOpenAIUsage(clientId, estimatedTokens, 'gpt-4o-mini');
       }
 
       // 8. Post-processing
@@ -1876,6 +1894,20 @@ class ConversationOrchestrator {
     // 12 second timeout for OpenAI call
     const AI_TIMEOUT_MS = 12000;
     
+    // Check daily spending limit before OpenAI call
+    const workspaceId = clientId;
+    const costCheck = await checkDailySpendingLimit(workspaceId);
+    
+    if (!costCheck.allowed) {
+      structuredLogger.warn(`Daily limit reached for workspace ${workspaceId}`, { 
+        spent: costCheck.spent, 
+        limit: costCheck.limit 
+      });
+      return language === 'es'
+        ? `Lo siento, hemos alcanzado el límite diario de uso de IA. Por favor, contacta al ${businessName} directamente.${contactDetails ? ` Puedes ${contactDetails}.` : ''}`
+        : `I'm sorry, we've reached our daily AI usage limit. Please contact ${businessName} directly.${contactDetails ? ` You can ${contactDetails}.` : ''}`;
+    }
+    
     try {
       const completionPromise = openai.chat.completions.create({
         model: 'gpt-4o-mini',
@@ -1891,6 +1923,12 @@ class ConversationOrchestrator {
       });
       
       const completion = await Promise.race([completionPromise, timeoutPromise]);
+      
+      // Track OpenAI usage after successful completion
+      const tokensUsed = completion.usage?.total_tokens || 0;
+      if (tokensUsed > 0) {
+        await trackOpenAIUsage(workspaceId, tokensUsed, 'gpt-4o-mini');
+      }
       
       const defaultReply = language === 'es'
         ? 'Estoy aquí para ayudar. ¿Cómo puedo asistirte hoy?'
