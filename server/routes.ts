@@ -1591,6 +1591,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(503).json({ ready: false });
     }
   });
+
+  // =============================================
+  // RATE LIMITERS (defined early for use in endpoints)
+  // =============================================
+  
+  // Rate limiter for widget chat endpoint (10 messages per minute per IP+session)
+  const widgetChatLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute window
+    max: 10, // Max 10 messages per minute per IP+session
+    
+    // Key by IP + sessionId
+    keyGenerator: (req) => {
+      const ip = req.ip || req.socket.remoteAddress || 'unknown';
+      const sessionId = req.body?.sessionId || 'no-session';
+      return `chat:${ip}:${sessionId}`;
+    },
+    
+    // Custom error message
+    handler: (req, res) => {
+      res.status(429).json({
+        error: 'Too many messages. Please wait a moment before sending more.',
+        retryAfter: 60,
+      });
+    },
+    
+    // Skip rate limit for authenticated dashboard users
+    skip: (req) => {
+      return !!req.session?.userId;
+    },
+    
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
   
   // Helper function to get error counts for last 15 minutes
   async function getErrorCounts(): Promise<{ counts: Record<string, number>; total: number }> {
@@ -2266,7 +2299,7 @@ Always be positive and solution-oriented. If someone wants to get started, direc
 
   // Multi-tenant chat endpoint: POST /api/chat/:clientId/:botId
   // Uses the unified orchestrator for consistent behavior across all surfaces
-  app.post("/api/chat/:clientId/:botId", async (req, res) => {
+  app.post("/api/chat/:clientId/:botId", widgetChatLimiter, async (req, res) => {
     try {
       // Validate params
       const paramsValidation = validateRequest(clientBotParamsSchema, req.params);
