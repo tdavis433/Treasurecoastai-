@@ -302,15 +302,26 @@ const templateIdParamSchema = z.object({
   templateId: z.string().min(1, "templateId is required"),
 });
 
-// Chat endpoint schemas
+// Chat endpoint schemas with XSS protection
 const chatMessageSchema = z.object({
   role: z.enum(["user", "assistant", "system"]),
-  content: z.string().min(1, "Message content is required"),
+  content: z.string()
+    .min(1, "Message content is required")
+    .max(2000, "Message too long (max 2000 characters)")
+    .refine(
+      val => !/<script|javascript:|on\w+=/i.test(val),
+      'Message contains potentially harmful content'
+    ),
 });
 
 const chatBodySchema = z.object({
   messages: z.array(chatMessageSchema).min(1, "At least one message is required"),
-  sessionId: z.string().optional(),
+  sessionId: z.string()
+    .optional()
+    .refine(
+      val => !val || /^[a-zA-Z0-9_-]+$/.test(val),
+      'Invalid session ID format'
+    ),
   language: z.enum(["en", "es"]).optional().default("en"),
   clientId: z.string().regex(/^[a-zA-Z0-9_-]+$/).optional(),
   botId: z.string().regex(/^[a-zA-Z0-9_-]+$/).optional(),
@@ -2264,7 +2275,17 @@ Always be positive and solution-oriented. If someone wants to get started, direc
       }
       const { clientId, botId } = paramsValidation.data;
       
-      // Load bot configuration first to check security settings
+      // Validate body EARLY (before bot lookup) to catch XSS attacks
+      const bodyValidation = validateRequest(chatBodySchema, req.body);
+      if (!bodyValidation.success) {
+        return res.status(400).json({ 
+          error: 'Invalid request',
+          details: bodyValidation.error
+        });
+      }
+      const { messages, sessionId, language } = bodyValidation.data;
+      
+      // Load bot configuration to check security settings
       const botConfig = await getBotConfigAsync(clientId, botId);
       if (!botConfig) {
         return res.status(404).json({ error: `Bot not found: ${clientId}/${botId}` });
@@ -2316,13 +2337,6 @@ Always be positive and solution-oriented. If someone wants to get started, direc
           }
         }
       }
-      
-      // Validate body
-      const bodyValidation = validateRequest(chatBodySchema, req.body);
-      if (!bodyValidation.success) {
-        return res.status(400).json({ error: bodyValidation.error });
-      }
-      const { messages, sessionId, language } = bodyValidation.data;
       
       // Determine source from request context
       const source = req.body.source || 'widget';
