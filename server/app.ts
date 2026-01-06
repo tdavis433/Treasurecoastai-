@@ -19,7 +19,31 @@ import { createCsrfMiddleware, csrfTokenEndpoint } from "./csrfMiddleware";
 import { requestIdMiddleware } from "./requestId";
 import { structuredLogger, redactPII } from "./structuredLogger";
 
-const pgPool = new Pool({ connectionString: process.env.DATABASE_URL });
+// Production-ready connection pool configuration
+const pgPool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  max: 20,                      // Maximum 20 connections
+  min: 5,                       // Keep 5 connections alive
+  idleTimeoutMillis: 30000,     // Close idle connections after 30s
+  connectionTimeoutMillis: 2000,// Timeout if can't get connection in 2s
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+});
+
+// Critical: Add error handler to prevent crashes
+pgPool.on('error', (err) => {
+  console.error('Unexpected database pool error:', err);
+  // Don't crash - let health checks detect it
+});
+
+// Log pool stats periodically (every minute)
+setInterval(() => {
+  console.log('DB Pool:', {
+    total: pgPool.totalCount,
+    idle: pgPool.idleCount,
+    waiting: pgPool.waitingCount,
+  });
+}, 60000);
+
 const PgStore = connectPgSimple(session);
 
 export function log(message: string, source = "express") {
