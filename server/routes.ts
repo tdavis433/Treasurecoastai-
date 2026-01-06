@@ -4394,9 +4394,6 @@ These suggestions should be relevant to what was just discussed and help guide t
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
-      // Successful login - clear any failed attempts
-      clearFailedLogins(username);
-
       // Audit log successful login
       const loginReqInfo = extractRequestInfo(req);
       await logAuditEvent({
@@ -4417,30 +4414,43 @@ These suggestions should be relevant to what was just discussed and help guide t
         .set({ lastLoginAt: new Date() })
         .where(eq(adminUsers.id, user.id));
 
+      // Regenerate session on login (prevents session fixation)
       req.session.regenerate((err) => {
         if (err) {
-          structuredLogger.error("Session regeneration error:", err);
-          return res.status(500).json({ error: "Session creation failed" });
+          console.error('Session regeneration error:', err);
+          return res.status(500).json({ 
+            error: 'Session error. Please try again.' 
+          });
         }
+        
+        // Set session data AFTER regeneration
         req.session.userId = user.id;
         req.session.userRole = (user.role as AdminRole) || "client_admin";
         req.session.clientId = user.clientId || null;
         req.session.lastSeenAt = Date.now(); // Initialize idle timeout tracking
+        
+        // Save the session
         req.session.save((saveErr) => {
           if (saveErr) {
-            structuredLogger.error("Session save error:", saveErr);
-            return res.status(500).json({ error: "Session save failed" });
+            console.error('Session save error:', saveErr);
+            return res.status(500).json({ 
+              error: 'Session save error.' 
+            });
           }
-          res.json({ 
-            success: true, 
+          
+          // Clear failed login attempts
+          clearFailedLogins(username);
+          
+          res.json({
+            success: true,
             forcePasswordChange: user.mustChangePassword ?? false,
-            user: { 
-              id: user.id, 
-              username: user.username, 
-              role: user.role, 
+            user: {
+              id: user.id,
+              username: user.username,
+              role: user.role,
               clientId: user.clientId,
               mustChangePassword: user.mustChangePassword ?? false
-            } 
+            }
           });
         });
       });
