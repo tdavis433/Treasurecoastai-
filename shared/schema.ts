@@ -1011,6 +1011,32 @@ export const insertWorkspaceMembershipSchema = createInsertSchema(workspaceMembe
 export type InsertWorkspaceMembership = z.infer<typeof insertWorkspaceMembershipSchema>;
 export type WorkspaceMembership = typeof workspaceMemberships.$inferSelect;
 
+// Workspace invitations - Pending invitation tokens for new members
+export const workspaceInvitations = pgTable("workspace_invitations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull(),
+  token: varchar("token").notNull().unique(), // Unique invitation token
+  role: text("role").notNull(), // Role the invited user will receive
+  createdByUserId: varchar("created_by_user_id").notNull(), // References adminUsers.id
+  email: text("email"), // Optional: email the invitation is intended for
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  usedByUserId: varchar("used_by_user_id"), // References adminUsers.id
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  tokenIdx: index("invitations_token_idx").on(table.token),
+  workspaceIdx: index("invitations_workspace_idx").on(table.workspaceId),
+  expiresAtIdx: index("invitations_expires_at_idx").on(table.expiresAt),
+}));
+
+export const insertWorkspaceInvitationSchema = createInsertSchema(workspaceInvitations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertWorkspaceInvitation = z.infer<typeof insertWorkspaceInvitationSchema>;
+export type WorkspaceInvitation = typeof workspaceInvitations.$inferSelect;
+
 // Bots table - Full bot configuration (replaces JSON files)
 export const bots = pgTable("bots", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -2290,6 +2316,7 @@ export const workspacesRelations = relations(workspaces, ({ one, many }) => ({
     references: [adminUsers.id],
   }),
   memberships: many(workspaceMemberships),
+  invitations: many(workspaceInvitations),
   bots: many(bots),
 }));
 
@@ -2307,6 +2334,24 @@ export const workspaceMembershipsRelations = relations(workspaceMemberships, ({ 
     fields: [workspaceMemberships.invitedBy],
     references: [adminUsers.id],
     relationName: 'inviter',
+  }),
+}));
+
+// Workspace invitation relations
+export const workspaceInvitationsRelations = relations(workspaceInvitations, ({ one }) => ({
+  workspace: one(workspaces, {
+    fields: [workspaceInvitations.workspaceId],
+    references: [workspaces.id],
+  }),
+  createdBy: one(adminUsers, {
+    fields: [workspaceInvitations.createdByUserId],
+    references: [adminUsers.id],
+    relationName: 'invitationCreator',
+  }),
+  usedBy: one(adminUsers, {
+    fields: [workspaceInvitations.usedByUserId],
+    references: [adminUsers.id],
+    relationName: 'invitationUser',
   }),
 }));
 

@@ -5178,6 +5178,327 @@ These suggestions should be relevant to what was just discussed and help guide t
   });
 
   // =============================================
+  // WORKSPACE MEMBERSHIP MANAGEMENT
+  // Client-facing team management (owner/manager only)
+  // =============================================
+
+  // Get workspace members (owner/manager only)
+  app.get("/api/workspace/members", requireClientAuth, requireConfigAccess, async (req, res) => {
+    try {
+      const workspaceId = req.workspaceId!;
+
+      const result = await storage.getWorkspaceWithMemberships(workspaceId);
+
+      if (!result) {
+        return res.status(404).json({ error: "Workspace not found" });
+      }
+
+      const membersWithoutPasswords = result.members.map(m => ({
+        id: m.id,
+        userId: m.userId,
+        role: m.role,
+        status: m.status,
+        invitedAt: m.invitedAt,
+        acceptedAt: m.acceptedAt,
+        user: {
+          id: m.user.id,
+          username: m.user.username,
+          email: m.user.email,
+        },
+      }));
+
+      res.json({
+        workspace: {
+          id: result.workspace.id,
+          name: result.workspace.name,
+          slug: result.workspace.slug,
+        },
+        members: membersWithoutPasswords,
+      });
+    } catch (error) {
+      structuredLogger.error("Get workspace members error:", error);
+      res.status(500).json({ error: "Failed to fetch workspace members" });
+    }
+  });
+
+  // Update member role (owner/manager only)
+  app.patch("/api/workspace/members/:membershipId", requireClientAuth, requireConfigAccess, async (req, res) => {
+    try {
+      const { membershipId } = req.params;
+      const { role } = req.body;
+      const workspaceId = req.workspaceId!;
+      const userId = req.session.userId!;
+
+      // Validate role
+      const validRoles = ['owner', 'manager', 'staff', 'agent'];
+      if (!validRoles.includes(role)) {
+        return res.status(400).json({ error: "Invalid role. Must be one of: owner, manager, staff, agent" });
+      }
+
+      // Get the membership to check it belongs to this workspace
+      const membership = await storage.getWorkspaceMembershipById(membershipId);
+      if (!membership || membership.workspaceId !== workspaceId) {
+        return res.status(404).json({ error: "Member not found" });
+      }
+
+      // Prevent demoting the last owner
+      if (membership.role === 'owner' && role !== 'owner') {
+        const ownerCount = await storage.countWorkspaceOwners(workspaceId);
+        if (ownerCount <= 1) {
+          return res.status(400).json({ error: "Cannot demote the last owner. Promote another member to owner first." });
+        }
+      }
+
+      const updated = await storage.updateWorkspaceMembershipRole(membershipId, role);
+
+      res.json({
+        id: updated.id,
+        userId: updated.userId,
+        role: updated.role,
+        status: updated.status,
+      });
+    } catch (error) {
+      structuredLogger.error("Update member role error:", error);
+      res.status(500).json({ error: "Failed to update member role" });
+    }
+  });
+
+  // Remove workspace member (owner/manager only)
+  app.delete("/api/workspace/members/:membershipId", requireClientAuth, requireConfigAccess, async (req, res) => {
+    try {
+      const { membershipId } = req.params;
+      const workspaceId = req.workspaceId!;
+      const userId = req.session.userId!;
+
+      // Get the membership to check it belongs to this workspace
+      const membership = await storage.getWorkspaceMembershipById(membershipId);
+      if (!membership || membership.workspaceId !== workspaceId) {
+        return res.status(404).json({ error: "Member not found" });
+      }
+
+      // Prevent removing yourself if you're the last owner
+      if (membership.userId === userId && membership.role === 'owner') {
+        const ownerCount = await storage.countWorkspaceOwners(workspaceId);
+        if (ownerCount <= 1) {
+          return res.status(400).json({ error: "Cannot remove yourself as the last owner. Transfer ownership first." });
+        }
+      }
+
+      // Prevent removing the last owner
+      if (membership.role === 'owner') {
+        const ownerCount = await storage.countWorkspaceOwners(workspaceId);
+        if (ownerCount <= 1) {
+          return res.status(400).json({ error: "Cannot remove the last owner. Promote another member to owner first." });
+        }
+      }
+
+      await storage.deleteWorkspaceMembership(membershipId);
+
+      res.json({ success: true, message: "Member removed successfully" });
+    } catch (error) {
+      structuredLogger.error("Remove member error:", error);
+      res.status(500).json({ error: "Failed to remove member" });
+    }
+  });
+
+  // Create workspace invitation (owner/manager only)
+  app.post("/api/workspace/invitations/create", requireClientAuth, requireConfigAccess, async (req, res) => {
+    try {
+      const { role, email, expiresInDays = 7 } = req.body;
+      const workspaceId = req.workspaceId!;
+      const userId = req.session.userId!;
+
+      // Validate role
+      const validRoles = ['owner', 'manager', 'staff', 'agent'];
+      if (!validRoles.includes(role)) {
+        return res.status(400).json({ error: "Invalid role. Must be one of: owner, manager, staff, agent" });
+      }
+
+      // Generate secure token
+      const crypto = await import('crypto');
+      const token = crypto.randomBytes(32).toString('hex');
+
+      // Set expiration
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + Math.min(expiresInDays, 30));
+
+      const invitation = await storage.createWorkspaceInvitation({
+        workspaceId,
+        token,
+        role,
+        createdByUserId: userId,
+        email: email || null,
+        expiresAt,
+        usedAt: null,
+        usedByUserId: null,
+      });
+
+      // Generate invitation URL (client will use current origin)
+      const inviteLink = `/accept-invite?token=${token}`;
+
+      res.json({
+        id: invitation.id,
+        token: invitation.token,
+        role: invitation.role,
+        email: invitation.email,
+        expiresAt: invitation.expiresAt,
+        inviteLink,
+      });
+    } catch (error) {
+      structuredLogger.error("Create invitation error:", error);
+      res.status(500).json({ error: "Failed to create invitation" });
+    }
+  });
+
+  // Get workspace invitations (owner/manager only)
+  app.get("/api/workspace/invitations", requireClientAuth, requireConfigAccess, async (req, res) => {
+    try {
+      const workspaceId = req.workspaceId!;
+      const includeUsed = req.query.includeUsed === 'true';
+
+      const invitations = await storage.getWorkspaceInvitations(workspaceId, includeUsed);
+
+      res.json(invitations.map(inv => ({
+        id: inv.id,
+        token: inv.token,
+        role: inv.role,
+        email: inv.email,
+        expiresAt: inv.expiresAt,
+        usedAt: inv.usedAt,
+        createdAt: inv.createdAt,
+      })));
+    } catch (error) {
+      structuredLogger.error("Get invitations error:", error);
+      res.status(500).json({ error: "Failed to fetch invitations" });
+    }
+  });
+
+  // Accept workspace invitation (authenticated users only)
+  app.post("/api/workspace/invitations/accept", requireAuth, async (req, res) => {
+    try {
+      const { token } = req.body;
+      const userId = req.session.userId!;
+
+      if (!token) {
+        return res.status(400).json({ error: "Invitation token is required" });
+      }
+
+      // Get invitation
+      const invitation = await storage.getWorkspaceInvitationByToken(token);
+
+      if (!invitation) {
+        return res.status(404).json({ error: "Invalid invitation token" });
+      }
+
+      // Check if already used
+      if (invitation.usedAt) {
+        return res.status(400).json({ error: "This invitation has already been used" });
+      }
+
+      // Check if expired
+      if (new Date() > new Date(invitation.expiresAt)) {
+        return res.status(400).json({ error: "This invitation has expired" });
+      }
+
+      // Check if user is already a member
+      const existingMembership = await storage.checkWorkspaceMembership(userId, invitation.workspaceId);
+      if (existingMembership) {
+        return res.status(400).json({ error: "You are already a member of this workspace" });
+      }
+
+      // Create workspace membership
+      const membership = await storage.createWorkspaceMembership({
+        workspaceId: invitation.workspaceId,
+        userId,
+        role: invitation.role,
+        invitedBy: invitation.createdByUserId,
+        acceptedAt: new Date(),
+        status: 'active',
+      });
+
+      // Mark invitation as used
+      await storage.markInvitationUsed(invitation.id, userId);
+
+      // Get workspace info
+      const workspace = await db.select().from(workspaces).where(eq(workspaces.id, invitation.workspaceId)).limit(1);
+
+      res.json({
+        success: true,
+        workspace: workspace[0] ? {
+          id: workspace[0].id,
+          name: workspace[0].name,
+          slug: workspace[0].slug,
+        } : null,
+        membership: {
+          id: membership.id,
+          role: membership.role,
+        },
+      });
+    } catch (error) {
+      structuredLogger.error("Accept invitation error:", error);
+      res.status(500).json({ error: "Failed to accept invitation" });
+    }
+  });
+
+  // Revoke workspace invitation (owner/manager only)
+  app.delete("/api/workspace/invitations/:invitationId", requireClientAuth, requireConfigAccess, async (req, res) => {
+    try {
+      const { invitationId } = req.params;
+      const workspaceId = req.workspaceId!;
+
+      // Get invitation to verify it belongs to this workspace
+      const invitations = await storage.getWorkspaceInvitations(workspaceId, true);
+      const invitation = invitations.find(inv => inv.id === invitationId);
+
+      if (!invitation) {
+        return res.status(404).json({ error: "Invitation not found" });
+      }
+
+      await storage.deleteWorkspaceInvitation(invitationId);
+
+      res.json({ success: true, message: "Invitation revoked successfully" });
+    } catch (error) {
+      structuredLogger.error("Revoke invitation error:", error);
+      res.status(500).json({ error: "Failed to revoke invitation" });
+    }
+  });
+
+  // Get user's workspaces (for workspace switcher)
+  app.get("/api/user/workspaces", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+
+      const memberships = await storage.getUserWorkspaceMemberships(userId);
+
+      // Get workspace details for each membership
+      const workspacesWithRoles = await Promise.all(
+        memberships.map(async (m) => {
+          const [workspace] = await db
+            .select()
+            .from(workspaces)
+            .where(eq(workspaces.id, m.workspaceId))
+            .limit(1);
+
+          return workspace ? {
+            id: workspace.id,
+            name: workspace.name,
+            slug: workspace.slug,
+            role: m.role,
+            membershipId: m.id,
+          } : null;
+        })
+      );
+
+      const validWorkspaces = workspacesWithRoles.filter(w => w !== null);
+
+      res.json(validWorkspaces);
+    } catch (error) {
+      structuredLogger.error("Get user workspaces error:", error);
+      res.status(500).json({ error: "Failed to fetch workspaces" });
+    }
+  });
+
+  // =============================================
   // ADMIN PLATFORM ERRORS (Super Admin Only)
   // Quick view of recent platform errors
   // =============================================

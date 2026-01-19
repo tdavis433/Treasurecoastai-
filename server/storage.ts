@@ -17,6 +17,9 @@ import {
   type Lead,
   type InsertLead,
   type WorkspaceMembership,
+  type InsertWorkspaceMembership,
+  type WorkspaceInvitation,
+  type InsertWorkspaceInvitation,
   type Workspace,
   type Bot,
   type AutomationWorkflow,
@@ -51,6 +54,7 @@ import {
   monthlyUsage,
   leads,
   workspaceMemberships,
+  workspaceInvitations,
   workspaces,
   bots,
   automationWorkflows,
@@ -1620,8 +1624,130 @@ export class DbStorage implements IStorage {
       .from(workspaces)
       .where(eq(workspaces.slug, clientId))
       .limit(1);
-    
+
     return workspace;
+  }
+
+  async getWorkspaceWithMemberships(workspaceId: string): Promise<{ workspace: Workspace; members: (WorkspaceMembership & { user: AdminUser })[] } | undefined> {
+    const [workspace] = await db
+      .select()
+      .from(workspaces)
+      .where(eq(workspaces.id, workspaceId))
+      .limit(1);
+
+    if (!workspace) return undefined;
+
+    const membersWithUsers = await db
+      .select({
+        membership: workspaceMemberships,
+        user: adminUsers,
+      })
+      .from(workspaceMemberships)
+      .innerJoin(adminUsers, eq(workspaceMemberships.userId, adminUsers.id))
+      .where(eq(workspaceMemberships.workspaceId, workspaceId));
+
+    const members = membersWithUsers.map(m => ({
+      ...m.membership,
+      user: m.user,
+    }));
+
+    return { workspace, members };
+  }
+
+  async createWorkspaceMembership(data: InsertWorkspaceMembership): Promise<WorkspaceMembership> {
+    const [membership] = await db
+      .insert(workspaceMemberships)
+      .values(data as any)
+      .returning();
+    return membership;
+  }
+
+  async updateWorkspaceMembershipRole(membershipId: string, role: string): Promise<WorkspaceMembership> {
+    const [updated] = await db
+      .update(workspaceMemberships)
+      .set({ role })
+      .where(eq(workspaceMemberships.id, membershipId))
+      .returning();
+    return updated;
+  }
+
+  async deleteWorkspaceMembership(membershipId: string): Promise<void> {
+    await db
+      .delete(workspaceMemberships)
+      .where(eq(workspaceMemberships.id, membershipId));
+  }
+
+  async getWorkspaceMembershipById(membershipId: string): Promise<WorkspaceMembership | undefined> {
+    const [membership] = await db
+      .select()
+      .from(workspaceMemberships)
+      .where(eq(workspaceMemberships.id, membershipId))
+      .limit(1);
+    return membership;
+  }
+
+  async countWorkspaceOwners(workspaceId: string): Promise<number> {
+    const [result] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(workspaceMemberships)
+      .where(and(
+        eq(workspaceMemberships.workspaceId, workspaceId),
+        eq(workspaceMemberships.role, 'owner'),
+        eq(workspaceMemberships.status, 'active')
+      ));
+    return Number(result?.count || 0);
+  }
+
+  // =============================================
+  // WORKSPACE INVITATIONS
+  // =============================================
+
+  async createWorkspaceInvitation(data: InsertWorkspaceInvitation): Promise<WorkspaceInvitation> {
+    const [invitation] = await db
+      .insert(workspaceInvitations)
+      .values(data as any)
+      .returning();
+    return invitation;
+  }
+
+  async getWorkspaceInvitationByToken(token: string): Promise<WorkspaceInvitation | undefined> {
+    const [invitation] = await db
+      .select()
+      .from(workspaceInvitations)
+      .where(eq(workspaceInvitations.token, token))
+      .limit(1);
+    return invitation;
+  }
+
+  async getWorkspaceInvitations(workspaceId: string, includeUsed: boolean = false): Promise<WorkspaceInvitation[]> {
+    const conditions = [eq(workspaceInvitations.workspaceId, workspaceId)];
+    if (!includeUsed) {
+      conditions.push(sql`${workspaceInvitations.usedAt} IS NULL`);
+    }
+
+    return db
+      .select()
+      .from(workspaceInvitations)
+      .where(and(...conditions))
+      .orderBy(desc(workspaceInvitations.createdAt));
+  }
+
+  async markInvitationUsed(invitationId: string, userId: string): Promise<WorkspaceInvitation> {
+    const [updated] = await db
+      .update(workspaceInvitations)
+      .set({
+        usedAt: new Date(),
+        usedByUserId: userId,
+      })
+      .where(eq(workspaceInvitations.id, invitationId))
+      .returning();
+    return updated;
+  }
+
+  async deleteWorkspaceInvitation(invitationId: string): Promise<void> {
+    await db
+      .delete(workspaceInvitations)
+      .where(eq(workspaceInvitations.id, invitationId));
   }
 
   // Get bot by botId (the human-readable ID like 'faith_house_main')

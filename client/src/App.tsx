@@ -49,6 +49,8 @@ import DemoWedding from "@/pages/demo-wedding";
 import DevEmbedTest from "@/pages/dev-embed-test";
 import AgencyOnboardingConsole from "@/pages/agency-onboarding-console";
 import PreviewPage from "@/pages/preview-page";
+import WorkspaceMembersPage from "@/pages/workspace-members";
+import AcceptInvitePage from "@/pages/accept-invite";
 import { useEffect } from "react";
 
 function PasswordChangeGuard({ children }: { children: React.ReactNode }) {
@@ -117,6 +119,8 @@ function Router() {
       <Route path="/admin/bot/:botId/automations" component={AutomationsPage} />
       <Route path="/admin/bot/:botId/widget-settings" component={WidgetSettingsPage} />
       <Route path="/admin/bot/:botId" component={BotDashboard} />
+      <Route path="/admin/workspace/members" component={WorkspaceMembersPage} />
+      <Route path="/accept-invite" component={AcceptInvitePage} />
       <Route path="/admin">
         <Redirect to="/admin/dashboard" />
       </Route>
